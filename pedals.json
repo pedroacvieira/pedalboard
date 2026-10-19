@@ -1,0 +1,346 @@
+{
+  "rule_types": {
+    "after": "pedals: ids that must come BEFORE this pedal",
+    "before": "pedals: ids that must come AFTER this pedal",
+    "after_group": "group: a tag; this pedal must come after every on-board pedal with that tag",
+    "before_group": "group: a tag; this pedal must come before every on-board pedal with that tag",
+    "no_buffered_before": "no pedal with buffered_bypass=true may come earlier in the chain",
+    "position": "value: 'first' or 'last'",
+    "as_early_as_possible": "sits right after the pedals its own 'after' rules require",
+    "strength": "'required' breaks validation if violated; 'preferred' only warns. Rules naming pedals that are not on the board are skipped."
+  },
+  "pedals": [
+    {
+      "id": "sun_face",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "AnalogMan",
+      "name": "Sun Face BC183",
+      "tags": ["gain", "fuzz"],
+      "power_consumption": { "current_ma": 1, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "no_buffered_before", "strength": "required", "reason": "AnalogMan: the Fuzz Face must see the guitar directly; no buffered pedal ahead of it" }
+      ],
+      "comments": "Silicon Fuzz Face, unbuffered: must be FIRST in the chain, guitar straight into it. Ships battery-only; check your unit has the optional DC jack. Silicon version is negative ground so sharing power is OK, but AnalogMan warns a supply can add hum/oscillation. 'Under 1 mA' is from the shared Fuzz Face page."
+    },
+    {
+      "id": "beano",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "AnalogMan",
+      "name": "Beano Boost",
+      "tags": ["gain", "boost"],
+      "power_consumption": { "current_ma": 5, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "no_buffered_before", "strength": "required", "reason": "AnalogMan: no buffered pedal ahead of the Beano" },
+        { "type": "after", "pedals": ["sun_face"], "strength": "required", "reason": "Direct post-fuzz boost" }
+      ],
+      "comments": "Germanium treble booster, direct post-fuzz. Per AnalogMan it can share a DC supply with the Sun Face and other basic fuzzes (keep that group simple). The Oct 2020 manual text read by the research agent said isolated power only / no daisy-chaining, so confirm the wording for your unit. Never 9V AC. Needs the DC jack option (battery by default). Center-negative."
+    },
+    {
+      "id": "double_dragon",
+      "owned": false,
+      "on_board": false,
+      "buffered_bypass": true,
+      "buffer_switchable": false,
+      "brand": "JHS",
+      "name": "Double Dragon",
+      "tags": ["gain", "fuzz", "octave"],
+      "power_consumption": { "current_ma": 75, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after", "pedals": ["sun_face", "beano"], "strength": "preferred", "reason": "Front fuzz group" }
+      ],
+      "comments": "NOT in the current plan (the Danelectro 3699 is preferred); kept as an alternative. Lo-fi octave device (mono octave down + distorted octave up). 9V only: JHS warns damage above 9V. Silent buffered bypass (retailer-sourced; JHS page unreachable)."
+    },
+    {
+      "id": "polytune_3",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": true,
+      "buffer_switchable": true,
+      "brand": "TC Electronic",
+      "name": "PolyTune 3",
+      "tags": ["tuner"],
+      "power_consumption": { "current_ma": 100, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after", "pedals": ["sun_face", "beano"], "strength": "required", "reason": "No buffer ahead of the two AnalogMan pedals" },
+        { "type": "as_early_as_possible", "strength": "preferred", "reason": "Tuner / master front buffer" }
+      ],
+      "comments": "Tuner / master front buffer. 100 mA is the manual's minimum supply rating; measured draw is lower (~38 mA reported for the Mini). Bypass mode is selectable by DIP switch (true by default, buffered, or buffered with display on); buffer ENABLED in this plan as the master front buffer. Has a power-out jack for daisy-chaining."
+    },
+    {
+      "id": "mini_ego",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Wampler",
+      "name": "Mini Ego Compressor",
+      "tags": ["compressor"],
+      "power_consumption": { "current_ma": 22, "voltage_v": 18, "allowed_voltages_v": [9, 18], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Compressor. Wampler publishes 14 mA at 9V and 22 mA at 18V (figure here is the 18V one). Page does not explicitly state the jack is 18V-rated. True bypass. Listed as 'Ego Mini' in the original plan."
+    },
+    {
+      "id": "fulldrive_2",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Fulltone",
+      "name": "Full-Drive 2 Mosfet",
+      "tags": ["gain", "overdrive"],
+      "power_consumption": { "current_ma": 10, "voltage_v": 18, "allowed_voltages_v": [9, 18], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Overdrive, more headroom at 18V. ~10 mA is from Fulltone's page for the newer v2; no manufacturer figure found for the original Mosfet model (one forum measurement: ~7 mA)."
+    },
+    {
+      "id": "phase_95",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "MXR",
+      "name": "Phase 95",
+      "tags": ["modulation", "phaser"],
+      "power_consumption": { "current_ma": 8, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "before", "pedals": ["ratsbane"], "strength": "required", "reason": "Van Halen phaser-into-hard-clipping sound" },
+        { "type": "before", "pedals": ["red_muck"], "strength": "preferred", "reason": "Original plan: pre-dirt 70s sweep" }
+      ],
+      "comments": "Phaser, pre-dirt for a classic 70s sweep. No battery option. True bypass. Exempt from 'modulation after gain': intentionally ahead of the dirt."
+    },
+    {
+      "id": "retrovibe",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "JAM Pedals",
+      "name": "Retrovibe",
+      "tags": ["modulation", "vibe"],
+      "power_consumption": { "current_ma": 120, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "before", "pedals": ["protein", "ratsbane"], "strength": "required", "reason": "Uni-Vibe feeding the dirt" },
+        { "type": "before", "pedals": ["red_muck"], "strength": "preferred", "reason": "Original plan: pre-dirt throbbing fuzz-vibe" }
+      ],
+      "comments": "Photocell Uni-Vibe, pre-dirt for throbbing fuzz-vibe tones. 120 mA assumes the current mk.4 (mk.3 is listed at 80-150 mA): check your version. True bypass, no battery. Exempt from 'modulation after gain': intentionally ahead of the dirt."
+    },
+    {
+      "id": "red_muck",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "JAM Pedals",
+      "name": "Red Muck Mk2",
+      "tags": ["gain", "fuzz"],
+      "power_consumption": { "current_ma": 60, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Russian/Civil War Muff fuzz. Sources conflict: 60 mA (JAM shop page) vs 12-15 mA (retailers); planning on 60 mA until the manual is checked. True bypass."
+    },
+    {
+      "id": "ratsbane",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Wampler",
+      "name": "Ratsbane",
+      "tags": ["gain", "distortion"],
+      "power_consumption": { "current_ma": 3, "voltage_v": 9, "allowed_voltages_v": [9, 18], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Hard-clipping distortion. 2.5 mA at 9V, 3.2 mA at 18V; approved for 18V but designed around 9V. No battery connector. True bypass."
+    },
+    {
+      "id": "protein",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": null,
+      "buffer_switchable": false,
+      "brand": "Browne",
+      "name": "Protein",
+      "tags": ["gain", "overdrive"],
+      "power_consumption": { "current_ma": 130, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after", "pedals": ["ratsbane"], "strength": "required", "reason": "Stacks on / smooths the Ratsbane's hard clipping" }
+      ],
+      "comments": "Dual overdrive, placed post-Ratsbane to stack or smooth the hard clipping. 9V only ('18V is not better'). Bypass type unconfirmed (V3 uses soft/electronic switching; reviews say true bypass, Browne does not state it). 130 mA assumes V4; V3 is <100 mA (retailers quote ~30), V2 <30 mA: check your version."
+    },
+    {
+      "id": "reticon",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": null,
+      "buffer_switchable": false,
+      "brand": "PastFX",
+      "name": "Reticon Flanger",
+      "tags": ["modulation", "flanger"],
+      "power_consumption": { "current_ma": 50, "voltage_v": 18, "allowed_voltages_v": [18], "needs_isolated_output": true },
+      "dependencies": [
+        { "type": "after_group", "group": "gain", "strength": "required", "reason": "Modulation after the gain pedals" }
+      ],
+      "comments": "Analog BBD flanger, post-dirt modulation. Needs an isolated 18V output, no battery. Bypass type NOT FOUND in any source (do not infer from other PastFX pedals). 'Under 50 mA' is from search snippets of the PastFX page/manual (direct fetch failed): verify."
+    },
+    {
+      "id": "analog_chorus",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": true,
+      "buffer_switchable": false,
+      "brand": "MXR",
+      "name": "Analog Chorus",
+      "tags": ["modulation", "chorus"],
+      "power_consumption": { "current_ma": 13, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after_group", "group": "gain", "strength": "required", "reason": "Modulation after the gain pedals" }
+      ],
+      "comments": "Analog BBD chorus (M234). Buffered bypass per the Dunlop manual (one reviewer says it dulls highs when off). Battery or 9V DC."
+    },
+    {
+      "id": "monk",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "JAM Pedals",
+      "name": "Harmonious Monk Mk2",
+      "tags": ["tremolo"],
+      "power_consumption": { "current_ma": 145, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": true },
+      "dependencies": [
+        { "type": "after_group", "group": "modulation", "strength": "required", "reason": "Tremolo after the modulation pedals" }
+      ],
+      "comments": "Harmonic tremolo with digital tap controller. JAM recommends an isolated supply; 145 mA is JAM's max (third-party listings say 35-100 mA). True bypass."
+    },
+    {
+      "id": "belle_epoch",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": true,
+      "brand": "Catalinbread",
+      "name": "Belle Epoch Deluxe",
+      "tags": ["delay"],
+      "power_consumption": { "current_ma": 200, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": true },
+      "dependencies": [
+        { "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" },
+        { "type": "before", "pedals": ["flight_delay"], "strength": "required", "reason": "Belle Epoch ahead of the Flight Delay" }
+      ],
+      "comments": "Tape echo emulation. Catalinbread lists 9V DC ONLY at 200 mA (it steps up to an internal rail itself): the original plan had it on 18V, which could damage it, so it is on a 9V output here. Give it a clean isolated output. Spelled 'Epoque' in the original plan."
+    },
+    {
+      "id": "octahive",
+      "owned": true,
+      "on_board": false,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Beetronics",
+      "name": "Octahive",
+      "tags": ["gain", "fuzz", "octave"],
+      "power_consumption": { "current_ma": 70, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "High-octave fuzz. Left off the board. 70 mA per a site you found (source not recorded, not a manufacturer figure; Effects Database lists the v2 as 9V DC center-negative with no mA). Check which version you own."
+    },
+    {
+      "id": "e_lady",
+      "owned": true,
+      "on_board": false,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Mooer",
+      "name": "E-Lady",
+      "tags": ["modulation", "flanger"],
+      "power_consumption": { "current_ma": 10, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Analog flanger (Mooer Electric Lady). Left off the board. 10 mA per retailers, 9V DC center-negative, no battery (too small to fit one), true bypass."
+    },
+    {
+      "id": "duke_of_tone",
+      "owned": true,
+      "on_board": false,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "MXR",
+      "name": "Custom Shop Duke of Tone",
+      "tags": ["gain", "overdrive"],
+      "power_consumption": { "current_ma": 6, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Overdrive (CSP039). Left off the board. 6 mA at 9V, no battery option; Dunlop recommends the ECB003 or an MXR Brick. One retailer mentions 18V for extra headroom, not confirmed by Dunlop, so allowed at 9V only here."
+    },
+    {
+      "id": "ditto_looper",
+      "owned": true,
+      "on_board": false,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "TC Electronic",
+      "name": "Ditto Looper",
+      "tags": ["looper"],
+      "power_consumption": { "current_ma": 100, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Looper. Left off the board. 100 mA is the minimum supply rating (retailers/Rockboard), not a measured draw. 9V DC center-negative, no battery. One reviewer saw a nominal-9V supply output higher than 9V and kill it: use a regulated/isolated output."
+    },
+    {
+      "id": "danelectro_3699",
+      "owned": false,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "Danelectro",
+      "name": "3699 Fuzz",
+      "tags": ["gain", "fuzz", "octave"],
+      "power_consumption": { "current_ma": 9, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after", "pedals": ["sun_face", "beano"], "strength": "preferred", "reason": "Placeholder: front fuzz group, where the Double Dragon was" }
+      ],
+      "comments": "Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Placement after the Beano is a placeholder: confirm."
+    },
+    {
+      "id": "carbon_copy",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "brand": "MXR",
+      "name": "Carbon Copy",
+      "tags": ["delay"],
+      "power_consumption": { "current_ma": 26, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" }
+      ],
+      "comments": "Analog BBD delay (M169). 26 mA, 9V DC center-negative, true bypass (retailer specs; one UK retailer lists it as end of life). Placed just before the Belle Epoch as a placeholder: confirm the delay order. Kept on its own output rather than sharing with the chorus (two BBD circuits)."
+    },
+    {
+      "id": "flight_delay",
+      "owned": false,
+      "on_board": false,
+      "buffered_bypass": null,
+      "buffer_switchable": false,
+      "brand": "JHS",
+      "name": "Flight Delay",
+      "tags": ["delay"],
+      "power_consumption": { "current_ma": 85, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [],
+      "comments": "Delay, not in the plan yet (not in your Pedal Playground save, so marked not owned). 85 mA at 9V DC center-negative per retailers; JHS warns against going above 9V. Bypass type NOT FOUND (it has a Trails bypass mode, but no source says true vs buffered)."
+    },
+    {
+      "id": "tumnus_deluxe",
+      "owned": true,
+      "on_board": true,
+      "buffered_bypass": true,
+      "buffer_switchable": true,
+      "brand": "Wampler",
+      "name": "Tumnus Deluxe",
+      "tags": ["master", "overdrive", "eq"],
+      "power_consumption": { "current_ma": 70, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
+      "dependencies": [
+        { "type": "position", "value": "last", "strength": "required", "reason": "Final volume and EQ setting; also the end-of-chain buffer" }
+      ],
+      "comments": "Klon-style EQ/overdrive: dead last, master mid-stack and buffer. Runs at 9V ONLY (boosts the rail internally, do not use 18V). Buffered or true bypass via side switch (buffer enabled in this plan). 70.3 mA at 9V. Deliberately not tagged 'gain' so the 'modulation after gain' rules do not apply to it."
+    }
+  ]
+}

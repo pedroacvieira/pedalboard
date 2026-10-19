@@ -1,0 +1,28 @@
+{
+  "board": "Fender Professional (Medium)",
+  "scale": 45,
+  "pedals": {
+    "sun_face":       "Analog.Man Sunface",
+    "beano":          "Analog.Man Mini Beano Boost",
+    "double_dragon":  "JHS Double Dragon",
+    "danelectro_3699": "Danelectro 3699 Fuzz",
+    "carbon_copy":    "MXR Carbon Copy",
+    "polytune_3":     "TC Electronic Polytune 3 Mini Noir",
+    "mini_ego":       "Wampler Mini Ego",
+    "fulldrive_2":    "Fulltone Full-drive FD-2 MOSFET",
+    "phase_95":       "MXR Phase 95",
+    "retrovibe":      "Jam Pedals Retrovibe",
+    "red_muck":       "Jam Pedals Red Muck",
+    "ratsbane":       "Wampler Ratsbane",
+    "protein":        "Browne Amplification Protein V3 (Green)",
+    "reticon":        "PastFX Reticon Flanger",
+    "analog_chorus":  "MXR Analog Chorus",
+    "monk":           "Jam Pedals Harmonious Monk mk2",
+    "belle_epoch":    "Catalinbread Belle Epoch Deluxe (Black Edition)",
+    "tumnus_deluxe":  "Wampler Tumnus Deluxe"
+  },
+  "power_supplies": {
+    "psu1": "Strymon Ojai R30",
+    "psu2": "Strymon Ojai R30"
+  }
+}
