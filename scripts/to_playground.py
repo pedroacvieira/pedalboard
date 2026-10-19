@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a Pedal Playground save file (Load from File) from board.json.
+"""Write a Pedal Playground save file (Load from File) from data/board.json.
 
 The board is placed at the top of the canvas; the pedals and power supplies are
 laid out below it in signal-chain order, ready to be dragged into position.
@@ -11,15 +11,16 @@ import urllib.request
 from html import escape
 from pathlib import Path
 
-HERE = Path(__file__).parent
-CACHE = HERE / ".cache"
+ROOT = Path(__file__).resolve().parent.parent
+DATA, OUT = ROOT / "data", ROOT / "output"
+CACHE = ROOT / ".cache"
 SITE = "https://pedalplayground.com/public/data/"
 BOARD_X, BOARD_Y = 28, 40
 GAP = 20
 ROW_WRAP_PX = 1400
 
-board = json.loads((HERE / "board.json").read_text())
-cfg = json.loads((HERE / "pedalplayground.json").read_text())
+board = json.loads((DATA / "board.json").read_text())
+cfg = json.loads((DATA / "pedalplayground.json").read_text())
 scale = cfg["scale"]
 
 
@@ -75,6 +76,6 @@ for title in titles:
     x += w + GAP
     row_h = max(row_h, h)
 
-out = HERE / "pedalplayground_import.json"
+out = OUT / "pedalplayground_import.json"
 out.write_text(json.dumps({"source": "pedalplayground.com", "version": "1.0", "canvas": "".join(parts)}))
 print(f"wrote {out.name}: 1 board + {len(titles)} items")
