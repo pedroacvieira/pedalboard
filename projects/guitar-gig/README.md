@@ -10,77 +10,37 @@
 
 ```mermaid
 flowchart TB
-    guitar(["Guitar"])
-    amp(["Amplifier"])
-    sun_face["AnalogMan Sun Face BC183<br/>1 mA"]
-    beano["AnalogMan Beano Boost<br/>5 mA"]
-    danelectro_3699["Danelectro 3699 Fuzz<br/>9 mA"]
-    polytune_3["TC Electronic PolyTune 3<br/>100 mA"]
-    mini_ego["Wampler Mini Ego Compressor<br/>22 mA"]
-    fulldrive_2["Fulltone Full-Drive 2 Mosfet<br/>10 mA"]
-    red_muck["JAM Pedals Red Muck Mk2<br/>60 mA"]
-    phase_95["MXR Phase 95<br/>8 mA"]
-    retrovibe["JAM Pedals Retrovibe<br/>120 mA"]
-    ratsbane["Wampler Ratsbane<br/>3 mA"]
-    protein["Browne Protein V3<br/>130 mA"]
-    reticon["PastFX Reticon Flanger<br/>50 mA"]
-    analog_chorus["MXR Analog Chorus<br/>13 mA"]
-    monk["JAM Pedals Harmonious Monk Mk2<br/>145 mA"]
-    belle_epoch["Catalinbread Belle Epoch Deluxe<br/>200 mA"]
-    flight_delay["JHS Flight Delay<br/>85 mA"]
-    tumnus_deluxe["Wampler Tumnus Deluxe<br/>70 mA"]
-    guitar --> sun_face
-    sun_face --> beano
-    beano --> danelectro_3699
-    danelectro_3699 --> polytune_3
-    polytune_3 --> mini_ego
-    mini_ego --> fulldrive_2
-    fulldrive_2 --> red_muck
-    red_muck --> phase_95
-    phase_95 --> retrovibe
-    retrovibe --> ratsbane
-    ratsbane --> protein
-    protein --> reticon
-    reticon --> analog_chorus
-    analog_chorus --> monk
-    monk --> belle_epoch
-    belle_epoch --> flight_delay
-    flight_delay --> tumnus_deluxe
-    tumnus_deluxe --> amp
-    subgraph psu1["Ojai R30 #1"]
-        psu1_SW_A["SW_A · 18V<br/>32/250 mA"]
-        psu1_SW_B["SW_B · 9V<br/>85/500 mA"]
-        psu1_F1["F1 · 9V<br/>100/500 mA"]
-        psu1_F2["F2 · 9V<br/>15/500 mA"]
-        psu1_F3["F3 · 9V<br/>263/500 mA"]
-    end
-    psu1_SW_A -.-> mini_ego
-    mini_ego -.->|daisy| fulldrive_2
-    psu1_SW_B -.-> flight_delay
-    psu1_F1 -.-> polytune_3
-    psu1_F2 -.-> sun_face
-    sun_face -.->|daisy| beano
-    beano -.->|daisy| danelectro_3699
-    psu1_F3 -.-> red_muck
-    red_muck -.->|daisy| ratsbane
-    ratsbane -.->|daisy| protein
-    protein -.->|daisy| tumnus_deluxe
-    subgraph psu2["Ojai R30 #2"]
-        psu2_SW_A["SW_A · 18V<br/>50/250 mA"]
-        psu2_SW_B["SW_B · 9V<br/>200/500 mA"]
-        psu2_F1["F1 · 9V<br/>145/500 mA"]
-        psu2_F2["F2 · 9V<br/>128/500 mA"]
-        psu2_F3["F3 · 9V<br/>13/500 mA"]
-    end
-    psu2_SW_A -.-> reticon
-    psu2_SW_B -.-> belle_epoch
-    psu2_F1 -.-> monk
-    psu2_F2 -.-> phase_95
-    phase_95 -.->|daisy| retrovibe
-    psu2_F3 -.-> analog_chorus
-    linkStyle 18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 stroke:#c0392b,stroke-width:1.5px,color:#c0392b
-    style psu1 fill:none,stroke:#c0392b,stroke-dasharray:4 3
-    style psu2 fill:none,stroke:#c0392b,stroke-dasharray:4 3
+    guitar(["Guitar"]):::endpoint
+    sun_face["<b>1</b> &nbsp;AnalogMan Sun Face BC183<br/>fuzz / boost"]:::c_fuzz___boost
+    beano["<b>2</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
+    danelectro_3699["<b>3</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
+    polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
+    mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
+    fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
+    red_muck["<b>7</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
+    phase_95["<b>8</b> &nbsp;MXR Phase 95<br/>phase-type"]:::c_phase_type
+    retrovibe["<b>9</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
+    ratsbane["<b>10</b> &nbsp;Wampler Ratsbane<br/>drive / distortion"]:::c_drive___distortion
+    protein["<b>11</b> &nbsp;Browne Protein V3<br/>drive / distortion"]:::c_drive___distortion
+    reticon["<b>12</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
+    analog_chorus["<b>13</b> &nbsp;MXR Analog Chorus<br/>modulation"]:::c_modulation
+    monk["<b>14</b> &nbsp;JAM Pedals Harmonious Monk Mk2<br/>tremolo"]:::c_tremolo
+    belle_epoch["<b>15</b> &nbsp;Catalinbread Belle Epoch Deluxe<br/>delay"]:::c_delay
+    flight_delay["<b>16</b> &nbsp;JHS Flight Delay<br/>delay"]:::c_delay
+    tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
+    amp(["Amplifier"]):::endpoint
+    guitar --> sun_face --> beano --> danelectro_3699 --> polytune_3 --> mini_ego --> fulldrive_2 --> red_muck --> phase_95 --> retrovibe --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
+    classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
+    classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
+    classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
+    classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
+    classDef c_phase_type fill:#e1bee7,stroke:#8e24aa,stroke-width:2px,color:#1b1b1b
+    classDef c_modulation fill:#bbdefb,stroke:#1565c0,stroke-width:2px,color:#1b1b1b
+    classDef c_tremolo fill:#c5cae9,stroke:#3949ab,stroke-width:2px,color:#1b1b1b
+    classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
+    classDef c_eq___boost fill:#f8bbd0,stroke:#ad1457,stroke-width:2px,color:#1b1b1b
+    linkStyle default stroke:#78909c,stroke-width:2px
 ```
 
 | # | Pedal | Owned | Power | Bypass | Digital | Powered from |
@@ -172,6 +132,77 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **Wampler Tumnus Deluxe**: Klon-style EQ/overdrive: dead last, master mid-stack and buffer. Runs at 9V ONLY (boosts the rail internally, do not use 18V). Buffered or true bypass via side switch (buffer enabled in this plan). 70.3 mA at 9V. Tagged 'gain' (it is a drive) but 'dead last' outranks the group-order rules via priority.
 
 ## Powering
+
+Every output and the pedals daisy-chained on it, grouped for power (not in signal order); colors are the effect categories, a red border marks an 18V output.
+
+```mermaid
+flowchart LR
+    subgraph psu1["Ojai R30 #1"]
+        direction TB
+        psu1_F1["<b>F1</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu1_F2["<b>F2</b> · 9V<br/>15 / 500 mA"]:::out9
+        psu1_F3["<b>F3</b> · 9V<br/>263 / 500 mA"]:::out9
+        psu1_SW_A["<b>SW_A</b> · 18V<br/>32 / 250 mA"]:::out18
+        psu1_SW_B["<b>SW_B</b> · 9V<br/>85 / 500 mA"]:::out9
+    end
+    subgraph psu2["Ojai R30 #2"]
+        direction TB
+        psu2_F1["<b>F1</b> · 9V<br/>145 / 500 mA"]:::out9
+        psu2_F2["<b>F2</b> · 9V<br/>128 / 500 mA"]:::out9
+        psu2_F3["<b>F3</b> · 9V<br/>13 / 500 mA"]:::out9
+        psu2_SW_A["<b>SW_A</b> · 18V<br/>50 / 250 mA"]:::out18
+        psu2_SW_B["<b>SW_B</b> · 9V<br/>200 / 500 mA"]:::out9
+    end
+    mini_ego["Wampler Mini Ego Compressor<br/>compressor · 22 mA"]:::c_compressor
+    fulldrive_2["Fulltone Full-Drive 2 Mosfet<br/>drive / distortion · 10 mA"]:::c_drive___distortion
+    flight_delay["JHS Flight Delay<br/>delay · 85 mA"]:::c_delay
+    polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
+    sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
+    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
+    danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
+    red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 60 mA"]:::c_fuzz___boost
+    ratsbane["Wampler Ratsbane<br/>drive / distortion · 3 mA"]:::c_drive___distortion
+    protein["Browne Protein V3<br/>drive / distortion · 130 mA"]:::c_drive___distortion
+    tumnus_deluxe["Wampler Tumnus Deluxe<br/>eq / boost · 70 mA"]:::c_eq___boost
+    reticon["PastFX Reticon Flanger<br/>modulation · 50 mA"]:::c_modulation
+    belle_epoch["Catalinbread Belle Epoch Deluxe<br/>delay · 200 mA"]:::c_delay
+    monk["JAM Pedals Harmonious Monk Mk2<br/>tremolo · 145 mA"]:::c_tremolo
+    phase_95["MXR Phase 95<br/>phase-type · 8 mA"]:::c_phase_type
+    retrovibe["JAM Pedals Retrovibe<br/>phase-type · 120 mA"]:::c_phase_type
+    analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
+    psu1_F1 --> polytune_3
+    psu1_F2 --> sun_face
+    sun_face --> beano
+    beano --> danelectro_3699
+    psu1_F3 --> red_muck
+    red_muck --> ratsbane
+    ratsbane --> protein
+    protein --> tumnus_deluxe
+    psu1_SW_A --> mini_ego
+    mini_ego --> fulldrive_2
+    psu1_SW_B --> flight_delay
+    psu2_F1 --> monk
+    psu2_F2 --> phase_95
+    phase_95 --> retrovibe
+    psu2_F3 --> analog_chorus
+    psu2_SW_A --> reticon
+    psu2_SW_B --> belle_epoch
+    classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b
+    classDef out18 fill:#ffffff,stroke:#d84315,stroke-width:3px,color:#1b1b1b
+    classDef spare fill:#fafafa,stroke:#9e9e9e,stroke-dasharray:4 3,color:#757575
+    classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
+    classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
+    classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
+    classDef c_phase_type fill:#e1bee7,stroke:#8e24aa,stroke-width:2px,color:#1b1b1b
+    classDef c_modulation fill:#bbdefb,stroke:#1565c0,stroke-width:2px,color:#1b1b1b
+    classDef c_tremolo fill:#c5cae9,stroke:#3949ab,stroke-width:2px,color:#1b1b1b
+    classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
+    classDef c_eq___boost fill:#f8bbd0,stroke:#ad1457,stroke-width:2px,color:#1b1b1b
+    style psu1 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
+    style psu2 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
+    linkStyle default stroke:#78909c,stroke-width:2px
+```
 
 Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are daisy-chained by **effect type**, not by chain order: time-based/clocked effects (BBD or digital) never share an output with compressors or gain pedals, a **digital** pedal (including one with a digital processor in an analog path) always has an output to itself, and 18V-capable pedals share 18V outputs. The build checks all three (policy in `project.json`: `power_policy`).
 

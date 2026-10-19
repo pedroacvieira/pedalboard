@@ -335,40 +335,101 @@ def inst_label(s):
     return s["inst"].get("label") or f"{sup_name(s['sup'])} #{s['inst']['id']}"
 
 
-def mermaid(ctx):
+CATEGORY_STYLE = {  # category: (fill, stroke); light fills with dark text read well in light and dark themes
+    "tuner": ("#eceff1", "#607d8b"),
+    "compressor": ("#b2ebf2", "#00838f"),
+    "fuzz / boost": ("#ffccbc", "#d84315"),
+    "drive / distortion": ("#ffe082", "#ff8f00"),
+    "phase-type": ("#e1bee7", "#8e24aa"),
+    "modulation": ("#bbdefb", "#1565c0"),
+    "tremolo": ("#c5cae9", "#3949ab"),
+    "delay": ("#c8e6c9", "#2e7d32"),
+    "eq / boost": ("#f8bbd0", "#ad1457"),
+    "other": ("#d7ccc8", "#5d4037"),
+}
+
+
+def category(p):
+    tags = set(p.get("tags", []))
+    for cat, wanted in (("tuner", {"tuner"}), ("compressor", {"compressor"}), ("delay", {"delay"}), ("tremolo", {"tremolo"}),
+                        ("phase-type", {"phaser", "vibe"}), ("modulation", {"chorus", "flanger", "modulation"}),
+                        ("eq / boost", {"master", "eq"}), ("fuzz / boost", {"fuzz", "boost"}),
+                        ("drive / distortion", {"overdrive", "distortion", "gain"})):
+        if tags & wanted:
+            return cat
+    return "other"
+
+
+def class_defs(cats):
+    lines = []
+    for cat in CATEGORY_STYLE:
+        if cat in cats:
+            fill, stroke = CATEGORY_STYLE[cat]
+            lines.append(f"    classDef {cls(cat)} fill:{fill},stroke:{stroke},stroke-width:2px,color:#1b1b1b")
+    return lines
+
+
+def cls(cat):
+    return "c_" + "".join(ch if ch.isalnum() else "_" for ch in cat)
+
+
+def mermaid_signal(ctx):
+    """One straight thread, guitar -> pedals -> amp, pedals coloured by category."""
     chain, pedals = ctx["chain"], ctx["pedals"]
-    lines = ["flowchart TB", '    guitar(["' + ("Bass" if ctx["project"].get("instrument") == "bass" else "Guitar") + '"])',
-             '    amp(["Amplifier"])']
-    for pid in chain:
-        lines.append(f'    {pid}["{pedal_name(pedals[pid])}<br/>{ma(pedals[pid])} mA"]')
-    links = []
-    if chain:
-        links = [("guitar", chain[0])] + list(zip(chain, chain[1:])) + [(chain[-1], "amp")]
-    for a, b in links:
-        lines.append(f"    {a} --> {b}")
-    n_power = 0
+    cats = {pid: category(pedals[pid]) for pid in chain}
+    bass = ctx["project"].get("instrument") == "bass"
+    lines = ["flowchart TB", f'    guitar(["{"Bass" if bass else "Guitar"}"]):::endpoint']
+    for i, pid in enumerate(chain, 1):
+        lines.append(f'    {pid}["<b>{i}</b> &nbsp;{pedal_name(pedals[pid])}<br/>{cats[pid]}"]:::{cls(cats[pid])}')
+    lines.append('    amp(["Amplifier"]):::endpoint')
+    nodes = ["guitar", *chain, "amp"]
+    lines.append("    " + " --> ".join(nodes))
+    lines.append("    classDef endpoint fill:#263238,stroke:#263238,color:#ffffff")
+    lines += class_defs(set(cats.values()))
+    lines.append("    linkStyle default stroke:#78909c,stroke-width:2px")
+    return lines
+
+
+def mermaid_power(ctx):
+    """Only the power wiring: every output of every supply, then the pedals it feeds."""
+    pedals = ctx["pedals"]
+    lines = ["flowchart LR"]
+    cats = set()
+    edges = []
     for s in ctx["supplies"]:
         lines.append(f'    subgraph {s["inst"]["id"]}["{inst_label(s)}"]')
-        for row in s["rows"]:
-            text = f'{row["port"]} · {row["voltage_v"]}V<br/>{row["load"]}/{row["limit"] or "?"} mA'
+        lines.append("        direction TB")
+        order = {o["port"]: i for i, o in enumerate((s["sup"].get("outputs") or []))}
+        for row in sorted(s["rows"], key=lambda r: order.get(r["port"], 99)):
+            klass = "spare" if not row["pedals"] else ("out18" if row["voltage_v"] == 18 else "out9")
+            text = f'<b>{row["port"]}</b> · {row["voltage_v"]}V<br/>{row["load"]} / {row["limit"] or "?"} mA'
             if not row["pedals"]:
                 text += "<br/>spare"
-            lines.append(f'        {row["id"]}["{text}"]')
+            lines.append(f'        {row["id"]}["{text}"]:::{klass}')
+            prev = row["id"]
+            for pid in row["pedals"]:
+                if pid in pedals:
+                    prev_edge = f"{prev} --> {pid}"
+                    edges.append(prev_edge)
+                    prev = pid
         lines.append("    end")
-        for row in s["rows"]:
-            ps = [p for p in row["pedals"] if p in pedals]
-            if not ps:
-                continue
-            lines.append(f'    {row["id"]} -.-> {ps[0]}')
-            n_power += 1
-            for a, b in zip(ps, ps[1:]):
-                lines.append(f"    {a} -.->|daisy| {b}")
-                n_power += 1
-    if n_power:
-        idx = ",".join(str(i) for i in range(len(links), len(links) + n_power))
-        lines.append(f"    linkStyle {idx} stroke:#c0392b,stroke-width:1.5px,color:#c0392b")
+    placed = set()
     for s in ctx["supplies"]:
-        lines.append(f"    style {s['inst']['id']} fill:none,stroke:#c0392b,stroke-dasharray:4 3")
+        for row in s["rows"]:
+            for pid in row["pedals"]:
+                if pid in pedals and pid not in placed:
+                    placed.add(pid)
+                    cat = category(pedals[pid])
+                    cats.add(cat)
+                    lines.append(f'    {pid}["{pedal_name(pedals[pid])}<br/>{cat} · {ma(pedals[pid])} mA"]:::{cls(cat)}')
+    lines += [f"    {e}" for e in edges]
+    lines.append("    classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b")
+    lines.append("    classDef out18 fill:#ffffff,stroke:#d84315,stroke-width:3px,color:#1b1b1b")
+    lines.append("    classDef spare fill:#fafafa,stroke:#9e9e9e,stroke-dasharray:4 3,color:#757575")
+    lines += class_defs(cats)
+    for s in ctx["supplies"]:
+        lines.append(f"    style {s['inst']['id']} fill:none,stroke:#90a4ae,stroke-dasharray:4 3")
+    lines.append("    linkStyle default stroke:#78909c,stroke-width:2px")
     return lines
 
 
@@ -395,7 +456,7 @@ def project_readme(ctx, cat_pedals):
         md += ["<details><summary>Validation messages</summary>", ""]
         md += [f"- ERROR {m}" for m in ctx["errors"]] + [f"- WARN {m}" for m in ctx["warnings"]]
         md += ["", "</details>", ""]
-    md += ["## Signal chain", "", "```mermaid", *mermaid(ctx), "```", "",
+    md += ["## Signal chain", "", "```mermaid", *mermaid_signal(ctx), "```", "",
            "| # | Pedal | Owned | Power | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|:-:|---|"]
     for i, pid in enumerate(chain, 1):
         p = pedals[pid]
@@ -422,6 +483,8 @@ def project_readme(ctx, cat_pedals):
     if not ctx["supplies"]:
         md += ["No power supplies assigned yet.", ""]
     else:
+        md += ["Every output and the pedals daisy-chained on it, grouped for power (not in signal order); colors are the effect categories, a red border marks an 18V output.", "",
+               "```mermaid", *mermaid_power(ctx), "```", ""]
         md += ["Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are daisy-chained by **effect type**, not by chain order: time-based/clocked effects (BBD or digital) never share an output with compressors or gain pedals, a **digital** pedal (including one with a digital processor in an analog path) always has an output to itself, and 18V-capable pedals share 18V outputs. The build checks all three (policy in `project.json`: `power_policy`).", ""]
     grand = 0
     for s in ctx["supplies"]:
@@ -457,7 +520,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
         "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
-        "projects/<name>/README.md     generated plan, diagram and power summary",
+        "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
         "```",
         "",
@@ -557,7 +620,9 @@ def main():
     for pdir in project_dirs(args.projects or None):
         ctx = validate(pdir, cat_pedals, cat_supplies)
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
-        (pdir / "diagram.mmd").write_text("\n".join(mermaid(ctx)) + "\n")
+        (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
+        (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
+        (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
         ctxs = [validate(d, cat_pedals, cat_supplies) for d in project_dirs()]

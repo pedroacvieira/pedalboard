@@ -10,39 +10,24 @@
 
 ```mermaid
 flowchart TB
-    guitar(["Guitar"])
-    amp(["Amplifier"])
-    octahive["Beetronics Octahive<br/>70 mA"]
-    jhs_pulp_n_peel_v4["JHS Pulp 'N' Peel V4<br/>100 mA"]
-    jhs_hard_drive["JHS Hard Drive<br/>78 mA"]
-    duke_of_tone["MXR Custom Shop Duke of Tone<br/>6 mA"]
-    e_lady["Mooer E-Lady<br/>10 mA"]
-    carbon_copy["MXR Carbon Copy<br/>26 mA"]
-    ditto_looper["TC Electronic Ditto Looper<br/>100 mA"]
-    guitar --> octahive
-    octahive --> jhs_pulp_n_peel_v4
-    jhs_pulp_n_peel_v4 --> jhs_hard_drive
-    jhs_hard_drive --> duke_of_tone
-    duke_of_tone --> e_lady
-    e_lady --> carbon_copy
-    carbon_copy --> ditto_looper
-    ditto_looper --> amp
-    subgraph psu1["Ojai R30 (to buy)"]
-        psu1_F1["F1 · 9V<br/>154/500 mA"]
-        psu1_F2["F2 · 9V<br/>10/500 mA"]
-        psu1_F3["F3 · 9V<br/>100/500 mA"]
-        psu1_SW_A["SW_A · 9V<br/>100/500 mA"]
-        psu1_SW_B["SW_B · 9V<br/>26/500 mA"]
-    end
-    psu1_F1 -.-> octahive
-    octahive -.->|daisy| jhs_hard_drive
-    jhs_hard_drive -.->|daisy| duke_of_tone
-    psu1_F2 -.-> e_lady
-    psu1_F3 -.-> ditto_looper
-    psu1_SW_A -.-> jhs_pulp_n_peel_v4
-    psu1_SW_B -.-> carbon_copy
-    linkStyle 8,9,10,11,12,13,14 stroke:#c0392b,stroke-width:1.5px,color:#c0392b
-    style psu1 fill:none,stroke:#c0392b,stroke-dasharray:4 3
+    guitar(["Guitar"]):::endpoint
+    octahive["<b>1</b> &nbsp;Beetronics Octahive<br/>fuzz / boost"]:::c_fuzz___boost
+    jhs_pulp_n_peel_v4["<b>2</b> &nbsp;JHS Pulp 'N' Peel V4<br/>compressor"]:::c_compressor
+    jhs_hard_drive["<b>3</b> &nbsp;JHS Hard Drive<br/>drive / distortion"]:::c_drive___distortion
+    duke_of_tone["<b>4</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
+    e_lady["<b>5</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
+    carbon_copy["<b>6</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
+    ditto_looper["<b>7</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
+    amp(["Amplifier"]):::endpoint
+    guitar --> octahive --> jhs_pulp_n_peel_v4 --> jhs_hard_drive --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
+    classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
+    classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
+    classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
+    classDef c_modulation fill:#bbdefb,stroke:#1565c0,stroke-width:2px,color:#1b1b1b
+    classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
+    classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
+    linkStyle default stroke:#78909c,stroke-width:2px
 ```
 
 | # | Pedal | Owned | Power | Bypass | Digital | Powered from |
@@ -78,6 +63,45 @@ flowchart TB
 - **TC Electronic Ditto Looper**: Looper. Planned for the practice board. 100 mA is the minimum supply rating (retailers/Rockboard), not a measured draw. 9V DC center-negative, no battery. One reviewer saw a nominal-9V supply output higher than 9V and kill it: use a regulated/isolated output.
 
 ## Powering
+
+Every output and the pedals daisy-chained on it, grouped for power (not in signal order); colors are the effect categories, a red border marks an 18V output.
+
+```mermaid
+flowchart LR
+    subgraph psu1["Ojai R30 (to buy)"]
+        direction TB
+        psu1_F1["<b>F1</b> · 9V<br/>154 / 500 mA"]:::out9
+        psu1_F2["<b>F2</b> · 9V<br/>10 / 500 mA"]:::out9
+        psu1_F3["<b>F3</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu1_SW_A["<b>SW_A</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu1_SW_B["<b>SW_B</b> · 9V<br/>26 / 500 mA"]:::out9
+    end
+    octahive["Beetronics Octahive<br/>fuzz / boost · 70 mA"]:::c_fuzz___boost
+    jhs_hard_drive["JHS Hard Drive<br/>drive / distortion · 78 mA"]:::c_drive___distortion
+    duke_of_tone["MXR Custom Shop Duke of Tone<br/>drive / distortion · 6 mA"]:::c_drive___distortion
+    e_lady["Mooer E-Lady<br/>modulation · 10 mA"]:::c_modulation
+    ditto_looper["TC Electronic Ditto Looper<br/>other · 100 mA"]:::c_other
+    jhs_pulp_n_peel_v4["JHS Pulp 'N' Peel V4<br/>compressor · 100 mA"]:::c_compressor
+    carbon_copy["MXR Carbon Copy<br/>delay · 26 mA"]:::c_delay
+    psu1_F1 --> octahive
+    octahive --> jhs_hard_drive
+    jhs_hard_drive --> duke_of_tone
+    psu1_F2 --> e_lady
+    psu1_F3 --> ditto_looper
+    psu1_SW_A --> jhs_pulp_n_peel_v4
+    psu1_SW_B --> carbon_copy
+    classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b
+    classDef out18 fill:#ffffff,stroke:#d84315,stroke-width:3px,color:#1b1b1b
+    classDef spare fill:#fafafa,stroke:#9e9e9e,stroke-dasharray:4 3,color:#757575
+    classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
+    classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
+    classDef c_modulation fill:#bbdefb,stroke:#1565c0,stroke-width:2px,color:#1b1b1b
+    classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
+    classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
+    style psu1 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
+    linkStyle default stroke:#78909c,stroke-width:2px
+```
 
 Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are daisy-chained by **effect type**, not by chain order: time-based/clocked effects (BBD or digital) never share an output with compressors or gain pedals, a **digital** pedal (including one with a digital processor in an analog path) always has an output to itself, and 18V-capable pedals share 18V outputs. The build checks all three (policy in `project.json`: `power_policy`).
 

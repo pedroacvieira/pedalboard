@@ -1,0 +1,19 @@
+flowchart TB
+    guitar(["Guitar"]):::endpoint
+    octahive["<b>1</b> &nbsp;Beetronics Octahive<br/>fuzz / boost"]:::c_fuzz___boost
+    jhs_pulp_n_peel_v4["<b>2</b> &nbsp;JHS Pulp 'N' Peel V4<br/>compressor"]:::c_compressor
+    jhs_hard_drive["<b>3</b> &nbsp;JHS Hard Drive<br/>drive / distortion"]:::c_drive___distortion
+    duke_of_tone["<b>4</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
+    e_lady["<b>5</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
+    carbon_copy["<b>6</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
+    ditto_looper["<b>7</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
+    amp(["Amplifier"]):::endpoint
+    guitar --> octahive --> jhs_pulp_n_peel_v4 --> jhs_hard_drive --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
+    classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
+    classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
+    classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
+    classDef c_modulation fill:#bbdefb,stroke:#1565c0,stroke-width:2px,color:#1b1b1b
+    classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
+    classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
+    linkStyle default stroke:#78909c,stroke-width:2px

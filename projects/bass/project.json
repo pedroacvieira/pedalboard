@@ -1,0 +1,27 @@
+{
+  "name": "Bass board",
+  "instrument": "bass",
+  "validation": { "no_unknown": true },
+  "board": { "brand": "Rockboard by Warwick", "model": "Duo 2.1", "width_in": 18.13, "height_in": 5.75, "owned": true },
+  "playground": { "scale": 45 },
+  "power_policy": { "separate_clocked_from_tags": ["gain", "overdrive", "compressor"], "strength": "required", "group_18v": true },
+  "signal_chain": ["polytune_2_mini", "darkglass_hyper_luminal", "mxr_bass_synth", "ehx_bass_big_muff_2", "tech21_vt_bass_di"],
+  "rule_overrides": {},
+  "rules": [],
+  "power": {
+    "supplies": [
+      {
+        "id": "psu1",
+        "supply": "harley_benton_iso5_pro",
+        "label": "Harley Benton PowerPlant ISO-5 Pro",
+        "outputs": [
+          { "port": "OUT1", "voltage_v": 9, "pedals": ["polytune_2_mini"], "note": "Digital: alone" },
+          { "port": "OUT2", "voltage_v": 9, "pedals": ["ehx_bass_big_muff_2"], "note": "Analog fuzz, alone" },
+          { "port": "OUT3", "voltage_v": 9, "pedals": ["tech21_vt_bass_di"], "note": "Analog preamp / DI, alone" },
+          { "port": "OUT4", "voltage_v": 9, "pedals": ["mxr_bass_synth"], "note": "Digital: alone; 330 mA needs a 500 mA output" },
+          { "port": "OUT5", "voltage_v": 9, "pedals": ["darkglass_hyper_luminal"], "note": "Digital: alone; 250 mA, regulated 9V only" }
+        ]
+      }
+    ]
+  }
+}
