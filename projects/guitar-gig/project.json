@@ -1,0 +1,55 @@
+{
+  "name": "Guitar gig board",
+  "instrument": "guitar",
+  "validation": { "no_unknown": true },
+  "board": { "brand": "Fender", "model": "Professional (Medium)", "width_in": 24, "height_in": 13.06 },
+  "playground": { "scale": 45 },
+  "signal_chain": ["sun_face", "beano", "polytune_3", "danelectro_3699", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "reticon", "analog_chorus", "monk", "belle_epoch", "tumnus_deluxe"],
+  "rule_overrides": {},
+  "rules": [
+    { "id": "beano.after_sun_face", "pedal": "beano", "type": "after", "pedals": ["sun_face"], "strength": "required", "reason": "Direct post-fuzz boost" },
+    { "id": "double_dragon.after_sun_face_beano", "pedal": "double_dragon", "type": "after", "pedals": ["sun_face", "beano"], "strength": "preferred", "reason": "Front fuzz group" },
+    { "id": "polytune_3.after_sun_face_beano", "pedal": "polytune_3", "type": "after", "pedals": ["sun_face", "beano"], "strength": "required", "reason": "No buffer ahead of the two AnalogMan pedals" },
+    { "id": "polytune_3.as_early_as_possible", "pedal": "polytune_3", "type": "as_early_as_possible", "strength": "preferred", "reason": "Tuner / master front buffer" },
+    { "id": "phase_95.before_ratsbane", "pedal": "phase_95", "type": "before", "pedals": ["ratsbane"], "strength": "required", "reason": "Van Halen phaser-into-hard-clipping sound" },
+    { "id": "phase_95.before_red_muck", "pedal": "phase_95", "type": "before", "pedals": ["red_muck"], "strength": "preferred", "reason": "Original plan: pre-dirt 70s sweep" },
+    { "id": "retrovibe.before_protein_ratsbane", "pedal": "retrovibe", "type": "before", "pedals": ["protein", "ratsbane"], "strength": "required", "reason": "Uni-Vibe feeding the dirt" },
+    { "id": "retrovibe.before_red_muck", "pedal": "retrovibe", "type": "before", "pedals": ["red_muck"], "strength": "preferred", "reason": "Original plan: pre-dirt throbbing fuzz-vibe" },
+    { "id": "protein.after_ratsbane", "pedal": "protein", "type": "after", "pedals": ["ratsbane"], "strength": "required", "reason": "Stacks on / smooths the Ratsbane's hard clipping" },
+    { "id": "reticon.after_group_gain", "pedal": "reticon", "type": "after_group", "group": "gain", "strength": "required", "reason": "Modulation after the gain pedals" },
+    { "id": "analog_chorus.after_group_gain", "pedal": "analog_chorus", "type": "after_group", "group": "gain", "strength": "required", "reason": "Modulation after the gain pedals" },
+    { "id": "monk.after_group_modulation", "pedal": "monk", "type": "after_group", "group": "modulation", "strength": "required", "reason": "Tremolo after the modulation pedals" },
+    { "id": "belle_epoch.after_group_gain", "pedal": "belle_epoch", "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" },
+    { "id": "belle_epoch.before_flight_delay", "pedal": "belle_epoch", "type": "before", "pedals": ["flight_delay"], "strength": "required", "reason": "Belle Epoch ahead of the Flight Delay" },
+    { "id": "danelectro_3699.after_sun_face_beano", "pedal": "danelectro_3699", "type": "after", "pedals": ["sun_face", "beano"], "strength": "preferred", "reason": "Placeholder: front fuzz group, where the Double Dragon was" },
+    { "id": "tumnus_deluxe.position_last", "pedal": "tumnus_deluxe", "type": "position", "value": "last", "strength": "required", "reason": "Final volume and EQ setting; also the end-of-chain buffer" }
+  ],
+  "power": {
+    "supplies": [
+      {
+        "id": "psu1",
+        "supply": "ojai_r30",
+        "label": "Ojai R30 #1 (front half)",
+        "outputs": [
+          { "port": "SW_A", "voltage_v": 18, "pedals": ["mini_ego", "fulldrive_2"] },
+          { "port": "SW_B", "voltage_v": 9, "pedals": [], "note": "Spare (can be set to 12V/18V later)" },
+          { "port": "F1", "voltage_v": 9, "pedals": ["polytune_3"] },
+          { "port": "F2", "voltage_v": 9, "pedals": ["sun_face", "beano", "danelectro_3699"], "note": "Basic fuzz group; AnalogMan says Beano/Sun Face can share a DC supply" },
+          { "port": "F3", "voltage_v": 9, "pedals": ["phase_95", "retrovibe", "red_muck", "ratsbane", "protein"], "note": "5-pedal daisy chain, ~320 mA. Consider moving Red Muck + Protein to psu2_f3" }
+        ]
+      },
+      {
+        "id": "psu2",
+        "supply": "ojai_r30",
+        "label": "Ojai R30 #2 (back half)",
+        "outputs": [
+          { "port": "SW_A", "voltage_v": 18, "pedals": ["reticon"] },
+          { "port": "SW_B", "voltage_v": 9, "pedals": ["belle_epoch"], "note": "Set to 9V: Belle Epoch is 9V only" },
+          { "port": "F1", "voltage_v": 9, "pedals": ["monk"] },
+          { "port": "F2", "voltage_v": 9, "pedals": ["analog_chorus", "tumnus_deluxe"] },
+          { "port": "F3", "voltage_v": 9, "pedals": [], "note": "Spare" }
+        ]
+      }
+    ]
+  }
+}

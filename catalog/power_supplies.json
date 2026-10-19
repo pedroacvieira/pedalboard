@@ -1,0 +1,102 @@
+{
+  "supplies": [
+    {
+      "id": "ojai_r30",
+      "brand": "Strymon",
+      "model": "Ojai R30",
+      "quantity": 2,
+      "playground_title": "Strymon Ojai R30",
+      "outputs": [
+        {
+          "port": "F1",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 }
+          ]
+        },
+        {
+          "port": "F2",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 }
+          ]
+        },
+        {
+          "port": "F3",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 }
+          ]
+        },
+        {
+          "port": "SW_A",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 },
+            { "voltage_v": 12, "max_ma": 375 },
+            { "voltage_v": 18, "max_ma": 250 }
+          ]
+        },
+        {
+          "port": "SW_B",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 },
+            { "voltage_v": 12, "max_ma": 375 },
+            { "voltage_v": 18, "max_ma": 250 }
+          ]
+        }
+      ],
+      "comments": "Five isolated outputs: three fixed 9V/500 mA (F1-F3), two switchable (SW_A, SW_B): 9V/500 mA, 12V/375 mA or 18V/250 mA."
+    },
+    {
+      "id": "harley_benton_iso5_pro",
+      "brand": "Harley Benton",
+      "model": "PowerPlant ISO-5 Pro",
+      "quantity": 1,
+      "playground_title": null,
+      "outputs": [
+        {
+          "port": "OUT1",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 300 }
+          ]
+        },
+        {
+          "port": "OUT2",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 300 }
+          ]
+        },
+        {
+          "port": "OUT3",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 300 }
+          ]
+        },
+        {
+          "port": "OUT4",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 },
+            { "voltage_v": 12, "max_ma": 500 },
+            { "voltage_v": 18, "max_ma": 500 }
+          ]
+        },
+        {
+          "port": "OUT5",
+          "isolated": true,
+          "options": [
+            { "voltage_v": 9, "max_ma": 500 },
+            { "voltage_v": 12, "max_ma": 500 },
+            { "voltage_v": 18, "max_ma": 500 }
+          ]
+        }
+      ],
+      "comments": "Bass supply (model confirmed by owner). Five isolated, filtered, short-circuit-protected outputs: OUT1-3 fixed 9V up to 300 mA; OUT4-5 selectable 9/12/18V (rear switches) up to 500 mA. Input: included 12V/2A adapter. Total output load must not exceed 18 W (not checked by the build). Thomann's summary says all five go to 18V/500 mA, but its detailed description and the Harley Benton spec sheet agree with the figures above. The 500 mA at 12V/18V is the listed maximum; unlike the Ojai there is no published derating."
+    }
+  ]
+}

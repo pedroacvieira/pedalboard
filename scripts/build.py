@@ -1,275 +1,489 @@
 #!/usr/bin/env python3
-"""Validate data/pedals.json + data/board.json; regenerate output/pedalboard.mmd and README.md."""
-import json
+"""Validate projects against the shared catalog and generate their docs.
+
+    python3 scripts/build.py              # every project
+    python3 scripts/build.py guitar-gig   # one project
+
+Per project: projects/<name>/README.md and diagram.mmd. Plus the root README.md.
+Exit status is 1 if any project has validation errors.
+"""
+import argparse
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA, OUT = ROOT / "data", ROOT / "output"
-pedals = {p["id"]: p for p in json.loads((DATA / "pedals.json").read_text())["pedals"]}
-board = json.loads((DATA / "board.json").read_text())
+from common import ROOT, effective_quantity, load_catalog, load_json, pedal_name, project_dirs
 
-errors, warnings = [], []
-chain = board["signal_chain"]
-pos = {pid: i for i, pid in enumerate(chain)}
-
-# --- signal chain ---------------------------------------------------------
-for pid in chain:
-    if pid not in pedals:
-        errors.append(f"chain: unknown pedal '{pid}'")
-unused = [pid for pid in pedals if pid not in pos]  # catalog entries not in the plan
-for pid, p in pedals.items():
-    if p["on_board"] != (pid in pos):
-        errors.append(f"flags: '{pid}' has on_board={p['on_board']} but {'is' if pid in pos else 'is not'} in signal_chain")
-if len(set(chain)) != len(chain):
-    errors.append("chain: duplicate pedal in signal_chain")
-
-# --- ordering rules -------------------------------------------------------
-def violated(pid, r, msg):
-    (errors if r["strength"] == "required" else warnings).append(f"order ({r['strength']}): {pid}: {msg}")
+PEDAL_REQUIRED = [
+    ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("buffered_bypass",),
+    ("power_consumption", "current_ma"), ("power_consumption", "voltage_v"),
+    ("power_consumption", "allowed_voltages_v"), ("power_consumption", "needs_isolated_output"),
+]
+BOARD_REQUIRED = ["brand", "model", "width_in", "height_in"]
 
 
-for pid in chain:
-    if pid not in pedals:
-        continue
-    for r in pedals[pid]["dependencies"]:
-        kind, me = r["type"], pos[pid]
+def unknown(v):
+    return v is None or v == "" or v == []
+
+
+def dig(d, path):
+    for k in path:
+        d = d.get(k) if isinstance(d, dict) else None
+    return d
+
+
+# ---------------------------------------------------------------------------
+# validation
+# ---------------------------------------------------------------------------
+def validate(pdir, cat_pedals, cat_supplies):
+    """Return a context dict (project data, derived power/rule info, errors, warnings)."""
+    project = load_json(pdir / "project.json")
+    errors, warnings = [], []
+    ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
+    no_unknown = project.get("validation", {}).get("no_unknown", True)
+    ctx["no_unknown"] = no_unknown
+
+    def need(label, value):
+        if unknown(value):
+            (errors if no_unknown else warnings).append(f"unknown: {label}")
+
+    for key in ("name", "instrument"):
+        need(f"project {key}", project.get(key))
+    board = project.get("board") or {}
+    for key in BOARD_REQUIRED:
+        need(f"board.{key}", board.get(key))
+
+    chain = project.get("signal_chain", [])
+    ctx["chain"] = chain
+    pos = {pid: i for i, pid in enumerate(chain)}
+    if not chain:
+        need("signal_chain (empty)", None)
+    if len(set(chain)) != len(chain):
+        errors.append("chain: duplicate pedal in signal_chain")
+    for pid in chain:
+        if pid not in cat_pedals:
+            errors.append(f"chain: pedal '{pid}' is not in catalog/pedals.json")
+    chain = [pid for pid in chain if pid in cat_pedals]
+    ctx["chain"] = chain
+    pos = {pid: i for i, pid in enumerate(chain)}
+    pedals = {pid: cat_pedals[pid] for pid in chain}
+    ctx["pedals"] = pedals
+
+    # unknown values + instrument fit
+    for pid, p in pedals.items():
+        for path in PEDAL_REQUIRED:
+            need(f"{pid}.{'.'.join(path)}", dig(p, path))
+        if project.get("instrument") and p.get("instruments") and project["instrument"] not in p["instruments"]:
+            warnings.append(f"instrument: {pid} is tagged {p['instruments']} but the project is for {project['instrument']}")
+
+    # ----- ordering rules -------------------------------------------------
+    rules = [{**r, "pedal": pid, "origin": "catalog"} for pid in chain for r in pedals[pid].get("dependencies", [])]
+    all_catalog_ids = {r["id"] for p in cat_pedals.values() for r in p.get("dependencies", [])}
+    rules += [{**r, "origin": "project"} for r in project.get("rules", [])]
+    ids = [r["id"] for r in rules]
+    for dup in {i for i in ids if ids.count(i) > 1}:
+        errors.append(f"rules: duplicate rule id '{dup}'")
+    overrides = project.get("rule_overrides", {})
+    for oid in overrides:
+        if oid not in ids and oid not in all_catalog_ids:
+            errors.append(f"rule_overrides: unknown rule id '{oid}'")
+    active, disabled, skipped = [], [], []
+    for r in rules:
+        ov = overrides.get(r["id"], {})
+        if r["pedal"] not in cat_pedals:
+            errors.append(f"rules: {r['id']} names unknown pedal '{r['pedal']}'")
+        elif r["pedal"] not in pos:
+            skipped.append(r)
+        elif ov.get("disable"):
+            disabled.append(r)
+        else:
+            active.append({**r, "strength": ov.get("strength", r["strength"])})
+    ctx.update(active_rules=active, disabled_rules=disabled, skipped_rules=skipped)
+
+    def violated(r, msg):
+        (errors if r["strength"] == "required" else warnings).append(f"order ({r['strength']}): {r['id']}: {msg}")
+
+    for r in active:
+        pid, kind, me = r["pedal"], r["type"], pos[r["pedal"]]
         if kind in ("after", "before"):
             for other in r["pedals"]:
-                if other not in pedals:
-                    errors.append(f"rules: {pid} refers to unknown pedal '{other}'")
+                if other not in cat_pedals:
+                    errors.append(f"rules: {r['id']} refers to unknown pedal '{other}'")
                 elif other in pos and (pos[other] > me if kind == "after" else pos[other] < me):
-                    violated(pid, r, f"must come {kind} {other}")
+                    violated(r, f"{pid} must come {kind} {other}")
         elif kind in ("after_group", "before_group"):
-            members = [o for o in chain if o != pid and r["group"] in pedals[o]["tags"]]
+            members = [o for o in chain if o != pid and r["group"] in pedals[o].get("tags", [])]
             if not members:
-                warnings.append(f"rules: {pid}: no on-board pedal has tag '{r['group']}'")
+                warnings.append(f"rules: {r['id']}: no on-board pedal has tag '{r['group']}'")
             for other in members:
                 if pos[other] > me if kind == "after_group" else pos[other] < me:
-                    violated(pid, r, f"must come {kind.split('_')[0]} {other} (tag '{r['group']}')")
+                    violated(r, f"{pid} must come {kind.split('_')[0]} {other} (tag '{r['group']}')")
         elif kind == "no_buffered_before":
             for other in chain[:me]:
-                if pedals[other]["buffered_bypass"] is True:
-                    violated(pid, r, f"buffered pedal '{other}' comes before it")
-                elif pedals[other]["buffered_bypass"] is None:
-                    warnings.append(f"order: {pid}: '{other}' ahead of it has unknown bypass type")
+                b = pedals[other].get("buffered_bypass")
+                if b is True:
+                    violated(r, f"buffered pedal '{other}' comes before {pid}")
+                elif b is None:
+                    warnings.append(f"order: {r['id']}: '{other}' ahead of {pid} has unknown bypass type")
         elif kind == "position":
             if r["value"] == "last" and me != len(chain) - 1:
-                violated(pid, r, "must be last in the chain")
+                violated(r, f"{pid} must be last in the chain")
             if r["value"] == "first" and me != 0:
-                violated(pid, r, "must be first in the chain")
+                violated(r, f"{pid} must be first in the chain")
         elif kind == "as_early_as_possible":
-            preds = {o for rr in pedals[pid]["dependencies"] if rr["type"] == "after" for o in rr["pedals"] if o in pos}
+            preds = {o for rr in active if rr["pedal"] == pid and rr["type"] == "after" for o in rr["pedals"] if o in pos}
             extra = [o for o in chain[:me] if o not in preds]
             if extra:
-                violated(pid, r, f"could be earlier: {', '.join(extra)} come first but are not required to")
+                violated(r, f"{pid} could be earlier: {', '.join(extra)} come first but are not required to")
         else:
-            errors.append(f"rules: {pid}: unknown rule type '{kind}'")
+            errors.append(f"rules: {r['id']}: unknown rule type '{kind}'")
 
-# --- power ----------------------------------------------------------------
-powered = {}
-for psu in board["power_supplies"]:
-    for out in psu["outputs"]:
-        v = out["voltage_v"]
-        limit = board["output_limits_ma"][out["type"]].get(str(v))
-        if limit is None:
-            errors.append(f"{out['id']}: {v}V not available on a {out['type']} output")
+    # ----- power ----------------------------------------------------------
+    power = project.get("power", {}).get("supplies", [])
+    ctx["supplies"] = []
+    powered, instances = {}, {}
+    for inst in power:
+        sup = cat_supplies.get(inst["supply"])
+        if sup is None:
+            errors.append(f"power: {inst['id']}: unknown supply '{inst['supply']}'")
             continue
-        load = 0
-        for pid in out["pedals"]:
-            p = pedals[pid]
-            if pid in powered:
-                errors.append(f"power: '{pid}' is on both {powered[pid]} and {out['id']}")
-            powered[pid] = out["id"]
-            pc = p["power_consumption"]
-            if v not in pc["allowed_voltages_v"]:
-                errors.append(f"{out['id']}: {pid} does not accept {v}V (allowed {pc['allowed_voltages_v']})")
-            if pc["needs_isolated_output"] and len(out["pedals"]) > 1:
-                errors.append(f"{out['id']}: {pid} needs an isolated output but shares it")
-            if pc["current_ma"] is None:
-                errors.append(f"{out['id']}: {pid} has unknown current_ma")
+        instances[inst["supply"]] = instances.get(inst["supply"], 0) + 1
+        for key in ("brand", "model", "quantity"):
+            need(f"supply {sup['id']}.{key}", sup.get(key))
+        outputs_def = sup.get("outputs")
+        need(f"supply {sup['id']}.outputs", outputs_def)
+        by_port = {o["port"]: o for o in (outputs_def or [])}
+        rows = []
+        for out in inst.get("outputs", []):
+            oid = f"{inst['id']}_{out['port']}"
+            odef = by_port.get(out["port"])
+            row = {"id": oid, "port": out["port"], "voltage_v": out["voltage_v"], "pedals": out.get("pedals", []),
+                   "note": out.get("note"), "load": 0, "limit": None, "def": odef}
+            rows.append(row)
+            if odef is None:
+                if outputs_def:
+                    errors.append(f"{oid}: {sup['id']} has no port '{out['port']}'")
                 continue
-            load += pc["current_ma"]
-        out["_load"], out["_limit"] = load, limit
-        if len(out["pedals"]) > 1:
-            for pid in out["pedals"]:
-                if pedals[pid]["digital"] is True:
-                    errors.append(f"{out['id']}: digital pedal '{pid}' shares an output with {[o for o in out['pedals'] if o != pid]}")
-                elif pedals[pid]["digital"] is None:
-                    warnings.append(f"{out['id']}: '{pid}' shares an output but its digital status is unknown")
-        if load > limit:
-            errors.append(f"{out['id']}: {load} mA exceeds {limit} mA limit")
-        elif load > 0.8 * limit:
-            warnings.append(f"{out['id']}: {load} mA is over 80% of {limit} mA")
-for pid in chain:
-    if pid not in powered:
-        errors.append(f"power: '{pid}' has no power output")
-
-# --- mermaid --------------------------------------------------------------
-def label(pid):
-    p = pedals[pid]
-    return f"{p['brand']} {p['name']}<br/>{p['power_consumption']['current_ma']} mA"
-
-lines = ["flowchart TB", '    guitar(["' + board["input"] + '"])', '    amp(["' + board["output"] + '"])']
-for pid in chain:
-    lines.append(f'    {pid}["{label(pid)}"]')
-
-links = [("guitar", chain[0])] + list(zip(chain, chain[1:])) + [(chain[-1], "amp")]
-for a, b in links:
-    lines.append(f"    {a} --> {b}")
-n_signal = len(links)
-
-power_edges = 0
-for psu in board["power_supplies"]:
-    lines.append(f'    subgraph {psu["id"]}["{psu["label"]}"]')
-    for out in psu["outputs"]:
-        used = out["_load"]
-        text = f'{out["id"].split("_", 1)[1].upper()} · {out["voltage_v"]}V<br/>{used}/{out["_limit"]} mA'
-        if not out["pedals"]:
-            text += "<br/>spare"
-        lines.append(f'        {out["id"]}["{text}"]')
-    lines.append("    end")
-    for out in psu["outputs"]:
-        if not out["pedals"]:
-            continue
-        lines.append(f'    {out["id"]} -.-> {out["pedals"][0]}')
-        power_edges += 1
-        for a, b in zip(out["pedals"], out["pedals"][1:]):
-            lines.append(f"    {a} -.->|daisy| {b}")
-            power_edges += 1
-
-power_idx = ",".join(str(i) for i in range(n_signal, n_signal + power_edges))
-lines.append(f"    linkStyle {power_idx} stroke:#c0392b,stroke-width:1.5px,color:#c0392b")
-for psu in board["power_supplies"]:
-    lines.append(f"    style {psu['id']} fill:none,stroke:#c0392b,stroke-dasharray:4 3")
-
-(OUT / "pedalboard.mmd").write_text("\n".join(lines) + "\n")
-
-# --- README ---------------------------------------------------------------
-def nm(pid):
-    return f"{pedals[pid]['brand']} {pedals[pid]['name']}"
+            for o in odef.get("options", []):
+                need(f"supply {sup['id']}.{out['port']} option", o.get("max_ma"))
+            limit = next((o["max_ma"] for o in odef["options"] if o["voltage_v"] == out["voltage_v"]), None)
+            if limit is None:
+                errors.append(f"{oid}: {out['voltage_v']}V not available on {sup['id']} {out['port']}")
+                continue
+            row["limit"] = limit
+            for pid in row["pedals"]:
+                if pid not in pedals:
+                    errors.append(f"power: {oid} feeds '{pid}' which is not in the signal chain")
+                    continue
+                if pid in powered:
+                    errors.append(f"power: '{pid}' is on both {powered[pid]} and {oid}")
+                powered[pid] = oid
+                pc = pedals[pid]["power_consumption"]
+                if pc.get("allowed_voltages_v") and out["voltage_v"] not in pc["allowed_voltages_v"]:
+                    errors.append(f"{oid}: {pid} does not accept {out['voltage_v']}V (allowed {pc['allowed_voltages_v']})")
+                if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
+                    errors.append(f"{oid}: {pid} needs an isolated output but shares it")
+                if pc.get("current_ma") is None:
+                    warnings.append(f"{oid}: {pid} has unknown current_ma (left out of totals)")
+                else:
+                    row["load"] += pc["current_ma"]
+            if len(row["pedals"]) > 1:
+                for pid in row["pedals"]:
+                    d = pedals.get(pid, {}).get("digital")
+                    if d is True:
+                        errors.append(f"{oid}: digital pedal '{pid}' shares an output with {[o for o in row['pedals'] if o != pid]}")
+                    elif d is None:
+                        warnings.append(f"{oid}: '{pid}' shares an output but its digital status is unknown")
+            if row["load"] > limit:
+                errors.append(f"{oid}: {row['load']} mA exceeds {limit} mA limit")
+            elif row["load"] > 0.8 * limit:
+                warnings.append(f"{oid}: {row['load']} mA is over 80% of {limit} mA")
+        ctx["supplies"].append({"inst": inst, "sup": sup, "rows": rows})
+    for pid in chain:
+        if pid not in powered:
+            errors.append(f"power: '{pid}' has no power output")
+    for sid, n in instances.items():
+        q = cat_supplies[sid].get("quantity")
+        if q is not None and n > q:
+            errors.append(f"power: project uses {n} x {sid} but you own {q}")
+    ctx["instances"] = instances
+    ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
+    return ctx
 
 
+# ---------------------------------------------------------------------------
+# rendering
+# ---------------------------------------------------------------------------
 def yn(v):
     return "Unknown" if v is None else ("Yes" if v else "No")
 
 
 def bypass(p):
-    b, sw = p["buffered_bypass"], p["buffer_switchable"]
+    b, sw = p.get("buffered_bypass"), p.get("buffer_switchable")
     if b is None:
         return "Unknown"
     return ("Buffered" if b else "True") + (" (switchable)" if sw else "")
 
 
-def power(p):
+def power_text(p):
     pc = p["power_consumption"]
     ma = "?" if pc["current_ma"] is None else pc["current_ma"]
-    return f"{pc['voltage_v']}V, {ma} mA"
+    v = "?" if pc["voltage_v"] is None else pc["voltage_v"]
+    return f"{v}V, {ma} mA"
 
 
-def short(psu):
-    return psu["label"].split(" (")[0]
+def ma(p):
+    v = p["power_consumption"]["current_ma"]
+    return "?" if v is None else v
 
-
-def code(out):
-    return out["id"].split("_", 1)[1].upper()
-
-
-feeds = {}  # pedal id -> "Ojai R30 #1 · F2"
-for psu in board["power_supplies"]:
-    for out in psu["outputs"]:
-        for pid in out["pedals"]:
-            feeds[pid] = f"{short(psu)} · {code(out)}"
 
 RULE_TEXT = {
-    "after": lambda r: "must come after " + ", ".join(nm(o) for o in r["pedals"]),
-    "before": lambda r: "must come before " + ", ".join(nm(o) for o in r["pedals"]),
-    "after_group": lambda r: f"must come after all `{r['group']}` pedals",
-    "before_group": lambda r: f"must come before all `{r['group']}` pedals",
-    "no_buffered_before": lambda r: "no buffered pedal anywhere before it",
-    "position": lambda r: f"must be {r['value']} in the chain",
-    "as_early_as_possible": lambda r: "as early in the chain as possible",
+    "after": lambda r, n: "must come after " + ", ".join(n(o) for o in r["pedals"]),
+    "before": lambda r, n: "must come before " + ", ".join(n(o) for o in r["pedals"]),
+    "after_group": lambda r, n: f"must come after all `{r['group']}` pedals",
+    "before_group": lambda r, n: f"must come before all `{r['group']}` pedals",
+    "no_buffered_before": lambda r, n: "no buffered pedal anywhere before it",
+    "position": lambda r, n: f"must be {r['value']} in the chain",
+    "as_early_as_possible": lambda r, n: "as early in the chain as possible",
 }
 
-md = [
-    "# Pedalboard plan",
-    "",
-    "> Generated by `scripts/build.py` from `data/pedals.json` and `data/board.json`. Edit those files, not this one.",
-    "",
-    "- `python3 scripts/build.py` validates the plan (ordering rules, output limits, digital pedals not sharing power) and regenerates this file and `output/pedalboard.mmd`.",
-    "- `python3 scripts/to_playground.py` writes `output/pedalplayground_import.json`, a layout you can load into [Pedal Playground](https://pedalplayground.com/) (\"Load from File\").",
-    "",
-    "## Signal chain",
-    "",
-    "```mermaid",
-    *lines,
-    "```",
-    "",
-    "| # | Pedal | Owned | Power | Bypass | Digital | Powered from |",
-    "|--:|---|:-:|---|---|:-:|---|",
-]
-for i, pid in enumerate(chain, 1):
-    p = pedals[pid]
-    md.append(f"| {i} | {nm(pid)} | {yn(p['owned'])} | {power(p)} | {bypass(p)} | {yn(p['digital'])} | {feeds[pid]} |")
 
-to_buy = [nm(pid) for pid in chain if not pedals[pid]["owned"]]
-md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
-for pid in chain:
-    for r in pedals[pid]["dependencies"]:
+def board_text(board):
+    if any(unknown(board.get(k)) for k in BOARD_REQUIRED):
+        return "*not fully specified*"
+    return f"{board['brand']} {board['model']} ({board['width_in']} x {board['height_in']} in)"
+
+
+def sup_name(sup):
+    return f"{sup['brand']} {sup['model'] or '(model unknown)'}"
+
+
+def inst_label(s):
+    return s["inst"].get("label") or f"{sup_name(s['sup'])} #{s['inst']['id']}"
+
+
+def mermaid(ctx):
+    chain, pedals = ctx["chain"], ctx["pedals"]
+    lines = ["flowchart TB", '    guitar(["' + ("Bass" if ctx["project"].get("instrument") == "bass" else "Guitar") + '"])',
+             '    amp(["Amplifier"])']
+    for pid in chain:
+        lines.append(f'    {pid}["{pedal_name(pedals[pid])}<br/>{ma(pedals[pid])} mA"]')
+    links = []
+    if chain:
+        links = [("guitar", chain[0])] + list(zip(chain, chain[1:])) + [(chain[-1], "amp")]
+    for a, b in links:
+        lines.append(f"    {a} --> {b}")
+    n_power = 0
+    for s in ctx["supplies"]:
+        lines.append(f'    subgraph {s["inst"]["id"]}["{inst_label(s)}"]')
+        for row in s["rows"]:
+            text = f'{row["port"]} · {row["voltage_v"]}V<br/>{row["load"]}/{row["limit"] or "?"} mA'
+            if not row["pedals"]:
+                text += "<br/>spare"
+            lines.append(f'        {row["id"]}["{text}"]')
+        lines.append("    end")
+        for row in s["rows"]:
+            ps = [p for p in row["pedals"] if p in pedals]
+            if not ps:
+                continue
+            lines.append(f'    {row["id"]} -.-> {ps[0]}')
+            n_power += 1
+            for a, b in zip(ps, ps[1:]):
+                lines.append(f"    {a} -.->|daisy| {b}")
+                n_power += 1
+    if n_power:
+        idx = ",".join(str(i) for i in range(len(links), len(links) + n_power))
+        lines.append(f"    linkStyle {idx} stroke:#c0392b,stroke-width:1.5px,color:#c0392b")
+    for s in ctx["supplies"]:
+        lines.append(f"    style {s['inst']['id']} fill:none,stroke:#c0392b,stroke-dasharray:4 3")
+    return lines
+
+
+def project_readme(ctx, cat_pedals):
+    pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
+    nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
+    feed_label = {}
+    for s in ctx["supplies"]:
+        for row in s["rows"]:
+            for pid in row["pedals"]:
+                feed_label[pid] = f"{inst_label(s).split(' (')[0]} · {row['port']}"
+    status = "OK" if not ctx["errors"] else f"{len(ctx['errors'])} error(s)"
+    md = [
+        f"# {pr.get('name') or ctx['key']}",
+        "",
+        "> Generated by `scripts/build.py` from `catalog/` and this folder's `project.json`. Edit those, not this file.",
+        "",
+        f"- **Instrument:** {pr.get('instrument') or 'unknown'}",
+        f"- **Board:** {board_text(pr.get('board') or {})}",
+        f"- **Validation:** {status}, {len(ctx['warnings'])} warning(s)" + (" (`no_unknown` on)" if ctx["no_unknown"] else ""),
+        "",
+    ]
+    if ctx["errors"] or ctx["warnings"]:
+        md += ["<details><summary>Validation messages</summary>", ""]
+        md += [f"- ERROR {m}" for m in ctx["errors"]] + [f"- WARN {m}" for m in ctx["warnings"]]
+        md += ["", "</details>", ""]
+    md += ["## Signal chain", "", "```mermaid", *mermaid(ctx), "```", "",
+           "| # | Pedal | Owned | Power | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|:-:|---|"]
+    for i, pid in enumerate(chain, 1):
+        p = pedals[pid]
+        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {power_text(p)} | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
+    to_buy = [pedal_name(pedals[pid]) for pid in chain if pedals[pid].get("owned") is False]
+    md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
+    for r in ctx["active_rules"]:
         tag = "" if r["strength"] == "required" else " *(preferred)*"
-        md.append(f"- **{nm(pid)}** {RULE_TEXT[r['type']](r)}{tag}: {r['reason']}")
+        md.append(f"- **{nm(r['pedal'])}** {RULE_TEXT[r['type']](r, nm)}{tag}: {r['reason']} `[{r['origin']}]`")
+    for r in ctx["disabled_rules"]:
+        md.append(f"- ~~{nm(r['pedal'])} {RULE_TEXT[r['type']](r, nm)}~~ (disabled in this project): {r['reason']}")
+    md += ["", "### Notes per pedal", ""]
+    md += [f"- **{pedal_name(pedals[pid])}**: {pedals[pid].get('comments', '')}" for pid in chain]
 
-md += ["", "### Notes per pedal", ""]
-for pid in chain:
-    md.append(f"- **{nm(pid)}**: {pedals[pid]['comments']}")
+    md += ["", "## Powering", ""]
+    if not ctx["supplies"]:
+        md += ["No power supplies assigned yet.", ""]
+    else:
+        md += ["Draw figures are the worst-case values in `catalog/pedals.json`. A **digital** pedal (including one with a digital processor in an analog path) always has an output to itself; the build fails if one is daisy-chained.", ""]
+    grand = 0
+    for s in ctx["supplies"]:
+        total = sum(r["load"] for r in s["rows"])
+        grand += total
+        md += [f"### {inst_label(s)}", "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
+        for row in s["rows"]:
+            odef = row["def"]
+            kind = "switchable" if odef and len(odef.get("options", [])) > 1 else "fixed"
+            head = f"**{row['port']}** ({kind})"
+            cell = f"{row['load']} / {row['limit'] or '?'} mA"
+            if not row["pedals"]:
+                md.append(f"| {head} | {row['voltage_v']}V | *spare* | 0 | {cell} |")
+                continue
+            for k, pid in enumerate(row["pedals"]):
+                md.append(f"| {head if k == 0 else ''} | {row['voltage_v']}V | {nm(pid)} | "
+                          f"{ma(cat_pedals[pid]) if pid in cat_pedals else '?'} | {cell if k == 0 else ''} |")
+        md += [f"| | | **{inst_label(s).split(' (')[0]} total** | | **{total} mA** |", ""]
+    if ctx["supplies"]:
+        md += [f"**All supplies combined:** {grand} mA", ""]
+    return "\n".join(md) + "\n"
 
-md += ["", "### Not on the board", "", "| Pedal | Owned | Power | Bypass | Digital |", "|---|:-:|---|---|:-:|"]
-for pid in unused:
-    p = pedals[pid]
-    md.append(f"| {nm(pid)} | {yn(p['owned'])} | {power(p)} | {bypass(p)} | {yn(p['digital'])} |")
 
-md += [
-    "",
-    "## Powering",
-    "",
-    "Two Strymon Ojai R30 supplies, five isolated outputs each. Per unit, three outputs are fixed 9V / 500 mA (`F1`-`F3`) and two are switchable (`SW_A`, `SW_B`): 9V / 500 mA, 12V / 375 mA or 18V / 250 mA. "
-    "Draw figures are the worst-case values in `data/pedals.json`. A **digital** pedal (including one with a digital processor in an analog path) always has an output to itself; the build fails if one is daisy-chained.",
-    "",
-]
-grand = 0
-for psu in board["power_supplies"]:
-    total = sum(o["_load"] for o in psu["outputs"])
-    grand += total
-    md += [f"### {psu['label']}", "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
-    for out in psu["outputs"]:
-        head = f"**{code(out)}** ({out['type']})"
-        total_cell = f"{out['_load']} / {out['_limit']} mA"
-        if not out["pedals"]:
-            md.append(f"| {head} | {out['voltage_v']}V | *spare* | 0 | {total_cell} |")
+def root_readme(ctxs, cat_pedals, cat_supplies):
+    md = [
+        "# Pedalboard planner",
+        "",
+        "> Generated by `scripts/build.py`. Edit `catalog/` and `projects/*/project.json`, not this file.",
+        "",
+        "One shared catalog of pedals and power supplies, plus one folder per pedalboard (a *project*).",
+        "",
+        "```",
+        "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
+        "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
+        "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
+        "projects/<name>/README.md     generated plan, diagram and power summary",
+        "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
+        "```",
+        "",
+        "```",
+        "python3 scripts/build.py [project...]        validate + regenerate docs",
+        "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
+        "python3 scripts/new_project.py <name> --instrument guitar|bass",
+        "```",
+        "",
+        "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
+        "",
+        "## Projects",
+        "",
+        "| Project | Instrument | Board | Pedals | Supplies | Status |",
+        "|---|---|---|--:|---|---|",
+    ]
+    usage, sup_usage = {}, {}
+    for c in ctxs:
+        pr = c["project"]
+        for pid in c["chain"]:
+            usage.setdefault(pid, []).append(c["key"])
+        for sid, n in c["instances"].items():
+            sup_usage.setdefault(sid, []).append((c["key"], n))
+        sups = ", ".join(f"{n} x {sup_name(cat_supplies[s])}" for s, n in c["instances"].items()) or "none yet"
+        status = "OK" if not c["errors"] else f"**{len(c['errors'])} error(s)**"
+        md.append(f"| [{pr.get('name') or c['key']}](projects/{c['key']}/README.md) | {pr.get('instrument') or '?'} | "
+                  f"{board_text(pr.get('board') or {})} | {len(c['chain'])} | {sups} | {status}, {len(c['warnings'])} warning(s) |")
+    if not ctxs:
+        md.append("| *(none yet)* | | | | | |")
+
+    # shared gear
+    shared, global_warn = [], []
+    for pid, users in usage.items():
+        q = effective_quantity(cat_pedals[pid])
+        if len(users) > 1 and (q is None or q < len(users)):
+            shared.append(f"- **{pedal_name(cat_pedals[pid])}** is in {', '.join(users)} but you own {'an unknown number' if q is None else q}")
+    for sid, uses in sup_usage.items():
+        q, total = cat_supplies[sid].get("quantity"), sum(n for _, n in uses)
+        if len(uses) > 1 and (q is None or total > q):
+            shared.append(f"- **{sup_name(cat_supplies[sid])}**: projects use {total} units ({', '.join(f'{k}: {n}' for k, n in uses)}) but you own {q if q is not None else 'an unknown number'}")
+    md += ["", "## Shared gear", ""]
+    md += shared or ["No pedal or supply is claimed by more than one project beyond what you own."]
+    global_warn += [s[2:] for s in shared]
+
+    # shopping
+    buy, unknown_owned, total_price, no_price = [], [], 0, 0
+    for pid, users in usage.items():
+        p = cat_pedals[pid]
+        q = effective_quantity(p)
+        if q is None:
+            unknown_owned.append(f"{pedal_name(p)} ({', '.join(users)})")
             continue
-        for k, pid in enumerate(out["pedals"]):
-            first = k == 0
-            md.append(
-                f"| {head if first else ''} | {out['voltage_v']}V{'' if first else ''} | {nm(pid)} | "
-                f"{pedals[pid]['power_consumption']['current_ma']} | {total_cell if first else ''} |"
-            )
-    md += [f"| | | **{short(psu)} total** | | **{total} mA** |", ""]
-md += [f"**Both supplies combined:** {grand} mA", ""]
+        need = max(0, len(users) - q)
+        if need:
+            price = p.get("price_eur")
+            total_price += (price or 0) * need
+            no_price += price is None
+            buy.append(f"| {pedal_name(p)} | {need} | {', '.join(users)} | {'-' if price is None else f'{price} EUR'} |")
+    md += ["", "## Shopping list", ""]
+    if buy:
+        md += ["| Pedal | Units | Needed by | Price |", "|---|--:|---|--:|", *buy, "",
+               f"**Known total:** {total_price} EUR" + (f" ({no_price} item(s) without a `price_eur`)" if no_price else "")]
+    else:
+        md += ["Nothing to buy for the current projects."]
+    if unknown_owned:
+        md += ["", "**Ownership unknown (fill in `owned`):** " + "; ".join(unknown_owned)]
 
-(ROOT / "README.md").write_text("\n".join(md) + "\n")
+    # catalog not placed anywhere
+    free = [pedal_name(p) for pid, p in cat_pedals.items() if pid not in usage]
+    md += ["", "## Catalog pedals not in any project", "", ", ".join(free) or "None.", ""]
+    return "\n".join(md) + "\n", global_warn
 
-# --- report ---------------------------------------------------------------
-for psu in board["power_supplies"]:
-    print(psu["label"])
-    for out in psu["outputs"]:
-        print(f"  {out['id']:10} {out['voltage_v']:>2}V  {out['_load']:>3}/{out['_limit']} mA  {', '.join(out['pedals']) or '(spare)'}")
-to_buy = [pid for pid in chain if not pedals[pid]["owned"]]
-print(f"plan: {len(chain)} pedals, to buy: {', '.join(to_buy) or 'none'}")
-if unused:
-    print(f"not in plan: {', '.join(unused)}")
-for w in warnings:
-    print("WARN ", w)
-for e in errors:
-    print("ERROR", e)
-print("OK" if not errors else f"{len(errors)} error(s)")
-sys.exit(1 if errors else 0)
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("projects", nargs="*", help="project folder names (default: all)")
+    args = ap.parse_args()
+
+    cat_pedals, cat_supplies = load_catalog()
+    ctxs = []
+    for pdir in project_dirs(args.projects or None):
+        ctx = validate(pdir, cat_pedals, cat_supplies)
+        (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
+        (pdir / "diagram.mmd").write_text("\n".join(mermaid(ctx)) + "\n")
+        ctxs.append(ctx)
+    if args.projects:  # keep the root index complete when building a subset
+        ctxs = [validate(d, cat_pedals, cat_supplies) for d in project_dirs()]
+    text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies)
+    (ROOT / "README.md").write_text(text)
+
+    bad = False
+    for c in ctxs:
+        if args.projects and c["key"] not in args.projects:
+            continue
+        print(f"== {c['key']}: {len(c['chain'])} pedals")
+        for s in c["supplies"]:
+            print(f"  {inst_label(s)}")
+            for r in s["rows"]:
+                print(f"    {r['id']:12} {r['voltage_v']:>2}V {r['load']:>4}/{r['limit'] or '?'} mA  {', '.join(r['pedals']) or '(spare)'}")
+        for m in c["warnings"]:
+            print("  WARN ", m)
+        for m in c["errors"]:
+            print("  ERROR", m)
+        bad |= bool(c["errors"])
+    for m in global_warn:
+        print("WARN  shared:", m)
+    print("OK" if not bad else "FAILED")
+    sys.exit(1 if bad else 0)
+
+
+if __name__ == "__main__":
+    main()
