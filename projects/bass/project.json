@@ -7,7 +7,13 @@
   "power_policy": { "separate_clocked_from_tags": ["gain", "overdrive", "compressor"], "strength": "required", "group_18v": true },
   "signal_chain": ["polytune_2_mini", "darkglass_hyper_luminal", "mxr_bass_synth", "ehx_bass_big_muff_2", "tech21_vt_bass_di"],
   "rule_overrides": {},
-  "rules": [],
+  "rules": [
+    { "id": "polytune_2_mini.first", "pedal": "polytune_2_mini", "type": "position", "value": "first", "strength": "required", "priority": 50, "reason": "Tuner first (outranks the compressor's 'first')" },
+    { "id": "darkglass_hyper_luminal.first", "pedal": "darkglass_hyper_luminal", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first, right after the tuner" },
+    { "id": "mxr_bass_synth.before_group_gain", "pedal": "mxr_bass_synth", "type": "before_group", "group": "gain", "strength": "required", "reason": "Synth before the drive pedals" },
+    { "id": "tech21_vt_bass_di.last", "pedal": "tech21_vt_bass_di", "type": "position", "value": "last", "strength": "required", "reason": "Preamp / DI last" },
+    { "id": "ehx_bass_big_muff_2.before_group_overdrive", "pedal": "ehx_bass_big_muff_2", "type": "before_group", "group": "overdrive", "strength": "required", "reason": "Fuzz comes before any drive pedal" }
+  ],
   "power": {
     "supplies": [
       {

@@ -4,13 +4,7 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in)
-- **Validation:** 1 error(s), 0 warning(s) (`no_unknown` on)
-
-<details><summary>Validation messages</summary>
-
-- ERROR unknown: darkglass_hyper_luminal.buffered_bypass
-
-</details>
+- **Validation:** OK, 0 warning(s) (`no_unknown` on)
 
 ## Signal chain
 
@@ -21,13 +15,14 @@ flowchart TB
     darkglass_hyper_luminal["<b>2</b> &nbsp;Darkglass Hyper Luminal<br/>compressor"]:::c_compressor
     mxr_bass_synth["<b>3</b> &nbsp;MXR Bass Synth<br/>other"]:::c_other
     ehx_bass_big_muff_2["<b>4</b> &nbsp;Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost"]:::c_fuzz___boost
-    tech21_vt_bass_di["<b>5</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>other"]:::c_other
+    tech21_vt_bass_di["<b>5</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>drive / distortion"]:::c_drive___distortion
     amp(["Amplifier"]):::endpoint
     guitar --> polytune_2_mini --> darkglass_hyper_luminal --> mxr_bass_synth --> ehx_bass_big_muff_2 --> tech21_vt_bass_di --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
     classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
     linkStyle default stroke:#78909c,stroke-width:2px
 ```
@@ -35,7 +30,7 @@ flowchart TB
 | # | Pedal | Owned | Power | Bypass | Digital | Powered from |
 |--:|---|:-:|---|---|:-:|---|
 | 1 | TC Electronic PolyTune 2 Mini | Yes | 9V, 40 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
-| 2 | Darkglass Hyper Luminal | Yes | 9V, 250 mA | Unknown | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
+| 2 | Darkglass Hyper Luminal | Yes | 9V, 250 mA | Buffered | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
 | 3 | MXR Bass Synth | No | 9V, 330 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
 | 4 | Electro-Harmonix Bass Big Muff Pi 2 | Yes | 9V, 25 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT2 |
 | 5 | Tech 21 SansAmp VT Bass DI | Yes | 9V, 6 mA | Buffered | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
@@ -44,14 +39,23 @@ flowchart TB
 
 ### Ordering rules
 
+- **TC Electronic PolyTune 2 Mini** must be first in the chain (priority 50): Tuner first (outranks the compressor's 'first') `[project]`
+- **Darkglass Hyper Luminal** must be first in the chain (priority 10): Compressor first, right after the tuner `[project]`
+- **MXR Bass Synth** must come before all `gain` pedals: Synth before the drive pedals `[project]`
+- **Tech 21 SansAmp VT Bass DI** must be last in the chain: Preamp / DI last `[project]`
+- **Electro-Harmonix Bass Big Muff Pi 2** must come before all `overdrive` pedals: Fuzz comes before any drive pedal `[project]`
+
+### Overridden by priority
+
+- `polytune_2_mini.first` overrides `darkglass_hyper_luminal.first` for: darkglass_hyper_luminal before polytune_2_mini
 
 ### Notes per pedal
 
 - **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly).
-- **Darkglass Hyper Luminal**: Planned for the bass board. Analog VCA audio path controlled by a digital side-chain (time constants editable via the Darkglass Suite), so treated as DIGITAL: must not share an output. 250 mA at 9V DC center-negative, REGULATED supply only (unregulated or higher voltage can cause noise/damage); no battery option listed. Bypass type NOT FOUND: manufacturer silent, retailers conflict (buffered / true bypass / 'no'). Reported discontinued or out of stock at several retailers.
+- **Darkglass Hyper Luminal**: Planned for the bass board. Analog VCA audio path controlled by a digital side-chain (time constants editable via the Darkglass Suite), so treated as DIGITAL: must not share an output. 250 mA at 9V DC center-negative, REGULATED supply only (unregulated or higher voltage can cause noise/damage); no battery option listed. Buffered bypass (per owner; the manufacturer is silent and retailers conflict). Reported discontinued or out of stock at several retailers.
 - **MXR Bass Synth**: Planned for the bass board; on the to-buy list. MB301. 330 mA at 9V DC center-negative per retailer specs; cannot run on a battery. Has a DSP, so treated as DIGITAL: must not share an output (per owner; one retailer lists it as analog). True bypass (per owner).
 - **Electro-Harmonix Bass Big Muff Pi 2**: Planned for the bass board. 2026 small-enclosure reissue (not the original large Bass Big Muff Pi: that one draws 7 mA). ehx.com says 25 mA in the power section and 20 mA in the spec list (planning on 25); 9V DC center-negative, do not exceed 12V; battery included. Analog circuit, true bypass via mechanical relay.
-- **Tech 21 SansAmp VT Bass DI**: Planned for the bass board. Preamp / stompbox / XLR DI. About 6 mA at 9V DC center-negative (100 mA minimum supply rating per the manual); also runs on 9V battery or 24-48V phantom power. 100% analog. Not true bypass: with the SansAmp circuit off it acts as an active transparent direct box, so the input buffer and XLR driver stay active (the manual does not call it 'buffered' explicitly).
+- **Tech 21 SansAmp VT Bass DI**: Planned for the bass board. Preamp / stompbox / XLR DI with a Drive control, so it counts as a gain / overdrive pedal. About 6 mA at 9V DC center-negative (100 mA minimum supply rating per the manual); also runs on 9V battery or 24-48V phantom power. 100% analog. Not true bypass: with the SansAmp circuit off it acts as an active transparent direct box, so the input buffer and XLR driver stay active (the manual does not call it 'buffered' explicitly).
 
 ## Powering
 
@@ -69,7 +73,7 @@ flowchart LR
     end
     polytune_2_mini["TC Electronic PolyTune 2 Mini<br/>tuner · 40 mA"]:::c_tuner
     ehx_bass_big_muff_2["Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost · 25 mA"]:::c_fuzz___boost
-    tech21_vt_bass_di["Tech 21 SansAmp VT Bass DI<br/>other · 6 mA"]:::c_other
+    tech21_vt_bass_di["Tech 21 SansAmp VT Bass DI<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     mxr_bass_synth["MXR Bass Synth<br/>other · 330 mA"]:::c_other
     darkglass_hyper_luminal["Darkglass Hyper Luminal<br/>compressor · 250 mA"]:::c_compressor
     psu1_OUT1 --> polytune_2_mini
@@ -83,6 +87,7 @@ flowchart LR
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
     classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
     style psu1 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
     linkStyle default stroke:#78909c,stroke-width:2px

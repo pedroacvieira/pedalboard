@@ -24,7 +24,7 @@ Every project has `validation.no_unknown` on by default: any missing (`null`) va
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | **1 error(s)**, 0 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (24 x 13.06 in) | 17 | 2 x Strymon Ojai R30 | OK, 0 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 

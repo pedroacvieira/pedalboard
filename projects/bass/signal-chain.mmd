@@ -4,12 +4,13 @@ flowchart TB
     darkglass_hyper_luminal["<b>2</b> &nbsp;Darkglass Hyper Luminal<br/>compressor"]:::c_compressor
     mxr_bass_synth["<b>3</b> &nbsp;MXR Bass Synth<br/>other"]:::c_other
     ehx_bass_big_muff_2["<b>4</b> &nbsp;Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost"]:::c_fuzz___boost
-    tech21_vt_bass_di["<b>5</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>other"]:::c_other
+    tech21_vt_bass_di["<b>5</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>drive / distortion"]:::c_drive___distortion
     amp(["Amplifier"]):::endpoint
     guitar --> polytune_2_mini --> darkglass_hyper_luminal --> mxr_bass_synth --> ehx_bass_big_muff_2 --> tech21_vt_bass_di --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
+    classDef c_drive___distortion fill:#ffe082,stroke:#ff8f00,stroke-width:2px,color:#1b1b1b
     classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
     linkStyle default stroke:#78909c,stroke-width:2px
