@@ -47,7 +47,17 @@
           ]
         }
       ],
-      "comments": "Five isolated outputs: three fixed 9V/500 mA (F1-F3), two switchable (SW_A, SW_B): 9V/500 mA, 12V/375 mA or 18V/250 mA."
+      "comments": "Five isolated outputs: three fixed 9V/500 mA (F1-F3), two switchable (SW_A, SW_B): 9V/500 mA, 12V/375 mA or 18V/250 mA.",
+      "price_eur": 177,
+      "price_info": {
+        "store": "thomann.de",
+        "url": "https://www.thomann.de/de/strymon_ojai_r30.htm",
+        "checked": "2026-10-19",
+        "variant": "Strymon Ojai R30 (Thomann art. 423232)",
+        "availability": "in stock",
+        "confidence": "page",
+        "notes": "Thomann page: 177 EUR (UVP 209.95), 'Sofort lieferbar'. Thomann lists 4 isolated outputs on the R30 (1-2 fixed 9V/500mA; 3-4 switchable 9/12/18V) plus 24V thru, not 5 outputs, so the hint of '5 outputs' may not match; verify. Ojai R30 Expansion Kit (adds 5 more outputs; needs a Strymon unit with 24V thru): 148 EUR at Thomann, 'Sofort lieferbar', https://www.thomann.de/de/strymon_ojai_r30_expansion_kit.htm (page read)."
+      }
     },
     {
       "id": "harley_benton_iso5_pro",
@@ -96,7 +106,17 @@
           ]
         }
       ],
-      "comments": "Bass supply (model confirmed by owner). Five isolated, filtered, short-circuit-protected outputs: OUT1-3 fixed 9V up to 300 mA; OUT4-5 selectable 9/12/18V (rear switches) up to 500 mA. Input: included 12V/2A adapter. Total output load must not exceed 18 W (not checked by the build). Thomann's summary says all five go to 18V/500 mA, but its detailed description and the Harley Benton spec sheet agree with the figures above. The 500 mA at 12V/18V is the listed maximum; unlike the Ojai there is no published derating."
+      "comments": "Bass supply (model confirmed by owner). Five isolated, filtered, short-circuit-protected outputs: OUT1-3 fixed 9V up to 300 mA; OUT4-5 selectable 9/12/18V (rear switches) up to 500 mA. Input: included 12V/2A adapter. Total output load must not exceed 18 W (not checked by the build). Thomann's summary says all five go to 18V/500 mA, but its detailed description and the Harley Benton spec sheet agree with the figures above. The 500 mA at 12V/18V is the listed maximum; unlike the Ojai there is no published derating.",
+      "price_eur": 49,
+      "price_info": {
+        "store": "thomann.de",
+        "url": "https://www.thomann.de/de/harley_benton_powerplant_iso_5_pro.htm",
+        "checked": "2026-10-19",
+        "variant": "Harley Benton PowerPlant ISO-5 Pro",
+        "availability": "in stock",
+        "confidence": "page",
+        "notes": "Thomann page: 49 EUR, 'Sofort lieferbar'. Snippet-only mention of 51 EUR on another Thomann page (not confirmed)."
+      }
     }
   ]
 }

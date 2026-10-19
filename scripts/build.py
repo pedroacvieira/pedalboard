@@ -13,7 +13,7 @@ import sys
 from common import ROOT, effective_quantity, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
-    ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("buffered_bypass",),
+    ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
     ("power_consumption", "current_ma"), ("power_consumption", "voltage_v"),
     ("power_consumption", "allowed_voltages_v"), ("power_consumption", "needs_isolated_output"),
 ]
@@ -95,48 +95,109 @@ def validate(pdir, cat_pedals, cat_supplies):
         elif ov.get("disable"):
             disabled.append(r)
         else:
-            active.append({**r, "strength": ov.get("strength", r["strength"])})
+            active.append({**r, "strength": ov.get("strength", r["strength"]), "priority": ov.get("priority", r.get("priority", 0))})
     ctx.update(active_rules=active, disabled_rules=disabled, skipped_rules=skipped)
 
-    def violated(r, msg):
-        (errors if r["strength"] == "required" else warnings).append(f"order ({r['strength']}): {r['id']}: {msg}")
+    # Every rule expands into pairwise "a must come before b" constraints with a priority.
+    # Contradicting pairs are settled by priority (higher wins, the loser is reported as
+    # overridden); equal priorities contradict each other and fail the build.
+    constraints, early = [], []
+
+    def add(a, b, r):
+        constraints.append({"a": a, "b": b, "id": r["id"], "priority": r["priority"], "strength": r["strength"]})
 
     for r in active:
-        pid, kind, me = r["pedal"], r["type"], pos[r["pedal"]]
+        pid, kind = r["pedal"], r["type"]
         if kind in ("after", "before"):
             for other in r["pedals"]:
                 if other not in cat_pedals:
                     errors.append(f"rules: {r['id']} refers to unknown pedal '{other}'")
-                elif other in pos and (pos[other] > me if kind == "after" else pos[other] < me):
-                    violated(r, f"{pid} must come {kind} {other}")
+                elif other in pos and other != pid:
+                    add(other, pid, r) if kind == "after" else add(pid, other, r)
         elif kind in ("after_group", "before_group"):
             members = [o for o in chain if o != pid and r["group"] in pedals[o].get("tags", [])]
             if not members:
                 warnings.append(f"rules: {r['id']}: no on-board pedal has tag '{r['group']}'")
-            for other in members:
-                if pos[other] > me if kind == "after_group" else pos[other] < me:
-                    violated(r, f"{pid} must come {kind.split('_')[0]} {other} (tag '{r['group']}')")
+            for o in members:
+                add(o, pid, r) if kind == "after_group" else add(pid, o, r)
         elif kind == "no_buffered_before":
-            for other in chain[:me]:
-                b = pedals[other].get("buffered_bypass")
-                if b is True:
-                    violated(r, f"buffered pedal '{other}' comes before {pid}")
-                elif b is None:
-                    warnings.append(f"order: {r['id']}: '{other}' ahead of {pid} has unknown bypass type")
+            for o in chain:
+                b = pedals[o].get("buffered_bypass")
+                if o != pid and b is True:
+                    add(pid, o, r)
+                elif o != pid and b is None and pos[o] < pos[pid]:
+                    warnings.append(f"order: {r['id']}: '{o}' ahead of {pid} has unknown bypass type")
         elif kind == "position":
-            if r["value"] == "last" and me != len(chain) - 1:
-                violated(r, f"{pid} must be last in the chain")
-            if r["value"] == "first" and me != 0:
-                violated(r, f"{pid} must be first in the chain")
+            for o in chain:
+                if o != pid:
+                    add(pid, o, r) if r["value"] == "first" else add(o, pid, r)
         elif kind == "as_early_as_possible":
-            preds = {o for rr in active if rr["pedal"] == pid and rr["type"] == "after" for o in rr["pedals"] if o in pos}
-            extra = [o for o in chain[:me] if o not in preds]
-            if extra:
-                violated(r, f"{pid} could be earlier: {', '.join(extra)} come first but are not required to")
+            early.append(r)
         else:
             errors.append(f"rules: {r['id']}: unknown rule type '{kind}'")
 
+    sections = project.get("sections") or {}
+    ctx["sections"] = sections
+    if sections:
+        sec_rule = {"id": "sections", "priority": sections.get("priority", -10), "strength": sections.get("strength", "required")}
+        seen = {}
+        for s in sections.get("order", []):
+            for o in s["pedals"]:
+                if o not in cat_pedals:
+                    errors.append(f"sections: '{s['name']}' names unknown pedal '{o}'")
+                elif o in seen:
+                    errors.append(f"sections: '{o}' is in both '{seen[o]}' and '{s['name']}'")
+                seen[o] = s["name"]
+        order = [[o for o in s["pedals"] if o in pos] for s in sections.get("order", [])]
+        for i, earlier in enumerate(order):
+            for later in order[i + 1:]:
+                for a in earlier:
+                    for b in later:
+                        add(a, b, sec_rule)
+
+    by_pair = {}
+    for c in constraints:
+        by_pair.setdefault(frozenset((c["a"], c["b"])), []).append(c)
+    kept, overridden = [], {}
+    for pair, cs in by_pair.items():
+        x, y = sorted(pair)
+        fwd = [c for c in cs if (c["a"], c["b"]) == (x, y)]
+        rev = [c for c in cs if (c["a"], c["b"]) == (y, x)]
+        if fwd and rev:
+            mf, mr = max(c["priority"] for c in fwd), max(c["priority"] for c in rev)
+            if mf == mr:
+                errors.append(f"rules: {x} and {y} are ordered both ways at priority {mf}: "
+                              f"{sorted({c['id'] for c in fwd})} vs {sorted({c['id'] for c in rev})}")
+                kept += cs
+                continue
+            win, lose = (fwd, rev) if mf > mr else (rev, fwd)
+            top = max(win, key=lambda c: c["priority"])
+            for c in lose:
+                overridden.setdefault((top["id"], c["id"]), []).append(f"{c['a']} before {c['b']}")
+            kept += win
+        else:
+            kept += cs
+    ctx["overrides"] = [{"winner": w, "loser": l, "pairs": ps} for (w, l), ps in overridden.items()]
+
+    broken = {}
+    for c in kept:
+        if pos[c["a"]] > pos[c["b"]]:
+            broken.setdefault((c["id"], c["strength"]), []).append(f"{c['a']} before {c['b']}")
+    for (rid, strength), ps in broken.items():
+        (errors if strength == "required" else warnings).append(f"order ({strength}): {rid}: needs {'; '.join(ps)}")
+
+    for r in early:
+        pid, me = r["pedal"], pos[r["pedal"]]
+        preds = {o for rr in active if rr["pedal"] == pid and rr["type"] == "after" for o in rr["pedals"] if o in pos}
+        extra = [o for o in chain[:me] if o not in preds]
+        if extra:
+            (errors if r["strength"] == "required" else warnings).append(
+                f"order ({r['strength']}): {r['id']}: {pid} could be earlier: {', '.join(extra)} come first but are not required to")
+
     # ----- power ----------------------------------------------------------
+    policy = project.get("power_policy", {})
+    sensitive = set(policy.get("separate_clocked_from_tags", ["gain", "overdrive", "compressor"]))
+    pol_strength = policy.get("strength", "required")
     power = project.get("power", {}).get("supplies", [])
     ctx["supplies"] = []
     powered, instances = {}, {}
@@ -186,6 +247,11 @@ def validate(pdir, cat_pedals, cat_supplies):
                 else:
                     row["load"] += pc["current_ma"]
             if len(row["pedals"]) > 1:
+                clocked = [x for x in row["pedals"] if pedals.get(x, {}).get("clocked_noise") is True]
+                quiet = [x for x in row["pedals"] if sensitive & set(pedals.get(x, {}).get("tags", []))]
+                if clocked and quiet:
+                    (errors if pol_strength == "required" else warnings).append(
+                        f"{oid}: time-based/clocked {clocked} share an output with noise-sensitive {quiet}")
                 for pid in row["pedals"]:
                     d = pedals.get(pid, {}).get("digital")
                     if d is True:
@@ -200,6 +266,15 @@ def validate(pdir, cat_pedals, cat_supplies):
     for pid in chain:
         if pid not in powered:
             errors.append(f"power: '{pid}' has no power output")
+    # 18V-capable pedals should share 18V outputs instead of spreading over several
+    if policy.get("group_18v", True):
+        rows18 = [r for s in ctx["supplies"] for r in s["rows"] if r["voltage_v"] == 18 and r["pedals"] and r["limit"]]
+        for i, a in enumerate(rows18):
+            for b2 in rows18[i + 1:]:
+                both = a["pedals"] + b2["pedals"]
+                if sum(pedals[x]["power_consumption"]["current_ma"] or 0 for x in both if x in pedals) <= min(a["limit"], b2["limit"]) \
+                        and not any(pedals[x]["power_consumption"].get("needs_isolated_output") for x in both if x in pedals):
+                    warnings.append(f"power: 18V outputs {a['id']} and {b2['id']} could be merged into one")
     for sid, n in instances.items():
         q = cat_supplies[sid].get("quantity")
         if q is not None and n > q:
@@ -329,9 +404,17 @@ def project_readme(ctx, cat_pedals):
     md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
     for r in ctx["active_rules"]:
         tag = "" if r["strength"] == "required" else " *(preferred)*"
-        md.append(f"- **{nm(r['pedal'])}** {RULE_TEXT[r['type']](r, nm)}{tag}: {r['reason']} `[{r['origin']}]`")
+        prio = f" (priority {r['priority']})" if r.get("priority") else ""
+        md.append(f"- **{nm(r['pedal'])}** {RULE_TEXT[r['type']](r, nm)}{tag}{prio}: {r['reason']} `[{r['origin']}]`")
     for r in ctx["disabled_rules"]:
         md.append(f"- ~~{nm(r['pedal'])} {RULE_TEXT[r['type']](r, nm)}~~ (disabled in this project): {r['reason']}")
+    if ctx.get("sections", {}).get("order"):
+        md += ["", "### Section order", "", "Pedals in an earlier section come before pedals in a later one (priority "
+               f"{ctx['sections'].get('priority', -10)}); pedals not listed are only bound by the rules above.", ""]
+        md += [f"{i}. **{s['name']}**: " + ", ".join(nm(o) for o in s["pedals"]) for i, s in enumerate(ctx["sections"]["order"], 1)]
+    if ctx.get("overrides"):
+        md += ["", "### Overridden by priority", ""]
+        md += [f"- `{o['winner']}` overrides `{o['loser']}` for: " + "; ".join(o["pairs"]) for o in ctx["overrides"]]
     md += ["", "### Notes per pedal", ""]
     md += [f"- **{pedal_name(pedals[pid])}**: {pedals[pid].get('comments', '')}" for pid in chain]
 
@@ -339,7 +422,7 @@ def project_readme(ctx, cat_pedals):
     if not ctx["supplies"]:
         md += ["No power supplies assigned yet.", ""]
     else:
-        md += ["Draw figures are the worst-case values in `catalog/pedals.json`. A **digital** pedal (including one with a digital processor in an analog path) always has an output to itself; the build fails if one is daisy-chained.", ""]
+        md += ["Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are daisy-chained by **effect type**, not by chain order: time-based/clocked effects (BBD or digital) never share an output with compressors or gain pedals, a **digital** pedal (including one with a digital processor in an analog path) always has an output to itself, and 18V-capable pedals share 18V outputs. The build checks all three (policy in `project.json`: `power_policy`).", ""]
     grand = 0
     for s in ctx["supplies"]:
         total = sum(r["load"] for r in s["rows"])
@@ -433,6 +516,22 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
             total_price += (price or 0) * need
             no_price += price is None
             buy.append(f"| {pedal_name(p)} | {need} | {', '.join(users)} | {'-' if price is None else f'{price} EUR'} |")
+    def price_cell(price):
+        return "-" if price is None else f"{price} EUR"
+
+    for sid, uses in sup_usage.items():
+        q, units = cat_supplies[sid].get("quantity"), sum(n for _, n in uses)
+        if q is not None and units > q:
+            need, price = units - q, cat_supplies[sid].get("price_eur")
+            total_price += (price or 0) * need
+            no_price += price is None
+            buy.append(f"| {sup_name(cat_supplies[sid])} (power supply) | {need} | {', '.join(k for k, _ in uses)} | {price_cell(price)} |")
+    for c in ctxs:
+        b = c["project"].get("board") or {}
+        if b.get("owned") is False:
+            total_price += b.get("price_eur") or 0
+            no_price += b.get("price_eur") is None
+            buy.append(f"| {b.get('brand')} {b.get('model')} (board) | 1 | {c['key']} | {price_cell(b.get('price_eur'))} |")
     md += ["", "## Shopping list", ""]
     if buy:
         md += ["| Pedal | Units | Needed by | Price |", "|---|--:|---|--:|", *buy, "",

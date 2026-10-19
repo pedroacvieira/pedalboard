@@ -1,0 +1,51 @@
+{
+  "name": "Guitar practice board",
+  "instrument": "guitar",
+  "validation": { "no_unknown": true },
+  "board": {
+    "brand": "Rockboard by Warwick",
+    "model": "Duo 2.1",
+    "width_in": 18.13,
+    "height_in": 5.75,
+    "owned": false,
+    "price_eur": 74,
+    "price_info": {
+      "store": "thomann.de",
+      "url": "https://www.thomann.de/de/rockboard_duo_2.1_b.htm",
+      "checked": "2026-10-19",
+      "variant": "Rockboard DUO 2.1 B with gig bag (470 x 142 mm = about 18.5 x 5.6 in, 0.7 kg)",
+      "availability": "in stock",
+      "confidence": "snippet",
+      "notes": "74 EUR includes the gig bag. No bare-board price exists: Thomann, Gear4music.de, Amazon.de and rockboard.de list the DUO 2.1 only with gig bag (B) or flight case (C). DUO 2.1 C with flight case (no gig bag) is 119-121 EUR at Thomann (item 429125); Gear4music.de shows gig bag 74 EUR and flight case 119 EUR (Warwick-branded 118). Amazon.de DUO 2.1 with gigbag 74 EUR (listing marked discontinued). Thomann BE shows 75 EUR for the B. Pages not fetched directly (Thomann HTTP 429)."
+    }
+  },
+  "playground": { "scale": 45 },
+  "signal_chain": ["octahive", "jhs_pulp_n_peel_v4", "jhs_hard_drive", "duke_of_tone", "e_lady", "carbon_copy", "ditto_looper"],
+  "rule_overrides": {},
+  "rules": [
+    { "id": "octahive.first", "pedal": "octahive", "type": "position", "value": "first", "strength": "required", "reason": "Fuzz first" },
+    { "id": "jhs_pulp_n_peel_v4.after_octahive", "pedal": "jhs_pulp_n_peel_v4", "type": "after", "pedals": ["octahive"], "strength": "required", "reason": "Compressor after the fuzz" },
+    { "id": "jhs_hard_drive.after_pulp_n_peel", "pedal": "jhs_hard_drive", "type": "after", "pedals": ["jhs_pulp_n_peel_v4"], "strength": "required", "reason": "Hard Drive after the compressor" },
+    { "id": "duke_of_tone.after_hard_drive", "pedal": "duke_of_tone", "type": "after", "pedals": ["jhs_hard_drive"], "strength": "required", "reason": "Duke of Tone after the Hard Drive" },
+    { "id": "e_lady.after_duke_of_tone", "pedal": "e_lady", "type": "after", "pedals": ["duke_of_tone"], "strength": "required", "reason": "E-Lady after the Duke of Tone" },
+    { "id": "carbon_copy.after_e_lady", "pedal": "carbon_copy", "type": "after", "pedals": ["e_lady"], "strength": "required", "reason": "Delay after the E-Lady" },
+    { "id": "ditto_looper.last", "pedal": "ditto_looper", "type": "position", "value": "last", "strength": "required", "reason": "Looper last" }
+  ],
+  "power": {
+    "supplies": [
+      {
+        "id": "psu1",
+        "supply": "ojai_r30",
+        "label": "Ojai R30 (to buy)",
+        "outputs": [
+          { "port": "F1", "voltage_v": 9, "pedals": ["octahive", "jhs_hard_drive", "duke_of_tone"], "note": "Gain group (the compressor has its own output)" },
+          { "port": "F2", "voltage_v": 9, "pedals": ["e_lady"], "note": "BBD flanger: alone" },
+          { "port": "F3", "voltage_v": 9, "pedals": ["ditto_looper"], "note": "Digital: alone" },
+          { "port": "SW_A", "voltage_v": 9, "pedals": ["jhs_pulp_n_peel_v4"], "note": "Compressor: most noise-sensitive pedal, alone" },
+          { "port": "SW_B", "voltage_v": 9, "pedals": ["carbon_copy"], "note": "BBD delay clock: alone" }
+        ]
+      }
+    ]
+  },
+  "power_policy": { "separate_clocked_from_tags": ["gain", "overdrive", "compressor"], "strength": "required", "group_18v": true }
+}

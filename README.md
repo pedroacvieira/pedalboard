@@ -24,21 +24,27 @@ Every project has `validation.no_unknown` on by default: any missing (`null`) va
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (24 x 13.06 in) | 16 | 2 x Strymon Ojai R30 | OK, 0 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (24 x 13.06 in) | 17 | 2 x Strymon Ojai R30 | OK, 0 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Shared gear
 
-No pedal or supply is claimed by more than one project beyond what you own.
+- **Strymon Ojai R30**: projects use 3 units (guitar-gig: 2, guitar-practice: 1) but you own 2
 
 ## Shopping list
 
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
-| Danelectro 3699 Fuzz | 1 | guitar-gig | - |
+| Danelectro 3699 Fuzz | 1 | guitar-gig | 199 EUR |
+| JHS Flight Delay | 1 | guitar-gig | 244 EUR |
+| JHS Pulp 'N' Peel V4 | 1 | guitar-practice | 238 EUR |
+| JHS Hard Drive | 1 | guitar-practice | 207 EUR |
+| Strymon Ojai R30 (power supply) | 1 | guitar-gig, guitar-practice | 177 EUR |
+| Rockboard by Warwick Duo 2.1 (board) | 1 | guitar-practice | 74 EUR |
 
-**Known total:** 0 EUR (1 item(s) without a `price_eur`)
+**Known total:** 1139 EUR
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, Beetronics Octahive, Mooer E-Lady, MXR Custom Shop Duke of Tone, TC Electronic Ditto Looper, MXR Carbon Copy, JHS Flight Delay, TC Electronic PolyTune 2, Electro-Harmonix Bass Big Muff Pi 2, Tech 21 SansAmp VT Bass DI, Darkglass Hyper Luminal
+JHS Double Dragon, TC Electronic PolyTune 2 Mini, Electro-Harmonix Bass Big Muff Pi 2, Tech 21 SansAmp VT Bass DI, Darkglass Hyper Luminal, MXR Bass Synth
 
