@@ -545,6 +545,46 @@ def project_readme(ctx, cat_pedals):
     return "\n".join(md) + "\n"
 
 
+KNOWN_LIMITS = [
+    "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
+    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
+    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
+    "Only `playground_design.json` of guitar-gig exists; guitar-practice and bass have no hand-made layout yet, so their cables and clearance are not checked.",
+]
+DATA_TO_VERIFY = [
+    "Red Muck Mk2 current draw: 60 mA (JAM shop page) against 12-15 mA (retailers); the plan uses 60 mA.",
+    "PastFX Reticon: the 50 mA draw and isolated-supply need come from search snippets of the maker's pages.",
+    "Browne Protein V3 current: 130 mA planned (manual says under 100 mA, a Q&A line says 130 mA, retailers about 30 mA). The price in the catalog is for the V4.",
+    "Version assumptions: Retrovibe is priced and measured as the mk.4; the layout uses the Mini Beano Boost and the PolyTune 3 Mini Noir while the catalog entries are the Beano Boost and PolyTune 3.",
+    "The third Ojai R30 for the practice board is not bought (see Shopping list); the Harley Benton ISO-5 Pro has no Pedal Playground entry, so it never appears in a layout.",
+]
+
+
+def open_issues(ctxs, cat_pedals):
+    """README section: what is still open, computed from the data where possible."""
+    data = jacks.read_file()["jacks"]
+    md = ["", "## Open issues", ""]
+    for c in ctxs:
+        items = []
+        for cid, cmd in c.get("jack_fixes", []):
+            items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
+        for v in c.get("violations", []):
+            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({v['depth_mm']:.1f} mm into the zone); move one of the pedals apart")
+        extra_used = c["project"].get("jacks", {}).get("extra_used", {})
+        for cid in c["chain"]:
+            for j in data.get(cid, []):
+                if j.get("function") == "other" and j["id"] not in extra_used.get(cid, []):
+                    items.append(f"Extra jack `{cid}.{j['id']}` (\"{j['label']}\") is marked but not in `jacks.extra_used`, so its clearance is not checked"
+                                 + (" and it still has its default label" if j["label"].lower().startswith("jack ") else ""))
+        for note in c.get("jack_notes", []):
+            items.append(note[0].upper() + note[1:])
+        if items:
+            md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]
+    md += ["### Known limitations", ""] + [f"- {i}" for i in KNOWN_LIMITS]
+    md += ["", "### Data to verify", ""] + [f"- {i}" for i in DATA_TO_VERIFY]
+    return md
+
+
 def root_readme(ctxs, cat_pedals, cat_supplies):
     md = [
         "# Pedalboard planner",
@@ -593,6 +633,8 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
                   f"{board_text(pr.get('board') or {})} | {len(c['chain'])} | {sups} | {status}, {len(c['warnings'])} warning(s) |")
     if not ctxs:
         md.append("| *(none yet)* | | | | | |")
+
+    md += open_issues(ctxs, cat_pedals)
 
     # shared gear
     shared, global_warn = [], []

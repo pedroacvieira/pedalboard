@@ -33,6 +33,53 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 2 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 7 warning(s) |
 
+## Open issues
+
+### Bass board
+
+- Jacks not set up for `polytune_2_mini`: `python3 scripts/jack_setter.py polytune_2_mini`
+- Jacks not set up for `darkglass_hyper_luminal`: `python3 scripts/jack_setter.py darkglass_hyper_luminal`
+- Jacks not set up for `mxr_bass_synth`: `python3 scripts/jack_setter.py mxr_bass_synth`
+- Jacks not set up for `ehx_bass_big_muff_2`: `python3 scripts/jack_setter.py ehx_bass_big_muff_2`
+- Jacks not set up for `tech21_vt_bass_di`: `python3 scripts/jack_setter.py tech21_vt_bass_di`
+- No playground_design.json: cable lengths and clearance are not checked
+
+### Guitar gig board
+
+- Jacks not set up for `ojai_r30`: `python3 scripts/jack_setter.py ojai_r30`
+- Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (0.9 mm into the zone); move one of the pedals apart
+- Extra jack `retrovibe.jack_4` ("Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `reticon.jack_4` ("Stereo") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `analog_chorus.jack_4` ("Thru") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `belle_epoch.jack_4` ("Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `flight_delay.jack_4` ("Tap/Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
+
+### Guitar practice board
+
+- Jacks not set up for `jhs_pulp_n_peel_v4`: `python3 scripts/jack_setter.py jhs_pulp_n_peel_v4`
+- Jacks not set up for `jhs_hard_drive`: `python3 scripts/jack_setter.py jhs_hard_drive`
+- Jacks not set up for `duke_of_tone`: `python3 scripts/jack_setter.py duke_of_tone`
+- Jacks not set up for `e_lady`: `python3 scripts/jack_setter.py e_lady`
+- Jacks not set up for `carbon_copy`: `python3 scripts/jack_setter.py carbon_copy`
+- Jacks not set up for `ditto_looper`: `python3 scripts/jack_setter.py ditto_looper`
+- Jacks not set up for `ojai_r30`: `python3 scripts/jack_setter.py ojai_r30`
+- No playground_design.json: cable lengths and clearance are not checked
+
+### Known limitations
+
+- Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).
+- Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.
+- Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).
+- Only `playground_design.json` of guitar-gig exists; guitar-practice and bass have no hand-made layout yet, so their cables and clearance are not checked.
+
+### Data to verify
+
+- Red Muck Mk2 current draw: 60 mA (JAM shop page) against 12-15 mA (retailers); the plan uses 60 mA.
+- PastFX Reticon: the 50 mA draw and isolated-supply need come from search snippets of the maker's pages.
+- Browne Protein V3 current: 130 mA planned (manual says under 100 mA, a Q&A line says 130 mA, retailers about 30 mA). The price in the catalog is for the V4.
+- Version assumptions: Retrovibe is priced and measured as the mk.4; the layout uses the Mini Beano Boost and the PolyTune 3 Mini Noir while the catalog entries are the Beano Boost and PolyTune 3.
+- The third Ojai R30 for the practice board is not bought (see Shopping list); the Harley Benton ISO-5 Pro has no Pedal Playground entry, so it never appears in a layout.
+
 ## Shared gear
 
 - **Strymon Ojai R30**: projects use 3 units (guitar-gig: 2, guitar-practice: 1) but you own 2
