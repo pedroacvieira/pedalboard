@@ -21,7 +21,7 @@
   },
   "playground": { "scale": 45 },
   "power_policy": { "separate_clocked_from_tags": ["gain", "overdrive", "compressor"], "strength": "required", "group_18v": true },
-  "signal_chain": ["sun_face", "beano", "danelectro_3699", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "reticon", "analog_chorus", "monk", "belle_epoch", "flight_delay", "tumnus_deluxe"],
+  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "reticon", "analog_chorus", "monk", "belle_epoch", "flight_delay", "tumnus_deluxe"],
   "sections": {
     "priority": -10,
     "order": [
@@ -47,7 +47,6 @@
     { "id": "monk.after_group_modulation", "pedal": "monk", "type": "after_group", "group": "modulation", "strength": "required", "reason": "Tremolo after the modulation pedals" },
     { "id": "belle_epoch.after_group_gain", "pedal": "belle_epoch", "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" },
     { "id": "belle_epoch.before_flight_delay", "pedal": "belle_epoch", "type": "before", "pedals": ["flight_delay"], "strength": "required", "reason": "Belle Epoch ahead of the Flight Delay" },
-    { "id": "danelectro_3699.after_sun_face_beano", "pedal": "danelectro_3699", "type": "after", "pedals": ["sun_face", "beano"], "strength": "preferred", "reason": "Placeholder: front fuzz group, where the Double Dragon was" },
     {
       "id": "tumnus_deluxe.position_last",
       "pedal": "tumnus_deluxe",
@@ -72,7 +71,9 @@
     { "id": "mini_ego.first", "pedal": "mini_ego", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor should come first (overruled by the fuzz rules and the tuner rule)" },
     { "id": "phase_95.before_red_muck", "pedal": "phase_95", "type": "before", "pedals": ["red_muck"], "strength": "required", "reason": "Phaser into the Muff fuzz for Pink Floyd sounds" },
     { "id": "retrovibe.before_red_muck", "pedal": "retrovibe", "type": "before", "pedals": ["red_muck"], "strength": "required", "reason": "Vibe into the Muff fuzz for Pink Floyd sounds" },
-    { "id": "fulldrive_2.before_phasers", "pedal": "fulldrive_2", "type": "before", "pedals": ["phase_95", "retrovibe"], "strength": "required", "reason": "Full-Drive stays ahead of the phaser and vibe" }
+    { "id": "fulldrive_2.before_phasers", "pedal": "fulldrive_2", "type": "before", "pedals": ["phase_95", "retrovibe"], "strength": "required", "reason": "Full-Drive stays ahead of the phaser and vibe" },
+    { "id": "danelectro_3699.after_sun_face", "pedal": "danelectro_3699", "type": "after", "pedals": ["sun_face"], "strength": "preferred", "reason": "Fuzz Face first; the Danelectro follows it" },
+    { "id": "danelectro_3699.before_beano", "pedal": "danelectro_3699", "type": "before", "pedals": ["beano"], "strength": "required", "reason": "True bypass, so it can sit ahead of the Beano" }
   ],
   "power": {
     "supplies": [
@@ -84,7 +85,7 @@
           { "port": "SW_A", "voltage_v": 18, "pedals": ["mini_ego", "fulldrive_2"], "note": "18V group: compressor + overdrive" },
           { "port": "SW_B", "voltage_v": 9, "pedals": ["flight_delay"], "note": "Digital + clocked delay, alone (9V only). Can swap units with the Belle Epoch if cable runs suit" },
           { "port": "F1", "voltage_v": 9, "pedals": ["polytune_3"], "note": "Digital: alone" },
-          { "port": "F2", "voltage_v": 9, "pedals": ["sun_face", "beano", "danelectro_3699"], "note": "Fuzz group; AnalogMan says Beano/Sun Face can share a DC supply" },
+          { "port": "F2", "voltage_v": 9, "pedals": ["sun_face", "danelectro_3699", "beano"], "note": "Fuzz group; AnalogMan says Beano/Sun Face can share a DC supply" },
           { "port": "F3", "voltage_v": 9, "pedals": ["red_muck", "ratsbane", "protein", "tumnus_deluxe"], "note": "Distortion / overdrive group" }
         ]
       },

@@ -20,8 +20,8 @@ flowchart LR
     flight_delay["JHS Flight Delay<br/>delay · 85 mA"]:::c_delay
     polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
     sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
-    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
+    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 60 mA"]:::c_fuzz___boost
     ratsbane["Wampler Ratsbane<br/>drive / distortion · 3 mA"]:::c_drive___distortion
     protein["Browne Protein V3<br/>drive / distortion · 130 mA"]:::c_drive___distortion
@@ -34,8 +34,8 @@ flowchart LR
     analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
     psu1_F1 --> polytune_3
     psu1_F2 --> sun_face
-    sun_face --> beano
-    beano --> danelectro_3699
+    sun_face --> danelectro_3699
+    danelectro_3699 --> beano
     psu1_F3 --> red_muck
     red_muck --> ratsbane
     ratsbane --> protein

@@ -525,7 +525,7 @@
       "playground_title": "Danelectro 3699 Fuzz",
       "power_consumption": { "current_ma": 9, "voltage_v": 9, "allowed_voltages_v": [9], "needs_isolated_output": false },
       "dependencies": [],
-      "comments": "Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board; placement after the Beano is a placeholder: confirm.",
+      "comments": "Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board, between the Sun Face and the Beano. True bypass per retailer spec lists (no Danelectro spec sheet found).",
       "price_eur": 199,
       "price_info": {
         "store": "musicstore.de",

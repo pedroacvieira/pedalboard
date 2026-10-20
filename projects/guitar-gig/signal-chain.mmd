@@ -1,8 +1,8 @@
 flowchart TB
     guitar(["Guitar"]):::endpoint
     sun_face["<b>1</b> &nbsp;AnalogMan Sun Face BC183<br/>fuzz / boost"]:::c_fuzz___boost
-    beano["<b>2</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
-    danelectro_3699["<b>3</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
+    danelectro_3699["<b>2</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
+    beano["<b>3</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
     polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
     mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
     fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
@@ -18,7 +18,7 @@ flowchart TB
     flight_delay["<b>16</b> &nbsp;JHS Flight Delay<br/>delay"]:::c_delay
     tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> beano --> danelectro_3699 --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
+    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b

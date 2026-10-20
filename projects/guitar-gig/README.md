@@ -12,8 +12,8 @@
 flowchart TB
     guitar(["Guitar"]):::endpoint
     sun_face["<b>1</b> &nbsp;AnalogMan Sun Face BC183<br/>fuzz / boost"]:::c_fuzz___boost
-    beano["<b>2</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
-    danelectro_3699["<b>3</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
+    danelectro_3699["<b>2</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
+    beano["<b>3</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
     polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
     mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
     fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
@@ -29,7 +29,7 @@ flowchart TB
     flight_delay["<b>16</b> &nbsp;JHS Flight Delay<br/>delay"]:::c_delay
     tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> beano --> danelectro_3699 --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
+    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
@@ -46,8 +46,8 @@ flowchart TB
 | # | Pedal | Owned | Power | Bypass | Digital | Powered from |
 |--:|---|:-:|---|---|:-:|---|
 | 1 | AnalogMan Sun Face BC183 | Yes | 9V, 1 mA | True | No | Ojai R30 #1 · F2 |
-| 2 | AnalogMan Beano Boost | Yes | 9V, 5 mA | True | No | Ojai R30 #1 · F2 |
-| 3 | Danelectro 3699 Fuzz | No | 9V, 9 mA | True | No | Ojai R30 #1 · F2 |
+| 2 | Danelectro 3699 Fuzz | No | 9V, 9 mA | True | No | Ojai R30 #1 · F2 |
+| 3 | AnalogMan Beano Boost | Yes | 9V, 5 mA | True | No | Ojai R30 #1 · F2 |
 | 4 | TC Electronic PolyTune 3 | Yes | 9V, 100 mA | Buffered (switchable) | Yes | Ojai R30 #1 · F1 |
 | 5 | Wampler Mini Ego Compressor | Yes | 18V, 22 mA | True | No | Ojai R30 #1 · SW_A |
 | 6 | Fulltone Full-Drive 2 Mosfet | Yes | 18V, 10 mA | True | No | Ojai R30 #1 · SW_A |
@@ -78,7 +78,6 @@ flowchart TB
 - **JAM Pedals Harmonious Monk Mk2** must come after all `modulation` pedals: Tremolo after the modulation pedals `[project]`
 - **Catalinbread Belle Epoch Deluxe** must come after all `gain` pedals: Original plan: time-based effects after the dirt `[project]`
 - **Catalinbread Belle Epoch Deluxe** must come before JHS Flight Delay: Belle Epoch ahead of the Flight Delay `[project]`
-- **Danelectro 3699 Fuzz** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost *(preferred)*: Placeholder: front fuzz group, where the Double Dragon was `[project]`
 - **Wampler Tumnus Deluxe** must be last in the chain (priority 100): Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain `[project]`
 - **JHS Flight Delay** must come after all `gain` pedals: Time-based effects after the dirt `[project]`
 - **TC Electronic PolyTune 3** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first, with no buffer ahead of the Sun Face and Beano `[project]`
@@ -88,6 +87,8 @@ flowchart TB
 - **MXR Phase 95** must come before JAM Pedals Red Muck Mk2: Phaser into the Muff fuzz for Pink Floyd sounds `[project]`
 - **JAM Pedals Retrovibe** must come before JAM Pedals Red Muck Mk2: Vibe into the Muff fuzz for Pink Floyd sounds `[project]`
 - **Fulltone Full-Drive 2 Mosfet** must come before MXR Phase 95, JAM Pedals Retrovibe: Full-Drive stays ahead of the phaser and vibe `[project]`
+- **Danelectro 3699 Fuzz** must come after AnalogMan Sun Face BC183 *(preferred)*: Fuzz Face first; the Danelectro follows it `[project]`
+- **Danelectro 3699 Fuzz** must come before AnalogMan Beano Boost: True bypass, so it can sit ahead of the Beano `[project]`
 
 ### Section order
 
@@ -117,8 +118,8 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 ### Notes per pedal
 
 - **AnalogMan Sun Face BC183**: Silicon Fuzz Face, unbuffered: must be FIRST in the chain, guitar straight into it. Ships battery-only; check your unit has the optional DC jack. Silicon version is negative ground so sharing power is OK, but AnalogMan warns a supply can add hum/oscillation. 'Under 1 mA' is from the shared Fuzz Face page.
+- **Danelectro 3699 Fuzz**: Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board, between the Sun Face and the Beano. True bypass per retailer spec lists (no Danelectro spec sheet found).
 - **AnalogMan Beano Boost**: Germanium treble booster, direct post-fuzz. Per AnalogMan it can share a DC supply with the Sun Face and other basic fuzzes (keep that group simple). The Oct 2020 manual text read by the research agent said isolated power only / no daisy-chaining, so confirm the wording for your unit. Never 9V AC. Needs the DC jack option (battery by default). Center-negative.
-- **Danelectro 3699 Fuzz**: Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board; placement after the Beano is a placeholder: confirm.
 - **TC Electronic PolyTune 3**: Tuner / master front buffer. 100 mA is the manual's minimum supply rating; measured draw is lower (~38 mA reported for the Mini). Bypass mode is selectable by DIP switch (true by default, buffered, or buffered with display on); buffer ENABLED in this plan as the master front buffer. Has a power-out jack for daisy-chaining.
 - **Wampler Mini Ego Compressor**: Compressor. Wampler publishes 14 mA at 9V and 22 mA at 18V (figure here is the 18V one). Page does not explicitly state the jack is 18V-rated. True bypass. Listed as 'Ego Mini' in the original plan.
 - **Fulltone Full-Drive 2 Mosfet**: Overdrive, more headroom at 18V. ~10 mA is from Fulltone's page for the newer v2; no manufacturer figure found for the original Mosfet model (one forum measurement: ~7 mA).
@@ -161,8 +162,8 @@ flowchart LR
     flight_delay["JHS Flight Delay<br/>delay · 85 mA"]:::c_delay
     polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
     sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
-    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
+    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 60 mA"]:::c_fuzz___boost
     ratsbane["Wampler Ratsbane<br/>drive / distortion · 3 mA"]:::c_drive___distortion
     protein["Browne Protein V3<br/>drive / distortion · 130 mA"]:::c_drive___distortion
@@ -175,8 +176,8 @@ flowchart LR
     analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
     psu1_F1 --> polytune_3
     psu1_F2 --> sun_face
-    sun_face --> beano
-    beano --> danelectro_3699
+    sun_face --> danelectro_3699
+    danelectro_3699 --> beano
     psu1_F3 --> red_muck
     red_muck --> ratsbane
     ratsbane --> protein
@@ -218,8 +219,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 | **SW_B** (switchable) | 9V | JHS Flight Delay | 85 | 85 / 500 mA |
 | **F1** (fixed) | 9V | TC Electronic PolyTune 3 | 100 | 100 / 500 mA |
 | **F2** (fixed) | 9V | AnalogMan Sun Face BC183 | 1 | 15 / 500 mA |
-|  | 9V | AnalogMan Beano Boost | 5 |  |
 |  | 9V | Danelectro 3699 Fuzz | 9 |  |
+|  | 9V | AnalogMan Beano Boost | 5 |  |
 | **F3** (fixed) | 9V | JAM Pedals Red Muck Mk2 | 60 | 263 / 500 mA |
 |  | 9V | Wampler Ratsbane | 3 |  |
 |  | 9V | Browne Protein V3 | 130 |  |
