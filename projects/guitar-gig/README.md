@@ -17,9 +17,9 @@ flowchart TB
     polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
     mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
     fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
-    red_muck["<b>7</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
-    phase_95["<b>8</b> &nbsp;MXR Phase 95<br/>phase-type"]:::c_phase_type
-    retrovibe["<b>9</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
+    phase_95["<b>7</b> &nbsp;MXR Phase 95<br/>phase-type"]:::c_phase_type
+    retrovibe["<b>8</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
+    red_muck["<b>9</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
     ratsbane["<b>10</b> &nbsp;Wampler Ratsbane<br/>drive / distortion"]:::c_drive___distortion
     protein["<b>11</b> &nbsp;Browne Protein V3<br/>drive / distortion"]:::c_drive___distortion
     reticon["<b>12</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
@@ -29,7 +29,7 @@ flowchart TB
     flight_delay["<b>16</b> &nbsp;JHS Flight Delay<br/>delay"]:::c_delay
     tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> beano --> danelectro_3699 --> polytune_3 --> mini_ego --> fulldrive_2 --> red_muck --> phase_95 --> retrovibe --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
+    guitar --> sun_face --> beano --> danelectro_3699 --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
@@ -51,9 +51,9 @@ flowchart TB
 | 4 | TC Electronic PolyTune 3 | Yes | 9V, 100 mA | Buffered (switchable) | Yes | Ojai R30 #1 · F1 |
 | 5 | Wampler Mini Ego Compressor | Yes | 18V, 22 mA | True | No | Ojai R30 #1 · SW_A |
 | 6 | Fulltone Full-Drive 2 Mosfet | Yes | 18V, 10 mA | True | No | Ojai R30 #1 · SW_A |
-| 7 | JAM Pedals Red Muck Mk2 | Yes | 9V, 60 mA | True | No | Ojai R30 #1 · F3 |
-| 8 | MXR Phase 95 | Yes | 9V, 8 mA | True | No | Ojai R30 #2 · F2 |
-| 9 | JAM Pedals Retrovibe | Yes | 9V, 120 mA | True | No | Ojai R30 #2 · F2 |
+| 7 | MXR Phase 95 | Yes | 9V, 8 mA | True | No | Ojai R30 #2 · F2 |
+| 8 | JAM Pedals Retrovibe | Yes | 9V, 120 mA | True | No | Ojai R30 #2 · F2 |
+| 9 | JAM Pedals Red Muck Mk2 | Yes | 9V, 60 mA | True | No | Ojai R30 #1 · F3 |
 | 10 | Wampler Ratsbane | Yes | 9V, 3 mA | True | No | Ojai R30 #1 · F3 |
 | 11 | Browne Protein V3 | Yes | 9V, 130 mA | True | No | Ojai R30 #1 · F3 |
 | 12 | PastFX Reticon Flanger | Yes | 18V, 50 mA | True | No | Ojai R30 #2 · SW_A |
@@ -85,15 +85,18 @@ flowchart TB
 - **TC Electronic PolyTune 3** must be first in the chain (priority 50): Tuner should come first (overruled by the fuzz rules) `[project]`
 - **Wampler Mini Ego Compressor** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first `[project]`
 - **Wampler Mini Ego Compressor** must be first in the chain (priority 10): Compressor should come first (overruled by the fuzz rules and the tuner rule) `[project]`
+- **MXR Phase 95** must come before JAM Pedals Red Muck Mk2: Phaser into the Muff fuzz for Pink Floyd sounds `[project]`
+- **JAM Pedals Retrovibe** must come before JAM Pedals Red Muck Mk2: Vibe into the Muff fuzz for Pink Floyd sounds `[project]`
+- **Fulltone Full-Drive 2 Mosfet** must come before MXR Phase 95, JAM Pedals Retrovibe: Full-Drive stays ahead of the phaser and vibe `[project]`
 
 ### Section order
 
 Pedals in an earlier section come before pedals in a later one (priority -10); pedals not listed are only bound by the rules above.
 
 1. **fuzz / old school**: AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz
-2. **drives / fuzz before the phasers (any order)**: Fulltone Full-Drive 2 Mosfet, JAM Pedals Red Muck Mk2
+2. **drive before the phasers**: Fulltone Full-Drive 2 Mosfet
 3. **phase-type (phaser, vibe; any order)**: MXR Phase 95, JAM Pedals Retrovibe
-4. **drives / distortion after the phasers (Protein still follows Ratsbane)**: Wampler Ratsbane, Browne Protein V3
+4. **fuzz / distortion after the phasers (Protein still follows Ratsbane)**: JAM Pedals Red Muck Mk2, Wampler Ratsbane, Browne Protein V3
 5. **modulation**: PastFX Reticon Flanger, MXR Analog Chorus
 6. **tremolo**: JAM Pedals Harmonious Monk Mk2
 7. **delays**: Catalinbread Belle Epoch Deluxe, JHS Flight Delay
@@ -119,9 +122,9 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **TC Electronic PolyTune 3**: Tuner / master front buffer. 100 mA is the manual's minimum supply rating; measured draw is lower (~38 mA reported for the Mini). Bypass mode is selectable by DIP switch (true by default, buffered, or buffered with display on); buffer ENABLED in this plan as the master front buffer. Has a power-out jack for daisy-chaining.
 - **Wampler Mini Ego Compressor**: Compressor. Wampler publishes 14 mA at 9V and 22 mA at 18V (figure here is the 18V one). Page does not explicitly state the jack is 18V-rated. True bypass. Listed as 'Ego Mini' in the original plan.
 - **Fulltone Full-Drive 2 Mosfet**: Overdrive, more headroom at 18V. ~10 mA is from Fulltone's page for the newer v2; no manufacturer figure found for the original Mosfet model (one forum measurement: ~7 mA).
-- **JAM Pedals Red Muck Mk2**: Russian/Civil War Muff fuzz. Sources conflict: 60 mA (JAM shop page) vs 12-15 mA (retailers); planning on 60 mA until the manual is checked. True bypass.
 - **MXR Phase 95**: Phaser, pre-dirt for a classic 70s sweep. No battery option. True bypass. Exempt from 'modulation after gain': intentionally ahead of the dirt.
 - **JAM Pedals Retrovibe**: Photocell Uni-Vibe, pre-dirt for throbbing fuzz-vibe tones. 120 mA assumes the current mk.4 (mk.3 is listed at 80-150 mA): check your version. True bypass, no battery. Exempt from 'modulation after gain': intentionally ahead of the dirt.
+- **JAM Pedals Red Muck Mk2**: Russian/Civil War Muff fuzz. Sources conflict: 60 mA (JAM shop page) vs 12-15 mA (retailers); planning on 60 mA until the manual is checked. True bypass.
 - **Wampler Ratsbane**: Hard-clipping distortion. 2.5 mA at 9V, 3.2 mA at 18V; approved for 18V but designed around 9V. No battery connector. True bypass.
 - **Browne Protein V3**: Dual overdrive, placed post-Ratsbane to stack or smooth the hard clipping. 9V only ('18V is not better'). Fully analog (per owner), so it may share an output. True bypass (per owner; V3 uses soft/electronic switching per Browne). This is the V3. Browne's sources conflict for V3 current: manual says <100 mA, a Browne Q&A line says 130 mA, retailers quote ~30 mA. Planning on 130 mA (worst case).
 - **PastFX Reticon Flanger**: Analog BBD flanger, post-dirt modulation. Needs an isolated 18V output, no battery. True bypass (per owner). 'Under 50 mA' is from search snippets of the PastFX page/manual (direct fetch failed): verify.
