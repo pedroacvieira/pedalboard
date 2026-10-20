@@ -1,0 +1,5 @@
+{
+  "_doc": "Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/jack_setter.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.",
+  "jacks": {
+  }
+}
