@@ -4,11 +4,10 @@
 
 - **Instrument:** guitar
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 8 warning(s) (`no_unknown` on)
+- **Validation:** OK, 7 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: unknown jack setup for octahive (Beetronics Octahive) -> run: python3 scripts/jack_setter.py octahive
 - WARN jacks: unknown jack setup for jhs_pulp_n_peel_v4 (JHS Pulp 'N' Peel V4) -> run: python3 scripts/jack_setter.py jhs_pulp_n_peel_v4
 - WARN jacks: unknown jack setup for jhs_hard_drive (JHS Hard Drive) -> run: python3 scripts/jack_setter.py jhs_hard_drive
 - WARN jacks: unknown jack setup for duke_of_tone (MXR Custom Shop Duke of Tone) -> run: python3 scripts/jack_setter.py duke_of_tone
@@ -136,12 +135,11 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ## Jacks and cables
 
-Jack data: 0 of 8 catalog items set up (pedals and supplies in this project).
+Jack data: 1 of 8 catalog items set up (pedals and supplies in this project).
 
 Missing or incomplete (place the jacks on the pedal image, then rebuild):
 
 ```
-python3 scripts/jack_setter.py octahive
 python3 scripts/jack_setter.py jhs_pulp_n_peel_v4
 python3 scripts/jack_setter.py jhs_hard_drive
 python3 scripts/jack_setter.py duke_of_tone

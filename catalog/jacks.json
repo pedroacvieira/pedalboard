@@ -1,5 +1,100 @@
 {
-  "_doc": "Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/jack_setter.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.",
+  "_doc": "Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/jack_setter.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, and mark the OUTER EDGE of the physical jack (where the plug starts): the cable clearance zone begins there. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.",
   "jacks": {
+    "analog_chorus": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9939, "y": 0.3794, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0074, "y": 0.3809, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.9493, "y": 0.5721, "facing": "right"},
+      {"id": "jack_4", "label": "Thru", "function": "other", "x": 0.0025, "y": 0.5662, "facing": "left"}
+    ],
+    "beano": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9895, "y": 0.6706, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0087, "y": 0.5721, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.5064, "y": 0.0, "facing": "top"}
+    ],
+    "belle_epoch": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.7745, "y": 0.0044, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.594, "y": 0.0059, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.2237, "y": 0.0426, "facing": "top"},
+      {"id": "jack_4", "label": "Exp", "function": "other", "x": 0.4124, "y": 0.0074, "facing": "top"}
+    ],
+    "danelectro_3699": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.756, "y": 0.0, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.2539, "y": 0.0, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.505, "y": 0.0309, "facing": "top"}
+    ],
+    "flight_delay": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.8243, "y": 0.0029, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.1928, "y": 0.0015, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.6352, "y": 0.0368, "facing": "top"},
+      {"id": "jack_4", "label": "Tap/Exp", "function": "other", "x": 0.4466, "y": 0.0044, "facing": "top"}
+    ],
+    "fulldrive_2": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.7547, "y": 0.0, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.2349, "y": 0.0, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.4942, "y": 0.0178, "facing": "top"}
+    ],
+    "mini_ego": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.992, "y": 0.65, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.003, "y": 0.4456, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.499, "y": 0.0, "facing": "top"}
+    ],
+    "monk": [
+      {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.7088, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.7103, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.0072, "y": 0.55, "facing": "left"}
+    ],
+    "octahive": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9422, "y": 0.6456, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0022, "y": 0.6412, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.0237, "y": 0.4721, "facing": "left"}
+    ],
+    "phase_95": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9944, "y": 0.6632, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0094, "y": 0.4853, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.5003, "y": 0.0, "facing": "top"}
+    ],
+    "polytune_3": [
+      {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.6441, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.4176, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.9154, "y": 0.3382, "facing": "right"}
+    ],
+    "protein": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.7661, "y": 0.0015, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.2218, "y": 0.0015, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.4945, "y": 0.0324, "facing": "top"}
+    ],
+    "ratsbane": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.995, "y": 0.65, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.4456, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.487, "y": 0.0029, "facing": "top"}
+    ],
+    "red_muck": [
+      {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.7074, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.7118, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.0096, "y": 0.5515, "facing": "left"}
+    ],
+    "reticon": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9914, "y": 0.6897, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0099, "y": 0.6926, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.0496, "y": 0.8485, "facing": "left"},
+      {"id": "jack_4", "label": "Stereo", "function": "other", "x": 0.0074, "y": 0.5088, "facing": "left"}
+    ],
+    "retrovibe": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9912, "y": 0.6338, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.8456, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.971, "y": 0.2294, "facing": "right"},
+      {"id": "jack_4", "label": "Exp", "function": "other", "x": 0.9794, "y": 0.8147, "facing": "right"}
+    ],
+    "sun_face": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.9962, "y": 0.5397, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0024, "y": 0.5397, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.9535, "y": 0.7103, "facing": "right"}
+    ],
+    "tumnus_deluxe": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.6618, "y": 0.0029, "facing": "top"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.2442, "y": 0.0029, "facing": "top"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.4543, "y": 0.0294, "facing": "top"}
+    ]
   }
 }

@@ -7,8 +7,9 @@
     python3 scripts/jack_setter.py <catalog id> --image FILE      mark on a local PNG instead of downloading
 
 The image is downloaded on demand into .cache/images/ (git-ignored) and never copied into the repo.
-Saving writes only id / label / function / x / y / facing for that catalog id into catalog/jacks.json,
-x and y as fractions of the image. The app shows millimetres: the image is stretched to the pedal's
+Mark each jack at the OUTER EDGE of the physical socket (where the plug starts), not its centre: the clearance
+zone and the cable begin at that point. Saving writes only id / label / function / x / y / facing for that
+catalog id into catalog/jacks.json, x and y as fractions of the image. The app shows millimetres: the image is stretched to the pedal's
 Pedal Playground size, exactly as the site draws it.
 
 In the app: click empty space to add a jack, click or drag a marker to select/move it, arrow keys nudge
@@ -119,6 +120,7 @@ def make_app(cid, kind, item, entry, image_path):
         def __init__(self):
             super().__init__()
             self.img = Image.open(image_path).convert("RGBA")
+            self.alpha = __import__("numpy").asarray(self.img.getchannel("A").resize((256, round(256 * h_mm / w_mm)), Image.BILINEAR))
             self.jacks = [dict(j) for j in jacks.read_file()["jacks"].get(cid, [])]
             self.sel, self.dirty, self.drag, self._busy = None, False, False, False
             self.zoom = min(680 / h_mm, 860 / w_mm)  # px per mm
@@ -139,6 +141,12 @@ def make_app(cid, kind, item, entry, image_path):
             self.status.pack(fill="x")
             panel = ttk.Frame(self, padding=8)
             panel.pack(side="right", fill="y")
+            note = tk.Label(panel, justify="left", anchor="w", wraplength=300, background="#fff3cd", foreground="#664d03",
+                            relief="solid", borderwidth=1, padx=8, pady=6, text=(
+                "\u26a0  Put each point on the OUTER EDGE of the physical jack\n"
+                "the point where the plug starts, on the face the plug presses against. Not the middle of the socket.\n"
+                "The cable clearance zone (pink) and the cable start there, so it must lie outside the pedal."))
+            note.pack(fill="x", pady=(0, 8))
             ttk.Label(panel, text="Jacks").pack(anchor="w")
             self.listbox = tk.Listbox(panel, height=9, width=34, exportselection=False)
             self.listbox.pack(fill="x")
@@ -184,6 +192,9 @@ def make_app(cid, kind, item, entry, image_path):
                 row += 1
             self.frac_label = ttk.Label(form, text="")
             self.frac_label.grid(row=row, column=1, sticky="w")
+            row += 1
+            self.zone_label = tk.Label(form, text="", justify="left", anchor="w", wraplength=290, padx=4)
+            self.zone_label.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(4, 0))
             ttk.Separator(panel).pack(fill="x", pady=6)
             prev = ttk.Frame(panel)
             prev.pack(fill="x")
@@ -198,7 +209,8 @@ def make_app(cid, kind, item, entry, image_path):
             ttk.Button(btns, text="Delete jack", command=self._delete).pack(side="left")
             ttk.Button(btns, text="Save (Ctrl+S)", command=self._save).pack(side="right")
             ttk.Label(panel, wraplength=290, foreground="#555", text=(
-                "Click the centre of the socket opening where the plug goes in, then set which side the plug enters from. "
+                "Mark the OUTER EDGE of the physical jack: the point where the plug starts, on the face the plug presses against "
+                "(not the middle of the socket). The clearance zone and the cable begin there. Then set which side the plug enters from. "
                 "Click empty space to add, drag to move, arrow keys to nudge (Shift = 2 mm).")).pack(anchor="w", pady=4)
 
             c = self.canvas
@@ -221,6 +233,36 @@ def make_app(cid, kind, item, entry, image_path):
         def _guard(self, fn):
             if not isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Combobox)):
                 fn()
+
+        # -- is the clearance zone really outside the pedal? (uses the image's transparency) --
+        def zone_overlap(self, j):
+            """Fraction (0..1) of the jack's clearance zone covering opaque pedal pixels, or None if the preview values are invalid."""
+            try:
+                outward, side = float(self.v_out.get()), float(self.v_side.get())
+            except ValueError:
+                return None
+            x0, y0, x1, y1 = design.clearance_rect((j["x"] * w_mm, j["y"] * h_mm), j["facing"], outward, side)
+            ih, iw = self.alpha.shape
+            c0, c1 = max(0, int(x0 / w_mm * iw)), min(iw, int(x1 / w_mm * iw) + 1)
+            r0, r1 = max(0, int(y0 / h_mm * ih)), min(ih, int(y1 / h_mm * ih) + 1)
+            if c1 <= c0 or r1 <= r0:
+                return 0.0  # the whole zone is outside the image
+            opaque_mm2 = float((self.alpha[r0:r1, c0:c1] > 128).sum()) * (w_mm / iw) * (h_mm / ih)
+            return min(1.0, opaque_mm2 / ((x1 - x0) * (y1 - y0)))  # share of the WHOLE zone, parts beyond the image count as free
+
+        def _refresh_zone(self):
+            if self.sel is None:
+                self.zone_label.config(text="", background=self.cget("background"))
+                return
+            frac = self.zone_overlap(self.jacks[self.sel])
+            if frac is None:
+                self.zone_label.config(text="", background=self.cget("background"))
+            elif frac > 0.08:
+                self.zone_label.config(background="#f8d7da", foreground="#842029", text=(
+                    f"\u26a0 {frac * 100:.0f}% of the clearance zone lies on the pedal body. The point is inside the pedal: "
+                    "move it outward to the jack's outer edge."))
+            else:
+                self.zone_label.config(background="#d1e7dd", foreground="#0f5132", text="\u2713 Clearance zone is outside the pedal body.")
 
         # -- coordinates --
         def to_px(self, fx, fy):
@@ -263,6 +305,7 @@ def make_app(cid, kind, item, entry, image_path):
                 outward, side = float(self.v_out.get()), float(self.v_side.get())
             except ValueError:
                 outward = side = None
+            self._refresh_zone()
             for i, j in enumerate(self.jacks):
                 px, py = self.to_px(j["x"], j["y"])
                 colour = FUNCTION_COLOURS.get(j["function"], "#333")

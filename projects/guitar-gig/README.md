@@ -4,28 +4,12 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 18 warning(s) (`no_unknown` on)
+- **Validation:** OK, 2 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: unknown jack setup for sun_face (AnalogMan Sun Face BC183) -> run: python3 scripts/jack_setter.py sun_face
-- WARN jacks: unknown jack setup for danelectro_3699 (Danelectro 3699 Fuzz) -> run: python3 scripts/jack_setter.py danelectro_3699
-- WARN jacks: unknown jack setup for beano (AnalogMan Beano Boost) -> run: python3 scripts/jack_setter.py beano
-- WARN jacks: unknown jack setup for polytune_3 (TC Electronic PolyTune 3) -> run: python3 scripts/jack_setter.py polytune_3
-- WARN jacks: unknown jack setup for mini_ego (Wampler Mini Ego Compressor) -> run: python3 scripts/jack_setter.py mini_ego
-- WARN jacks: unknown jack setup for fulldrive_2 (Fulltone Full-Drive 2 Mosfet) -> run: python3 scripts/jack_setter.py fulldrive_2
-- WARN jacks: unknown jack setup for phase_95 (MXR Phase 95) -> run: python3 scripts/jack_setter.py phase_95
-- WARN jacks: unknown jack setup for retrovibe (JAM Pedals Retrovibe) -> run: python3 scripts/jack_setter.py retrovibe
-- WARN jacks: unknown jack setup for red_muck (JAM Pedals Red Muck Mk2) -> run: python3 scripts/jack_setter.py red_muck
-- WARN jacks: unknown jack setup for ratsbane (Wampler Ratsbane) -> run: python3 scripts/jack_setter.py ratsbane
-- WARN jacks: unknown jack setup for protein (Browne Protein V3) -> run: python3 scripts/jack_setter.py protein
-- WARN jacks: unknown jack setup for reticon (PastFX Reticon Flanger) -> run: python3 scripts/jack_setter.py reticon
-- WARN jacks: unknown jack setup for analog_chorus (MXR Analog Chorus) -> run: python3 scripts/jack_setter.py analog_chorus
-- WARN jacks: unknown jack setup for monk (JAM Pedals Harmonious Monk Mk2) -> run: python3 scripts/jack_setter.py monk
-- WARN jacks: unknown jack setup for belle_epoch (Catalinbread Belle Epoch Deluxe) -> run: python3 scripts/jack_setter.py belle_epoch
-- WARN jacks: unknown jack setup for flight_delay (JHS Flight Delay) -> run: python3 scripts/jack_setter.py flight_delay
-- WARN jacks: unknown jack setup for tumnus_deluxe (Wampler Tumnus Deluxe) -> run: python3 scripts/jack_setter.py tumnus_deluxe
 - WARN jacks: unknown jack setup for ojai_r30 (Strymon Ojai R30) -> run: python3 scripts/jack_setter.py ojai_r30
+- WARN clearance: monk.out (Output, facing left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 0.9 mm into the 6.3 mm zone
 
 </details>
 
@@ -267,32 +251,17 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ## Jacks and cables
 
-Jack data: 0 of 18 catalog items set up (pedals and supplies in this project).
+Jack data: 17 of 18 catalog items set up (pedals and supplies in this project).
 
 Missing or incomplete (place the jacks on the pedal image, then rebuild):
 
 ```
-python3 scripts/jack_setter.py sun_face
-python3 scripts/jack_setter.py danelectro_3699
-python3 scripts/jack_setter.py beano
-python3 scripts/jack_setter.py polytune_3
-python3 scripts/jack_setter.py mini_ego
-python3 scripts/jack_setter.py fulldrive_2
-python3 scripts/jack_setter.py phase_95
-python3 scripts/jack_setter.py retrovibe
-python3 scripts/jack_setter.py red_muck
-python3 scripts/jack_setter.py ratsbane
-python3 scripts/jack_setter.py protein
-python3 scripts/jack_setter.py reticon
-python3 scripts/jack_setter.py analog_chorus
-python3 scripts/jack_setter.py monk
-python3 scripts/jack_setter.py belle_epoch
-python3 scripts/jack_setter.py flight_delay
-python3 scripts/jack_setter.py tumnus_deluxe
 python3 scripts/jack_setter.py ojai_r30
 ```
 
-No blocked cable space found (zone: 6.3 mm outward, 7 mm to each side of the jack).
+Blocked cable space (zone: 6.3 mm outward, 7 mm to each side of the jack):
+
+- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 0.9 mm into the zone
 
 Direct = jack to jack. Routed = out of each jack by 6.3 mm, then a right-angle path between the plug ends. Suggested = routed + 50 mm slack, rounded up to the next 50 mm.
 
@@ -300,24 +269,24 @@ Direct = jack to jack. Routed = out of each jack by 6.3 mm, then a right-angle p
 
 | From | To | Direct (mm) | Routed (mm) | Suggested (mm) |
 |---|---|--:|--:|--:|
-| sun_face.out | danelectro_3699.in | ? | ? | ? |
-| danelectro_3699.out | beano.in | ? | ? | ? |
-| beano.out | polytune_3.in | ? | ? | ? |
-| polytune_3.out | mini_ego.in | ? | ? | ? |
-| mini_ego.out | fulldrive_2.in | ? | ? | ? |
-| fulldrive_2.out | phase_95.in | ? | ? | ? |
-| phase_95.out | retrovibe.in | ? | ? | ? |
-| retrovibe.out | red_muck.in | ? | ? | ? |
-| red_muck.out | ratsbane.in | ? | ? | ? |
-| ratsbane.out | protein.in | ? | ? | ? |
-| protein.out | reticon.in | ? | ? | ? |
-| reticon.out | analog_chorus.in | ? | ? | ? |
-| analog_chorus.out | monk.in | ? | ? | ? |
-| monk.out | belle_epoch.in | ? | ? | ? |
-| belle_epoch.out | flight_delay.in | ? | ? | ? |
-| flight_delay.out | tumnus_deluxe.in | ? | ? | ? |
+| sun_face.out | danelectro_3699.in | 73 | 107 | 200 |
+| danelectro_3699.out | beano.in | 130 | 182 | 250 |
+| beano.out | polytune_3.in | 123 | 153 | 250 |
+| polytune_3.out | mini_ego.in | 81 | 91 | 150 |
+| mini_ego.out | fulldrive_2.in | 106 | 149 | 200 |
+| fulldrive_2.out | phase_95.in | 217 | 302 | 400 |
+| phase_95.out | retrovibe.in | 99 | 147 | 200 |
+| retrovibe.out | red_muck.in | 68 | 86 | 150 |
+| red_muck.out | ratsbane.in | 101 | 133 | 200 |
+| ratsbane.out | protein.in | 64 | 80 | 150 |
+| protein.out | reticon.in | 249 | 354 | 450 |
+| reticon.out | analog_chorus.in | 193 | 232 | 300 |
+| analog_chorus.out | monk.in | 84 | 103 | 200 |
+| monk.out | belle_epoch.in | 68 | 105 | 200 |
+| belle_epoch.out | flight_delay.in | 139 | 207 | 300 |
+| flight_delay.out | tumnus_deluxe.in | 48 | 62 | 150 |
 
-Total suggested: 0 mm over 0 of 16 cables.
+Total suggested: 3750 mm over 16 of 16 cables.
 
 ### Power cables
 
@@ -329,17 +298,17 @@ Total suggested: 0 mm over 0 of 16 cables.
 | psu1.SW_A | flight_delay.power | ? | ? | ? |
 | psu1.SW_B | reticon.power | ? | ? | ? |
 | psu2.F1 | red_muck.power | ? | ? | ? |
-| red_muck.power | danelectro_3699.power | ? | ? | ? |
-| danelectro_3699.power | sun_face.power | ? | ? | ? |
-| sun_face.power | beano.power | ? | ? | ? |
+| red_muck.power | danelectro_3699.power | 238 | 336 | 400 |
+| danelectro_3699.power | sun_face.power | 138 | 218 | 300 |
+| sun_face.power | beano.power | 203 | 253 | 350 |
 | psu2.F2 | polytune_3.power | ? | ? | ? |
 | psu2.F3 | phase_95.power | ? | ? | ? |
-| phase_95.power | retrovibe.power | ? | ? | ? |
+| phase_95.power | retrovibe.power | 109 | 177 | 250 |
 | psu2.SW_A | mini_ego.power | ? | ? | ? |
-| mini_ego.power | fulldrive_2.power | ? | ? | ? |
+| mini_ego.power | fulldrive_2.power | 180 | 267 | 350 |
 | psu2.SW_B | ratsbane.power | ? | ? | ? |
-| ratsbane.power | protein.power | ? | ? | ? |
-| protein.power | tumnus_deluxe.power | ? | ? | ? |
+| ratsbane.power | protein.power | 90 | 135 | 200 |
+| protein.power | tumnus_deluxe.power | 208 | 249 | 300 |
 
-Total suggested: 0 mm over 0 of 17 cables.
+Total suggested: 2150 mm over 7 of 17 cables.
 
