@@ -12,23 +12,11 @@ pedal database (cached in .cache/).
 import argparse
 import json
 import sys
-import urllib.request
 from html import escape
 
-from common import ROOT, load_catalog, load_json, project_dirs
+from common import ROOT, database, load_catalog, load_json, project_dirs
 
-CACHE = ROOT / ".cache"
-SITE = "https://pedalplayground.com/public/data/"
 BOARD_X, BOARD_Y, GAP, ROW_WRAP_PX = 28, 40, 20, 1400
-
-
-def database(name):
-    CACHE.mkdir(exist_ok=True)
-    path = CACHE / name
-    if not path.exists():
-        with urllib.request.urlopen(SITE + name, timeout=30) as r:
-            path.write_bytes(r.read())
-    return {f"{e['Brand']} {e['Name']}": e for e in json.loads(path.read_text())}
 
 
 def build(pdir, cat_pedals, cat_supplies, pedal_db, board_db):
