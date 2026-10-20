@@ -49,6 +49,13 @@
       {"id": "out", "label": "Output", "function": "output", "x": 0.0022, "y": 0.6412, "facing": "left"},
       {"id": "power", "label": "Power", "function": "power", "x": 0.0237, "y": 0.4721, "facing": "left"}
     ],
+    "ojai_r30": [
+      {"id": "SW_A", "label": "SW_A", "function": "power_out", "x": 0.4453, "y": 1.0, "facing": "down"},
+      {"id": "SW_B", "label": "SW_B", "function": "power_out", "x": 0.593, "y": 1.0, "facing": "down"},
+      {"id": "F3", "label": "F3", "function": "power_out", "x": 0.3535, "y": 1.0, "facing": "down"},
+      {"id": "F2", "label": "F2", "function": "power_out", "x": 0.2616, "y": 1.0, "facing": "down"},
+      {"id": "F1", "label": "F1", "function": "power_out", "x": 0.1698, "y": 1.0, "facing": "down"}
+    ],
     "phase_95": [
       {"id": "in", "label": "Input", "function": "input", "x": 0.9944, "y": 0.6632, "facing": "right"},
       {"id": "out", "label": "Output", "function": "output", "x": 0.0094, "y": 0.4853, "facing": "left"},

@@ -4,11 +4,10 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 2 warning(s) (`no_unknown` on)
+- **Validation:** OK, 1 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: unknown jack setup for ojai_r30 (Strymon Ojai R30) -> run: python3 scripts/jack_setter.py ojai_r30
 - WARN clearance: monk.out (Output, facing left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 0.9 mm into the 6.3 mm zone
 
 </details>
@@ -251,13 +250,7 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ## Jacks and cables
 
-Jack data: 17 of 18 catalog items set up (pedals and supplies in this project).
-
-Missing or incomplete (place the jacks on the pedal image, then rebuild):
-
-```
-python3 scripts/jack_setter.py ojai_r30
-```
+Jack data: 18 of 18 catalog items set up (pedals and supplies in this project).
 
 Blocked cable space (zone: 6.3 mm outward, 7 mm to each side of the jack):
 
@@ -292,23 +285,23 @@ Total suggested: 3750 mm over 16 of 16 cables.
 
 | From | To | Direct (mm) | Routed (mm) | Suggested (mm) |
 |---|---|--:|--:|--:|
-| psu1.F1 | analog_chorus.power | ? | ? | ? |
-| psu1.F2 | belle_epoch.power | ? | ? | ? |
-| psu1.F3 | monk.power | ? | ? | ? |
-| psu1.SW_A | flight_delay.power | ? | ? | ? |
-| psu1.SW_B | reticon.power | ? | ? | ? |
-| psu2.F1 | red_muck.power | ? | ? | ? |
+| psu1.F1 | analog_chorus.power | 96 | 130 | 200 |
+| psu1.F2 | belle_epoch.power | 160 | 187 | 250 |
+| psu1.F3 | monk.power | 80 | 119 | 200 |
+| psu1.SW_A | flight_delay.power | 127 | 176 | 250 |
+| psu1.SW_B | reticon.power | 131 | 161 | 250 |
+| psu2.F1 | red_muck.power | 32 | 63 | 150 |
 | red_muck.power | danelectro_3699.power | 238 | 336 | 400 |
 | danelectro_3699.power | sun_face.power | 138 | 218 | 300 |
 | sun_face.power | beano.power | 203 | 253 | 350 |
-| psu2.F2 | polytune_3.power | ? | ? | ? |
-| psu2.F3 | phase_95.power | ? | ? | ? |
+| psu2.F2 | polytune_3.power | 212 | 297 | 350 |
+| psu2.F3 | phase_95.power | 65 | 103 | 200 |
 | phase_95.power | retrovibe.power | 109 | 177 | 250 |
-| psu2.SW_A | mini_ego.power | ? | ? | ? |
+| psu2.SW_A | mini_ego.power | 158 | 189 | 250 |
 | mini_ego.power | fulldrive_2.power | 180 | 267 | 350 |
-| psu2.SW_B | ratsbane.power | ? | ? | ? |
+| psu2.SW_B | ratsbane.power | 101 | 137 | 200 |
 | ratsbane.power | protein.power | 90 | 135 | 200 |
 | protein.power | tumnus_deluxe.power | 208 | 249 | 300 |
 
-Total suggested: 2150 mm over 7 of 17 cables.
+Total suggested: 4450 mm over 17 of 17 cables.
 

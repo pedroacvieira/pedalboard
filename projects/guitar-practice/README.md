@@ -4,7 +4,7 @@
 
 - **Instrument:** guitar
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 7 warning(s) (`no_unknown` on)
+- **Validation:** OK, 6 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
@@ -14,7 +14,6 @@
 - WARN jacks: unknown jack setup for e_lady (Mooer E-Lady) -> run: python3 scripts/jack_setter.py e_lady
 - WARN jacks: unknown jack setup for carbon_copy (MXR Carbon Copy) -> run: python3 scripts/jack_setter.py carbon_copy
 - WARN jacks: unknown jack setup for ditto_looper (TC Electronic Ditto Looper) -> run: python3 scripts/jack_setter.py ditto_looper
-- WARN jacks: unknown jack setup for ojai_r30 (Strymon Ojai R30) -> run: python3 scripts/jack_setter.py ojai_r30
 
 </details>
 
@@ -135,7 +134,7 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ## Jacks and cables
 
-Jack data: 1 of 8 catalog items set up (pedals and supplies in this project).
+Jack data: 2 of 8 catalog items set up (pedals and supplies in this project).
 
 Missing or incomplete (place the jacks on the pedal image, then rebuild):
 
@@ -146,7 +145,6 @@ python3 scripts/jack_setter.py duke_of_tone
 python3 scripts/jack_setter.py e_lady
 python3 scripts/jack_setter.py carbon_copy
 python3 scripts/jack_setter.py ditto_looper
-python3 scripts/jack_setter.py ojai_r30
 ```
 
 *no playground_design.json: cable lengths and clearance are not checked.*
