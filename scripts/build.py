@@ -567,6 +567,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
         "python3 scripts/new_project.py <name> --instrument guitar|bass",
         "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
+        "python3 -m pytest tests                       geometry and jack-check tests",
         "```",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
