@@ -45,23 +45,23 @@ flowchart TB
 
 | # | Pedal | Owned | Power | Bypass | Digital | Powered from |
 |--:|---|:-:|---|---|:-:|---|
-| 1 | AnalogMan Sun Face BC183 | Yes | 9V, 1 mA | True | No | Ojai R30 #1 · F2 |
-| 2 | Danelectro 3699 Fuzz | No | 9V, 9 mA | True | No | Ojai R30 #1 · F2 |
-| 3 | AnalogMan Beano Boost | Yes | 9V, 5 mA | True | No | Ojai R30 #1 · F2 |
-| 4 | TC Electronic PolyTune 3 | Yes | 9V, 100 mA | Buffered (switchable) | Yes | Ojai R30 #1 · F1 |
-| 5 | Wampler Mini Ego Compressor | Yes | 18V, 22 mA | True | No | Ojai R30 #1 · SW_A |
-| 6 | Fulltone Full-Drive 2 Mosfet | Yes | 18V, 10 mA | True | No | Ojai R30 #1 · SW_A |
-| 7 | MXR Phase 95 | Yes | 9V, 8 mA | True | No | Ojai R30 #2 · F2 |
-| 8 | JAM Pedals Retrovibe | Yes | 9V, 120 mA | True | No | Ojai R30 #2 · F2 |
-| 9 | JAM Pedals Red Muck Mk2 | Yes | 9V, 60 mA | True | No | Ojai R30 #1 · F3 |
-| 10 | Wampler Ratsbane | Yes | 9V, 3 mA | True | No | Ojai R30 #1 · F3 |
-| 11 | Browne Protein V3 | Yes | 9V, 130 mA | True | No | Ojai R30 #1 · F3 |
-| 12 | PastFX Reticon Flanger | Yes | 18V, 50 mA | True | No | Ojai R30 #2 · SW_A |
-| 13 | MXR Analog Chorus | Yes | 9V, 13 mA | Buffered | No | Ojai R30 #2 · F3 |
-| 14 | JAM Pedals Harmonious Monk Mk2 | Yes | 9V, 145 mA | True | Yes | Ojai R30 #2 · F1 |
-| 15 | Catalinbread Belle Epoch Deluxe | Yes | 9V, 200 mA | True (switchable) | Yes | Ojai R30 #2 · SW_B |
-| 16 | JHS Flight Delay | No | 9V, 85 mA | Buffered (switchable) | Yes | Ojai R30 #1 · SW_B |
-| 17 | Wampler Tumnus Deluxe | Yes | 9V, 70 mA | Buffered (switchable) | No | Ojai R30 #1 · F3 |
+| 1 | AnalogMan Sun Face BC183 | Yes | 9V, 1 mA | True | No | Ojai R30 · F1 |
+| 2 | Danelectro 3699 Fuzz | No | 9V, 9 mA | True | No | Ojai R30 · F1 |
+| 3 | AnalogMan Beano Boost | Yes | 9V, 5 mA | True | No | Ojai R30 · F1 |
+| 4 | TC Electronic PolyTune 3 | Yes | 9V, 100 mA | Buffered (switchable) | Yes | Ojai R30 · F2 |
+| 5 | Wampler Mini Ego Compressor | Yes | 18V, 22 mA | True | No | Ojai R30 · SW_A |
+| 6 | Fulltone Full-Drive 2 Mosfet | Yes | 18V, 10 mA | True | No | Ojai R30 · SW_A |
+| 7 | MXR Phase 95 | Yes | 9V, 8 mA | True | No | Ojai R30 · F3 |
+| 8 | JAM Pedals Retrovibe | Yes | 9V, 120 mA | True | No | Ojai R30 · F3 |
+| 9 | JAM Pedals Red Muck Mk2 | Yes | 9V, 60 mA | True | No | Ojai R30 · F1 |
+| 10 | Wampler Ratsbane | Yes | 9V, 3 mA | True | No | Ojai R30 · SW_B |
+| 11 | Browne Protein V3 | Yes | 9V, 130 mA | True | No | Ojai R30 · SW_B |
+| 12 | PastFX Reticon Flanger | Yes | 18V, 50 mA | True | No | Ojai R30 · SW_B |
+| 13 | MXR Analog Chorus | Yes | 9V, 13 mA | Buffered | No | Ojai R30 · F1 |
+| 14 | JAM Pedals Harmonious Monk Mk2 | Yes | 9V, 145 mA | True | Yes | Ojai R30 · F3 |
+| 15 | Catalinbread Belle Epoch Deluxe | Yes | 9V, 200 mA | True (switchable) | Yes | Ojai R30 · F2 |
+| 16 | JHS Flight Delay | No | 9V, 85 mA | Buffered (switchable) | Yes | Ojai R30 · SW_A |
+| 17 | Wampler Tumnus Deluxe | Yes | 9V, 70 mA | Buffered (switchable) | No | Ojai R30 · SW_B |
 
 **To buy:** Danelectro 3699 Fuzz, JHS Flight Delay
 
@@ -141,56 +141,56 @@ Every output and the pedals daisy-chained on it, grouped for power (not in signa
 
 ```mermaid
 flowchart LR
-    subgraph psu1["Ojai R30 #1"]
+    subgraph psu1["Ojai R30 (left)"]
         direction TB
-        psu1_F1["<b>F1</b> · 9V<br/>100 / 500 mA"]:::out9
-        psu1_F2["<b>F2</b> · 9V<br/>15 / 500 mA"]:::out9
-        psu1_F3["<b>F3</b> · 9V<br/>263 / 500 mA"]:::out9
-        psu1_SW_A["<b>SW_A</b> · 18V<br/>32 / 250 mA"]:::out18
-        psu1_SW_B["<b>SW_B</b> · 9V<br/>85 / 500 mA"]:::out9
+        psu1_F1["<b>F1</b> · 9V<br/>13 / 500 mA"]:::out9
+        psu1_F2["<b>F2</b> · 9V<br/>200 / 500 mA"]:::out9
+        psu1_F3["<b>F3</b> · 9V<br/>145 / 500 mA"]:::out9
+        psu1_SW_A["<b>SW_A</b> · 9V<br/>85 / 500 mA"]:::out9
+        psu1_SW_B["<b>SW_B</b> · 18V<br/>50 / 250 mA"]:::out18
     end
-    subgraph psu2["Ojai R30 #2"]
+    subgraph psu2["Ojai R30 (right)"]
         direction TB
-        psu2_F1["<b>F1</b> · 9V<br/>145 / 500 mA"]:::out9
-        psu2_F2["<b>F2</b> · 9V<br/>128 / 500 mA"]:::out9
-        psu2_F3["<b>F3</b> · 9V<br/>13 / 500 mA"]:::out9
-        psu2_SW_A["<b>SW_A</b> · 18V<br/>50 / 250 mA"]:::out18
-        psu2_SW_B["<b>SW_B</b> · 9V<br/>200 / 500 mA"]:::out9
+        psu2_F1["<b>F1</b> · 9V<br/>75 / 500 mA"]:::out9
+        psu2_F2["<b>F2</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu2_F3["<b>F3</b> · 9V<br/>128 / 500 mA"]:::out9
+        psu2_SW_A["<b>SW_A</b> · 18V<br/>32 / 250 mA"]:::out18
+        psu2_SW_B["<b>SW_B</b> · 9V<br/>203 / 500 mA"]:::out9
     end
+    analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
+    belle_epoch["Catalinbread Belle Epoch Deluxe<br/>delay · 200 mA"]:::c_delay
+    monk["JAM Pedals Harmonious Monk Mk2<br/>tremolo · 145 mA"]:::c_tremolo
+    flight_delay["JHS Flight Delay<br/>delay · 85 mA"]:::c_delay
+    reticon["PastFX Reticon Flanger<br/>modulation · 50 mA"]:::c_modulation
+    red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 60 mA"]:::c_fuzz___boost
+    danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
+    sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
+    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
+    polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
+    phase_95["MXR Phase 95<br/>phase-type · 8 mA"]:::c_phase_type
+    retrovibe["JAM Pedals Retrovibe<br/>phase-type · 120 mA"]:::c_phase_type
     mini_ego["Wampler Mini Ego Compressor<br/>compressor · 22 mA"]:::c_compressor
     fulldrive_2["Fulltone Full-Drive 2 Mosfet<br/>drive / distortion · 10 mA"]:::c_drive___distortion
-    flight_delay["JHS Flight Delay<br/>delay · 85 mA"]:::c_delay
-    polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
-    sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
-    danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
-    beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
-    red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 60 mA"]:::c_fuzz___boost
     ratsbane["Wampler Ratsbane<br/>drive / distortion · 3 mA"]:::c_drive___distortion
     protein["Browne Protein V3<br/>drive / distortion · 130 mA"]:::c_drive___distortion
     tumnus_deluxe["Wampler Tumnus Deluxe<br/>eq / boost · 70 mA"]:::c_eq___boost
-    reticon["PastFX Reticon Flanger<br/>modulation · 50 mA"]:::c_modulation
-    belle_epoch["Catalinbread Belle Epoch Deluxe<br/>delay · 200 mA"]:::c_delay
-    monk["JAM Pedals Harmonious Monk Mk2<br/>tremolo · 145 mA"]:::c_tremolo
-    phase_95["MXR Phase 95<br/>phase-type · 8 mA"]:::c_phase_type
-    retrovibe["JAM Pedals Retrovibe<br/>phase-type · 120 mA"]:::c_phase_type
-    analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
-    psu1_F1 --> polytune_3
-    psu1_F2 --> sun_face
-    sun_face --> danelectro_3699
-    danelectro_3699 --> beano
-    psu1_F3 --> red_muck
-    red_muck --> ratsbane
+    psu1_F1 --> analog_chorus
+    psu1_F2 --> belle_epoch
+    psu1_F3 --> monk
+    psu1_SW_A --> flight_delay
+    psu1_SW_B --> reticon
+    psu2_F1 --> red_muck
+    red_muck --> danelectro_3699
+    danelectro_3699 --> sun_face
+    sun_face --> beano
+    psu2_F2 --> polytune_3
+    psu2_F3 --> phase_95
+    phase_95 --> retrovibe
+    psu2_SW_A --> mini_ego
+    mini_ego --> fulldrive_2
+    psu2_SW_B --> ratsbane
     ratsbane --> protein
     protein --> tumnus_deluxe
-    psu1_SW_A --> mini_ego
-    mini_ego --> fulldrive_2
-    psu1_SW_B --> flight_delay
-    psu2_F1 --> monk
-    psu2_F2 --> phase_95
-    phase_95 --> retrovibe
-    psu2_F3 --> analog_chorus
-    psu2_SW_A --> reticon
-    psu2_SW_B --> belle_epoch
     classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b
     classDef out18 fill:#ffffff,stroke:#d84315,stroke-width:3px,color:#1b1b1b
     classDef spare fill:#fafafa,stroke:#9e9e9e,stroke-dasharray:4 3,color:#757575
@@ -210,34 +210,34 @@ flowchart LR
 
 Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are daisy-chained by **effect type**, not by chain order: time-based/clocked effects (BBD or digital) never share an output with compressors or gain pedals, a **digital** pedal (including one with a digital processor in an analog path) always has an output to itself, and 18V-capable pedals share 18V outputs. The build checks all three (policy in `project.json`: `power_policy`).
 
-### Ojai R30 #1
+### Ojai R30 (left)
 
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
+| **F1** (fixed) | 9V | MXR Analog Chorus | 13 | 13 / 500 mA |
+| **F2** (fixed) | 9V | Catalinbread Belle Epoch Deluxe | 200 | 200 / 500 mA |
+| **F3** (fixed) | 9V | JAM Pedals Harmonious Monk Mk2 | 145 | 145 / 500 mA |
+| **SW_A** (switchable) | 9V | JHS Flight Delay | 85 | 85 / 500 mA |
+| **SW_B** (switchable) | 18V | PastFX Reticon Flanger | 50 | 50 / 250 mA |
+| | | **Ojai R30 total** | | **493 mA** |
+
+### Ojai R30 (right)
+
+| Output | Voltage | Pedal | Draw (mA) | Output total |
+|---|--:|---|--:|--:|
+| **F1** (fixed) | 9V | JAM Pedals Red Muck Mk2 | 60 | 75 / 500 mA |
+|  | 9V | Danelectro 3699 Fuzz | 9 |  |
+|  | 9V | AnalogMan Sun Face BC183 | 1 |  |
+|  | 9V | AnalogMan Beano Boost | 5 |  |
+| **F2** (fixed) | 9V | TC Electronic PolyTune 3 | 100 | 100 / 500 mA |
+| **F3** (fixed) | 9V | MXR Phase 95 | 8 | 128 / 500 mA |
+|  | 9V | JAM Pedals Retrovibe | 120 |  |
 | **SW_A** (switchable) | 18V | Wampler Mini Ego Compressor | 22 | 32 / 250 mA |
 |  | 18V | Fulltone Full-Drive 2 Mosfet | 10 |  |
-| **SW_B** (switchable) | 9V | JHS Flight Delay | 85 | 85 / 500 mA |
-| **F1** (fixed) | 9V | TC Electronic PolyTune 3 | 100 | 100 / 500 mA |
-| **F2** (fixed) | 9V | AnalogMan Sun Face BC183 | 1 | 15 / 500 mA |
-|  | 9V | Danelectro 3699 Fuzz | 9 |  |
-|  | 9V | AnalogMan Beano Boost | 5 |  |
-| **F3** (fixed) | 9V | JAM Pedals Red Muck Mk2 | 60 | 263 / 500 mA |
-|  | 9V | Wampler Ratsbane | 3 |  |
+| **SW_B** (switchable) | 9V | Wampler Ratsbane | 3 | 203 / 500 mA |
 |  | 9V | Browne Protein V3 | 130 |  |
 |  | 9V | Wampler Tumnus Deluxe | 70 |  |
-| | | **Ojai R30 #1 total** | | **495 mA** |
-
-### Ojai R30 #2
-
-| Output | Voltage | Pedal | Draw (mA) | Output total |
-|---|--:|---|--:|--:|
-| **SW_A** (switchable) | 18V | PastFX Reticon Flanger | 50 | 50 / 250 mA |
-| **SW_B** (switchable) | 9V | Catalinbread Belle Epoch Deluxe | 200 | 200 / 500 mA |
-| **F1** (fixed) | 9V | JAM Pedals Harmonious Monk Mk2 | 145 | 145 / 500 mA |
-| **F2** (fixed) | 9V | MXR Phase 95 | 8 | 128 / 500 mA |
-|  | 9V | JAM Pedals Retrovibe | 120 |  |
-| **F3** (fixed) | 9V | MXR Analog Chorus | 13 | 13 / 500 mA |
-| | | **Ojai R30 #2 total** | | **536 mA** |
+| | | **Ojai R30 total** | | **538 mA** |
 
 **All supplies combined:** 1031 mA
 
