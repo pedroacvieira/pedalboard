@@ -7,6 +7,7 @@ One shared catalog of pedals and power supplies, plus one folder per pedalboard 
 ```
 catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)
 catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own
+catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)
 projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring
 projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary
 projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)
@@ -16,17 +17,20 @@ projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_
 python3 scripts/build.py [project...]        validate + regenerate docs
 python3 scripts/to_playground.py [project...] write projects/<name>/playground.json
 python3 scripts/new_project.py <name> --instrument guitar|bass
+python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)
 ```
 
 Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.
+
+Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. Clearance (`jacks.clearance.outward_mm` / `side_mm`, default 6.3 / 7 mm) and all cable figures are in mm.
 
 ## Projects
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (24 x 13.06 in) | 17 | 2 x Strymon Ojai R30 | OK, 0 warning(s) |
-| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (18.13 x 5.75 in) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 6 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 18 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 8 warning(s) |
 
 ## Shared gear
 

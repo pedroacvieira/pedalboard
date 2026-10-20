@@ -8,11 +8,13 @@ x, y are fractions (0..1) of the Pedal Playground image (origin top-left, unrota
 `facing` is the side the plug enters from. Only these numbers and labels are stored, never an image.
 """
 import json
+import math
 import os
 import re
 from pathlib import Path
 
-from common import JACKS_FILE
+import design
+from common import JACKS_FILE, pedal_name
 
 FUNCTIONS = ("input", "output", "power", "power_out", "other")
 FACINGS = ("left", "right", "top", "down")
@@ -146,3 +148,185 @@ def validate_jacks_file(data, pedals, supplies):
         if errs:
             problems[cid] = errs
     return problems
+
+
+# --- project check (called from build.validate) -------------------------------------------------
+CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}
+
+
+def _round_up(mm, step=50):
+    return int(math.ceil(mm / step) * step)
+
+
+def _jack_by_id(jacks, jid):
+    return next((j for j in jacks if j["id"] == jid), None)
+
+
+def check(ctx, cat_pedals, cat_supplies, jacks_data):
+    """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
+
+    Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
+    cables {"signal": [...], "power": [...]} (None without a design file), jack_settings.
+    Missing jack data and blocked clearance are warnings unless the project sets
+    validation.require_jacks / validation.strict_clearance.
+    """
+    project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
+    val = project.get("validation", {})
+    jset = project.get("jacks", {})
+    outward = float(jset.get("clearance", {}).get("outward_mm", CLEARANCE_DEFAULT["outward_mm"]))
+    side = float(jset.get("clearance", {}).get("side_mm", CLEARANCE_DEFAULT["side_mm"]))
+    extra_used = jset.get("extra_used", {})
+    supplies_layer = jset.get("supplies_layer", "under")
+    slack = float(jset.get("slack_mm", 50))
+    jack_sink = errors if val.get("require_jacks") else warnings
+    clear_sink = errors if val.get("strict_clearance") else warnings
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None,
+               jack_settings={"outward_mm": outward, "side_mm": side, "slack_mm": slack, "supplies_layer": supplies_layer})
+
+    chain = ctx["chain"]
+    insts = ctx.get("supplies", [])
+    used_ports = {}  # supply catalog id -> ports in use
+    for s in insts:
+        used_ports.setdefault(s["sup"]["id"], set()).update(r["port"] for r in s["rows"] if r["pedals"])
+
+    # 1) which catalog items have a usable jack setup?
+    def need_jacks(cid, is_supply):
+        have = jacks_data.get(cid) or []
+        name = pedal_name(cat_pedals[cid]) if cid in cat_pedals else f"{cat_supplies[cid]['brand']} {cat_supplies[cid]['model']}"
+        item = cat_pedals.get(cid) or cat_supplies.get(cid)
+        cmd = f"{COMMAND} {cid}"
+        if not item.get("playground_title"):
+            jack_sink.append(f"jacks: {cid} ({name}) has no playground_title, so there is no image to mark jacks on")
+            ctx["jack_setup"][cid] = "no playground_title"
+            return
+        if not have:
+            jack_sink.append(f"jacks: unknown jack setup for {cid} ({name}) -> run: {cmd}")
+            ctx["jack_setup"][cid] = "missing"
+            ctx["jack_fixes"].append((cid, cmd))
+            return
+        missing = []
+        if is_supply:
+            missing = [f"port {p}" for p in sorted(used_ports[cid]) if not (_jack_by_id(have, p) or {}).get("function") == "power_out"]
+        else:
+            for fn in ("input", "output", "power"):
+                if default_jack(have, fn) is None:
+                    missing.append(f"{fn} (ambiguous: set a default)" if ambiguous(have, fn) else fn)
+            for jid in extra_used.get(cid, []):
+                if _jack_by_id(have, jid) is None:
+                    errors.append(f"jacks.extra_used: {cid} has no jack '{jid}'")
+        if missing:
+            jack_sink.append(f"jacks: incomplete jack setup for {cid} ({name}): missing {', '.join(missing)} -> run: {cmd}")
+            ctx["jack_setup"][cid] = "incomplete"
+            ctx["jack_fixes"].append((cid, cmd))
+        else:
+            ctx["jack_setup"][cid] = "ok"
+
+    for cid in chain:
+        need_jacks(cid, False)
+    for sid in used_ports:
+        need_jacks(sid, True)
+
+    # 2) the hand-made layout
+    design_path = ctx["dir"] / "playground_design.json"
+    if not design_path.exists():
+        ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
+        return
+    items = design.parse_design(design_path)
+    by_title = {}
+    for it in items:
+        by_title.setdefault(it["title"], []).append(it)
+
+    placed = {}
+    for cid in chain:
+        found = by_title.get(cat_pedals[cid].get("playground_title"), [])
+        if not found:
+            clear_sink.append(f"layout: {cid} is in the signal chain but not in playground_design.json")
+            continue
+        if len(found) > 1:
+            warnings.append(f"layout: {cid} appears {len(found)} times in playground_design.json (using the first)")
+        placed[cid] = found[0]
+    inst_item, supply_titles = {}, set()
+    by_supply = {}
+    for s in insts:
+        by_supply.setdefault(s["sup"]["id"], []).append(s)
+    for sid, group in by_supply.items():
+        title = cat_supplies[sid].get("playground_title")
+        supply_titles.add(title)
+        found = sorted(by_title.get(title, []), key=lambda i: (i["left_mm"], i["top_mm"]))
+        explicit = jset.get("supply_items", {})
+        for n, s in enumerate(group):
+            want = explicit.get(s["inst"]["id"])
+            match = next((i for i in found if i["id"] == want), None) if want else (found[n] if n < len(found) else None)
+            if match is None:
+                warnings.append(f"layout: supply {s['inst']['id']} ({sid}) is not in playground_design.json")
+            else:
+                inst_item[s["inst"]["id"]] = match
+
+    pedal_items = [i for i in items if i["kind"] == "pedal"]
+    mapped_ids = {i["id"] for i in placed.values()}
+    obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
+
+    # 3) clearance in front of every used jack
+    owners = []  # (label, item, jack)
+    for cid, it in placed.items():
+        have = jacks_data.get(cid) or []
+        ids = [(default_jack(have, fn) or {}).get("id") for fn in ("input", "output", "power")] + list(extra_used.get(cid, []))
+        for jid in dict.fromkeys(i for i in ids if i):
+            jk = _jack_by_id(have, jid)
+            if jk:
+                owners.append((cid, it, jk))
+    if supplies_layer == "on_board":
+        for s in insts:
+            it = inst_item.get(s["inst"]["id"])
+            for port in sorted(p for p in used_ports[s["sup"]["id"]] if p in {r["port"] for r in s["rows"] if r["pedals"]}):
+                jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], port)
+                if it and jk:
+                    owners.append((f"{s['inst']['id']}", it, jk))
+    for cid, it, jk in owners:
+        pt = design.jack_point(it, jk["x"], jk["y"])
+        facing = design.jack_facing(it, jk["facing"])
+        zone = design.clearance_rect(pt, facing, outward, side)
+        for ob in obstacles:
+            if ob["id"] == it["id"]:
+                continue
+            ov = design.overlap(zone, design.footprint(ob))
+            if ov:
+                depth = design.overlap_depth(facing, ov)
+                ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth})
+                clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: "
+                                  f"it reaches {depth:.1f} mm into the {outward:g} mm zone")
+
+    # 4) cable lengths between jacks
+    def endpoint(item, jack):
+        pt = design.jack_point(item, jack["x"], jack["y"])
+        facing = design.jack_facing(item, jack["facing"])
+        return pt, design.stub(pt, facing, outward)
+
+    def cable(a, b):
+        if a is None or b is None:
+            return {"direct_mm": None, "routed_mm": None, "suggested_mm": None}
+        (pa, sa), (pb, sb) = a, b
+        direct = math.hypot(pa[0] - pb[0], pa[1] - pb[1])
+        routed = 2 * outward + abs(sa[0] - sb[0]) + abs(sa[1] - sb[1])
+        return {"direct_mm": direct, "routed_mm": routed, "suggested_mm": _round_up(routed + slack)}
+
+    def pedal_end(cid, fn):
+        jk = default_jack(jacks_data.get(cid) or [], fn)
+        return endpoint(placed[cid], jk) if jk and cid in placed else None
+
+    signal, power = [], []
+    for a, b in zip(chain, chain[1:]):
+        signal.append({"from": f"{a}.out", "to": f"{b}.in", **cable(pedal_end(a, "output"), pedal_end(b, "input"))})
+    for s in insts:
+        it = inst_item.get(s["inst"]["id"])
+        for row in s["rows"]:
+            if not row["pedals"]:
+                continue
+            jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], row["port"])
+            prev = endpoint(it, jk) if it and jk else None
+            prev_name = f"{s['inst']['id']}.{row['port']}"
+            for pid in row["pedals"]:
+                here = pedal_end(pid, "power")
+                power.append({"output": row["id"], "from": prev_name, "to": f"{pid}.power", **cable(prev, here)})
+                prev, prev_name = here, f"{pid}.power"
+    ctx["cables"] = {"signal": signal, "power": power}

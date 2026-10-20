@@ -10,7 +10,8 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
-from common import ROOT, effective_quantity, load_catalog, load_json, pedal_name, project_dirs
+import jacks
+from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
@@ -281,6 +282,7 @@ def validate(pdir, cat_pedals, cat_supplies):
             errors.append(f"power: project uses {n} x {sid} but you own {q}")
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"])
     return ctx
 
 
@@ -324,7 +326,7 @@ RULE_TEXT = {
 def board_text(board):
     if any(unknown(board.get(k)) for k in BOARD_REQUIRED):
         return "*not fully specified*"
-    return f"{board['brand']} {board['model']} ({board['width_in']} x {board['height_in']} in)"
+    return f"{board['brand']} {board['model']} ({round(board['width_in'] * IN_MM)} x {round(board['height_in'] * IN_MM)} mm)"
 
 
 def sup_name(sup):
@@ -433,6 +435,40 @@ def mermaid_power(ctx):
     return lines
 
 
+def jacks_section(ctx, cat_pedals):
+    """README section: jack data status, blocked cable space, cable lengths (all mm)."""
+    md = ["", "## Jacks and cables", ""]
+    setup = ctx.get("jack_setup", {})
+    if setup:
+        ok = sum(1 for v in setup.values() if v == "ok")
+        md += [f"Jack data: {ok} of {len(setup)} catalog items set up (pedals and supplies in this project).", ""]
+    if ctx.get("jack_fixes"):
+        md += ["Missing or incomplete (place the jacks on the pedal image, then rebuild):", "", "```"]
+        md += [cmd for _, cmd in ctx["jack_fixes"]] + ["```", ""]
+    for note in ctx.get("jack_notes", []):
+        md += [f"*{note}.*", ""]
+    cables = ctx.get("cables")
+    if cables is None:
+        return md
+    st = ctx["jack_settings"]
+    if ctx["violations"]:
+        md += [f"Blocked cable space (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack):", ""]
+        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {v['depth_mm']:.1f} mm into the zone" for v in ctx["violations"]] + [""]
+    else:
+        md += [f"No blocked cable space found (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack).", ""]
+    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends. "
+           f"Suggested = routed + {st['slack_mm']:g} mm slack, rounded up to the next 50 mm.", ""]
+    for title, rows in (("Signal cables", cables["signal"]), ("Power cables", cables["power"])):
+        if not rows:
+            continue
+        md += [f"### {title}", "", "| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |", "|---|---|--:|--:|--:|"]
+        for c in rows:
+            md.append(f"| {c['from']} | {c['to']} | {fmt_mm(c['direct_mm'])} | {fmt_mm(c['routed_mm'])} | {fmt_mm(c['suggested_mm'])} |")
+        known = [c["suggested_mm"] for c in rows if c["suggested_mm"] is not None]
+        md += ["", f"Total suggested: {sum(known)} mm over {len(known)} of {len(rows)} cables.", ""]
+    return md
+
+
 def project_readme(ctx, cat_pedals):
     pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
@@ -505,6 +541,7 @@ def project_readme(ctx, cat_pedals):
         md += [f"| | | **{inst_label(s).split(' (')[0]} total** | | **{total} mA** |", ""]
     if ctx["supplies"]:
         md += [f"**All supplies combined:** {grand} mA", ""]
+    md += jacks_section(ctx, cat_pedals)
     return "\n".join(md) + "\n"
 
 
@@ -519,6 +556,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "```",
         "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
+        "catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)",
         "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
         "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
@@ -528,9 +566,13 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "python3 scripts/build.py [project...]        validate + regenerate docs",
         "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
         "python3 scripts/new_project.py <name> --instrument guitar|bass",
+        "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
         "```",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
+        "",
+        "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
+        "Clearance (`jacks.clearance.outward_mm` / `side_mm`, default 6.3 / 7 mm) and all cable figures are in mm.",
         "",
         "## Projects",
         "",
@@ -642,9 +684,16 @@ def main():
             print("  WARN ", m)
         for m in c["errors"]:
             print("  ERROR", m)
+        if c.get("jack_fixes"):
+            print("  to fix jacks:")
+            for _, cmd in c["jack_fixes"]:
+                print("    ", cmd)
         bad |= bool(c["errors"])
     for m in global_warn:
         print("WARN  shared:", m)
+    for cid, msgs in jacks.validate_jacks_file(jacks.read_file(), cat_pedals, cat_supplies).items():
+        for m in msgs:
+            print(f"WARN  catalog/jacks.json {cid}: {m}")
     print("OK" if not bad else "FAILED")
     sys.exit(1 if bad else 0)
 
