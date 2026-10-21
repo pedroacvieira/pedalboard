@@ -10,12 +10,13 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
-from common import ROOT, effective_quantity, load_catalog, load_json, pedal_name, project_dirs
+import jacks
+from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
-    ("power_consumption", "current_ma"), ("power_consumption", "voltage_v"),
-    ("power_consumption", "allowed_voltages_v"), ("power_consumption", "needs_isolated_output"),
+    ("power_consumption", "current_ma"), ("power_consumption", "min_voltage_v"),
+    ("power_consumption", "max_voltage_v"), ("power_consumption", "needs_isolated_output"),
 ]
 BOARD_REQUIRED = ["brand", "model", "width_in", "height_in"]
 
@@ -33,7 +34,7 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings)."""
     project = load_json(pdir / "project.json")
     errors, warnings = [], []
@@ -200,7 +201,7 @@ def validate(pdir, cat_pedals, cat_supplies):
     pol_strength = policy.get("strength", "required")
     power = project.get("power", {}).get("supplies", [])
     ctx["supplies"] = []
-    powered, instances = {}, {}
+    powered, instances, run_v = {}, {}, {}
     for inst in power:
         sup = cat_supplies.get(inst["supply"])
         if sup is None:
@@ -237,9 +238,11 @@ def validate(pdir, cat_pedals, cat_supplies):
                 if pid in powered:
                     errors.append(f"power: '{pid}' is on both {powered[pid]} and {oid}")
                 powered[pid] = oid
+                run_v[pid] = out["voltage_v"]
                 pc = pedals[pid]["power_consumption"]
-                if pc.get("allowed_voltages_v") and out["voltage_v"] not in pc["allowed_voltages_v"]:
-                    errors.append(f"{oid}: {pid} does not accept {out['voltage_v']}V (allowed {pc['allowed_voltages_v']})")
+                lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
+                if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
+                    errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
                 if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
                     errors.append(f"{oid}: {pid} needs an isolated output but shares it")
                 if pc.get("current_ma") is None:
@@ -281,6 +284,8 @@ def validate(pdir, cat_pedals, cat_supplies):
             errors.append(f"power: project uses {n} x {sid} but you own {q}")
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
+    ctx["run_v"] = run_v
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
     return ctx
 
 
@@ -298,11 +303,11 @@ def bypass(p):
     return ("Buffered" if b else "True") + (" (switchable)" if sw else "")
 
 
-def power_text(p):
-    pc = p["power_consumption"]
-    ma = "?" if pc["current_ma"] is None else pc["current_ma"]
-    v = "?" if pc["voltage_v"] is None else pc["voltage_v"]
-    return f"{v}V, {ma} mA"
+def volt_range(pc):
+    lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
+    if lo is None or hi is None:
+        return "?"
+    return f"{lo}V" if lo == hi else f"{lo}-{hi}V"
 
 
 def ma(p):
@@ -324,7 +329,7 @@ RULE_TEXT = {
 def board_text(board):
     if any(unknown(board.get(k)) for k in BOARD_REQUIRED):
         return "*not fully specified*"
-    return f"{board['brand']} {board['model']} ({board['width_in']} x {board['height_in']} in)"
+    return f"{board['brand']} {board['model']} ({round(board['width_in'] * IN_MM)} x {round(board['height_in'] * IN_MM)} mm)"
 
 
 def sup_name(sup):
@@ -433,6 +438,45 @@ def mermaid_power(ctx):
     return lines
 
 
+def run_v_cell(ctx, pid):
+    rv = ctx["run_v"]
+    return f"{rv[pid]}V" if pid in rv else "-"
+
+
+def jacks_section(ctx):
+    """README section: jack data status, blocked cable space, cable lengths (all mm)."""
+    md = ["", "## Jacks and cables", ""]
+    setup = ctx.get("jack_setup", {})
+    if setup:
+        ok = sum(1 for v in setup.values() if v == "ok")
+        md += [f"Jack data: {ok} of {len(setup)} catalog items set up (pedals and supplies in this project).", ""]
+    if ctx.get("jack_fixes"):
+        md += ["Missing or incomplete (place the jacks on the pedal image, then rebuild):", "", "```"]
+        md += [cmd for _, cmd in ctx["jack_fixes"]] + ["```", ""]
+    for note in ctx.get("jack_notes", []):
+        md += [f"*{note}.*", ""]
+    cables = ctx.get("cables")
+    if cables is None:
+        return md
+    st = ctx["jack_settings"]
+    if ctx["violations"]:
+        md += [f"Blocked cable space (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack):", ""]
+        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {v['depth_mm']:.1f} mm into the zone" for v in ctx["violations"]] + [""]
+    else:
+        md += [f"No blocked cable space found (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack).", ""]
+    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends. "
+           f"Suggested = routed + {st['slack_mm']:g} mm slack, rounded up to the next 50 mm.", ""]
+    for title, rows in (("Signal cables", cables["signal"]), ("Power cables", cables["power"])):
+        if not rows:
+            continue
+        md += [f"### {title}", "", "| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |", "|---|---|--:|--:|--:|"]
+        for c in rows:
+            md.append(f"| {c['from']} | {c['to']} | {fmt_mm(c['direct_mm'])} | {fmt_mm(c['routed_mm'])} | {fmt_mm(c['suggested_mm'])} |")
+        known = [c["suggested_mm"] for c in rows if c["suggested_mm"] is not None]
+        md += ["", f"Total suggested: {sum(known)} mm over {len(known)} of {len(rows)} cables.", ""]
+    return md
+
+
 def project_readme(ctx, cat_pedals):
     pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
@@ -457,10 +501,10 @@ def project_readme(ctx, cat_pedals):
         md += [f"- ERROR {m}" for m in ctx["errors"]] + [f"- WARN {m}" for m in ctx["warnings"]]
         md += ["", "</details>", ""]
     md += ["## Signal chain", "", "```mermaid", *mermaid_signal(ctx), "```", "",
-           "| # | Pedal | Owned | Power | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|:-:|---|"]
+           "| # | Pedal | Owned | Accepts | Runs at | Draw | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|--:|---|:-:|---|"]
     for i, pid in enumerate(chain, 1):
         p = pedals[pid]
-        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {power_text(p)} | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
+        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {volt_range(p['power_consumption'])} | {run_v_cell(ctx, pid)} | {ma(p)} mA | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
     to_buy = [pedal_name(pedals[pid]) for pid in chain if pedals[pid].get("owned") is False]
     md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
     for r in ctx["active_rules"]:
@@ -505,10 +549,50 @@ def project_readme(ctx, cat_pedals):
         md += [f"| | | **{inst_label(s).split(' (')[0]} total** | | **{total} mA** |", ""]
     if ctx["supplies"]:
         md += [f"**All supplies combined:** {grand} mA", ""]
+    md += jacks_section(ctx)
     return "\n".join(md) + "\n"
 
 
-def root_readme(ctxs, cat_pedals, cat_supplies):
+KNOWN_LIMITS = [
+    "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
+    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
+    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
+]
+DATA_TO_VERIFY = [
+    "Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).",
+    "PastFX Reticon: the 50 mA draw and isolated-supply need come from search snippets of the maker's pages.",
+    "Browne Protein V3 current: 130 mA planned (manual says under 100 mA, a Q&A line says 130 mA, retailers about 30 mA). The price in the catalog is for the V4.",
+    "Version assumptions: Retrovibe is priced and measured as the mk.4; the layout uses the Mini Beano Boost and the PolyTune 3 Mini Noir while the catalog entries are the Beano Boost and PolyTune 3.",
+    "The third Ojai R30 for the practice board is not bought (see Shopping list); the Harley Benton ISO-5 Pro has no Pedal Playground entry, so it never appears in a layout.",
+]
+
+
+def open_issues(ctxs, jacks_data):
+    """README section: what is still open, computed from the data where possible."""
+    data = jacks.usable(jacks_data)
+    md = ["", "## Open issues", ""]
+    for c in ctxs:
+        items = []
+        for cid, cmd in c.get("jack_fixes", []):
+            items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
+        for v in c.get("violations", []):
+            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({v['depth_mm']:.1f} mm into the zone); move one of the pedals apart")
+        extra_used = c["project"].get("jacks", {}).get("extra_used", {})
+        for cid in c["chain"]:
+            for j in data.get(cid, []):
+                if j.get("function") == "other" and j["id"] not in extra_used.get(cid, []):
+                    items.append(f"Extra jack `{cid}.{j['id']}` (\"{j['label']}\") is marked but not in `jacks.extra_used`, so its clearance is not checked"
+                                 + (" and it still has its default label" if j["label"].lower().startswith("jack ") else ""))
+        for note in c.get("jack_notes", []):
+            items.append(note[0].upper() + note[1:])
+        if items:
+            md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]
+    md += ["### Known limitations", ""] + [f"- {i}" for i in KNOWN_LIMITS]
+    md += ["", "### Data to verify", ""] + [f"- {i}" for i in DATA_TO_VERIFY]
+    return md
+
+
+def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
     md = [
         "# Pedalboard planner",
         "",
@@ -519,6 +603,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "```",
         "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
+        "catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)",
         "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
         "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
@@ -528,9 +613,14 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
         "python3 scripts/build.py [project...]        validate + regenerate docs",
         "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
         "python3 scripts/new_project.py <name> --instrument guitar|bass",
+        "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
+        "python3 -m pytest tests                       geometry and jack-check tests",
         "```",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
+        "",
+        "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
+        "Clearance (`jacks.clearance.outward_mm` / `side_mm`, default 6.3 / 7 mm) and all cable figures are in mm.",
         "",
         "## Projects",
         "",
@@ -550,6 +640,8 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
                   f"{board_text(pr.get('board') or {})} | {len(c['chain'])} | {sups} | {status}, {len(c['warnings'])} warning(s) |")
     if not ctxs:
         md.append("| *(none yet)* | | | | | |")
+
+    md += open_issues(ctxs, jacks_data)
 
     # shared gear
     shared, global_warn = [], []
@@ -616,17 +708,18 @@ def main():
     args = ap.parse_args()
 
     cat_pedals, cat_supplies = load_catalog()
+    jacks_file = jacks.read_file()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies)
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"])
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies) for d in project_dirs()]
-    text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies)
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"]) for d in project_dirs()]
+    text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)
 
     bad = False
@@ -642,9 +735,16 @@ def main():
             print("  WARN ", m)
         for m in c["errors"]:
             print("  ERROR", m)
+        if c.get("jack_fixes"):
+            print("  to fix jacks:")
+            for _, cmd in c["jack_fixes"]:
+                print("    ", cmd)
         bad |= bool(c["errors"])
     for m in global_warn:
         print("WARN  shared:", m)
+    for cid, msgs in jacks.validate_jacks_file(jacks_file, cat_pedals, cat_supplies).items():
+        for m in msgs:
+            print(f"WARN  catalog/jacks.json {cid}: {m}")
     print("OK" if not bad else "FAILED")
     sys.exit(1 if bad else 0)
 

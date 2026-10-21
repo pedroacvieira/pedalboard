@@ -24,7 +24,8 @@ def main():
     scaffold = {
         "name": args.name.replace("-", " ").title(),
         "instrument": args.instrument,
-        "validation": {"no_unknown": True},
+        "validation": {"no_unknown": True, "require_jacks": False, "strict_clearance": False},
+        "jacks": {"clearance": {"outward_mm": 6.3, "side_mm": 7}, "extra_used": {}, "supplies_layer": "under", "slack_mm": 50},
         "board": {"brand": None, "model": None, "width_in": None, "height_in": None},
         "playground": {"scale": 45},
         "signal_chain": [],

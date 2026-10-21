@@ -1,11 +1,16 @@
 """Shared paths and loaders for the pedalboard scripts."""
 import json
 import sys
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "catalog"
 PROJECTS = ROOT / "projects"
+CACHE = ROOT / ".cache"
+JACKS_FILE = CATALOG / "jacks.json"
+SITE = "https://pedalplayground.com/public/data/"
+IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
 
 def load_json(path):
@@ -41,3 +46,22 @@ def effective_quantity(p):
     if p.get("owned") is None:
         return None
     return 1 if p["owned"] else 0
+
+
+def database(name):
+    """Pedal Playground's public database (pedals.json / pedalboards.json), cached in .cache/, keyed by "Brand Name"."""
+    CACHE.mkdir(exist_ok=True)
+    path = CACHE / name
+    if not path.exists():
+        with urllib.request.urlopen(SITE + name, timeout=30) as r:
+            path.write_bytes(r.read())
+    return {f"{e['Brand']} {e['Name']}": e for e in json.loads(path.read_text())}
+
+
+def px_to_mm(px, scale):
+    """Pedal Playground pixels (at `scale` px per inch) -> mm."""
+    return px * IN_MM / scale
+
+
+def fmt_mm(v, digits=0):
+    return "?" if v is None else f"{v:.{digits}f}"
