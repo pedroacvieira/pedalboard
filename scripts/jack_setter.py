@@ -231,7 +231,7 @@ def make_app(cid, kind, item, entry, image_path):
                 self.bind(f"<Shift-{key}>", lambda e, d=d: self._guard(lambda: self._nudge(d, 2.0)))
 
         def _guard(self, fn):
-            if not isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Combobox)):
+            if not isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Combobox, tk.Listbox)):  # arrows move the list there
                 fn()
 
         # -- is the clearance zone really outside the pedal? (uses the image's transparency) --
@@ -481,6 +481,9 @@ def make_app(cid, kind, item, entry, image_path):
             return msgs
 
         def _save(self):
+            if self.sel is not None:  # apply a value typed into x/y (mm) that Return/FocusOut has not applied yet
+                self._apply_mm("x")
+                self._apply_mm("y")
             msgs = self._problems()
             if msgs:
                 messagebox.showerror("Cannot save", "\n".join(msgs))

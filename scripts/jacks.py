@@ -94,6 +94,14 @@ def guess_facing(fx, fy):
     return min(FACINGS, key=lambda k: (dist[k], FACINGS.index(k)))
 
 
+def usable(jacks_data):
+    """Only well-formed jacks (the rest are reported by validate_jacks_file), so a hand-edited file can't crash a build."""
+    def ok(j):
+        return (all(k in j for k in ("id", "label", "function", "x", "y", "facing")) and j["facing"] in FACINGS
+                and isinstance(j["x"], (int, float)) and isinstance(j["y"], (int, float)))
+    return {cid: [j for j in js if isinstance(j, dict) and ok(j)] for cid, js in (jacks_data or {}).items() if isinstance(js, list)}
+
+
 def default_jack(jacks, function):
     """The jack used for a function: the only one, or the one flagged `default`; None if absent/ambiguous."""
     same = [j for j in jacks if j.get("function") == function]
@@ -168,6 +176,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     validation.require_jacks / validation.strict_clearance.
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
+    jacks_data = usable(jacks_data)
     val = project.get("validation", {})
     jset = project.get("jacks", {})
     outward = float(jset.get("clearance", {}).get("outward_mm", CLEARANCE_DEFAULT["outward_mm"]))
@@ -231,11 +240,12 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     items = design.parse_design(design_path)
     by_title = {}
     for it in items:
-        by_title.setdefault(it["title"], []).append(it)
+        if it["title"]:
+            by_title.setdefault(it["title"], []).append(it)
 
     placed = {}
     for cid in chain:
-        found = by_title.get(cat_pedals[cid].get("playground_title"), [])
+        found = by_title.get(cat_pedals[cid].get("playground_title") or "", [])
         if not found:
             clear_sink.append(f"layout: {cid} is in the signal chain but not in playground_design.json")
             continue
@@ -248,8 +258,9 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
         by_supply.setdefault(s["sup"]["id"], []).append(s)
     for sid, group in by_supply.items():
         title = cat_supplies[sid].get("playground_title")
-        supply_titles.add(title)
-        found = sorted(by_title.get(title, []), key=lambda i: (i["left_mm"], i["top_mm"]))
+        if title:
+            supply_titles.add(title)
+        found = sorted(by_title.get(title or "", []), key=lambda i: (i["left_mm"], i["top_mm"]))
         explicit = jset.get("supply_items", {})
         for n, s in enumerate(group):
             want = explicit.get(s["inst"]["id"])
@@ -275,7 +286,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     if supplies_layer == "on_board":
         for s in insts:
             it = inst_item.get(s["inst"]["id"])
-            for port in sorted(p for p in used_ports[s["sup"]["id"]] if p in {r["port"] for r in s["rows"] if r["pedals"]}):
+            for port in sorted({r["port"] for r in s["rows"] if r["pedals"]}):
                 jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], port)
                 if it and jk:
                     owners.append((f"{s['inst']['id']}", it, jk))
@@ -312,8 +323,13 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
         return endpoint(placed[cid], jk) if jk and cid in placed else None
 
     signal, power = [], []
+    def jack_name(cid, fn, fallback):
+        jk = default_jack(jacks_data.get(cid) or [], fn)
+        return f"{cid}.{jk['id'] if jk else fallback}"
+
     for a, b in zip(chain, chain[1:]):
-        signal.append({"from": f"{a}.out", "to": f"{b}.in", **cable(pedal_end(a, "output"), pedal_end(b, "input"))})
+        signal.append({"from": jack_name(a, "output", "out"), "to": jack_name(b, "input", "in"),
+                       **cable(pedal_end(a, "output"), pedal_end(b, "input"))})
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
         for row in s["rows"]:
@@ -324,6 +340,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
             prev_name = f"{s['inst']['id']}.{row['port']}"
             for pid in row["pedals"]:
                 here = pedal_end(pid, "power")
-                power.append({"output": row["id"], "from": prev_name, "to": f"{pid}.power", **cable(prev, here)})
-                prev, prev_name = here, f"{pid}.power"
+                to_name = jack_name(pid, "power", "power")
+                power.append({"output": row["id"], "from": prev_name, "to": to_name, **cable(prev, here)})
+                prev, prev_name = here, to_name
     ctx["cables"] = {"signal": signal, "power": power}

@@ -173,3 +173,29 @@ def test_supply_on_board_layer_is_checked_like_a_pedal(tmp_path):
     ctx = project(tmp_path, [A(0), supply], chain=("a",), supplies=supply_inst(), jacks_block={"supplies_layer": "on_board"})
     jacks.check(ctx, PEDALS, SUPPLIES, data)
     assert any(v["obstacle"] == "T A" for v in ctx["violations"])
+
+
+# --- regressions from the code review ----------------------------------------------------------
+def test_untitled_catalog_item_never_matches_untitled_design_items(tmp_path):
+    pedals = dict(PEDALS, b={"brand": "T", "name": "B", "playground_title": None})
+    ctx = project(tmp_path, [A(0), ("", 135, 0, 2.0, 4.0, 0, "pedal")])
+    ctx["pedals"] = {c: pedals[c] for c in ("a", "b")}
+    jacks.check(ctx, pedals, SUPPLIES, DATA)
+    assert any("layout: b is in the signal chain but not in playground_design.json" in w for w in ctx["warnings"])
+    assert ctx["cables"]["signal"][0]["direct_mm"] is None
+
+
+def test_malformed_jacks_do_not_crash_the_check(tmp_path):
+    broken = [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.5},          # no facing
+              {"label": "Output", "function": "output", "x": 1.0, "y": 0.5, "facing": "right"},  # no id
+              {"id": "power", "label": "9V", "function": "power", "x": "?", "y": 0.0, "facing": "top"}]
+    ctx = project(tmp_path, [A(0), B(135)])
+    jacks.check(ctx, PEDALS, SUPPLIES, {"a": broken, "b": pedal_jacks()})
+    assert any("unknown jack setup for a" in w for w in ctx["warnings"])
+
+
+def test_cable_rows_name_the_jacks_actually_used(tmp_path):
+    a = [dict(j, id="out_l") if j["function"] == "output" else j for j in pedal_jacks()]
+    ctx = project(tmp_path, [A(0), B(135)])
+    jacks.check(ctx, PEDALS, SUPPLIES, {"a": a, "b": pedal_jacks()})
+    assert ctx["cables"]["signal"][0]["from"] == "a.out_l"

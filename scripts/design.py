@@ -18,7 +18,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from common import IN_MM
+from common import IN_MM, px_to_mm
 
 TOL_MM = 0.6  # about one design pixel (0.56 mm at 45 px/in): touching and rounding are not violations
 
@@ -74,7 +74,7 @@ def parse_canvas(canvas_html):
         s = it["scale"]
         items.append({**it,
                       "w_mm": it["w_in"] * IN_MM, "h_mm": it["h_in"] * IN_MM,
-                      "left_mm": it["left_px"] * IN_MM / s, "top_mm": it["top_px"] * IN_MM / s})
+                      "left_mm": px_to_mm(it["left_px"], s), "top_mm": px_to_mm(it["top_px"], s)})
     return items
 
 

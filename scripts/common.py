@@ -58,13 +58,6 @@ def database(name):
     return {f"{e['Brand']} {e['Name']}": e for e in json.loads(path.read_text())}
 
 
-def load_jacks():
-    """catalog/jacks.json -> {catalog id: [jack dicts]} (empty if the file does not exist yet)."""
-    if not JACKS_FILE.exists():
-        return {}
-    return load_json(JACKS_FILE).get("jacks", {})
-
-
 def px_to_mm(px, scale):
     """Pedal Playground pixels (at `scale` px per inch) -> mm."""
     return px * IN_MM / scale

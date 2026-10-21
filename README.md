@@ -61,7 +61,6 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 - Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).
 - Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.
 - Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).
-- Only `playground_design.json` of guitar-gig exists; guitar-practice and bass have no hand-made layout yet, so their cables and clearance are not checked.
 
 ### Data to verify
 

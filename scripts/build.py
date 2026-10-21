@@ -34,7 +34,7 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings)."""
     project = load_json(pdir / "project.json")
     errors, warnings = [], []
@@ -285,7 +285,7 @@ def validate(pdir, cat_pedals, cat_supplies):
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
-    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"])
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
     return ctx
 
 
@@ -438,7 +438,12 @@ def mermaid_power(ctx):
     return lines
 
 
-def jacks_section(ctx, cat_pedals):
+def run_v_cell(ctx, pid):
+    rv = ctx["run_v"]
+    return f"{rv[pid]}V" if pid in rv else "-"
+
+
+def jacks_section(ctx):
     """README section: jack data status, blocked cable space, cable lengths (all mm)."""
     md = ["", "## Jacks and cables", ""]
     setup = ctx.get("jack_setup", {})
@@ -499,7 +504,7 @@ def project_readme(ctx, cat_pedals):
            "| # | Pedal | Owned | Accepts | Runs at | Draw | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|--:|---|:-:|---|"]
     for i, pid in enumerate(chain, 1):
         p = pedals[pid]
-        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {volt_range(p['power_consumption'])} | {str(ctx.get('run_v', {}).get(pid, '-')) + 'V' if pid in ctx.get('run_v', {}) else '-'} | {ma(p)} mA | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
+        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {volt_range(p['power_consumption'])} | {run_v_cell(ctx, pid)} | {ma(p)} mA | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
     to_buy = [pedal_name(pedals[pid]) for pid in chain if pedals[pid].get("owned") is False]
     md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
     for r in ctx["active_rules"]:
@@ -544,7 +549,7 @@ def project_readme(ctx, cat_pedals):
         md += [f"| | | **{inst_label(s).split(' (')[0]} total** | | **{total} mA** |", ""]
     if ctx["supplies"]:
         md += [f"**All supplies combined:** {grand} mA", ""]
-    md += jacks_section(ctx, cat_pedals)
+    md += jacks_section(ctx)
     return "\n".join(md) + "\n"
 
 
@@ -552,7 +557,6 @@ KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
     "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
     "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
-    "Only `playground_design.json` of guitar-gig exists; guitar-practice and bass have no hand-made layout yet, so their cables and clearance are not checked.",
 ]
 DATA_TO_VERIFY = [
     "Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).",
@@ -563,9 +567,9 @@ DATA_TO_VERIFY = [
 ]
 
 
-def open_issues(ctxs, cat_pedals):
+def open_issues(ctxs, jacks_data):
     """README section: what is still open, computed from the data where possible."""
-    data = jacks.read_file()["jacks"]
+    data = jacks.usable(jacks_data)
     md = ["", "## Open issues", ""]
     for c in ctxs:
         items = []
@@ -588,7 +592,7 @@ def open_issues(ctxs, cat_pedals):
     return md
 
 
-def root_readme(ctxs, cat_pedals, cat_supplies):
+def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
     md = [
         "# Pedalboard planner",
         "",
@@ -637,7 +641,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies):
     if not ctxs:
         md.append("| *(none yet)* | | | | | |")
 
-    md += open_issues(ctxs, cat_pedals)
+    md += open_issues(ctxs, jacks_data)
 
     # shared gear
     shared, global_warn = [], []
@@ -704,17 +708,18 @@ def main():
     args = ap.parse_args()
 
     cat_pedals, cat_supplies = load_catalog()
+    jacks_file = jacks.read_file()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies)
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"])
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies) for d in project_dirs()]
-    text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies)
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"]) for d in project_dirs()]
+    text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)
 
     bad = False
@@ -737,7 +742,7 @@ def main():
         bad |= bool(c["errors"])
     for m in global_warn:
         print("WARN  shared:", m)
-    for cid, msgs in jacks.validate_jacks_file(jacks.read_file(), cat_pedals, cat_supplies).items():
+    for cid, msgs in jacks.validate_jacks_file(jacks_file, cat_pedals, cat_supplies).items():
         for m in msgs:
             print(f"WARN  catalog/jacks.json {cid}: {m}")
     print("OK" if not bad else "FAILED")
