@@ -29,19 +29,17 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 6 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
-| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 6 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
 
 ### Bass board
 
-- Jacks not set up for `polytune_2_mini`: `python3 scripts/jack_setter.py polytune_2_mini`
-- Jacks not set up for `darkglass_hyper_luminal`: `python3 scripts/jack_setter.py darkglass_hyper_luminal`
-- Jacks not set up for `mxr_bass_synth`: `python3 scripts/jack_setter.py mxr_bass_synth`
-- Jacks not set up for `ehx_bass_big_muff_2`: `python3 scripts/jack_setter.py ehx_bass_big_muff_2`
-- Jacks not set up for `tech21_vt_bass_di`: `python3 scripts/jack_setter.py tech21_vt_bass_di`
+- Extra jack `mxr_bass_synth.jack_4` ("CTR") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `tech21_vt_bass_di.jack_4` ("Parallel Input") is marked but not in `jacks.extra_used`, so its clearance is not checked
+- Extra jack `tech21_vt_bass_di.jack_5` ("Jack 5") is marked but not in `jacks.extra_used`, so its clearance is not checked and it still has its default label
 - No playground_design.json: cable lengths and clearance are not checked
 
 ### Guitar gig board
@@ -55,12 +53,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar practice board
 
-- Jacks not set up for `jhs_pulp_n_peel_v4`: `python3 scripts/jack_setter.py jhs_pulp_n_peel_v4`
-- Jacks not set up for `jhs_hard_drive`: `python3 scripts/jack_setter.py jhs_hard_drive`
-- Jacks not set up for `duke_of_tone`: `python3 scripts/jack_setter.py duke_of_tone`
-- Jacks not set up for `e_lady`: `python3 scripts/jack_setter.py e_lady`
-- Jacks not set up for `carbon_copy`: `python3 scripts/jack_setter.py carbon_copy`
-- Jacks not set up for `ditto_looper`: `python3 scripts/jack_setter.py ditto_looper`
+- Extra jack `jhs_pulp_n_peel_v4.jack_4` ("XLR Out") is marked but not in `jacks.extra_used`, so its clearance is not checked
 - No playground_design.json: cable lengths and clearance are not checked
 
 ### Known limitations
@@ -72,7 +65,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Data to verify
 
-- Red Muck Mk2 current draw: 60 mA (JAM shop page) against 12-15 mA (retailers); the plan uses 60 mA.
+- Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).
 - PastFX Reticon: the 50 mA draw and isolated-supply need come from search snippets of the maker's pages.
 - Browne Protein V3 current: 130 mA planned (manual says under 100 mA, a Q&A line says 130 mA, retailers about 30 mA). The price in the catalog is for the V4.
 - Version assumptions: Retrovibe is priced and measured as the mk.4; the layout uses the Mini Beano Boost and the PolyTune 3 Mini Noir while the catalog entries are the Beano Boost and PolyTune 3.

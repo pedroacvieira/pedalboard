@@ -1,18 +1,18 @@
 flowchart LR
     subgraph psu1["Ojai R30 (to buy)"]
         direction TB
-        psu1_F1["<b>F1</b> · 9V<br/>154 / 500 mA"]:::out9
+        psu1_F1["<b>F1</b> · 9V<br/>134 / 500 mA"]:::out9
         psu1_F2["<b>F2</b> · 9V<br/>10 / 500 mA"]:::out9
         psu1_F3["<b>F3</b> · 9V<br/>100 / 500 mA"]:::out9
-        psu1_SW_A["<b>SW_A</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu1_SW_A["<b>SW_A</b> · 9V<br/>32 / 500 mA"]:::out9
         psu1_SW_B["<b>SW_B</b> · 9V<br/>26 / 500 mA"]:::out9
     end
-    octahive["Beetronics Octahive<br/>fuzz / boost · 70 mA"]:::c_fuzz___boost
+    octahive["Beetronics Octahive<br/>fuzz / boost · 50 mA"]:::c_fuzz___boost
     jhs_hard_drive["JHS Hard Drive<br/>drive / distortion · 78 mA"]:::c_drive___distortion
     duke_of_tone["MXR Custom Shop Duke of Tone<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     e_lady["Mooer E-Lady<br/>modulation · 10 mA"]:::c_modulation
     ditto_looper["TC Electronic Ditto Looper<br/>other · 100 mA"]:::c_other
-    jhs_pulp_n_peel_v4["JHS Pulp 'N' Peel V4<br/>compressor · 100 mA"]:::c_compressor
+    jhs_pulp_n_peel_v4["JHS Pulp 'N' Peel V4<br/>compressor · 32 mA"]:::c_compressor
     carbon_copy["MXR Carbon Copy<br/>delay · 26 mA"]:::c_delay
     psu1_F1 --> octahive
     octahive --> jhs_hard_drive

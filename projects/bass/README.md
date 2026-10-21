@@ -4,15 +4,10 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 6 warning(s) (`no_unknown` on)
+- **Validation:** OK, 1 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: unknown jack setup for polytune_2_mini (TC Electronic PolyTune 2 Mini) -> run: python3 scripts/jack_setter.py polytune_2_mini
-- WARN jacks: unknown jack setup for darkglass_hyper_luminal (Darkglass Hyper Luminal) -> run: python3 scripts/jack_setter.py darkglass_hyper_luminal
-- WARN jacks: unknown jack setup for mxr_bass_synth (MXR Bass Synth) -> run: python3 scripts/jack_setter.py mxr_bass_synth
-- WARN jacks: unknown jack setup for ehx_bass_big_muff_2 (Electro-Harmonix Bass Big Muff Pi 2) -> run: python3 scripts/jack_setter.py ehx_bass_big_muff_2
-- WARN jacks: unknown jack setup for tech21_vt_bass_di (Tech 21 SansAmp VT Bass DI) -> run: python3 scripts/jack_setter.py tech21_vt_bass_di
 - WARN jacks: harley_benton_iso5_pro (Harley Benton PowerPlant ISO-5 Pro) has no playground_title, so there is no image to mark jacks on
 
 </details>
@@ -38,13 +33,13 @@ flowchart TB
     linkStyle default stroke:#78909c,stroke-width:2px
 ```
 
-| # | Pedal | Owned | Power | Bypass | Digital | Powered from |
-|--:|---|:-:|---|---|:-:|---|
-| 1 | TC Electronic PolyTune 2 Mini | Yes | 9V, 40 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
-| 2 | Darkglass Hyper Luminal | Yes | 9V, 250 mA | Buffered | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
-| 3 | MXR Bass Synth | No | 9V, 330 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
-| 4 | Electro-Harmonix Bass Big Muff Pi 2 | Yes | 9V, 25 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT2 |
-| 5 | Tech 21 SansAmp VT Bass DI | Yes | 9V, 6 mA | Buffered | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
+| # | Pedal | Owned | Accepts | Runs at | Draw | Bypass | Digital | Powered from |
+|--:|---|:-:|---|---|--:|---|:-:|---|
+| 1 | TC Electronic PolyTune 2 Mini | Yes | 9V | 9V | 40 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
+| 2 | Darkglass Hyper Luminal | Yes | 9V | 9V | 250 mA | Buffered | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
+| 3 | MXR Bass Synth | No | 9V | 9V | 330 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
+| 4 | Electro-Harmonix Bass Big Muff Pi 2 | Yes | 9-12V | 9V | 25 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT2 |
+| 5 | Tech 21 SansAmp VT Bass DI | Yes | 9V | 9V | 6 mA | Buffered | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
 
 **To buy:** MXR Bass Synth
 
@@ -62,10 +57,10 @@ flowchart TB
 
 ### Notes per pedal
 
-- **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly).
+- **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.
 - **Darkglass Hyper Luminal**: Planned for the bass board. Analog VCA audio path controlled by a digital side-chain (time constants editable via the Darkglass Suite), so treated as DIGITAL: must not share an output. 250 mA at 9V DC center-negative, REGULATED supply only (unregulated or higher voltage can cause noise/damage); no battery option listed. Buffered bypass (per owner; the manufacturer is silent and retailers conflict). Reported discontinued or out of stock at several retailers.
 - **MXR Bass Synth**: Planned for the bass board; on the to-buy list. MB301. 330 mA at 9V DC center-negative per retailer specs; cannot run on a battery. Has a DSP, so treated as DIGITAL: must not share an output (per owner; one retailer lists it as analog). True bypass (per owner).
-- **Electro-Harmonix Bass Big Muff Pi 2**: Planned for the bass board. 2026 small-enclosure reissue (not the original large Bass Big Muff Pi: that one draws 7 mA). ehx.com says 25 mA in the power section and 20 mA in the spec list (planning on 25); 9V DC center-negative, do not exceed 12V; battery included. Analog circuit, true bypass via mechanical relay.
+- **Electro-Harmonix Bass Big Muff Pi 2**: Planned for the bass board. 2026 small-enclosure reissue (not the original large Bass Big Muff Pi: that one draws 7 mA). ehx.com says 25 mA in the power section and 20 mA in the spec list (planning on 25); 9V DC center-negative, do not exceed 12V; battery included. Analog circuit, true bypass via mechanical relay. Power re-checked 2026-10-21: EHX says do not exceed 12VDC at the jack, so 9-12V.
 - **Tech 21 SansAmp VT Bass DI**: Planned for the bass board. Preamp / stompbox / XLR DI with a Drive control, so it counts as a gain / overdrive pedal. About 6 mA at 9V DC center-negative (100 mA minimum supply rating per the manual); also runs on 9V battery or 24-48V phantom power. 100% analog. Not true bypass: with the SansAmp circuit off it acts as an active transparent direct box, so the input buffer and XLR driver stay active (the manual does not call it 'buffered' explicitly).
 
 ## Powering
@@ -122,17 +117,7 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ## Jacks and cables
 
-Jack data: 0 of 6 catalog items set up (pedals and supplies in this project).
-
-Missing or incomplete (place the jacks on the pedal image, then rebuild):
-
-```
-python3 scripts/jack_setter.py polytune_2_mini
-python3 scripts/jack_setter.py darkglass_hyper_luminal
-python3 scripts/jack_setter.py mxr_bass_synth
-python3 scripts/jack_setter.py ehx_bass_big_muff_2
-python3 scripts/jack_setter.py tech21_vt_bass_di
-```
+Jack data: 5 of 6 catalog items set up (pedals and supplies in this project).
 
 *no playground_design.json: cable lengths and clearance are not checked.*
 

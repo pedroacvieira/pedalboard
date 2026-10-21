@@ -15,8 +15,8 @@ from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_j
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
-    ("power_consumption", "current_ma"), ("power_consumption", "voltage_v"),
-    ("power_consumption", "allowed_voltages_v"), ("power_consumption", "needs_isolated_output"),
+    ("power_consumption", "current_ma"), ("power_consumption", "min_voltage_v"),
+    ("power_consumption", "max_voltage_v"), ("power_consumption", "needs_isolated_output"),
 ]
 BOARD_REQUIRED = ["brand", "model", "width_in", "height_in"]
 
@@ -201,7 +201,7 @@ def validate(pdir, cat_pedals, cat_supplies):
     pol_strength = policy.get("strength", "required")
     power = project.get("power", {}).get("supplies", [])
     ctx["supplies"] = []
-    powered, instances = {}, {}
+    powered, instances, run_v = {}, {}, {}
     for inst in power:
         sup = cat_supplies.get(inst["supply"])
         if sup is None:
@@ -238,9 +238,11 @@ def validate(pdir, cat_pedals, cat_supplies):
                 if pid in powered:
                     errors.append(f"power: '{pid}' is on both {powered[pid]} and {oid}")
                 powered[pid] = oid
+                run_v[pid] = out["voltage_v"]
                 pc = pedals[pid]["power_consumption"]
-                if pc.get("allowed_voltages_v") and out["voltage_v"] not in pc["allowed_voltages_v"]:
-                    errors.append(f"{oid}: {pid} does not accept {out['voltage_v']}V (allowed {pc['allowed_voltages_v']})")
+                lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
+                if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
+                    errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
                 if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
                     errors.append(f"{oid}: {pid} needs an isolated output but shares it")
                 if pc.get("current_ma") is None:
@@ -282,6 +284,7 @@ def validate(pdir, cat_pedals, cat_supplies):
             errors.append(f"power: project uses {n} x {sid} but you own {q}")
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
+    ctx["run_v"] = run_v
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"])
     return ctx
 
@@ -300,11 +303,11 @@ def bypass(p):
     return ("Buffered" if b else "True") + (" (switchable)" if sw else "")
 
 
-def power_text(p):
-    pc = p["power_consumption"]
-    ma = "?" if pc["current_ma"] is None else pc["current_ma"]
-    v = "?" if pc["voltage_v"] is None else pc["voltage_v"]
-    return f"{v}V, {ma} mA"
+def volt_range(pc):
+    lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
+    if lo is None or hi is None:
+        return "?"
+    return f"{lo}V" if lo == hi else f"{lo}-{hi}V"
 
 
 def ma(p):
@@ -493,10 +496,10 @@ def project_readme(ctx, cat_pedals):
         md += [f"- ERROR {m}" for m in ctx["errors"]] + [f"- WARN {m}" for m in ctx["warnings"]]
         md += ["", "</details>", ""]
     md += ["## Signal chain", "", "```mermaid", *mermaid_signal(ctx), "```", "",
-           "| # | Pedal | Owned | Power | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|:-:|---|"]
+           "| # | Pedal | Owned | Accepts | Runs at | Draw | Bypass | Digital | Powered from |", "|--:|---|:-:|---|---|--:|---|:-:|---|"]
     for i, pid in enumerate(chain, 1):
         p = pedals[pid]
-        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {power_text(p)} | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
+        md.append(f"| {i} | {pedal_name(p)} | {yn(p.get('owned'))} | {volt_range(p['power_consumption'])} | {str(ctx.get('run_v', {}).get(pid, '-')) + 'V' if pid in ctx.get('run_v', {}) else '-'} | {ma(p)} mA | {bypass(p)} | {yn(p.get('digital'))} | {feed_label.get(pid, '-')} |")
     to_buy = [pedal_name(pedals[pid]) for pid in chain if pedals[pid].get("owned") is False]
     md += ["", f"**To buy:** {', '.join(to_buy) or 'nothing'}", "", "### Ordering rules", ""]
     for r in ctx["active_rules"]:
@@ -552,7 +555,7 @@ KNOWN_LIMITS = [
     "Only `playground_design.json` of guitar-gig exists; guitar-practice and bass have no hand-made layout yet, so their cables and clearance are not checked.",
 ]
 DATA_TO_VERIFY = [
-    "Red Muck Mk2 current draw: 60 mA (JAM shop page) against 12-15 mA (retailers); the plan uses 60 mA.",
+    "Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).",
     "PastFX Reticon: the 50 mA draw and isolated-supply need come from search snippets of the maker's pages.",
     "Browne Protein V3 current: 130 mA planned (manual says under 100 mA, a Q&A line says 130 mA, retailers about 30 mA). The price in the catalog is for the V4.",
     "Version assumptions: Retrovibe is priced and measured as the mk.4; the layout uses the Mini Beano Boost and the PolyTune 3 Mini Noir while the catalog entries are the Beano Boost and PolyTune 3.",
