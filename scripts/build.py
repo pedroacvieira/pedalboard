@@ -556,6 +556,7 @@ def project_readme(ctx, cat_pedals):
 KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
     "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
+    "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
     "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
 DATA_TO_VERIFY = [
@@ -569,7 +570,6 @@ DATA_TO_VERIFY = [
 
 def open_issues(ctxs, jacks_data):
     """README section: what is still open, computed from the data where possible."""
-    data = jacks.usable(jacks_data)
     md = ["", "## Open issues", ""]
     for c in ctxs:
         items = []
@@ -577,12 +577,6 @@ def open_issues(ctxs, jacks_data):
             items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
         for v in c.get("violations", []):
             items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({v['depth_mm']:.1f} mm into the zone); move one of the pedals apart")
-        extra_used = c["project"].get("jacks", {}).get("extra_used", {})
-        for cid in c["chain"]:
-            for j in data.get(cid, []):
-                if j.get("function") == "other" and j["id"] not in extra_used.get(cid, []):
-                    items.append(f"Extra jack `{cid}.{j['id']}` (\"{j['label']}\") is marked but not in `jacks.extra_used`, so its clearance is not checked"
-                                 + (" and it still has its default label" if j["label"].lower().startswith("jack ") else ""))
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
         if items:

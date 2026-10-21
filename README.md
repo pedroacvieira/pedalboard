@@ -37,29 +37,21 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Bass board
 
-- Extra jack `mxr_bass_synth.jack_4` ("CTR") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `tech21_vt_bass_di.jack_4` ("Parallel Input") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `tech21_vt_bass_di.jack_5` ("XLR Out") is marked but not in `jacks.extra_used`, so its clearance is not checked
 - No playground_design.json: cable lengths and clearance are not checked
 
 ### Guitar gig board
 
 - Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (0.9 mm into the zone); move one of the pedals apart
-- Extra jack `retrovibe.jack_4` ("Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `reticon.jack_4` ("Stereo") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `analog_chorus.jack_4` ("Thru") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `belle_epoch.jack_4` ("Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `flight_delay.jack_4` ("Tap/Exp") is marked but not in `jacks.extra_used`, so its clearance is not checked
 
 ### Guitar practice board
 
-- Extra jack `jhs_pulp_n_peel_v4.jack_4` ("XLR Out") is marked but not in `jacks.extra_used`, so its clearance is not checked
 - No playground_design.json: cable lengths and clearance are not checked
 
 ### Known limitations
 
 - Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).
 - Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.
+- Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.
 - Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).
 
 ### Data to verify

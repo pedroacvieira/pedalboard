@@ -88,11 +88,11 @@
         "supply": "ojai_r30",
         "label": "Ojai R30 (left)",
         "outputs": [
-          { "port": "F1", "voltage_v": 9, "pedals": ["analog_chorus"], "note": "Clocked (BBD): alone" },
+          { "port": "F1", "voltage_v": 9, "pedals": ["flight_delay"], "note": "Digital: alone" },
           { "port": "F2", "voltage_v": 9, "pedals": ["belle_epoch"], "note": "Digital: alone" },
           { "port": "F3", "voltage_v": 9, "pedals": ["monk"], "note": "Digital: alone" },
-          { "port": "SW_A", "voltage_v": 9, "pedals": ["flight_delay"], "note": "Digital: alone" },
-          { "port": "SW_B", "voltage_v": 18, "pedals": ["reticon"], "note": "Isolated output needed: alone" }
+          { "port": "SW_A", "voltage_v": 18, "pedals": ["reticon"], "note": "Isolated output needed: alone" },
+          { "port": "SW_B", "voltage_v": 9, "pedals": ["analog_chorus"], "note": "Clocked (BBD): alone" }
         ]
       },
       {
@@ -100,11 +100,11 @@
         "supply": "ojai_r30",
         "label": "Ojai R30 (right)",
         "outputs": [
-          { "port": "F1", "voltage_v": 9, "pedals": ["red_muck", "danelectro_3699", "sun_face", "beano"], "note": "Group: fuzz / boost" },
+          { "port": "F1", "voltage_v": 9, "pedals": ["red_muck", "beano", "danelectro_3699", "sun_face"], "note": "Group: fuzz / boost" },
           { "port": "F2", "voltage_v": 9, "pedals": ["polytune_3"], "note": "Digital: alone" },
-          { "port": "F3", "voltage_v": 9, "pedals": ["phase_95", "retrovibe"], "note": "Group: phase-type" },
-          { "port": "SW_A", "voltage_v": 18, "pedals": ["mini_ego", "fulldrive_2"], "note": "Group: compressor / drive / distortion" },
-          { "port": "SW_B", "voltage_v": 9, "pedals": ["ratsbane", "protein", "tumnus_deluxe"], "note": "Group: drive / distortion / eq / boost" }
+          { "port": "F3", "voltage_v": 9, "pedals": ["ratsbane", "protein", "tumnus_deluxe"], "note": "Group: drive / distortion / eq / boost" },
+          { "port": "SW_A", "voltage_v": 18, "pedals": ["fulldrive_2", "mini_ego"], "note": "Group: compressor / drive / distortion" },
+          { "port": "SW_B", "voltage_v": 9, "pedals": ["phase_95", "retrovibe"], "note": "Group: phase-type" }
         ]
       }
     ]
