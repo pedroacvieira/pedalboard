@@ -39,7 +39,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 - Extra jack `mxr_bass_synth.jack_4` ("CTR") is marked but not in `jacks.extra_used`, so its clearance is not checked
 - Extra jack `tech21_vt_bass_di.jack_4` ("Parallel Input") is marked but not in `jacks.extra_used`, so its clearance is not checked
-- Extra jack `tech21_vt_bass_di.jack_5` ("Jack 5") is marked but not in `jacks.extra_used`, so its clearance is not checked and it still has its default label
+- Extra jack `tech21_vt_bass_di.jack_5` ("XLR Out") is marked but not in `jacks.extra_used`, so its clearance is not checked
 - No playground_design.json: cable lengths and clearance are not checked
 
 ### Guitar gig board

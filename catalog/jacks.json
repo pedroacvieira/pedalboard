@@ -160,7 +160,7 @@
       {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.3968, "facing": "left"},
       {"id": "power", "label": "Power", "function": "power", "x": 0.0291, "y": 0.1944, "facing": "left"},
       {"id": "jack_4", "label": "Parallel Input", "function": "other", "x": 1.0, "y": 0.6481, "facing": "right"},
-      {"id": "jack_5", "label": "Jack 5", "function": "other", "x": 0.011, "y": 0.754, "facing": "left"}
+      {"id": "jack_5", "label": "XLR Out", "function": "other", "x": 0.011, "y": 0.754, "facing": "left"}
     ],
     "tumnus_deluxe": [
       {"id": "in", "label": "Input", "function": "input", "x": 0.6618, "y": 0.0029, "facing": "top"},
