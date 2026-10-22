@@ -4,11 +4,12 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
+- **Validation:** OK, 2 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
 - WARN jacks: harley_benton_iso5_pro (Harley Benton PowerPlant ISO-5 Pro) has no playground_title, so there is no image to mark jacks on
+- WARN footswitches: no footswitch data for 5 of 5 pedals (polytune_2_mini, darkglass_hyper_luminal, mxr_bass_synth, ehx_bass_big_muff_2, tech21_vt_bass_di) -> run: python3 scripts/pedal_editor.py --list-missing bass --only footswitches
 
 </details>
 
@@ -134,3 +135,20 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+
+## Footswitches
+
+Footswitch data: 0 of 5 pedals (catalog/footswitches.json).
+
+Missing (place the switches on the pedal image, then rebuild):
+
+```
+python3 scripts/pedal_editor.py polytune_2_mini --footswitches
+python3 scripts/pedal_editor.py darkglass_hyper_luminal --footswitches
+python3 scripts/pedal_editor.py mxr_bass_synth --footswitches
+python3 scripts/pedal_editor.py ehx_bass_big_muff_2 --footswitches
+python3 scripts/pedal_editor.py tech21_vt_bass_di --footswitches
+```
+
+*No playground_design.json: footswitch spacing is not checked.*
+

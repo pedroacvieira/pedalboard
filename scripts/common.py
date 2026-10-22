@@ -9,6 +9,7 @@ CATALOG = ROOT / "catalog"
 PROJECTS = ROOT / "projects"
 CACHE = ROOT / ".cache"
 JACKS_FILE = CATALOG / "jacks.json"
+FOOTSWITCHES_FILE = CATALOG / "footswitches.json"
 CABLES_FILE = CATALOG / "cables.json"
 SITE = "https://pedalplayground.com/public/data/"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
@@ -72,3 +73,28 @@ def px_to_mm(px, scale):
 
 def fmt_mm(v, digits=0):
     return "?" if v is None else f"{v:.{digits}f}"
+
+
+def dumps_per_line(doc, key, mapping, key_order):
+    """Diff-friendly JSON for catalog/jacks.json and catalog/footswitches.json: {"_doc", key: {id: [items]}}, ids
+    sorted, one item per line with its keys in `key_order` (unknown keys after). An empty list stays `[]`."""
+    def line(item):
+        ordered = {k: item[k] for k in key_order if k in item}
+        ordered.update({k: v for k, v in item.items() if k not in ordered})
+        return "{" + ", ".join(f"{json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}" for k, v in ordered.items()) + "}"
+
+    ids = sorted(mapping)
+    if not ids:
+        return "{\n" + f'  "_doc": {json.dumps(doc, ensure_ascii=False)},\n  {json.dumps(key)}: {{}}\n}}\n'
+    lines = ["{", f'  "_doc": {json.dumps(doc, ensure_ascii=False)},', f'  {json.dumps(key)}: {{']
+    for n, cid in enumerate(ids):
+        comma = "," if n < len(ids) - 1 else ""
+        items = mapping[cid]
+        if not items:
+            lines.append(f"    {json.dumps(cid)}: []{comma}")
+            continue
+        lines.append(f"    {json.dumps(cid)}: [")
+        lines += [f"      {line(it)}{',' if i < len(items) - 1 else ''}" for i, it in enumerate(items)]
+        lines.append("    ]" + comma)
+    lines += ["  }", "}"]
+    return "\n".join(lines) + "\n"

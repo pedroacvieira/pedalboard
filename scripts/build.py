@@ -10,6 +10,7 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
+import footswitches
 import jacks
 import routing
 from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
@@ -36,7 +37,7 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
@@ -309,6 +310,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None):
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
                 cable_types=cable_types, defer=True, items=items)
     routing.route_project(ctx, cat_pedals, cable_types=cable_types)
+    footswitches.check(ctx, cat_pedals, footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
     return ctx
 
 
@@ -539,6 +541,42 @@ def jacks_section(ctx):
     return md
 
 
+def footswitch_section(ctx, cat_pedals):
+    """README section: footswitch data status, the minimum spacing and the closest pairs (all mm)."""
+    md = ["", "## Footswitches", ""]
+    setup, chain = ctx.get("footswitch_setup", {}), ctx["chain"]
+    have = [c for c in chain if setup.get(c) in ("ok", "none")]
+    none = [c for c in chain if setup.get(c) == "none"]
+    md += [f"Footswitch data: {len(have)} of {len(chain)} pedals" + (f" ({len(none)} without a footswitch)" if none else "")
+           + " (catalog/footswitches.json).", ""]
+    if ctx.get("footswitch_fixes"):
+        md += ["Missing (place the switches on the pedal image, then rebuild):", "", "```"]
+        md += [cmd for _, cmd in ctx["footswitch_fixes"]] + ["```", ""]
+    st = ctx.get("footswitch_settings") or {}
+    if not st.get("layout"):
+        return md + ["*No playground_design.json: footswitch spacing is not checked.*", ""]
+    lim = st.get("min_distance_mm")
+    if st.get("mode") == "auto":
+        rule = (f"auto = {lim:.1f} mm, the smallest distance between switches of different pedals in playground_design.json "
+                f"(the owner's layout is the reference)" if lim is not None else
+                "auto: no pair of footswitches is known yet, so there is no limit")
+    else:
+        rule = f"{lim:g} mm (`footswitches.min_distance_mm`)"
+    md += [f"Minimum distance between switches of different pedals (centre to centre): {rule}. "
+           "Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off.", ""]
+    prs = ctx.get("footswitch_pairs") or []
+    if not prs:
+        return md + ["No pair of footswitches on different pedals is known yet.", ""]
+    md += [f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
+           "| Switch | Bypass | Switch | Bypass | Distance (mm) | Status |", "|---|:-:|---|:-:|--:|---|"]
+    for r in prs[:footswitches.TOP_PAIRS]:
+        md.append(f"| {r['a']} | {yn(r['a_bypass'])} | {r['b']} | {yn(r['b_bypass'])} | {r['distance_mm']:.1f} | "
+                  f"{'too close' if r['too_close'] else 'ok'} |")
+    close = sum(1 for r in prs if r["too_close"])
+    md += ["", f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
+    return md
+
+
 def project_readme(ctx, cat_pedals):
     pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
@@ -613,6 +651,7 @@ def project_readme(ctx, cat_pedals):
         md += [f"**All supplies combined:** {grand} mA", ""]
     md += jacks_section(ctx)
     md += routing_section(ctx)
+    md += footswitch_section(ctx, cat_pedals)
     return "\n".join(md) + "\n"
 
 
@@ -642,6 +681,13 @@ def open_issues(ctxs, jacks_data):
             items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({violation_where(v)}); move one of the pedals apart")
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
+        if c.get("footswitch_fixes"):
+            items.append(f"Footswitches not placed for {len(c['footswitch_fixes'])} pedal(s): "
+                         f"`{footswitches.COMMAND} --list-missing {c['key']} --only footswitches`")
+        for r in c.get("footswitch_pairs") or []:
+            if r["too_close"]:
+                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {r['distance_mm']:.1f} mm apart "
+                             f"(min {c['footswitch_settings']['min_distance_mm']:.1f} mm)")
         if items:
             md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]
     md += ["### Known limitations", ""] + [f"- {i}" for i in KNOWN_LIMITS]
@@ -661,6 +707,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
         "catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)",
+        "catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)",
         "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
         "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
@@ -673,6 +720,8 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
         "python3 -m pytest tests                       geometry and jack-check tests",
         "```",
+        "",
+        "Footswitches: switches of different pedals must be at least `footswitches.min_distance_mm` apart (default \"auto\" = the smallest distance in the owner's playground_design.json). Missing footswitch data and pairs that are too close are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
@@ -768,9 +817,10 @@ def main():
 
     cat_pedals, cat_supplies = load_catalog()
     jacks_file = jacks.read_file()
+    fs_file = footswitches.read_file()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"])
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -782,7 +832,8 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"]) for d in project_dirs()]
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
+                for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)
 
@@ -809,6 +860,9 @@ def main():
     for cid, msgs in jacks.validate_jacks_file(jacks_file, cat_pedals, cat_supplies).items():
         for m in msgs:
             print(f"WARN  catalog/jacks.json {cid}: {m}")
+    for cid, msgs in footswitches.validate_file(fs_file, cat_pedals, cat_supplies).items():
+        for m in msgs:
+            print(f"WARN  catalog/footswitches.json {cid}: {m}")
     print("OK" if not bad else "FAILED")
     sys.exit(1 if bad else 0)
 

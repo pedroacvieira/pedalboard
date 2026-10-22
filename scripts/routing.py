@@ -584,8 +584,17 @@ def svg(ctx, names):
         out.append(f'<polyline points="{pts}" fill="none" stroke="{col}" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>')
         mx, my = c["path"][len(c["path"]) // 2]
         out.append(f'<text x="{mx:.1f}" y="{my - 2:.1f}" font-size="6" fill="{col}" font-weight="bold">{c["id"]}</text>')
+    for pr in (x for x in ctx.get("footswitch_pairs") or [] if x.get("too_close")):
+        (ax, ay), (bx, by) = pr["points"]
+        out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" stroke="#d50000" stroke-width="1.2" '
+                   f'stroke-dasharray="3 2"/>')
+    for fp in ctx.get("footswitch_points") or []:   # filled: bypass switch, hollow: other switch
+        out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{"#263238" if fp["bypass"] else "#ffffff"}" '
+                   f'stroke="#263238" stroke-width="0.8"/>')
     out.append(f'<text x="{grid.x0:.1f}" y="{board[3] + 14:.1f}" font-size="7" fill="#455a64">dashed: routing area '
                f'(board + {r["settings"]["edge_margin_mm"]:g} mm at back and sides, nothing in front of the lowest pedals); '
-               f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits</text>')
+               f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits'
+               + ('; dots: footswitches (filled = bypass), red dashed line: closer than the minimum'
+                  if ctx.get("footswitch_points") else '') + '</text>')
     out.append("</svg>")
     return "\n".join(out) + "\n"

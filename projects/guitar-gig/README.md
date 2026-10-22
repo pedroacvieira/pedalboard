@@ -4,13 +4,14 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 3 warning(s) (`no_unknown` on)
+- **Validation:** OK, 4 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
 - WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
 - WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
 - WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
+- WARN footswitches: no footswitch data for 17 of 17 pedals (sun_face, danelectro_3699, beano, polytune_3, mini_ego, fulldrive_2, phase_95, retrovibe, red_muck, ratsbane, protein, reticon, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -308,3 +309,34 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P17 | power | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~163 | not routed (under the board) |
 
 Signal cable, minimum: 2576 mm over 16 cables.
+
+## Footswitches
+
+Footswitch data: 0 of 17 pedals (catalog/footswitches.json).
+
+Missing (place the switches on the pedal image, then rebuild):
+
+```
+python3 scripts/pedal_editor.py sun_face --footswitches
+python3 scripts/pedal_editor.py danelectro_3699 --footswitches
+python3 scripts/pedal_editor.py beano --footswitches
+python3 scripts/pedal_editor.py polytune_3 --footswitches
+python3 scripts/pedal_editor.py mini_ego --footswitches
+python3 scripts/pedal_editor.py fulldrive_2 --footswitches
+python3 scripts/pedal_editor.py phase_95 --footswitches
+python3 scripts/pedal_editor.py retrovibe --footswitches
+python3 scripts/pedal_editor.py red_muck --footswitches
+python3 scripts/pedal_editor.py ratsbane --footswitches
+python3 scripts/pedal_editor.py protein --footswitches
+python3 scripts/pedal_editor.py reticon --footswitches
+python3 scripts/pedal_editor.py analog_chorus --footswitches
+python3 scripts/pedal_editor.py monk --footswitches
+python3 scripts/pedal_editor.py belle_epoch --footswitches
+python3 scripts/pedal_editor.py flight_delay --footswitches
+python3 scripts/pedal_editor.py tumnus_deluxe --footswitches
+```
+
+Minimum distance between switches of different pedals (centre to centre): auto: no pair of footswitches is known yet, so there is no limit. Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off.
+
+No pair of footswitches on different pedals is known yet.
+

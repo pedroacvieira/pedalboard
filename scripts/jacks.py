@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 import design
-from common import JACKS_FILE, pedal_name
+from common import JACKS_FILE, dumps_per_line, pedal_name
 
 FUNCTIONS = ("input", "output", "power", "power_out", "other")
 FACINGS = ("left", "right", "top", "down")
@@ -35,23 +35,9 @@ def read_file(path=JACKS_FILE):
     return data
 
 
-def _jack_line(j):
-    ordered = {k: j[k] for k in KEY_ORDER if k in j}
-    ordered.update({k: v for k, v in j.items() if k not in ordered})
-    return "{" + ", ".join(f"{json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}" for k, v in ordered.items()) + "}"
-
-
 def dumps(data):
     """Compact, diff-friendly JSON: one jack per line, catalog ids sorted."""
-    lines = ["{", f'  "_doc": {json.dumps(data.get("_doc", DOC), ensure_ascii=False)},', '  "jacks": {']
-    ids = sorted(data["jacks"])
-    for n, cid in enumerate(ids):
-        lines.append(f"    {json.dumps(cid)}: [")
-        js = data["jacks"][cid]
-        lines += [f"      {_jack_line(j)}{',' if i < len(js) - 1 else ''}" for i, j in enumerate(js)]
-        lines.append("    ]" + ("," if n < len(ids) - 1 else ""))
-    lines += ["  }", "}"]
-    return "\n".join(lines) + "\n"
+    return dumps_per_line(data.get("_doc", DOC), "jacks", data["jacks"], KEY_ORDER)
 
 
 def normalize(jack):

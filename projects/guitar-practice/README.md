@@ -4,7 +4,13 @@
 
 - **Instrument:** guitar
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 0 warning(s) (`no_unknown` on)
+- **Validation:** OK, 1 warning(s) (`no_unknown` on)
+
+<details><summary>Validation messages</summary>
+
+- WARN footswitches: no footswitch data for 7 of 7 pedals (octahive, jhs_pulp_n_peel_v4, jhs_hard_drive, duke_of_tone, e_lady, carbon_copy, ditto_looper) -> run: python3 scripts/pedal_editor.py --list-missing guitar-practice --only footswitches
+
+</details>
 
 ## Signal chain
 
@@ -142,3 +148,22 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S4 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S5 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S6 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+
+## Footswitches
+
+Footswitch data: 0 of 7 pedals (catalog/footswitches.json).
+
+Missing (place the switches on the pedal image, then rebuild):
+
+```
+python3 scripts/pedal_editor.py octahive --footswitches
+python3 scripts/pedal_editor.py jhs_pulp_n_peel_v4 --footswitches
+python3 scripts/pedal_editor.py jhs_hard_drive --footswitches
+python3 scripts/pedal_editor.py duke_of_tone --footswitches
+python3 scripts/pedal_editor.py e_lady --footswitches
+python3 scripts/pedal_editor.py carbon_copy --footswitches
+python3 scripts/pedal_editor.py ditto_looper --footswitches
+```
+
+*No playground_design.json: footswitch spacing is not checked.*
+

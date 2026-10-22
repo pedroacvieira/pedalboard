@@ -8,6 +8,7 @@ One shared catalog of pedals and power supplies, plus one folder per pedalboard 
 catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)
 catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own
 catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)
+catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)
 projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring
 projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary
 projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)
@@ -21,6 +22,8 @@ python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its imag
 python3 -m pytest tests                       geometry and jack-check tests
 ```
 
+Footswitches: switches of different pedals must be at least `footswitches.min_distance_mm` apart (default "auto" = the smallest distance in the owner's playground_design.json). Missing footswitch data and pairs that are too close are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.
+
 Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.
 
 Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, power jacks against the DC plug type (`cables.power_type`) on the less blocked side (or the small `jacks.power_clearance` zone without one); other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). All cable figures are in mm.
@@ -29,25 +32,28 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 3 warning(s) |
-| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 2 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 4 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 1 warning(s) |
 
 ## Open issues
 
 ### Bass board
 
 - No playground_design.json: cable lengths and clearance are not checked
+- Footswitches not placed for 5 pedal(s): `python3 scripts/pedal_editor.py --list-missing bass --only footswitches`
 
 ### Guitar gig board
 
 - Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right); move one of the pedals apart
 - Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (3.0 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
 - Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
+- Footswitches not placed for 17 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 
 - No playground_design.json: cable lengths and clearance are not checked
+- Footswitches not placed for 7 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-practice --only footswitches`
 
 ### Known limitations
 
