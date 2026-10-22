@@ -340,3 +340,108 @@ Minimum distance between switches of different pedals (centre to centre): auto: 
 
 No pair of footswitches on different pedals is known yet.
 
+
+## Layout proposals
+
+Made by `python3 scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 14.3 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+
+| | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
+|---|--:|--:|--:|--:|
+| Blocked plugs | 3 (24.7 mm) | 0 (0.0 mm) | 0 (0.0 mm) | 0 (0.0 mm) |
+| Unroutable / squeezed / over the stacking limit | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Footswitch pairs below the minimum | no data | no data | no data | no data |
+| Closest footswitch pair (mm) | - | - | - | - |
+| Signal cables, routed minimum (mm) | 2576 | 2453 | 2744 | 2775 |
+| Power cables, estimate (mm) | 2710 | 2467 | 2506 | 2521 |
+| First input / last output to the board edges (mm) | 28 | 28 | 21 | 28 |
+| Build errors / warnings | 0 / 4 | 0 / 1 | 0 / 1 | 0 / 1 |
+| Score (lower is better) | 4068 | 3225 | 3479 | 3501 |
+
+### Proposal 1
+
+Pedal Playground file: [proposals/1.json](proposals/1.json); blocked plugs fixed: `monk.out`, `monk.power`, `red_muck.power`.
+
+![Proposal 1](proposals/1.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| JAM Pedals Retrovibe | +5.6 | -3.4 | 6.6 | 0 deg |
+| JAM Pedals Red Muck Mk2 | +4.5 | +9.0 | 10.1 | 0 deg |
+| MXR Analog Chorus | +1.7 | -0.6 | 1.8 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +0.6 | -40.1 | 40.1 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Ojai R30 (left) | F1 | 9V | JHS Flight Delay |
+| Ojai R30 (left) | F2 | 9V | Catalinbread Belle Epoch Deluxe |
+| Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
+| Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
+| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
+| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+
+### Proposal 2
+
+Pedal Playground file: [proposals/2.json](proposals/2.json); blocked plugs fixed: `monk.out`, `monk.power`, `red_muck.power`.
+
+![Proposal 2](proposals/2.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| JAM Pedals Retrovibe | +4.0 | -3.4 | 5.2 | 0 deg |
+| JAM Pedals Red Muck Mk2 | +3.4 | +9.0 | 9.6 | 0 deg |
+| MXR Analog Chorus | -2.3 | -10.7 | 11.0 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +3.4 | +0.6 | 3.4 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -2.8 | +2.8 | 4.0 | 0 deg |
+| JHS Flight Delay | -13.0 | +0.0 | 13.0 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +3.4 | 8.1 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Ojai R30 (left) | F1 | 9V | JHS Flight Delay |
+| Ojai R30 (left) | F2 | 9V | Catalinbread Belle Epoch Deluxe |
+| Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
+| Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
+| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
+| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+
+### Proposal 3
+
+Pedal Playground file: [proposals/3.json](proposals/3.json); blocked plugs fixed: `monk.out`, `monk.power`, `red_muck.power`.
+
+![Proposal 3](proposals/3.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| MXR Analog Chorus | -5.1 | -11.3 | 12.4 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +0.6 | +0.0 | 0.6 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+| JHS Flight Delay | -0.6 | +7.9 | 7.9 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Ojai R30 (left) | F1 | 9V | JHS Flight Delay |
+| Ojai R30 (left) | F2 | 9V | Catalinbread Belle Epoch Deluxe |
+| Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
+| Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
+| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
+| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+

@@ -9,7 +9,14 @@ done, and keep `CLAUDE.md` current when a decision changes.
 - [x] Phases 0-2 (2026-10-22): layout injection, `design.move` / `write_canvas`, footswitch data + spacing check,
       `scripts/pedal_editor.py` (renamed from jack_setter, footswitch mode, Pillow instead of numpy).
 - [ ] Manual GUI check of the pedal editor (footswitch mode, J/F, no-footswitch box, the four-way switch type) by the owner.
-- [ ] Phases 3-5: surrogate score, layout search, proposals (see the plan and its owner decisions/corrections).
+- [x] Phases 3-5 (2026-10-22): `scripts/layout.py` (surrogate score, search), `scripts/power.py` (policy checks
+      shared with the build, power assignment per layout), `scripts/propose_layout.py`, README "Layout proposals".
+- [ ] Owner: look at the guitar-gig proposals (`projects/guitar-gig/proposals/1.json`, Load from File) and say whether
+      the moves are acceptable; tune `layout.weights` / `max_move_mm` if not.
+- [ ] Owner: try `--max-change rearrange` (bigger moves, swaps, rotations) once and judge the result.
+- [ ] Footswitch term is 0 until the footswitches are placed; rerun the proposals after placing them.
+- [ ] Surrogate vs router: the signal estimate (octile + detour around crossed pedals) still misjudges some routes
+      (finalists are checked with the router, so proposals are safe, but the search may miss better ones).
 - [ ] `feat/cable-routing` is merged into `main` locally (2026-10-22); push `main` when the owner asks.
 - [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
       `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
@@ -30,6 +37,7 @@ done, and keep `CLAUDE.md` current when a decision changes.
       center-positive pedal arrives.
 
 ## Gig board layout
+- [ ] Both findings below are fixed by the fix-level proposals (`projects/guitar-gig/README.md`, Layout proposals).
 - [ ] Monk / Belle Epoch are too close: `monk.out` (1.0 mm) and `monk.power` (5.1 mm) plug heads are blocked by the
       Belle Epoch. Move one apart in Pedal Playground and re-save `projects/guitar-gig/playground_design.json`
       (or confirm with measurements that the plugs fit).

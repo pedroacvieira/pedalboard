@@ -19,6 +19,7 @@ python3 scripts/build.py [project...]        validate + regenerate docs
 python3 scripts/to_playground.py [project...] write projects/<name>/playground.json
 python3 scripts/new_project.py <name> --instrument guitar|bass
 python3 scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)
+python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)
 python3 -m pytest tests                       geometry and jack-check tests
 ```
 

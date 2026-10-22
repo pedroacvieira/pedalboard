@@ -534,6 +534,72 @@ def footswitch_section(ctx, cat_pedals):
     return md
 
 
+def proposals_section(ctx, cat_pedals):
+    """README section from projects/<name>/proposals/meta.json (written by scripts/propose_layout.py; the search
+    never runs here): before/after figures, moved pedals, each proposal's power wiring, stale detection."""
+    import hashlib
+    pdir = ctx["dir"]
+    meta_path = pdir / "proposals" / "meta.json"
+    design_path = pdir / "playground_design.json"
+    if not design_path.exists():
+        return []
+    md = ["", "## Layout proposals", ""]
+    if not meta_path.exists():
+        return md + [f"None yet: `python3 scripts/propose_layout.py {ctx['key']}` searches for better pedal positions "
+                     "(it never changes playground_design.json).", ""]
+    meta = load_json(meta_path)
+    stale = (meta.get("design_sha1") != hashlib.sha1(design_path.read_bytes()).hexdigest() or meta.get("chain") != ctx["chain"])
+    md += [f"Made by `{meta['command']}` (max_change `{meta['max_change']}`, max move "
+           f"{'none' if meta.get('max_move_mm') is None else format(meta['max_move_mm'], 'g') + ' mm'}, seed {meta['seed']}, "
+           f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is a Pedal "
+           "Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as "
+           "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
+           "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
+    if stale:
+        md += ["**Stale:** playground_design.json or the signal chain changed since these proposals were made; rerun the command above.", ""]
+    props = meta.get("proposals") or []
+    if not props:
+        return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
+
+    def fs(m):
+        return "no data" if not m.get("fs_known") else str(m["fs_close"])
+    rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
+            ("Unroutable / squeezed / over the stacking limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
+            ("Footswitch pairs below the minimum", fs),
+            ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
+            ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
+            ("Power cables, estimate (mm)", lambda m: f"{m['power_mm']:.0f}"),
+            ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),
+            ("Build errors / warnings", lambda m: f"{m['errors']} / {m['warnings']}"),
+            ("Score (lower is better)", lambda m: f"{m['score']:.0f}")]
+    owner = meta["owner"]
+    md += ["| | Owner's layout | " + " | ".join(f"Proposal {p['n']}" for p in props) + " |",
+           "|---|--:|" + "--:|" * len(props)]
+    for label, f in rows:
+        md.append(f"| {label} | {f(owner)} | " + " | ".join(f(p["metrics"]) for p in props) + " |")
+    md.append("")
+    nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
+    for p in props:
+        m = p["metrics"]
+        gone = sorted(set(owner.get("blocked_jacks", [])) - set(m.get("blocked_jacks", [])))
+        md += [f"### Proposal {p['n']}", "", f"Pedal Playground file: [proposals/{p['file']}](proposals/{p['file']})"
+               + (f"; blocked plugs fixed: {', '.join(f'`{j}`' for j in gone)}" if gone else "") + ".", "",
+               f"![Proposal {p['n']}](proposals/{p['svg']})", "",
+               "| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |", "|---|--:|--:|--:|---|"]
+        for mv in p["moved"]:
+            rot = f"{mv['rot_from']} -> {mv['rot_to']} deg" if mv["rot_from"] != mv["rot_to"] else f"{mv['rot_to']} deg"
+            md.append(f"| {nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
+        pw = p.get("power") or {}
+        md += ["", f"Power wiring for this layout (computed under the power policy; the build keeps using project.json"
+               + (f"; {pw['error']}, so the owner's wiring is shown" if pw.get("error") else "") + "):", "",
+               "| Supply | Output | Voltage | Daisy chain |", "|---|---|--:|---|"]
+        for sup in pw.get("supplies", []):
+            for o in sup["outputs"]:
+                md.append(f"| {sup.get('label') or sup['id']} | {o['port']} | {o['voltage_v']}V | {', '.join(nm(x) for x in o['pedals'])} |")
+        md.append("")
+    return md
+
+
 def project_readme(ctx, cat_pedals):
     pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
@@ -609,6 +675,7 @@ def project_readme(ctx, cat_pedals):
     md += jacks_section(ctx)
     md += routing_section(ctx)
     md += footswitch_section(ctx, cat_pedals)
+    md += proposals_section(ctx, cat_pedals)
     return "\n".join(md) + "\n"
 
 
@@ -675,6 +742,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
         "python3 scripts/new_project.py <name> --instrument guitar|bass",
         "python3 scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)",
+        "python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)",
         "python3 -m pytest tests                       geometry and jack-check tests",
         "```",
         "",

@@ -32,17 +32,23 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
   `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.min_distance_mm`
-  ("auto" default or mm), `validation` flags (`require_footswitches`, `strict_footswitches` among them).
+  ("auto" default or mm) and `footswitches.priority` (spacing weight per switch type), `layout` (optional: pins,
+  rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
+  (`require_footswitches`, `strict_footswitches` among them).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
-  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`.
+  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`;
+  `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
   loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
   saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
   `footswitches.py` (footswitch data, spacing check), `routing.py` (cable model, plug
-  heads, side choice, grid router, plug-head clearance),
+  heads, side choice, grid router, plug-head clearance), `power.py` (power policy checks shared with the build,
+  `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
+  surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`python3 -m pytest tests`), ~171 tests, hand-computed geometry cases.
+- `tests/`: pytest (`python3 -m pytest tests`), ~205 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+  full guitar-gig search).
 
 ## Commands
 ```
@@ -52,6 +58,9 @@ python3 scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / 
 python3 scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
 python3 scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
 python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
+python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
+                                               # layout proposals in projects/<name>/proposals/ (then build)
+python3 scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
 ```
 
 ## Conventions and decisions (keep them)
@@ -107,6 +116,19 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
   the smallest such distance in the owner's `playground_design.json` (also for injected layouts), so the owner's
   layout has no findings by construction. Missing data is one aggregated warning per project. README lists the 8
   closest pairs with their types; `cables.svg` draws the switches (colour per type) and too-close lines.
+- Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
+  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
+  overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
+  penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
+  crossed pedals), power 0.1/mm, footswitch spacing by type priority, first input to the right edge, last output
+  to the nearest left/right/back edge, small right-to-left flow, accessibility (tuner back; boost/eq/master pedals
+  front 0.3; drives and tap switches front 0.1; a boost switch front 0.05; modulation avoids the front unless tap),
+  rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). `max_change` fix (default:
+  max 40 mm, no swaps/rotations) / rearrange / free. Finalists get their own power wiring (`power.assign`) and are
+  checked with `build.validate(items=, project=)`; a proposal must not be worse than the owner's layout on errors,
+  blocked plugs, routing problems and footswitch pairs. Proposals never touch `playground_design.json` or the
+  owner's power wiring in project.json; the README section is rendered from `proposals/meta.json` (stale when the
+  design file or chain changed).
 
 ## Working agreements with the owner
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.

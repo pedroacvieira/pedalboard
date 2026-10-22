@@ -53,3 +53,22 @@ items injection in `build.validate(..., items=)`, `design.move`, `design.write_c
   length before/after, footswitch term (0 until data exists), runtime. Also run `--max-change rearrange` once and
   report the same (do not commit its proposal files unless they are the default run's).
 - Report commits, test count, open questions and anything not verified.
+
+## Current state (2026-10-22, end of part 2)
+Phases 3-5 done on `feat/pedal-position` (not pushed, not merged), plus the owner's footswitch `type` correction:
+- Footswitch types: `type` bypass|tap|boost|function replaces the bypass/tap flags (`footswitches.TYPES`,
+  `priorities`/`pair_priority`, pedal editor radio buttons, README pairs table, cables.svg colours).
+- Phase 3: `scripts/layout.py` (Model: per-rotation geometry, hard constraints, surrogate score with all terms of
+  the handover; weights `layout.weights`), `scripts/power.py` (`output_findings` / `merge_18v_findings` used by
+  `build.validate`; `assign` for a layout), `build.validate(..., project=)`.
+- Phase 4: `layout.search` (annealing + polish, levels fix/rearrange/free, deterministic), `scripts/propose_layout.py`
+  (`--score`, finalists with their own wiring checked by `build.validate`, gating, proposals/<n>.json + .svg +
+  meta.json), `routing.svg(overlay=, legend=)`. Signal surrogate = octile + 0.6 x detour estimate (calibrated on
+  guitar-gig: without it the router's detours made proposals longer than the owner's layout).
+- Phase 5: README "Layout proposals" (`build.proposals_section`, stale detection by design-file sha1 + chain),
+  root README command, scaffold `layout` block, `CLAUDE.md`, `docs/TODO.md`.
+- guitar-gig, fix level (seed 1, ~14 s): best proposal moves 5 pedals (Monk 40 mm back, Red Muck 10, Retrovibe 7,
+  Belle Epoch 4, Analog Chorus 2), 0 blocked plugs (was 3), routed signal 2576 -> 2453 mm, DC estimate 2710 ->
+  2467 mm with its own wiring. Rearrange (~20 s, not committed): signal 2140 mm, 13 pedals moved, 3 rotations.
+- Open: footswitch term is 0 until data exists; the surrogate still misjudges some routes (finalists are checked
+  with the router); power `overrides.P#.exit_b` are ignored by the search (P numbering changes with the wiring).
