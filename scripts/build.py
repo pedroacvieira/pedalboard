@@ -11,6 +11,7 @@ import argparse
 import sys
 
 import jacks
+import routing
 from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
@@ -286,6 +287,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
+    routing.route_project(ctx, cat_pedals, slack_mm=ctx.get("jack_settings", {}).get("slack_mm", 50))
     return ctx
 
 
@@ -438,6 +440,31 @@ def mermaid_power(ctx):
     return lines
 
 
+def routing_section(ctx):
+    """README section: routed signal cables (picture + table) and the power cable list."""
+    cables = ctx.get("cable_list") or []
+    if not cables:
+        return []
+    cfg = ctx["routing"]["settings"]
+    md = ["", "## Cable routing", "",
+          f"Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, "
+          f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
+          f"{cfg['grid_mm']:g} mm cell (cable diameter {cfg['diameter_mm']:g} mm). Power cables run under the board and are listed, not routed yet.", ""]
+    if ctx["routing"].get("grid"):
+        md += ["![Cable routing](cables.svg)", ""]
+    md += ["| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |",
+           "|---|---|---|---|---|---|:-:|--:|--:|---|"]
+    for c in cables:
+        routed = fmt_mm(c["routed_mm"]) if c["routed_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
+        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c['tip_a']} / {c['tip_b']} | {c.get('polarity', '-')} | "
+                  f"{'yes' if c['under_board'] else 'no'} | {routed} | {fmt_mm(c['suggested_mm'])} | {c['status']} |")
+    sig = [c for c in cables if c["kind"] == "signal" and c["routed_mm"] is not None]
+    if sig:
+        md += ["", f"Routed signal cable: {sum(c['routed_mm'] for c in sig):.0f} mm over {len(sig)} cables "
+                   f"(suggested lengths add up to {sum(c['suggested_mm'] for c in sig)} mm). '~' marks a power estimate (not routed)."]
+    return md
+
+
 def run_v_cell(ctx, pid):
     rv = ctx["run_v"]
     return f"{rv[pid]}V" if pid in rv else "-"
@@ -550,6 +577,7 @@ def project_readme(ctx, cat_pedals):
     if ctx["supplies"]:
         md += [f"**All supplies combined:** {grand} mA", ""]
     md += jacks_section(ctx)
+    md += routing_section(ctx)
     return "\n".join(md) + "\n"
 
 
@@ -709,6 +737,11 @@ def main():
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
+        picture = routing.svg(ctx, {pid: cat_pedals[pid]["name"] for pid in ctx["chain"]})
+        if picture:
+            (pdir / "cables.svg").write_text(picture)
+        else:
+            (pdir / "cables.svg").unlink(missing_ok=True)
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset

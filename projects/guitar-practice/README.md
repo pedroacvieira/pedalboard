@@ -127,3 +127,16 @@ Jack data: 8 of 8 catalog items set up (pedals and supplies in this project).
 
 *no playground_design.json: cable lengths and clearance are not checked.*
 
+
+## Cable routing
+
+Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 6 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable diameter 6 mm). Power cables run under the board and are listed, not routed yet.
+
+| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |
+|---|---|---|---|---|---|:-:|--:|--:|---|
+| S1 | signal | octahive.out | jhs_pulp_n_peel_v4.in | TS / TS | - | no | ? | ? | not routed |
+| S2 | signal | jhs_pulp_n_peel_v4.out | jhs_hard_drive.in | TS / TS | - | no | ? | ? | not routed |
+| S3 | signal | jhs_hard_drive.out | duke_of_tone.in | TS / TS | - | no | ? | ? | not routed |
+| S4 | signal | duke_of_tone.out | e_lady.in | TS / TS | - | no | ? | ? | not routed |
+| S5 | signal | e_lady.out | carbon_copy.in | TS / TS | - | no | ? | ? | not routed |
+| S6 | signal | carbon_copy.out | ditto_looper.in | TS / TS | - | no | ? | ? | not routed |

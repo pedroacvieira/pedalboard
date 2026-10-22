@@ -121,3 +121,14 @@ Jack data: 5 of 6 catalog items set up (pedals and supplies in this project).
 
 *no playground_design.json: cable lengths and clearance are not checked.*
 
+
+## Cable routing
+
+Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 6 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable diameter 6 mm). Power cables run under the board and are listed, not routed yet.
+
+| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |
+|---|---|---|---|---|---|:-:|--:|--:|---|
+| S1 | signal | polytune_2_mini.out | darkglass_hyper_luminal.in | TS / TS | - | no | ? | ? | not routed |
+| S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | TS / TS | - | no | ? | ? | not routed |
+| S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | TS / TS | - | no | ? | ? | not routed |
+| S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | TS / TS | - | no | ? | ? | not routed |

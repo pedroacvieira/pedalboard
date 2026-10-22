@@ -4,11 +4,12 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
+- **Validation:** OK, 2 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
 - WARN clearance: monk.out (Output, facing left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 0.9 mm into the 6.3 mm zone
+- WARN routing: S14 (monk.out -> belle_epoch.in) has no free path between the pedals
 
 </details>
 
@@ -305,3 +306,47 @@ Total suggested: 3750 mm over 16 of 16 cables.
 
 Total suggested: 4200 mm over 17 of 17 cables.
 
+
+## Cable routing
+
+Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 6 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable diameter 6 mm). Power cables run under the board and are listed, not routed yet.
+
+![Cable routing](cables.svg)
+
+| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |
+|---|---|---|---|---|---|:-:|--:|--:|---|
+| S1 | signal | sun_face.out | danelectro_3699.in | TS / TS | - | no | 105 | 200 | routed |
+| S2 | signal | danelectro_3699.out | beano.in | TS / TS | - | no | 177 | 250 | routed |
+| S3 | signal | beano.out | polytune_3.in | TS / TS | - | no | 220 | 300 | routed |
+| S4 | signal | polytune_3.out | mini_ego.in | TS / TS | - | no | 92 | 150 | routed |
+| S5 | signal | mini_ego.out | fulldrive_2.in | TS / TS | - | no | 140 | 200 | routed |
+| S6 | signal | fulldrive_2.out | phase_95.in | TS / TS | - | no | 285 | 350 | routed |
+| S7 | signal | phase_95.out | retrovibe.in | TS / TS | - | no | 147 | 200 | routed |
+| S8 | signal | retrovibe.out | red_muck.in | TS / TS | - | no | 86 | 150 | routed |
+| S9 | signal | red_muck.out | ratsbane.in | TS / TS | - | no | 196 | 250 | routed |
+| S10 | signal | ratsbane.out | protein.in | TS / TS | - | no | 163 | 250 | routed |
+| S11 | signal | protein.out | reticon.in | TS / TS | - | no | 322 | 400 | routed |
+| S12 | signal | reticon.out | analog_chorus.in | TS / TS | - | no | 299 | 350 | routed |
+| S13 | signal | analog_chorus.out | monk.in | TS / TS | - | no | 104 | 200 | routed |
+| S14 | signal | monk.out | belle_epoch.in | TS / TS | - | no | ? | ? | unroutable: no free path between the pedals |
+| S15 | signal | belle_epoch.out | flight_delay.in | TS / TS | - | no | 355 | 450 | routed |
+| S16 | signal | flight_delay.out | tumnus_deluxe.in | TS / TS | - | no | 62 | 150 | routed |
+| P1 | power | psu1.F1 | flight_delay.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~140 | 200 | not routed (under the board) |
+| P2 | power | psu1.F2 | belle_epoch.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~187 | 250 | not routed (under the board) |
+| P3 | power | psu1.F3 | monk.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~119 | 200 | not routed (under the board) |
+| P4 | power | psu1.SW_A | reticon.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~142 | 200 | not routed (under the board) |
+| P5 | power | psu1.SW_B | analog_chorus.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~75 | 150 | not routed (under the board) |
+| P6 | power | psu2.F1 | red_muck.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~63 | 150 | not routed (under the board) |
+| P7 | power | red_muck.power | beano.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~318 | 400 | not routed (under the board) |
+| P8 | power | beano.power | danelectro_3699.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~211 | 300 | not routed (under the board) |
+| P9 | power | danelectro_3699.power | sun_face.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~218 | 300 | not routed (under the board) |
+| P10 | power | psu2.F2 | polytune_3.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~297 | 350 | not routed (under the board) |
+| P11 | power | psu2.F3 | ratsbane.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~106 | 200 | not routed (under the board) |
+| P12 | power | ratsbane.power | protein.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~135 | 200 | not routed (under the board) |
+| P13 | power | protein.power | tumnus_deluxe.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~249 | 300 | not routed (under the board) |
+| P14 | power | psu2.SW_A | fulldrive_2.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~154 | 250 | not routed (under the board) |
+| P15 | power | fulldrive_2.power | mini_ego.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~267 | 350 | not routed (under the board) |
+| P16 | power | psu2.SW_B | phase_95.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~72 | 150 | not routed (under the board) |
+| P17 | power | phase_95.power | retrovibe.power | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~177 | 250 | not routed (under the board) |
+
+Routed signal cable: 2755 mm over 15 cables (suggested lengths add up to 3850 mm). '~' marks a power estimate (not routed).

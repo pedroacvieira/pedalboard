@@ -186,7 +186,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     slack = float(jset.get("slack_mm", 50))
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None,
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None,
                jack_settings={"outward_mm": outward, "side_mm": side, "slack_mm": slack, "supplies_layer": supplies_layer})
 
     chain = ctx["chain"]
@@ -271,8 +271,11 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
                 inst_item[s["inst"]["id"]] = match
 
     pedal_items = [i for i in items if i["kind"] == "pedal"]
-    mapped_ids = {i["id"] for i in placed.values()}
     obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
+    boards = [i for i in items if i["kind"] == "pedalboard"]
+    # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
+    ctx["layout"] = {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles,
+                     "inst_item": inst_item, "jacks": jacks_data, "outward_mm": outward}
 
     # 3) clearance in front of every used jack
     owners = []  # (label, item, jack)

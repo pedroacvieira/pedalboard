@@ -30,7 +30,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 2 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
