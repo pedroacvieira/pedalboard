@@ -156,7 +156,8 @@ def validate_jacks_file(data, pedals, supplies):
 
 
 # --- project check (called from build.validate) -------------------------------------------------
-CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}
+CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}          # audio jacks without a modelled plug
+POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
 def _round_up(mm, step=50):
@@ -181,13 +182,17 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     jset = project.get("jacks", {})
     outward = float(jset.get("clearance", {}).get("outward_mm", CLEARANCE_DEFAULT["outward_mm"]))
     side = float(jset.get("clearance", {}).get("side_mm", CLEARANCE_DEFAULT["side_mm"]))
+    p_out = float(jset.get("power_clearance", {}).get("outward_mm", POWER_CLEARANCE_DEFAULT["outward_mm"]))
+    p_side = float(jset.get("power_clearance", {}).get("side_mm", POWER_CLEARANCE_DEFAULT["side_mm"]))
+    power_modelled = bool((project.get("cables") or {}).get("power_type"))
     extra_used = jset.get("extra_used", {})
     supplies_layer = jset.get("supplies_layer", "under")
     slack = float(jset.get("slack_mm", 50))
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
     ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None,
-               jack_settings={"outward_mm": outward, "side_mm": side, "slack_mm": slack, "supplies_layer": supplies_layer})
+               jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
+                              "power_modelled": power_modelled, "slack_mm": slack, "supplies_layer": supplies_layer})
 
     chain = ctx["chain"]
     insts = ctx.get("supplies", [])
@@ -277,11 +282,20 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     ctx["layout"] = {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles,
                      "inst_item": inst_item, "jacks": jacks_data, "outward_mm": outward}
 
-    # 3) clearance in front of every used jack
+    # 3) clearance in front of every used jack. Signal jacks whose cable has a type (project cables.type or a
+    #    per-cable override) and power jacks with a DC plug type (cables.power_type) are checked by
+    #    routing.route_project with the plug head on the chosen exit side; every other jack gets a fixed box here:
+    #    power jacks (and on-board supply ports) the small `power_clearance` box, the rest the audio `clearance` box.
+    from routing import cable_type_id  # late import: routing imports jacks lazily too
+    modelled = {(cid, "power") for cid in placed} if power_modelled else set()
+    for n, (a, b) in enumerate(zip(chain, chain[1:]), 1):
+        if cable_type_id(project, f"S{n}"):
+            modelled |= {(a, "output"), (b, "input")}
     owners = []  # (label, item, jack)
     for cid, it in placed.items():
         have = jacks_data.get(cid) or []
-        ids = [(default_jack(have, fn) or {}).get("id") for fn in ("input", "output", "power")] + list(extra_used.get(cid, []))
+        ids = [(default_jack(have, fn) or {}).get("id") for fn in ("input", "output", "power") if (cid, fn) not in modelled]
+        ids += list(extra_used.get(cid, []))
         for jid in dict.fromkeys(i for i in ids if i):
             jk = _jack_by_id(have, jid)
             if jk:
@@ -296,16 +310,19 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     for cid, it, jk in owners:
         pt = design.jack_point(it, jk["x"], jk["y"])
         facing = design.jack_facing(it, jk["facing"])
-        zone = design.clearance_rect(pt, facing, outward, side)
+        is_power = jk["function"] in ("power", "power_out")
+        out_mm, side_mm = (p_out, p_side) if is_power else (outward, side)
+        zone = design.clearance_rect(pt, facing, out_mm, side_mm)
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
             ov = design.overlap(zone, design.footprint(ob))
             if ov:
                 depth = design.overlap_depth(facing, ov)
-                ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth})
+                ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth,
+                                          "zone": "power" if is_power else "audio"})
                 clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: "
-                                  f"it reaches {depth:.1f} mm into the {outward:g} mm zone")
+                                  f"it reaches {depth:.1f} mm into the {out_mm:g} mm {'power' if is_power else 'audio'} zone")
 
     # 4) cable lengths between jacks
     def endpoint(item, jack):

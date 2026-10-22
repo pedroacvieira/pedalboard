@@ -199,3 +199,32 @@ def test_cable_rows_name_the_jacks_actually_used(tmp_path):
     ctx = project(tmp_path, [A(0), B(135)])
     jacks.check(ctx, PEDALS, SUPPLIES, {"a": a, "b": pedal_jacks()})
     assert ctx["cables"]["signal"][0]["from"] == "a.out_l"
+
+
+def test_signal_jacks_with_a_cable_type_are_left_to_the_plug_model(tmp_path):
+    ctx = project(tmp_path, [A(0), B(90)])            # touching: the fixed box blocks a.out and b.in
+    ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra"}
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA)
+    assert ctx["violations"] == []                     # checked by routing.route_project with the plug head instead
+    data = {"a": pedal_jacks(), "b": [dict(j, x=0.0, y=0.1, facing="left") if j["function"] == "power" else j for j in pedal_jacks()]}
+    ctx = project(tmp_path, [A(0), B(90)])
+    ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra"}
+    jacks.check(ctx, PEDALS, SUPPLIES, data)
+    assert [v["jack"] for v in ctx["violations"]] == ["b.power"]   # power jacks keep the fixed box
+
+
+def test_power_jacks_use_the_smaller_power_box_or_the_dc_plug_type(tmp_path):
+    # b.power at (50.8, 10.16) facing left, against A's right edge (A spans x 0..50.8)
+    data = {"a": pedal_jacks(), "b": [dict(j, x=0.0, y=0.1, facing="left") if j["function"] == "power" else j for j in pedal_jacks()]}
+    ctx = project(tmp_path, [A(0), B(90)], jacks_block={"power_clearance": {"outward_mm": 3.0, "side_mm": 4.0}})
+    jacks.check(ctx, PEDALS, SUPPLIES, data)
+    v = next(v for v in ctx["violations"] if v["jack"] == "b.power")
+    assert v["depth_mm"] == pytest.approx(3.0) and v["zone"] == "power"
+    assert any("into the 3 mm power zone" in w for w in ctx["warnings"])
+    ctx = project(tmp_path, [A(0), B(135)], jacks_block={"power_clearance": {"outward_mm": 3.0, "side_mm": 4.0}})
+    jacks.check(ctx, PEDALS, SUPPLIES, data)                        # 25.4 mm gap: the power box is clear
+    assert not [v for v in ctx["violations"] if v["jack"] == "b.power"]
+    ctx = project(tmp_path, [A(0), B(90)])
+    ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile"}
+    jacks.check(ctx, PEDALS, SUPPLIES, data)
+    assert ctx["violations"] == []                                  # the DC plug is checked by routing.route_project

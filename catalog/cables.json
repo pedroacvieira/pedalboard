@@ -1,0 +1,87 @@
+{
+  "_doc": "Cable types (all mm). role: patch (pedal to pedal on the board; a project's cables.type must be one), instrument (guitar -> board / board -> amp; not modelled yet), power (DC plugs; a project's cables.power_type), reference (for comparison only; never a default). diameter_mm = the cable's width ON THE BOARD, used as the routing width: the jacket diameter of a round cable, the narrow side of a flat (ribbon) cable standing on edge; jacket gives the cross section. plug.style: right_angle (cable leaves the head sideways, to the left or right of the jack's facing, in the board plane) or straight (cable leaves along the facing). plug.head_depth_mm = how far the head sticks out from the jack face along the facing; head_width_mm = across the facing (in the board plane), centred on the jack; head_thickness_mm = height above the board (informational). Right-angle only: exit_offset_mm = distance from the jack face, along the facing, to the cable axis (default head_depth/2); body_reach_mm = distance from the jack axis, along the exit side, to the end of the plug body / strain relief (default head_width/2); barrel_width_mm = width of that part along the facing (default the cable width). After the plug body the cable runs straight for exit_run_mm (signal: cables.exit_run_mm, default one cable width; power: one power-cable width) before it may bend: that is where the router starts. 'verified' lists the values taken directly from a source; everything else is an estimate or a placeholder (see notes).",
+  "cables": {
+    "ernie_ball_flat_patch_ra": {
+      "name": "Ernie Ball Flat Ribbon Patch Cable (red), flat angled / angled plugs",
+      "role": "patch",
+      "diameter_mm": 3.5,
+      "jacket": {"shape": "flat", "width_mm": 3.5, "height_mm": 6.4},
+      "tips": "TS",
+      "plug": {"style": "right_angle", "head_depth_mm": 6.4, "head_width_mm": 12.7, "head_thickness_mm": 12.7, "exit_offset_mm": 3.2, "body_reach_mm": 19.0, "barrel_width_mm": 6.4},
+      "verified": ["head_depth_mm"],
+      "sources": [
+        "owner (2026-10-22): the boards use red Ernie Ball flat ribbon patch cables; about 3-4 mm wide on the board; flat, angled, low-profile plugs",
+        "https://ErnieBall.com/guitar-accessories/instrument-cables/patch-ribbon-cables ('half the size of most standard pancake cables', 'only protrudes a quarter of an inch out of the plug', all-metal housing with built-in strain relief; no mm dimensions; checked 2026-10-22)",
+        "https://www.guitarcenter.com/Ernie-Ball/Ernie-Ball-Flat-Ribbon-Patch-Cables-Pedalboard-Multi-Pack-Black-1500000311517.gc (retailer: cable 0.25 in thick, connector 0.5 in diameter)",
+        "https://gearank.com/gear/ernie-ball-flat-ribbon-patch-cable/ (reviewer: the '3 in' cable is a bit over 5 in overall, so the nominal length is the ribbon only)"
+      ],
+      "notes": "Mostly ESTIMATES derived from the sources; nothing in mm is published. Reading: the plug is a flat metal block lying with its flat face against the pedal, standing on its long edge; the jack shaft leaves the block near one end and the ribbon leaves the other end, parallel to the pedal side. head_depth 6.4 = Ernie Ball's 'protrudes a quarter of an inch' (axis interpreted as out from the jack face). head_width / head_thickness 12.7 = Guitar Center's '0.5 in' connector (retailer, unverified). body_reach 19 = (5 in overall - 3 in ribbon) / 2 = 25.4 mm per plug, minus the 6.35 mm from the jack axis to the near end of the block (inference from a review, about +-5 mm). exit_offset = half the depth; barrel width = the block's depth. diameter 3.5 = owner's on-board width (3-4 mm); jacket height 6.4 = Guitar Center's 0.25 in (the ribbon stands on edge). Measure one plug (block length from the jack axis to the ribbon, depth from the jack face) to confirm."
+    },
+    "fender_pro_instrument_ra": {
+      "name": "Fender Professional Series instrument cable, angle / angle",
+      "role": "instrument",
+      "diameter_mm": 8.0,
+      "jacket": {"shape": "round", "width_mm": 8.0, "height_mm": 8.0},
+      "tips": "TS",
+      "plug": {"style": "right_angle", "head_depth_mm": 20.0, "head_width_mm": 16.0, "head_thickness_mm": 8.0, "exit_offset_mm": null, "body_reach_mm": null, "barrel_width_mm": null},
+      "verified": ["diameter_mm"],
+      "sources": [
+        "owner (2026-10-22): Fender is only the instrument-to-board cable (guitar -> first pedal, last pedal -> amp), not a patch cable",
+        "owner: 'Fender says the cable is 6 mm diameter and the jack head is 8 mm' (2026-10)",
+        "https://www.fender.com/en-US/accessories/cables/professional-series-instrument-cables/0990820020.html (8 mm jacket; page blocks automated access, figure seen via search snippets and https://www.andertons.co.uk/fender-professional-series-instrument-cables-angle-angle-1-black/)"
+      ],
+      "notes": "Instrument cable only: guitar and amp cables are not modelled yet, so no project uses this type. diameter 8 mm = Fender's published Professional Series instrument cable jacket (the owner's 6 mm figure may refer to another cable). head_depth 20 / head_width 16 are UNVERIFIED placeholders; head_thickness 8 is the owner's '8 mm head'."
+    },
+    "dc_ra_2_1_low_profile": {
+      "name": "DC power cable, right-angle 2.1 mm low-profile plug (RockBoard flat power cable as reference)",
+      "role": "power",
+      "diameter_mm": 3.2,
+      "jacket": {"shape": "round", "width_mm": 3.2, "height_mm": 3.2},
+      "tips": "DC 2.1 mm",
+      "plug": {"style": "right_angle", "head_depth_mm": 11.0, "head_width_mm": 11.0, "head_thickness_mm": 10.5, "exit_offset_mm": 5.5, "body_reach_mm": 14.5, "barrel_width_mm": 6.0},
+      "verified": ["head_depth_mm", "head_thickness_mm"],
+      "sources": [
+        "https://www.rockboard.de/en/power-supplies/power-cables/power-cable-angled-angled/ (maker: angled plug L x W x H 20 x 11 x 10.5 mm, 5.5 x 2.1 mm barrel; the inch figures on the same page, 13/16 x 7/16 x 5/16, do not match the 10.5 mm height; checked 2026-10-22)",
+        "https://www.showmecables.com/by-category/cables/power/dc/2-1mm-dc-power-right-angle-male-to-right-angle-male-cable-22-awg (generic 22 AWG right-angle DC cable, 3.2 mm jacket)",
+        "https://www.taydaelectronics.com/dc-power-plug-2-1mm-x-5-5mm-x-9-5mm-right-angle.html (generic right-angle plug, 9.5 mm barrel inside the jack)"
+      ],
+      "notes": "No head dimensions are published for the Strymon Ojai / Ojai R30 cables, Harley Benton ISO-5 Pro cables, Truetone or Cioks (checked 2026-10-22); the RockBoard angled plug is the closest published low-profile reference. Mapping of RockBoard's figures to our axes is OUR INTERPRETATION: W 11 = depth out from the jack face, H 10.5 = height above the board, L 20 = length along the cable, with the barrel axis about 5.5 mm (half the width) from the plug's far end, so the body reaches 20 - 5.5 = 14.5 mm from the jack axis on the exit side; head_width 11 assumed round body. barrel_width 6 (strain relief) and diameter 3.2 (generic cable, not the Strymon cable) are estimates. Measure one of the owner's Ojai cables to confirm."
+    },
+    "generic_straight": {
+      "name": "Generic straight patch plug (placeholder)",
+      "role": "reference",
+      "diameter_mm": 6.0,
+      "tips": "TS",
+      "plug": {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0, "head_thickness_mm": 12.0},
+      "verified": [],
+      "sources": [],
+      "notes": "Reference only (no straight plugs are used on the boards; nothing defaults to this type). UNVERIFIED placeholder for a compact straight patch plug. A full-size straight plug is much longer: see neutrik_np2x (about 61 mm head, 14.5 mm wide)."
+    },
+    "neutrik_np2rx": {
+      "name": "Neutrik NP2RX right-angle 1/4 in mono plug (reference)",
+      "role": "reference",
+      "diameter_mm": 6.0,
+      "tips": "TS",
+      "plug": {"style": "right_angle", "head_depth_mm": 20.7, "head_width_mm": 15.4, "head_thickness_mm": 15.4, "exit_offset_mm": 13.6, "body_reach_mm": 53.6, "barrel_width_mm": 14.8},
+      "verified": ["head_width_mm", "barrel_width_mm"],
+      "sources": [
+        "https://www.neutrik.com/en/product/np2rx",
+        "https://www.neutrik.com/media/8524/download/np2rx-1.pdf (drawing ST-NP2RX: overall 51.71 x min. 61.31 mm, head 15.4 mm dia, barrel 14.8 mm dia)"
+      ],
+      "notes": "Reference only (no straight plugs are used on the boards; nothing defaults to this type). head_width 15.4 and barrel 14.8 are dimensioned in Neutrik's drawing. head_depth 20.7 (= 51.71 overall minus about 31 mm exposed shaft), exit_offset 13.6 and body_reach 53.6 (= 61.31 - 15.4/2) are read off the drawing at scale (about +-1 mm). Cable range 4-7 mm; diameter 6 mm assumed. A large full-size plug: a reference for what a bulky right-angle head needs."
+    },
+    "neutrik_np2x": {
+      "name": "Neutrik NP2X straight 1/4 in mono plug (reference)",
+      "role": "reference",
+      "diameter_mm": 6.0,
+      "tips": "TS",
+      "plug": {"style": "straight", "head_depth_mm": 61.0, "head_width_mm": 14.5, "head_thickness_mm": 14.5},
+      "verified": ["head_width_mm"],
+      "sources": [
+        "https://www.neutrik.com/en/product/np2x",
+        "https://www.neutrik.com/media/8522/download/np2x-1.pdf (drawing ST-NP2X: overall min. 92 mm, 14.5 mm dia)"
+      ],
+      "notes": "Reference only (no straight plugs are used on the boards; nothing defaults to this type). head_width 14.5 is dimensioned. head_depth 61 = 92 overall minus about 31 mm exposed shaft (read off the drawing at scale, about +-1 mm). Cable diameter 6 mm assumed."
+    }
+  }
+}

@@ -124,11 +124,11 @@ Jack data: 5 of 6 catalog items set up (pedals and supplies in this project).
 
 ## Cable routing
 
-Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 6 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable diameter 6 mm). Power cables run under the board and are listed, not routed yet.
+Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 3.5 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable width on the board 3.5 mm). Plugs are modelled (default cable type `ernie_ball_flat_patch_ra`, catalog/cables.json): a right-angle plug's cable leaves the head to the left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs 3.5 mm straight, then is routed; grey boxes in the picture are the plug heads and their cable exits. Power cables run under the board and are listed, not routed yet; their plug at each pedal's power jack is modelled for clearance (`dc_ra_2_1_low_profile`, exit side in the Exits column).
 
-| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |
-|---|---|---|---|---|---|:-:|--:|--:|---|
-| S1 | signal | polytune_2_mini.out | darkglass_hyper_luminal.in | TS / TS | - | no | ? | ? | not routed |
-| S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | TS / TS | - | no | ? | ? | not routed |
-| S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | TS / TS | - | no | ? | ? | not routed |
-| S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | TS / TS | - | no | ? | ? | not routed |
+| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |
+|---|---|---|---|---|---|---|---|:-:|--:|--:|---|
+| S1 | signal | polytune_2_mini.out | darkglass_hyper_luminal.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | ? | not routed |
+| S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | ? | not routed |
+| S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | ? | not routed |
+| S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | ? | not routed |

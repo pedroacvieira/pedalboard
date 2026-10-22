@@ -449,20 +449,37 @@ def routing_section(ctx):
     md = ["", "## Cable routing", "",
           f"Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, "
           f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
-          f"{cfg['grid_mm']:g} mm cell (cable diameter {cfg['diameter_mm']:g} mm). Power cables run under the board and are listed, not routed yet.", ""]
+          f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
+          + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
+             f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
+             f"{cfg['exit_run_mm']:g} mm straight, then is routed; grey boxes in the picture are the plug heads and their cable exits. "
+             if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
+          + "Power cables run under the board and are listed, not routed yet"
+          + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
+             if cfg.get("power_type") else "."), ""]
     if ctx["routing"].get("grid"):
         md += ["![Cable routing](cables.svg)", ""]
-    md += ["| Cable | Kind | From | To | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |",
-           "|---|---|---|---|---|---|:-:|--:|--:|---|"]
+    md += ["| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |",
+           "|---|---|---|---|---|---|---|---|:-:|--:|--:|---|"]
     for c in cables:
         routed = fmt_mm(c["routed_mm"]) if c["routed_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
-        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c['tip_a']} / {c['tip_b']} | {c.get('polarity', '-')} | "
+        exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
+        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {c.get('polarity', '-')} | "
                   f"{'yes' if c['under_board'] else 'no'} | {routed} | {fmt_mm(c['suggested_mm'])} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["routed_mm"] is not None]
     if sig:
         md += ["", f"Routed signal cable: {sum(c['routed_mm'] for c in sig):.0f} mm over {len(sig)} cables "
                    f"(suggested lengths add up to {sum(c['suggested_mm'] for c in sig)} mm). '~' marks a power estimate (not routed)."]
     return md
+
+
+def violation_where(v):
+    """'3.2 mm into the power zone' or '3.2 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits left'."""
+    if not v.get("cable_type"):
+        return f"{v['depth_mm']:.1f} mm into the {v.get('zone', 'audio')} zone"
+    side = f", cable exits {v['side']}" if v.get("side") else ""
+    part = "cable run" if v["part"] == "cable" else v["part"]
+    return f"{v['depth_mm']:.1f} mm into the {part} of the {v['cable_type']} plug{side}"
 
 
 def run_v_cell(ctx, pid):
@@ -486,12 +503,17 @@ def jacks_section(ctx):
     if cables is None:
         return md
     st = ctx["jack_settings"]
+    power = ("power jacks: the DC plug head plus its cable exit on the less blocked side" if st.get("power_modelled") else
+             f"power jacks: {st['power_outward_mm']:g} mm outward, {st['power_side_mm']:g} mm to each side")
+    zone = (f"signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); "
+            f"{power}; other jacks: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side")
     if ctx["violations"]:
-        md += [f"Blocked cable space (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack):", ""]
-        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {v['depth_mm']:.1f} mm into the zone" for v in ctx["violations"]] + [""]
+        md += [f"Blocked cable space ({zone}):", ""]
+        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {violation_where(v)}" for v in ctx["violations"]] + [""]
     else:
-        md += [f"No blocked cable space found (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack).", ""]
-    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends. "
+        md += [f"No blocked cable space found ({zone}).", ""]
+    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends (a quick estimate "
+           f"without plug heads or obstacles; the signal lengths routed around the pedals with the plug model are under Cable routing). "
            f"Suggested = routed + {st['slack_mm']:g} mm slack, rounded up to the next 50 mm.", ""]
     for title, rows in (("Signal cables", cables["signal"]), ("Power cables", cables["power"])):
         if not rows:
@@ -583,7 +605,7 @@ def project_readme(ctx, cat_pedals):
 
 KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
-    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
+    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
     "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
     "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
@@ -604,7 +626,7 @@ def open_issues(ctxs, jacks_data):
         for cid, cmd in c.get("jack_fixes", []):
             items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
         for v in c.get("violations", []):
-            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({v['depth_mm']:.1f} mm into the zone); move one of the pedals apart")
+            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({violation_where(v)}); move one of the pedals apart")
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
         if items:
@@ -642,7 +664,9 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
-        "Clearance (`jacks.clearance.outward_mm` / `side_mm`, default 6.3 / 7 mm) and all cable figures are in mm.",
+        "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
+        "power jacks against the DC plug type (`cables.power_type`) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
+        "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). All cable figures are in mm.",
         "",
         "## Projects",
         "",

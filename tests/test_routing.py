@@ -113,3 +113,157 @@ def test_two_cables_fit_through_a_one_cell_gap_with_the_default_limit():
 def test_settings_defaults_follow_the_cable_diameter():
     s = routing.settings({"cables": {"diameter_mm": 5}})
     assert s["grid_mm"] == 2.0 and s["edge_margin_mm"] == 5 and s["max_stack"] == 2 and s["default_tip"] == "TS"
+
+
+# --- plug heads in route_project ------------------------------------------------------------------
+TYPES = {"ra": {"name": "test right angle", "role": "patch", "diameter_mm": 6.0, "tips": "TS",
+                "plug": {"style": "right_angle", "head_depth_mm": 20.0, "head_width_mm": 16.0}},
+         "st": {"name": "test straight", "role": "reference", "diameter_mm": 5.0, "tips": "TS",
+                "plug": {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0}}}
+
+
+def mm_item(iid, title, left, top, w, h, kind="pedal"):
+    return {"id": iid, "kind": kind, "title": title, "rot": 0, "w_mm": w, "h_mm": h, "left_mm": left, "top_mm": top}
+
+
+def plug_ctx(cables, extra_obstacles=()):
+    """Board 0..300 x 0..200. A (20..70 x 60..160) out at (70, 80) facing right; B (200..250 x 60..160) in at
+    (200, 140) facing left. With the 20 x 16 head (cable axis 10 mm out, exit 14 mm to the side):
+    A exits left/up at (80, 66) or right/down at (80, 94); B exits left/down at (190, 154) or right/up at (190, 126)."""
+    a, b = mm_item("i-a", "A", 20, 60, 50, 100), mm_item("i-b", "B", 200, 60, 50, 100)
+    jd = {"a": [{"id": "out", "label": "Output", "function": "output", "x": 1.0, "y": 0.2, "facing": "right"}],
+          "b": [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.8, "facing": "left"}]}
+    layout = {"board": mm_item("i-board", "Board", 0, 0, 300, 200, "pedalboard"), "placed": {"a": a, "b": b},
+              "obstacles": [a, b, *extra_obstacles], "inst_item": {}, "jacks": jd, "outward_mm": 6.3}
+    return {"project": {"cables": cables}, "chain": ["a", "b"], "layout": layout, "errors": [], "warnings": [],
+            "violations": [], "cables": {"power": []}}
+
+
+def test_router_picks_the_shorter_exit_sides():
+    ctx = plug_ctx({"type": "ra"})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert c["status"] == "routed" and (c["exit_a"], c["exit_b"]) == ("right", "right")   # (80, 94) -> (190, 126)
+    assert c["path"][0] == (70.0, 80.0) and c["path"][1] == (80.0, 80.0) and c["path"][2] == (80.0, 94.0)
+    # leads 2 x 24 mm + about 110 mm across and 32 mm down (octile ~ 123 mm, grid accuracy ~ a few mm)
+    assert 48 + 123 - 4 <= c["routed_mm"] <= 48 + 123 + 8
+    assert ctx["violations"] == [] and ctx["errors"] == []
+    fixed = plug_ctx({"type": "ra", "overrides": {"S1": {"exit_a": "left"}}})
+    routing.route_project(fixed, {}, cable_types=TYPES)
+    (f,) = [x for x in fixed["cable_list"] if x["kind"] == "signal"]
+    assert f["exit_a"] == "left" and f["routed_mm"] > c["routed_mm"]
+
+
+def test_straight_plug_type_per_cable_and_its_diameter():
+    ctx = plug_ctx({"type": "ra", "overrides": {"S1": {"type": "st"}}})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert c["type"] == "st" and (c["exit_a"], c["exit_b"]) == (None, None)
+    assert c["path"][1] == (70.0 + 40 + 6, 80.0)            # head 40 + one 6 mm run (the project default type's diameter)
+
+
+def test_blocked_head_is_a_clearance_violation_naming_type_and_side():
+    wall = mm_item("i-c", "C", 75, 0, 100, 200)              # 5 mm in front of A's output, the full board height
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    v = next(v for v in ctx["violations"] if v["jack"] == "a.out")
+    assert v["obstacle"] == "C" and v["part"] == "head" and v["depth_mm"] == pytest.approx(15.0)   # 20 deep - 5 mm gap
+    assert v["cable_type"] == "ra" and v["side"] in ("left", "right")
+    assert any("clearance: a.out" in w and "ra right-angle plug, cable exits" in w for w in ctx["warnings"])
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert c["status"].startswith("unroutable: the cable exit of the plug at a")
+
+
+def test_strict_clearance_and_unknown_type_are_errors():
+    ctx = plug_ctx({"type": "nope"})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert any("type=nope" in e for e in ctx["errors"])
+    wall = mm_item("i-c", "C", 75, 0, 100, 200)
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    ctx["project"]["validation"] = {"strict_clearance": True}
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert any(e.startswith("clearance: a.out") for e in ctx["errors"])
+
+
+def test_squeezing_through_a_narrow_gap_is_reported():
+    # a wall from beyond the back margin down to y = 198: only a 2 mm gap is left in front of it (the area ends at
+    # y = 200, the front of the lowest pedals); cell centres at y 197 / 199 are within 1.99 mm of the wall (closed),
+    # but y 199 is outside its body, so squeezing gets through
+    wall = mm_item("i-w", "W", 120, -10, 20, 198 + 10)
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    ctx["layout"]["board"] = mm_item("i-board", "Board", 0, 0, 300, 200, "pedalboard")
+    ctx["layout"]["placed"]["a"]["h_mm"] = ctx["layout"]["placed"]["b"]["h_mm"] = 140     # lowest pedals reach y = 200
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert c["status"] == "routed, squeezed (gap narrower than the cable)"
+    assert any("only fits by squeezing" in w for w in ctx["warnings"])
+
+
+def test_settings_take_the_diameter_from_the_cable_type():
+    s = routing.settings({"cables": {"type": "st"}}, TYPES)
+    assert s["diameter_mm"] == 5.0 and s["exit_run_mm"] == 5.0 and s["edge_margin_mm"] == 5.0
+    s = routing.settings({"cables": {"type": "st", "diameter_mm": 7}}, TYPES)
+    assert s["diameter_mm"] == 7
+
+
+def test_real_cable_catalog_is_valid():
+    from common import load_cable_types
+    types = load_cable_types()
+    assert routing.validate_types(types) == []
+    assert {"ernie_ball_flat_patch_ra", "fender_pro_instrument_ra", "dc_ra_2_1_low_profile", "generic_straight"} <= set(types)
+
+
+# --- power plugs (DC) ----------------------------------------------------------------------------
+DC = {"dc": {"name": "test DC right angle", "role": "power", "diameter_mm": 3.5, "tips": "DC 2.1 mm",
+             "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 10.0}}}
+
+
+def power_ctx(extra_obstacles=(), power_type="dc", overrides=None):
+    """plug_ctx plus a power jack on A at (45, 60) facing top and one power cable to it. DC head 10 x 10 -> head
+    (40, 50, 50, 60); cable axis 5 mm out (y 55), body to 5 mm from the axis, then a 3.5 mm run: left (-x) cable
+    (36.5, 53.25, 40, 56.75), right (+x) cable (50, 53.25, 53.5, 56.75)."""
+    ctx = plug_ctx({"type": "ra", "power_type": power_type, "overrides": overrides or {}}, extra_obstacles)
+    ctx["layout"]["jacks"]["a"].append({"id": "power", "label": "9V", "function": "power", "x": 0.5, "y": 0.0, "facing": "top"})
+    ctx["cables"] = {"power": [{"from": "psu1.1", "to": "a.power"}]}
+    return ctx
+
+
+def test_power_plug_takes_the_free_exit_side():
+    wall = mm_item("i-c", "C", 30, 0, 9.9, 58)               # reaches x 39.9: 3.4 mm into the left cable run only
+    ctx = power_ctx([wall])
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
+    (p,) = [x for x in ctx["cable_list"] if x["kind"] == "power"]
+    assert p["type"] == "dc" and p["exit_b"] == "right"
+    assert not [v for v in ctx["violations"] if v["jack"] == "a.power"]
+    heads = [h for h in ctx["routing"]["heads"] if h["cable"] == "P1"]
+    assert dict(heads[0]["rects"])["head"] == pytest.approx((40, 50, 50, 60))
+
+
+def test_power_plug_blocked_on_both_sides_reports_the_smaller_overlap():
+    left = mm_item("i-c", "C", 30, 0, 9.9, 58)                # 3.4 mm into the left run
+    right = mm_item("i-d", "D", 51, 0, 29, 58)                # 2.5 mm into the right run
+    ctx = power_ctx([left, right])
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
+    (v,) = [v for v in ctx["violations"] if v["jack"] == "a.power"]
+    assert (v["obstacle"], v["side"], v["part"], v["cable_type"], v["cable"]) == ("D", "right", "cable", "dc", "P1")
+    assert v["depth_mm"] == pytest.approx(2.5)
+    assert any("clearance: a.power" in w and "dc right-angle plug, cable exits right" in w for w in ctx["warnings"])
+
+
+def test_power_plug_head_blocked_and_side_fixed_by_override():
+    shelf = mm_item("i-e", "E", 0, 0, 300, 52)               # ends 8 mm in front of the jack face: 2 mm into the head
+    ctx = power_ctx([shelf], overrides={"P1": {"exit_b": "right"}})
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
+    (v,) = [v for v in ctx["violations"] if v["jack"] == "a.power"]
+    assert v["part"] == "head" and v["side"] == "right" and v["depth_mm"] == pytest.approx(2.0)
+
+
+def test_project_type_roles_are_checked():
+    types = {**TYPES, **DC, "inst": {**TYPES["ra"], "role": "instrument"}}
+    ctx = plug_ctx({"type": "inst", "power_type": "ra"})
+    routing.route_project(ctx, {}, cable_types=types)
+    assert any("cables.type: inst is a instrument cable" in e for e in ctx["errors"])
+    assert any("cables.power_type: ra" in e for e in ctx["errors"])
+    ctx = plug_ctx({"type": "ra", "power_type": "dc", "overrides": {"S1": {"type": "dc"}}})
+    routing.route_project(ctx, {}, cable_types=types)
+    assert any("cables.overrides.S1.type: dc is a DC power cable" in e for e in ctx["errors"])

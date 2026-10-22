@@ -9,6 +9,7 @@ CATALOG = ROOT / "catalog"
 PROJECTS = ROOT / "projects"
 CACHE = ROOT / ".cache"
 JACKS_FILE = CATALOG / "jacks.json"
+CABLES_FILE = CATALOG / "cables.json"
 SITE = "https://pedalplayground.com/public/data/"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
@@ -22,6 +23,12 @@ def load_catalog():
     pedals = {p["id"]: p for p in load_json(CATALOG / "pedals.json")["pedals"]}
     supplies = {s["id"]: s for s in load_json(CATALOG / "power_supplies.json")["supplies"]}
     return pedals, supplies
+
+
+def load_cable_types(path=CABLES_FILE):
+    """Signal cable types by id (catalog/cables.json); {} if the file does not exist."""
+    p = Path(path)
+    return load_json(p).get("cables", {}) if p.exists() else {}
 
 
 def project_dirs(names=None):
