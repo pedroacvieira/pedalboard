@@ -63,3 +63,14 @@ def test_unknown_polarity_value_is_an_error(tmp_path):
     shutil.copytree(ROOT / "projects" / "bass", pdir)
     ctx = build.validate(pdir, pedals, supplies, {})
     assert any("tech21_vt_bass_di: unknown polarity 'center_plus'" in e for e in ctx["errors"])
+
+
+def test_unknown_supply_polarity_is_an_error_without_false_reversing_warnings(tmp_path):
+    pedals, supplies = load_catalog()
+    supplies = copy.deepcopy(supplies)
+    supplies["harley_benton_iso5_pro"]["polarity"] = "center-negative"     # hyphen: not a known value
+    pdir = tmp_path / "bass"
+    shutil.copytree(ROOT / "projects" / "bass", pdir)
+    ctx = build.validate(pdir, pedals, supplies, {})
+    assert any("unknown polarity 'center-negative'" in e for e in ctx["errors"])
+    assert not any("polarity-reversing" in w for w in ctx["warnings"])

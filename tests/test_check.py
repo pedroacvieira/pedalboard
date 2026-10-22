@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import jacks  # noqa: E402
+import routing  # noqa: E402
 
 PEDALS = {
     "a": {"brand": "T", "name": "A", "playground_title": "T A"},
@@ -201,15 +202,22 @@ def test_cable_rows_name_the_jacks_actually_used(tmp_path):
 
 
 def test_signal_jacks_with_a_cable_type_are_left_to_the_plug_model(tmp_path):
-    ctx = project(tmp_path, [A(0), B(90)])            # touching: the fixed box blocks a.out and b.in
+    # touching pedals and no pedalboard item in the layout: nothing is routed, but every plug is still checked
+    ctx = project(tmp_path, [A(0), B(90)])
     ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra"}
-    jacks.check(ctx, PEDALS, SUPPLIES, DATA)
-    assert ctx["violations"] == []                     # checked by routing.route_project with the plug head instead
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA, defer=True)
+    assert ctx["violations"] == [] and {k for k, _, _ in ctx["fixed_box"]} >= {"a.out", "b.in"}
+    routing.route_project(ctx, PEDALS)
+    blocked = {v["jack"]: v for v in ctx["violations"]}
+    assert blocked["a.out"]["cable_type"] == "ernie_ball_flat_patch_ra"            # the plug model, not the box
+    assert blocked["b.in"]["cable_type"] == "ernie_ball_flat_patch_ra"
+    assert not any("audio zone" in w for w in ctx["warnings"]) and ctx["fixed_box"] == []
     data = {"a": pedal_jacks(), "b": [dict(j, x=0.0, y=0.1, facing="left") if j["function"] == "power" else j for j in pedal_jacks()]}
     ctx = project(tmp_path, [A(0), B(90)])
     ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra"}
-    jacks.check(ctx, PEDALS, SUPPLIES, data)
-    assert [v["jack"] for v in ctx["violations"]] == ["b.power"]   # power jacks keep the fixed box
+    jacks.check(ctx, PEDALS, SUPPLIES, data, defer=True)
+    routing.route_project(ctx, PEDALS)
+    assert next(v for v in ctx["violations"] if v["jack"] == "b.power")["zone"] == "power"   # no power type: the box
 
 
 def test_power_jacks_use_the_smaller_power_box_or_the_dc_plug_type(tmp_path):
@@ -225,5 +233,7 @@ def test_power_jacks_use_the_smaller_power_box_or_the_dc_plug_type(tmp_path):
     assert not [v for v in ctx["violations"] if v["jack"] == "b.power"]
     ctx = project(tmp_path, [A(0), B(90)])
     ctx["project"]["cables"] = {"type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile"}
-    jacks.check(ctx, PEDALS, SUPPLIES, data)
-    assert ctx["violations"] == []                                  # the DC plug is checked by routing.route_project
+    jacks.check(ctx, PEDALS, SUPPLIES, data, defer=True)
+    routing.route_project(ctx, PEDALS)
+    v = next(v for v in ctx["violations"] if v["jack"] == "b.power")
+    assert v["cable_type"] == "dc_ra_2_1_low_profile" and "zone" not in v       # the DC plug, not the power box

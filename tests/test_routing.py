@@ -160,7 +160,8 @@ def test_straight_plug_type_per_cable_and_its_diameter():
     routing.route_project(ctx, {}, cable_types=TYPES)
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
     assert c["type"] == "st" and (c["exit_a"], c["exit_b"]) == (None, None)
-    assert c["path"][1] == (70.0 + 40 + 6, 80.0)            # head 40 + one 6 mm run (the project default type's diameter)
+    assert c["path"][1] == (70.0 + 40 + 5, 80.0)            # head 40 + one run of its own 5 mm diameter
+    assert ctx["routing"]["settings"]["diameter_mm"] == 6.0  # the grid fits the widest type in use
 
 
 def test_blocked_head_is_a_clearance_violation_naming_type_and_side():
@@ -276,5 +277,21 @@ def test_power_cable_polarity_follows_the_pedal():
     (p,) = [x for x in ctx["cable_list"] if x["kind"] == "power"]
     assert p["polarity"] == "center_positive" and ctx["errors"] == []
     ctx = power_ctx()
-    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})          # unknown -> the project default
-    assert [x for x in ctx["cable_list"] if x["kind"] == "power"][0]["polarity"] == "center_negative"
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})          # unknown stays unknown (never guessed)
+    assert [x for x in ctx["cable_list"] if x["kind"] == "power"][0]["polarity"] is None and ctx["errors"] == []
+
+
+def test_null_override_keeps_the_default_and_does_not_crash():
+    ctx = plug_ctx({"type": "ra", "overrides": {"S1": None}})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    ctx2 = plug_ctx({"type": "ra", "overrides": {"S1": {"type": None}}})
+    routing.route_project(ctx2, {}, cable_types=TYPES)
+    for x in (ctx, ctx2):
+        (c,) = [c for c in x["cable_list"] if c["kind"] == "signal"]
+        assert c["type"] == "ra" and c["status"] == "routed" and x["errors"] == []
+
+
+def test_clearance_reports_the_deepest_part_per_obstacle():
+    opt = {"side": "left", "hits": [("head", {"id": "x"}, (0.2, 5.0)), ("cable", {"id": "x"}, (3.0, 8.0))]}
+    (hit,) = routing.deepest_hits(opt, "right")     # facing right: head depth along x (0.2), cable along y (8.0)
+    assert hit[0] == "cable" and hit[2] == pytest.approx(8.0)

@@ -35,7 +35,6 @@ DEFAULTS = {
     "max_stack": 2,              # cables allowed on top of each other in one cell
     "default_tip": "TS",         # signal plugs unless a jack or an override says TRS / XLR
     "power_tip": "DC 2.1 mm",
-    "power_polarity": "center_negative",   # only when the pedal's catalog polarity is unknown
     "iterations": 40,
 }
 TIPS = ("TS", "TRS", "XLR", "DC 2.1 mm", "DC 2.5 mm")
@@ -48,11 +47,15 @@ ROLES = ("patch", "instrument", "power", "reference")   # what a catalog/cables.
 
 
 def settings(project, types=None):
+    """Routing settings: DEFAULTS + project `cables`. The routing width (`diameter_mm`) is the widest signal cable
+    type in use (the default type and every override), so the grid corridors fit every cable."""
     given = project.get("cables") or {}
     s = {**DEFAULTS, **given}
-    t = (types or {}).get(s["type"]) if s["type"] else None
-    if t and "diameter_mm" not in given and t.get("diameter_mm"):
-        s["diameter_mm"] = float(t["diameter_mm"])
+    used = [s["type"]] + [(o or {}).get("type") for o in (given.get("overrides") or {}).values()]
+    widths = [float(types[t]["diameter_mm"]) for t in used if t in (types or {}) and types[t].get("diameter_mm")
+              and types[t].get("role") != "power"]
+    if widths and "diameter_mm" not in given:
+        s["diameter_mm"] = max(widths)
     s.setdefault("grid_mm", 2.0)
     s.setdefault("exit_run_mm", s["diameter_mm"])
     s.setdefault("edge_margin_mm", s["diameter_mm"])
@@ -333,7 +336,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
 
     def pedal_polarity(jack_name):
         pc = (cat_pedals.get(jack_name.split(".")[0]) or {}).get("power_consumption") or {}
-        return pc.get("polarity") or cfg["power_polarity"]
+        return pc.get("polarity")   # None = unknown (never guessed)
 
     def tip_of(jack, default):
         return (jack or {}).get("connector") or default
@@ -359,10 +362,11 @@ def route_project(ctx, cat_pedals, cable_types=None):
                        "estimate_mm": hop.get("min_mm"), "path": None,
                        "status": "not routed (under the board)" if under else "not routed (power routing not implemented)"})
     for c in cables:
-        for k, v in over.get(c["id"], {}).items():
-            c[k] = v
+        for k, v in (over.get(c["id"]) or {}).items():
+            if v is not None:              # null = keep the default (as cable_type_id does)
+                c[k] = v
         bad = [f"{k}={c[k]}" for k in ("tip_a", "tip_b") if c[k] not in TIPS] + \
-              ([f"polarity={c['polarity']}"] if c["kind"] == "power" and c["polarity"] not in POLARITIES else [])
+              ([f"polarity={c['polarity']}"] if c["kind"] == "power" and c["polarity"] not in (None, *POLARITIES) else [])
         if c["type"] is not None and c["type"] not in cable_types and not (c["kind"] == "power" and c["type"] == cfg["power_type"]):
             bad.append(f"type={c['type']} (not in catalog/cables.json)")
         bad += [f"{k}={c[k]}" for k in ("exit_a", "exit_b") if k in c and c[k] not in (None, "auto", *design.SIDES)]
@@ -370,15 +374,20 @@ def route_project(ctx, cat_pedals, cable_types=None):
             errors.append(f"cables: {c['id']} has unknown {', '.join(bad)} (tips: {', '.join(TIPS)}; polarity: {', '.join(POLARITIES)}; "
                           f"exits: left/right/auto)")
     ctx["cable_list"] = cables
-    if not layout or not layout.get("board"):
+    from jacks import report_fixed_box
+    if not layout:
+        report_fixed_box(ctx)
         return
 
     placed, outward, obstacles = layout["placed"], layout["outward_mm"], layout["obstacles"]
-    board = design.footprint(layout["board"])
-    feet = {cid: design.footprint(it) for cid, it in placed.items()}
-    front_y = min(board[3], max((f[3] for f in feet.values()), default=board[3]))   # nothing in front of the lowest pedals
-    grid = build_grid(board, [design.footprint(o) for o in obstacles], front_y, cfg)
-    ctx["routing"].update(grid=grid, front_y=front_y)
+    grid = None   # without a pedalboard item nothing is routed, but every plug is still checked
+    if layout.get("board"):
+        board = design.footprint(layout["board"])
+        feet = {cid: design.footprint(it) for cid, it in placed.items()}
+        front_y = min(board[3], max((f[3] for f in feet.values()), default=board[3]))   # nothing in front of the lowest pedals
+        grid = build_grid(board, [design.footprint(o) for o in obstacles], front_y, cfg)
+        ctx["routing"].update(grid=grid, front_y=front_y)
+    run_given = "exit_run_mm" in (project.get("cables") or {})
 
     nets, chosen = [], {}   # chosen: cable id -> (end a option or None, end b option or None)
     for c in (x for x in cables if x["kind"] == "signal"):
@@ -389,14 +398,15 @@ def route_project(ctx, cat_pedals, cable_types=None):
             if not (jk and cid in placed):
                 ends.append(None)
                 continue
-            facing, opts = end_options(placed[cid], jk, ctype, c.get(f"exit_{end}"), cfg, outward)
+            run = cfg if run_given or not ctype else {**cfg, "exit_run_mm": float(ctype["diameter_mm"])}   # one own diameter
+            facing, opts = end_options(placed[cid], jk, ctype, c.get(f"exit_{end}"), run, outward)
             for o in opts:
                 o["hits"] = blocked_parts(o, placed[cid]["id"], obstacles)
-                o["cell"] = grid.cell_of(*o["exit"])
+                o["cell"] = grid.cell_of(*o["exit"]) if grid else None
             ends.append({"cid": cid, "jack": jk, "facing": facing, "opts": opts})
         c["_sides"] = ends
-        if not all(ends):
-            c["status"] = "not routed (jack or placement missing)"
+        if grid is None or not all(ends):
+            c["status"] = "not routed (no pedalboard in the layout)" if grid is None else "not routed (jack or placement missing)"
             # still choose a side per known end (fewest blocked parts) for the clearance check
             chosen[c["id"]] = tuple(min(e["opts"], key=lambda o: len(o["hits"])) if e else None for e in ends)
             c["exit_a"], c["exit_b"] = ((o or {}).get("side") for o in chosen[c["id"]])
@@ -433,7 +443,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         c["_squeeze"] = bool(mode)
         nets.append((c["id"], oa["cell"], ob["cell"], bool(mode)))
 
-    paths, users, overflow = route_all(grid, nets, int(cfg["max_stack"]), int(cfg["iterations"]))
+    paths, users, overflow = route_all(grid, nets, int(cfg["max_stack"]), int(cfg["iterations"])) if grid else ({}, {}, set())
     ctx["routing"]["overflow"] = overflow
     for c in cables:
         if c["id"] not in paths:
@@ -461,6 +471,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             sink.append(f"routing: {c['id']} shares cells with {', '.join(crowded)} beyond the limit of {cfg['max_stack']} stacked cables")
 
     # clearance of every modelled plug, on the side the router chose
+    checked = set()   # "<id>.<jack id>" checked with a plug model; the others keep jacks.check's fixed box
     for c in cables:
         if c["kind"] != "signal" or c["id"] not in chosen or c["type"] not in cable_types:
             continue
@@ -470,21 +481,28 @@ def route_project(ctx, cat_pedals, cable_types=None):
                 continue
             ctx["routing"]["heads"].append({"cable": c["id"], "rects": o["rects"]})
             jk, facing = e["jack"], e["facing"]
+            checked.add(f"{e['cid']}.{jk['id']}")
             how = f"{c['type']} {ctype['plug']['style'].replace('_', '-')} plug" + (f", cable exits {o['side']}" if o["side"] else "")
-            seen = set()
-            for part, ob, ov in o["hits"]:
-                if ob["id"] in seen:
-                    continue
-                seen.add(ob["id"])
-                depth = design.part_depth(part, facing, o["side"], ov)
+            for part, ob, depth in deepest_hits(o, facing):
                 ctx["violations"].append({"jack": f"{e['cid']}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth,
                                           "cable": c["id"], "cable_type": c["type"], "side": o["side"], "part": part})
                 clear_sink.append(f"clearance: {e['cid']}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                                   f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
-    power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink)
+    checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink)
+    report_fixed_box(ctx, checked)
     for c in cables:
         for k in ("_ends", "_sides", "_squeeze"):
             c.pop(k, None)
+
+
+def deepest_hits(opt, facing):
+    """[(part, obstacle, depth)] per obstacle of one plug option: the part it reaches deepest into."""
+    best = {}
+    for part, ob, ov in opt["hits"]:
+        depth = design.part_depth(part, facing, opt["side"], ov)
+        if ob["id"] not in best or depth > best[ob["id"]][2]:
+            best[ob["id"]] = (part, ob, depth)
+    return list(best.values())
 
 
 def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink):
@@ -494,8 +512,9 @@ def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink):
     board, so nothing is routed. Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
     ptype = cable_types.get(cfg.get("power_type") or "")
     layout = ctx.get("layout") or {}
+    checked = set()
     if not ptype or not layout.get("placed"):
-        return
+        return checked
     from jacks import default_jack
     by_jack = {c["to"]: c for c in cables if c["kind"] == "power"}
     run = {"exit_run_mm": float(ptype["diameter_mm"])}
@@ -511,17 +530,14 @@ def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink):
         if pc is not None:
             pc["exit_b"] = o["side"]
         ctx["routing"]["heads"].append({"cable": (pc or {}).get("id"), "rects": o["rects"]})
+        checked.add(f"{cid}.{jk['id']}")
         how = f"{cfg['power_type']} {ptype['plug']['style'].replace('_', '-')} plug" + (f", cable exits {o['side']}" if o["side"] else "")
-        seen = set()
-        for part, ob, ov in o["hits"]:
-            if ob["id"] in seen:
-                continue
-            seen.add(ob["id"])
-            depth = design.part_depth(part, facing, o["side"], ov)
+        for part, ob, depth in deepest_hits(o, facing):
             ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth,
                                       "cable": (pc or {}).get("id"), "cable_type": cfg["power_type"], "side": o["side"], "part": part})
             clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                               f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
+    return checked
 
 
 # --- picture ------------------------------------------------------------------------------------

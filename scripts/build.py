@@ -12,7 +12,7 @@ import sys
 
 import jacks
 import routing
-from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_json, pedal_name, project_dirs
+from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
@@ -235,6 +235,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
             row["limit"] = limit
             row["polarity"] = odef.get("polarity") or sup.get("polarity")
             need(f"supply {sup['id']}.polarity", row["polarity"])
+            if row["polarity"] is not None and row["polarity"] not in routing.POLARITIES:
+                errors.append(f"{oid}: {sup['id']} has unknown polarity '{row['polarity']}' ({', '.join(routing.POLARITIES)})")
+                row["polarity"] = None
             for pid in row["pedals"]:
                 if pid not in pedals:
                     errors.append(f"power: {oid} feeds '{pid}' which is not in the signal chain")
@@ -299,8 +302,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
-    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
-    routing.route_project(ctx, cat_pedals)
+    cable_types = load_cable_types()
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
+                cable_types=cable_types, defer=True)
+    routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     return ctx
 
 
@@ -480,7 +485,7 @@ def routing_section(ctx):
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
-        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {c.get('polarity', '-')} | "
+        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
                   f"{'yes' if c['under_board'] else 'no'} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:

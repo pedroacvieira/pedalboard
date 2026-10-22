@@ -8,9 +8,9 @@
 
 <details><summary>Validation messages</summary>
 
-- WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 1.0 mm into the plug's head
+- WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
 - WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
-- WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 5.1 mm into the plug's head
+- WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
 
 </details>
 
@@ -256,9 +256,9 @@ Jack data: 18 of 18 catalog items set up (pedals and supplies in this project).
 
 Blocked cable space (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side):
 
-- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 1.0 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits right
+- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right
 - `red_muck.power` is blocked by MXR Analog Chorus: 3.0 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left
-- `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 5.1 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left
+- `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left
 
 Cable lengths: see Cable routing.
 

@@ -67,8 +67,12 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
   Straight: cable leaves along the facing at head depth, then the run. The router picks each end's side: feasible
   first (free path, else "squeezed" through gaps narrower than the cable, never through a pedal body), then fewest
   blocked plug parts, then shortest route; overrides fix a side. Clearance of signal jacks whose cable has a type
-  = head + barrel + run on the chosen side (checked in `routing.route_project`); power, extra and first-in /
-  last-out jacks, and projects without `cables.type`, keep the fixed box (`jacks.clearance`, in `jacks.check`).
+  = head + barrel + run on the chosen side (checked in `routing.route_project`, also without a pedalboard item).
+  Every used jack is checked exactly once: `jacks.check(defer=True)` computes the fixed box for all of them into
+  `ctx["fixed_box"]`, and `route_project` reports it (`jacks.report_fixed_box`) for the jacks it did not
+  plug-check (extra and first-in / last-out jacks, unknown types, projects without `cables.type`). Warnings name
+  the plug part an obstacle reaches deepest. The routing width is the widest signal cable type in use; each
+  plug's straight run is one diameter of its own type.
 - Cable types in use (owner, 2026-10-22): patch cables are **Ernie Ball flat ribbon** (`ernie_ball_flat_patch_ra`,
   3.5 mm on-board width, flat angled plug 6.4 deep x 12.7 wide, ribbon leaves 19 mm from the jack axis: mostly
   estimates, see the file); every patch plug is angled, no straight plugs (straight/Neutrik types are role
