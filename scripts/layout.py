@@ -18,7 +18,9 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  cable cost, power plugs the side with the lowest clearance cost (as the router does).
   routing_area   200 per signal plug exit outside the routing area (in front of the lowest pedals, beyond the margin)
   signal         1 / mm patch cable: per hop measure_a + measure_b + octile distance between the cable exits (the
-                 router's 8-connected path length without obstacles)
+                 router's 8-connected path length) + detour 0.6 x an estimate of the way around the pedals (grown
+                 by the cable radius, so a gap narrower than the cable is closed) the straight line between the
+                 exits crosses (layout.detour; 0.6 because the estimate is rough, calibrated on guitar-gig)
   power          0.1 / mm DC cable: Manhattan between half-depth measure points along each daisy chain (jacks.check)
                  for a fixed wiring (the search keeps it; finalists get their own wiring from power.assign)
   footswitch     20 / mm below the minimum distance + footswitch_pair 100 per pair, both times the pair's priority
@@ -38,6 +40,7 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
 """
 import math
 import random
+import time
 
 import design
 import footswitches
@@ -47,7 +50,7 @@ from common import px_to_mm
 TOUCH_GAP_MM = 1.0
 SQRT2_1 = math.sqrt(2) - 1
 
-WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "power": 0.1,
+WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
            "footswitch": 20.0, "footswitch_pair": 100.0, "io": 1.0, "flow": 0.1, "access": 1.0,
            "rotation_used": 10.0, "rotation_new": 40.0, "move": 0.2, "move_pedal": 25.0, "rotate_change": 20.0,
            "touch": 0.02}
@@ -65,7 +68,7 @@ ACCESS = {
 WANTS = ("front", "back", "avoid_front")
 LEVELS = {   # max_change: what the search may do
     "fix":       {"sigma": (8.0, 0.5), "swap": False, "rotate": False, "max_move_mm": 40.0, "move_factor": 1.0,
-                  "iterations": 2500, "restarts": 6},
+                  "iterations": 2000, "restarts": 6},
     "rearrange": {"sigma": (60.0, 1.0), "swap": True, "rotate": True, "max_move_mm": None, "move_factor": 0.25,
                   "iterations": 12000, "restarts": 4},
     "free":      {"sigma": (150.0, 1.0), "swap": True, "rotate": True, "max_move_mm": None, "move_factor": 0.0,
@@ -105,6 +108,44 @@ def access_rule(pedal, switch_types, acc):
 def octile(a, b):
     dx, dy = abs(a[0] - b[0]), abs(a[1] - b[1])
     return max(dx, dy) + SQRT2_1 * min(dx, dy)
+
+
+def detour(a, b, rects):
+    """Extra cable length (mm) to get around the rectangles the straight line a -> b crosses: twice the smaller
+    sideways offset (out and back) that clears all crossed rectangles on one side (touching pedals block together).
+    Rectangles = pedals grown by the cable radius, so a gap narrower than the cable counts as closed. A rough
+    stand-in for the router's detours."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    seg = math.hypot(dx, dy)
+    if seg < 1e-9:
+        return 0.0
+    nx, ny = -dy / seg, dx / seg
+    x0, x1, y0, y1 = min(a[0], b[0]), max(a[0], b[0]), min(a[1], b[1]), max(a[1], b[1])
+    offs = []
+    for r in rects:
+        if r[2] <= x0 or r[0] >= x1 or r[3] <= y0 or r[1] >= y1:
+            continue
+        # Liang-Barsky: does the open segment pass through the rectangle's interior?
+        t0, t1 = 0.0, 1.0
+        ok = True
+        for pp, qq in ((-dx, a[0] - r[0]), (dx, r[2] - a[0]), (-dy, a[1] - r[1]), (dy, r[3] - a[1])):
+            if abs(pp) < 1e-12:
+                if qq <= 0:
+                    ok = False
+                    break
+                continue
+            t = qq / pp
+            if pp < 0:
+                t0 = max(t0, t)
+            else:
+                t1 = min(t1, t)
+            if t0 >= t1:
+                ok = False
+                break
+        if not ok or (t1 - t0) * seg < 1e-6:
+            continue
+        offs += [(cx - a[0]) * nx + (cy - a[1]) * ny for cx in (r[0], r[2]) for cy in (r[1], r[3])]
+    return 2 * min(max(offs), -min(offs)) if offs else 0.0
 
 
 def _shift(r, dx, dy):
@@ -365,6 +406,9 @@ class Model:
         em = self.rcfg["edge_margin_mm"]
         front_y = min(b[3], max(f[3] for f in feet)) if feet else b[3]
         area = (b[0] - em, b[1] - em, b[2] + em, front_y)
+        r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
+        grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
+                [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for _, f in self.fixed_feet]
         terms = dict.fromkeys(("clearance", "routing_area", "signal", "power", "footswitch", "io", "flow", "access",
                                "rotation", "move", "touch"), 0.0)
         raw = dict.fromkeys(terms, 0.0)
@@ -396,7 +440,7 @@ class Model:
                 for kb, ob in enumerate(eb["opts"]):
                     pb = (ob["exit"][0] + sb[0], ob["exit"][1] + sb[1])
                     outb = not (area[0] <= pb[0] < area[2] and area[1] <= pb[1] < area[3])
-                    length = oa["measure_mm"] + ob["measure_mm"] + octile(pa, pb)
+                    length = oa["measure_mm"] + ob["measure_mm"] + octile(pa, pb) + wd * detour(pa, pb, grown)
                     cost = ca[ka][0] + cb[kb][0] + w["routing_area"] * (outa + outb) + w["signal"] * length
                     if best is None or cost < best[0]:
                         best = (cost, ka, kb, length, outa, outb)
@@ -515,10 +559,15 @@ class Model:
                 out.append(design.move(it, st[0], st[1], st[2], snap=snap))
         return out
 
-    def snapped(self, state):
+    def snapped(self, state, move_factor=1.0):
         """The state with every moved pedal on whole Pedal Playground px (as the site stores positions; unchanged
-        pedals stay put). Per pedal the nearest px first, then the other roundings, keeping the candidate feasible
-        when one of them is; None if no rounding is feasible."""
+        pedals stay put): per pedal the feasible rounding (floor/ceil of left and top) with the lowest score, so a
+        footswitch pair or a plug right at its limit stays clear; if that paints a later pedal into a corner, the
+        nearest feasible rounding per pedal (shifts of at most half a px each stay within design.TOL_MM between
+        touching pedals); None if no rounding is feasible."""
+        return self._snap(state, move_factor, True) or self._snap(state, move_factor, False)
+
+    def _snap(self, state, move_factor, by_score):
         out = list(state)
         for n, st in enumerate(state):
             own = self.owner[n]
@@ -528,14 +577,218 @@ class Model:
             it = self.placed[self.ids[n]]
             raw = design.move(it, st[0], st[1], st[2], snap=False)
             lx, ty = raw["left_px"], raw["top_px"]
-            opts = sorted({(float(fx), float(fy)) for fx in (math.floor(lx), math.ceil(lx)) for fy in (math.floor(ty), math.ceil(ty))},
-                          key=lambda p: (abs(p[0] - lx) + abs(p[1] - ty), p))
-            for px, py in opts:
-                cx = px_to_mm(px, it["scale"]) + it["w_mm"] / 2
-                cy = px_to_mm(py, it["scale"]) + it["h_mm"] / 2
-                out[n] = (cx, cy, st[2])
+            best = None
+            for px, py in sorted({(float(fx), float(fy)) for fx in (math.floor(lx), math.ceil(lx))
+                                  for fy in (math.floor(ty), math.ceil(ty))}):
+                out[n] = (px_to_mm(px, it["scale"]) + it["w_mm"] / 2, px_to_mm(py, it["scale"]) + it["h_mm"] / 2, st[2])
                 if self.feasible_one(out, n, tol=design.TOL_MM):
-                    break
-            else:
+                    sc = self.score(out, move_factor=move_factor)[0] if by_score else abs(px - lx) + abs(py - ty)
+                    if best is None or sc < best[0]:
+                        best = (sc, out[n])
+            if best is None:
                 return None
+            out[n] = best[1]
         return out
+
+
+# --- search ---------------------------------------------------------------------------------------
+def level_settings(model, level, max_move_mm="level"):
+    if level not in LEVELS:
+        raise ValueError(f"max_change must be one of {', '.join(LEVELS)}, got {level!r}")
+    lv = dict(LEVELS[level])
+    if max_move_mm != "level":
+        lv["max_move_mm"] = None if max_move_mm is None else float(max_move_mm)
+    return lv
+
+
+def search(model, level="fix", seed=1, iterations=None, restarts=None, max_move_mm="level", time_limit_s=None,
+           log=None):
+    """Simulated annealing from the owner's layout (or a shuffled start for `free`) plus a greedy polish, per
+    restart (seeds seed, seed+1, ...). Deterministic for a given seed and iteration budget (`time_limit_s` is only
+    a safety cap). Returns [(score, state)] of the distinct, snapped, feasible results, best first, including the
+    owner's layout itself (score of the start) so callers can compare."""
+    import time
+    lv = level_settings(model, level, max_move_mm)
+    model.max_move = lv["max_move_mm"]
+    try:
+        model.overlap_tol = 1e-6
+        return _search(model, lv, seed, iterations, restarts, time_limit_s, log)
+    finally:
+        model.overlap_tol = design.TOL_MM
+
+
+def _search(model, lv, seed, iterations, restarts, time_limit_s, log):
+    iterations = int(iterations or lv["iterations"])
+    restarts = int(restarts or lv["restarts"])
+    mf = lv["move_factor"]
+    t_end = time.monotonic() + time_limit_s if time_limit_s else None
+    movable = [n for n, p in enumerate(model.ids) if p not in model.pins]
+    owner = [tuple(s) for s in model.owner]
+    results = []
+    for r in range(restarts):
+        rng = random.Random(seed + r)
+        state = list(owner)
+        if lv.get("random_start"):
+            state = shuffle_start(model, state, rng, movable)
+        cur, issues = model.score(state, move_factor=mf)
+        best, best_state = cur, list(state)
+        temps = []
+        for _ in range(30):   # starting temperature: typical score change of a random move
+            cand = propose(model, state, rng, lv, lv["sigma"][0], issues, movable)
+            if cand is not None:
+                temps.append(abs(model.score(cand, move_factor=mf)[0] - cur))
+        temps = sorted(t for t in temps if t > 0)
+        t0 = temps[len(temps) // 2] if temps else 10.0
+        t1 = max(t0 / 1000.0, 0.01)
+        s0, s1 = lv["sigma"]
+        for it in range(iterations):
+            if t_end and time.monotonic() > t_end:
+                break
+            frac = it / max(1, iterations - 1)
+            temp = t0 * (t1 / t0) ** frac
+            sigma = s0 * (s1 / s0) ** frac
+            cand = propose(model, state, rng, lv, sigma, issues, movable)
+            if cand is None:
+                continue
+            sc, iss = model.score(cand, move_factor=mf)
+            if sc <= cur or rng.random() < math.exp(-(sc - cur) / temp):
+                state, cur, issues = cand, sc, iss
+                if sc < best:
+                    best, best_state = sc, list(cand)
+        state = model.snapped(polish(model, best_state, mf), mf)
+        if state is None or not model.feasible(state):
+            state = model.snapped(best_state, mf)
+            if state is None or not model.feasible(state):
+                if log:
+                    log(f"  restart {r + 1}/{restarts} (seed {seed + r}): no feasible snapped result")
+                continue
+        sc = model.score(state, move_factor=mf)[0]
+        results.append((sc, state))
+        if log:
+            log(f"  restart {r + 1}/{restarts} (seed {seed + r}): score {sc:.1f}")
+    start = model.score(owner, move_factor=mf)[0]
+    out = [(start, owner)]
+    for sc, st in sorted(results, key=lambda x: x[0]):
+        if all(max(max(abs(a[0] - b[0]), abs(a[1] - b[1])) for a, b in zip(st, o)) > 2.0 or
+               any(a[2] != b[2] for a, b in zip(st, o)) for _, o in out):
+            out.append((sc, st))
+    return sorted(out, key=lambda x: x[0])
+
+
+def propose(model, state, rng, lv, sigma, issues, movable):
+    """A random feasible neighbour of `state` (None if the drawn move is infeasible)."""
+    if not movable:
+        return None
+    cand = list(state)
+    kinds = ["shift", "shift", "slide", "reset"] + (["repair", "repair"] if issues else []) \
+        + (["swap"] if lv["swap"] and len(movable) > 1 else []) + (["rotate"] if lv["rotate"] else [])
+    kind = rng.choice(kinds)
+    touched = []
+    if kind == "repair":
+        n, title, depth = rng.choice(issues)
+        if rng.random() < 0.5:   # move the obstacle instead, when it is a movable pedal
+            k = next((k for k, t in enumerate(model.titles) if t == title and k in movable), None)
+            n = k if k is not None else n
+        if n not in movable:
+            return None
+        ang = rng.choice((0, 90, 180, 270))
+        step = depth + float(model.cfg["clearance_margin_mm"]) + rng.random() * 2
+        dx, dy = {0: (step, 0), 90: (0, step), 180: (-step, 0), 270: (0, -step)}[ang]
+        cand[n] = (state[n][0] + dx, state[n][1] + dy, state[n][2])
+        touched = [n]
+    elif kind == "shift":
+        n = rng.choice(movable)
+        cand[n] = (state[n][0] + rng.gauss(0, sigma), state[n][1] + rng.gauss(0, sigma), state[n][2])
+        touched = [n]
+    elif kind == "slide":
+        n = rng.choice(movable)
+        axis = rng.choice(((1, 0), (-1, 0), (0, 1), (0, -1)))
+        d = free_distance(model, state, n, axis)
+        if d <= 0.05:
+            return None
+        d = min(d, sigma * 4) * (1.0 if rng.random() < 0.5 else rng.random())
+        cand[n] = (state[n][0] + axis[0] * d, state[n][1] + axis[1] * d, state[n][2])
+        touched = [n]
+    elif kind == "swap":   # exchange places: same centre x, front edges aligned (pedals in a row share the front)
+        n, k = rng.sample(movable, 2)
+        fn, fk = model.footprint(state[n], n), model.footprint(state[k], k)
+        cand[n] = (state[k][0], fk[3] - (fn[3] - state[n][1]), state[n][2])
+        cand[k] = (state[n][0], fn[3] - (fk[3] - state[k][1]), state[k][2])
+        touched = [n, k]
+    elif kind == "reset":   # back to the owner's position and rotation
+        moved = [n for n in movable if tuple(state[n]) != tuple(model.owner[n])]
+        if not moved:
+            return None
+        n = rng.choice(moved)
+        cand[n] = tuple(model.owner[n])
+        touched = [n]
+    else:   # rotate: angles other pedals already use first
+        n = rng.choice(movable)
+        others = [r for r in model.allowed[n] if r != state[n][2]]
+        if not others:
+            return None
+        used = [r for r in others if any(state[k][2] == r for k in range(len(state)) if k != n)]
+        r = rng.choice(used if used and rng.random() < 0.7 else others)
+        cand[n] = (state[n][0], state[n][1], r)
+        touched = [n]
+    feet = [model.footprint(st, k) for k, st in enumerate(cand)]
+    return cand if all(model.feasible_one(cand, n, feet) for n in touched) else None
+
+
+def free_distance(model, state, n, axis):
+    """How far pedal n can slide along `axis` before it touches another item or the board edge (mm)."""
+    f = model.footprint(state[n], n)
+    b, m = model.board, float(model.cfg["board_margin_mm"])
+    dist = {(1, 0): b[2] - m - f[2], (-1, 0): f[0] - (b[0] + m), (0, 1): b[3] - m - f[3], (0, -1): f[1] - (b[1] + m)}[axis]
+    others = [model.footprint(st, k) for k, st in enumerate(state) if k != n] + [o for _, o in model.fixed_feet]
+    for o in others:
+        if axis[0]:
+            if min(f[3], o[3]) - max(f[1], o[1]) <= design.TOL_MM:
+                continue
+            gap = o[0] - f[2] if axis[0] > 0 else f[0] - o[2]
+        else:
+            if min(f[2], o[2]) - max(f[0], o[0]) <= design.TOL_MM:
+                continue
+            gap = o[1] - f[3] if axis[1] > 0 else f[1] - o[3]
+        if gap >= -design.TOL_MM:
+            dist = min(dist, max(0.0, gap))
+    return max(0.0, dist)
+
+
+def polish(model, state, move_factor=1.0):
+    """Greedy: per pedal, steps of 4, 2, 1 and 0.5 mm along x and y while the score improves."""
+    state = list(state)
+    cur = model.score(state, move_factor=move_factor)[0]
+    movable = [n for n, p in enumerate(model.ids) if p not in model.pins]
+    for n in movable:   # back to the owner's position where that is not worse
+        if tuple(state[n]) != tuple(model.owner[n]):
+            cand = list(state)
+            cand[n] = tuple(model.owner[n])
+            if model.feasible_one(cand, n):
+                sc = model.score(cand, move_factor=move_factor)[0]
+                if sc <= cur + 1e-6:
+                    state, cur = cand, sc
+    for step in (4.0, 2.0, 1.0, 0.5):
+        improved = True
+        while improved:
+            improved = False
+            for n in movable:
+                for dx, dy in ((step, 0), (-step, 0), (0, step), (0, -step)):
+                    cand = list(state)
+                    cand[n] = (state[n][0] + dx, state[n][1] + dy, state[n][2])
+                    if not model.feasible_one(cand, n):
+                        continue
+                    sc = model.score(cand, move_factor=move_factor)[0]
+                    if sc < cur - 1e-6:
+                        state, cur, improved = cand, sc, True
+    return state
+
+
+def shuffle_start(model, state, rng, movable):
+    """A random feasible start for the `free` level: many random swaps and rotations of the owner's layout."""
+    lv = {"swap": True, "rotate": True}
+    for _ in range(400):
+        cand = propose(model, state, rng, lv, 60.0, [], movable)
+        if cand is not None:
+            state = cand
+    return state

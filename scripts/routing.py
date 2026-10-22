@@ -549,8 +549,9 @@ FOOTSWITCH_STYLE = {"bypass": ("#263238", "#263238"), "boost": ("#e53935", "#263
                     "function": ("#ffffff", "#263238")}   # footswitch dots in cables.svg: (fill, stroke) per type
 
 
-def svg(ctx, names):
-    """An SVG of the board, the routing area, the pedals and the routed signal cables."""
+def svg(ctx, names, overlay=None, legend=None):
+    """An SVG of the board, the routing area, the pedals and the routed signal cables. `overlay`: extra SVG
+    elements drawn on top (e.g. a layout proposal's old positions), `legend`: an extra legend sentence."""
     r = ctx.get("routing") or {}
     grid, layout = r.get("grid"), ctx.get("layout")
     if not grid or not layout:
@@ -595,10 +596,11 @@ def svg(ctx, names):
     for fp in ctx.get("footswitch_points") or []:
         fill, stroke = FOOTSWITCH_STYLE.get(fp["type"], ("#ffffff", "#263238"))
         out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>')
+    out += list(overlay or [])
     out.append(f'<text x="{grid.x0:.1f}" y="{board[3] + 14:.1f}" font-size="7" fill="#455a64">dashed: routing area '
                f'(board + {r["settings"]["edge_margin_mm"]:g} mm at back and sides, nothing in front of the lowest pedals); '
                f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits'
                + ('; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum'
-                  if ctx.get("footswitch_points") else '') + '</text>')
+                  if ctx.get("footswitch_points") else '') + (f'; {legend}' if legend else '') + '</text>')
     out.append("</svg>")
     return "\n".join(out) + "\n"

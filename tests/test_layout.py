@@ -191,8 +191,9 @@ def test_items_for_and_snapping_keep_unmoved_pedals_exact():
     m = model([ped("T A", 0), ped("T B", 135)])
     st = m.snapped(at((25.4, 50.8, 0), (150.13, 60.07, 0)))
     assert st[0] == m.owner[0]
-    it = design.move(m.placed["b"], 150.13, 60.07)
-    assert st[1][:2] == pytest.approx(design.centre(it))
+    assert abs(st[1][0] - 150.13) < 0.57 and abs(st[1][1] - 60.07) < 0.57      # within one px (0.56 mm)
+    raw = m.items_for(st, snap=False)[2]
+    assert raw["left_px"] == round(raw["left_px"]) or abs(raw["left_px"] - round(raw["left_px"])) < 1e-6
     items = m.items_for(st)
     assert items[1] == m.placed["a"] and design.centre(items[2]) == pytest.approx(st[1][:2])
 
@@ -253,3 +254,19 @@ def test_output_findings_match_the_build_messages():
     assert load == 600 and warns == []
     assert errs == ["p_F1: time-based/clocked ['d'] share an output with noise-sensitive ['g']",
                     "p_F1: digital pedal 'd' shares an output with ['g']", "p_F1: 600 mA exceeds 500 mA limit"]
+
+
+def test_detour_around_a_crossed_pedal():
+    rect = (40.0, -10.0, 60.0, 30.0)                  # the line y = 0 from x 0 to 100 crosses it
+    assert layout.detour((0, 0), (100, 0), [rect]) == pytest.approx(2 * 10)   # clear it 10 mm upwards, out and back
+    assert layout.detour((0, 40), (100, 40), [rect]) == 0.0                     # passes behind it
+    assert layout.detour((0, 30), (100, 30), [rect]) == 0.0                     # grazing the edge is not crossing
+
+
+def test_detour_around_touching_pedals_goes_around_both():
+    left, right = (0.0, 0.0, 50.0, 100.0), (50.0, 0.0, 120.0, 100.0)   # touching along x = 50
+    # a line along the contact edge (direction (2, 120)): clear both on the cheaper (left) side: the farthest left
+    # corner (0, 100) lies (49 x 120 + 110 x 2) / |(2, 120)| = 50.83 mm off the line -> out and back
+    want = 2 * (49 * 120 + 110 * 2) / (2 ** 2 + 120 ** 2) ** 0.5
+    assert layout.detour((49.0, -10.0), (51.0, 110.0), [left, right]) == pytest.approx(want) and want == pytest.approx(101.65, abs=0.01)
+    assert layout.detour((49.0, -10.0), (51.0, 110.0), [left]) < 2.0     # alone: a small step to the right clears it
