@@ -563,14 +563,14 @@ def footswitch_section(ctx, cat_pedals):
     else:
         rule = f"{lim:g} mm (`footswitches.min_distance_mm`)"
     md += [f"Minimum distance between switches of different pedals (centre to centre): {rule}. "
-           "Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off.", ""]
+           "Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off; Tap = tap-tempo switch.", ""]
     prs = ctx.get("footswitch_pairs") or []
     if not prs:
         return md + ["No pair of footswitches on different pedals is known yet.", ""]
     md += [f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
-           "| Switch | Bypass | Switch | Bypass | Distance (mm) | Status |", "|---|:-:|---|:-:|--:|---|"]
+           "| Switch | Bypass | Tap | Switch | Bypass | Tap | Distance (mm) | Status |", "|---|:-:|:-:|---|:-:|:-:|--:|---|"]
     for r in prs[:footswitches.TOP_PAIRS]:
-        md.append(f"| {r['a']} | {yn(r['a_bypass'])} | {r['b']} | {yn(r['b_bypass'])} | {r['distance_mm']:.1f} | "
+        md.append(f"| {r['a']} | {yn(r['a_bypass'])} | {yn(r['a_tap'])} | {r['b']} | {yn(r['b_bypass'])} | {yn(r['b_tap'])} | {r['distance_mm']:.1f} | "
                   f"{'too close' if r['too_close'] else 'ok'} |")
     close = sum(1 for r in prs if r["too_close"])
     md += ["", f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
@@ -659,7 +659,7 @@ KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
     "Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
     "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
-    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
+    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the pedal editor (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
 DATA_TO_VERIFY = [
     "Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).",
@@ -717,7 +717,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "python3 scripts/build.py [project...]        validate + regenerate docs",
         "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
         "python3 scripts/new_project.py <name> --instrument guitar|bass",
-        "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
+        "python3 scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)",
         "python3 -m pytest tests                       geometry and jack-check tests",
         "```",
         "",

@@ -6,13 +6,18 @@ done, and keep `CLAUDE.md` current when a decision changes.
 
 ## Branch `feat/pedal-position` (current)
 - [ ] Plan: `docs/plans/pedal-position.md` (handover `docs/handovers/pedal-position.md`); answer its open questions.
-- [ ] Rename the jack setter to a pedal editor and place footswitches; propose pedal positions (clearance, power
-      distance, signal distance, footswitch spacing).
+- [x] Phases 0-2 (2026-10-22): layout injection, `design.move` / `write_canvas`, footswitch data + spacing check,
+      `scripts/pedal_editor.py` (renamed from jack_setter, footswitch mode, Pillow instead of numpy).
+- [ ] Manual GUI check of the pedal editor (footswitch mode, J/F, no-footswitch box, bypass/tap boxes) by the owner.
+- [ ] Phases 3-5: surrogate score, layout search, proposals (see the plan and its owner decisions/corrections).
 - [ ] `feat/cable-routing` is merged into `main` locally (2026-10-22); push `main` when the owner asks.
 - [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
       `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
 
 ## Owner input needed
+- [ ] Place the footswitches of the 17 gig pedals (`python3 scripts/pedal_editor.py --list-missing guitar-gig --only
+      footswitches`), ticking bypass / tap per switch; then read the auto minimum in the gig README and calibrate
+      `footswitches.min_distance_mm` if wanted.
 - [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length
       from the jack axis to where the ribbon leaves (catalog: 19 mm, estimate). Update
       `catalog/cables.json` `ernie_ball_flat_patch_ra` and its `verified` list.

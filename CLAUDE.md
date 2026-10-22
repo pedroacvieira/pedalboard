@@ -17,30 +17,38 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
 - `catalog/cables.json`: cable types with a `role` (patch | instrument | power | reference), `diameter_mm` = width ON
   THE BOARD (routing width; a flat ribbon's narrow side), `jacket`, plug style right_angle|straight, head
   depth/width/thickness, right-angle exit offset / body reach / barrel width, sources, `verified` list, notes. Data.
-- `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/jack_setter.py` (Tkinter).
+- `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/pedal_editor.py` (Tkinter).
   x,y = fractions (0..1) of the Pedal Playground image (unrotated), at the OUTER EDGE of the physical jack;
   facing = side the plug enters from (left/right/top/down); function input|output|power|power_out|other.
+- `catalog/footswitches.json`: footswitches per pedal id, written ONLY by `scripts/pedal_editor.py`. x,y = fractions of
+  the image (unrotated) at the CENTRE of the switch cap; `bypass` true|false (turns the pedal or one side of it on/off);
+  optional `tap: true` (tap tempo, stored only when true), optional `diameter_mm`. `[]` = verified no footswitch (kept);
+  missing id = unknown. Supplies have none. The owner places the data (empty map for now).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
   voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
-  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `validation` flags.
+  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.min_distance_mm`
+  ("auto" default or mm), `validation` flags (`require_footswitches`, `strict_footswitches` among them).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
   Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
-  loaders, Pedal Playground DB cache, mm helpers), `design.py` (parse Pedal Playground saves, jack geometry in mm),
-  `jacks.py` (jack data, fixed-box clearance, jack-to-jack length estimates), `routing.py` (cable model, plug
+  loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
+  saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
+  `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
+  `footswitches.py` (footswitch data, spacing check), `routing.py` (cable model, plug
   heads, side choice, grid router, plug-head clearance),
-  `jack_setter.py` (GUI), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`python3 -m pytest tests`), ~118 tests, hand-computed geometry cases.
+  `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
+- `tests/`: pytest (`python3 -m pytest tests`), ~171 tests, hand-computed geometry cases.
 
 ## Commands
 ```
 python3 scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
 python3 -m pytest tests -q                     # all tests
-python3 scripts/jack_setter.py <catalog id>    # place jacks on a pedal image (needs a display)
-python3 scripts/jack_setter.py --list-missing  # what still needs jacks
+python3 scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
+python3 scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
+python3 scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
 python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
 ```
 
@@ -91,6 +99,12 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
   the same (no bend radius, flat or round), routes are not hand-tuned.
 - Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
 - Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.
+- Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
+  (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's file and never written by tools.
+- Footswitch spacing: every pair of switches on DIFFERENT pedals >= `footswitches.min_distance_mm`; default "auto" =
+  the smallest such distance in the owner's `playground_design.json` (also for injected layouts), so the owner's
+  layout has no findings by construction. Missing data is one aggregated warning per project. README lists the 8
+  closest pairs with bypass/tap flags; `cables.svg` draws the switches (filled = bypass) and too-close lines.
 
 ## Working agreements with the owner
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.

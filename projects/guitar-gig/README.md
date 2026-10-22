@@ -336,7 +336,7 @@ python3 scripts/pedal_editor.py flight_delay --footswitches
 python3 scripts/pedal_editor.py tumnus_deluxe --footswitches
 ```
 
-Minimum distance between switches of different pedals (centre to centre): auto: no pair of footswitches is known yet, so there is no limit. Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off.
+Minimum distance between switches of different pedals (centre to centre): auto: no pair of footswitches is known yet, so there is no limit. Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off; Tap = tap-tempo switch.
 
 No pair of footswitches on different pedals is known yet.
 

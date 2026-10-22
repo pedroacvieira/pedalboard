@@ -34,3 +34,14 @@ Not in this part: the optimizer (layout.py, propose_layout.py), power re-assignm
 - Build green; tests pass; `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches` prints the
   17 gig pedals' commands; README of guitar-gig shows the Footswitches section (data missing for now).
 - Report: what changed per phase, commits, test count, what could not be verified (GUI), open questions.
+
+## Current state (2026-10-22, end of part 1)
+Phases 0-2 done on `feat/pedal-position` (not pushed, not merged), plus the owner's later `tap` flag:
+- Phase 0: `build.validate(..., items=None)` / `jacks.check(..., items=None)` with `jacks.load_items`, `place_chain`,
+  `layout_from_items`; `ctx["layout_source"]`; `design.move` (snaps to whole px) and `design.write_canvas`.
+- Phase 1: `catalog/footswitches.json` (empty map), `scripts/footswitches.py`, build call, README "Footswitches",
+  open issues line, SVG dots, scaffold, `require_footswitches` / `strict_footswitches`, `min_distance_mm` "auto".
+- Phase 2: `scripts/pedal_editor.py` (renamed, footswitch mode, no-footswitch box, bypass + tap boxes, on-body check,
+  Pillow only, `--footswitches`, `--list`, `--list-missing ... --only`); `catalog/jacks.json` `_doc` line only.
+- Not run: the Tkinter main loop (a scripted smoke test built the window withdrawn and drove its methods; the owner
+  should click through it once). Footswitch data and the auto minimum await the owner's placement.

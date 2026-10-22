@@ -19,8 +19,8 @@ from common import JACKS_FILE, dumps_per_line, pedal_name
 FUNCTIONS = ("input", "output", "power", "power_out", "other")
 FACINGS = ("left", "right", "top", "down")
 KEY_ORDER = ("id", "label", "function", "x", "y", "facing", "default")
-DOC = ("Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/jack_setter.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, and mark the OUTER EDGE of the physical jack (where the plug starts): the cable clearance zone begins there. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.")
-COMMAND = "python3 scripts/jack_setter.py"
+DOC = ("Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/pedal_editor.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, and mark the OUTER EDGE of the physical jack (where the plug starts): the cable clearance zone begins there. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.")
+COMMAND = "python3 scripts/pedal_editor.py"
 
 
 # --- file ---------------------------------------------------------------------------------------

@@ -225,3 +225,20 @@ Phases 1-2 give value (footswitch check on the real layout) before any optimizer
     its own wiring.
 11. **Several proposals**: the script keeps the best N (`--top N`, default 3), written as
     `projects/<name>/proposals/<n>.json` (+ `.svg`), ranked, each with its scores and wiring.
+
+### Owner corrections, 2026-10-22 (later; override decision 4 and add accessibility)
+4'. **Input/output edges after all**: push the **first pedal to the right of the board** (its input near the right
+   edge: soft cost = distance from its input jack to the right board edge). The **last pedal can be anywhere near an
+   edge** (soft cost = distance from its output jack to the nearest of the left, right and back edges), because an
+   amp cable running over the board is a problem. Keep the small right-to-left flow preference.
+12. **Accessibility (soft, per pedal)**: the board depth is split from front (nearest the player) to back; a pedal's
+   position = its footswitches' (else its centre's) depth.
+   - **Front preferred (slight)**: boosts and drives (tags `boost`, `overdrive`, `gain`, i.e. fuzz/distortion too),
+     and every pedal with a **tap-tempo switch**. EQ/boost pedals such as the **Tumnus** (tags `eq`/`master`/`boost`)
+     must be easily accessible: front, stronger.
+   - **Back, always (strong)**: the **tuner** (tag `tuner`); other utility pedals may sit in the middle/back.
+   - **Avoid the front**: modulation (tags `modulation`, `phaser`, `vibe`, `flanger`, `chorus`, `tremolo`), not
+     stepped on often, **unless it has a tap-tempo switch**.
+   - Configurable: `layout.access` = tag -> `front` | `back` | `avoid_front` with weights, plus per-pedal overrides.
+   - Tap tempo comes from the footswitch data: each switch has an optional `"tap": true` (tap-tempo switch), set in the
+     pedal editor next to the bypass flag.

@@ -188,3 +188,20 @@ def test_gig_build_with_switch_data_has_no_findings_under_auto():
     assert f"Closest pairs ({fsw.TOP_PAIRS} of {len(prs)})" in md and "No pair is closer than the minimum." in md
     picture = routing.svg(ctx, {})
     assert picture.count("<circle") == len(chain) and "stroke-dasharray=\"3 2\"" not in picture
+
+
+def test_tap_flag_is_optional_stored_only_when_true_and_validated(tmp_path):
+    path = tmp_path / "footswitches.json"
+    fsw.save_footswitches("p1", [sw("bypass"), sw("tap", bypass=False, tap=True), sw("preset", bypass=False, tap=False)], path)
+    stored = fsw.read_file(path)["footswitches"]["p1"]
+    assert [f.get("tap") for f in stored] == [None, True, None]
+    assert '{"id": "tap", "label": "Tap", "x": 0.5, "y": 0.8, "bypass": false, "tap": true}' in path.read_text()
+    problems = fsw.validate_file({"footswitches": {"p1": [sw(tap="yes")]}}, {"p1": {}}, {})
+    assert problems == {"p1": ["footswitch bypass: tap must be true or false"]}
+    assert fsw.validate_file({"footswitches": {"p1": stored}}, {"p1": {}}, {}) == {}
+
+
+def test_pairs_carry_the_tap_flags(tmp_path):
+    ctx = run(tmp_path, [A(), B()], {"a": [sw("tap", bypass=False, tap=True)], "b": [sw()]})
+    (pair,) = ctx["footswitch_pairs"]
+    assert (pair["a_bypass"], pair["a_tap"], pair["b_bypass"], pair["b_tap"]) == (False, True, True, False)
