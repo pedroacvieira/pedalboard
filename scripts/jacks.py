@@ -160,10 +160,6 @@ CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}          # audio jacks w
 POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
-def _round_up(mm, step=50):
-    return int(math.ceil(mm / step) * step)
-
-
 def _jack_by_id(jacks, jid):
     return next((j for j in jacks if j["id"] == jid), None)
 
@@ -187,12 +183,11 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     power_modelled = bool((project.get("cables") or {}).get("power_type"))
     extra_used = jset.get("extra_used", {})
     supplies_layer = jset.get("supplies_layer", "under")
-    slack = float(jset.get("slack_mm", 50))
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
     ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None,
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
-                              "power_modelled": power_modelled, "slack_mm": slack, "supplies_layer": supplies_layer})
+                              "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
     chain = ctx["chain"]
     insts = ctx.get("supplies", [])
@@ -325,41 +320,57 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
                                   f"it reaches {depth:.1f} mm into the {out_mm:g} mm {'power' if is_power else 'audio'} zone")
 
     # 4) cable lengths between jacks
-    def endpoint(item, jack):
+    #    Lengths are measured from a point on the jack axis half the clearance depth in front of the jack (half
+    #    the plug head depth with a cable type, else half the fixed box): min_mm is a right-angle path between
+    #    those points (no obstacles; routing.route_project measures signal cables around the pedals).
+    types = None
+    def depth(kind, cable_id=None):
+        nonlocal types
+        tid = (project.get("cables") or {}).get("power_type") if kind == "power" else cable_type_id(project, cable_id)
+        if tid:
+            if types is None:
+                from common import load_cable_types
+                types = load_cable_types()
+            if tid in types:
+                return float(types[tid]["plug"]["head_depth_mm"])
+        return p_out if kind == "power" else outward
+
+    def endpoint(item, jack, depth_mm):
         pt = design.jack_point(item, jack["x"], jack["y"])
         facing = design.jack_facing(item, jack["facing"])
-        return pt, design.stub(pt, facing, outward)
+        return pt, design.stub(pt, facing, depth_mm / 2)
 
     def cable(a, b):
         if a is None or b is None:
-            return {"direct_mm": None, "routed_mm": None, "suggested_mm": None}
-        (pa, sa), (pb, sb) = a, b
-        direct = math.hypot(pa[0] - pb[0], pa[1] - pb[1])
-        routed = 2 * outward + abs(sa[0] - sb[0]) + abs(sa[1] - sb[1])
-        return {"direct_mm": direct, "routed_mm": routed, "suggested_mm": _round_up(routed + slack)}
+            return {"direct_mm": None, "min_mm": None}
+        (pa, ma), (pb, mb) = a, b
+        return {"direct_mm": math.hypot(pa[0] - pb[0], pa[1] - pb[1]),
+                "min_mm": abs(ma[0] - mb[0]) + abs(ma[1] - mb[1])}
 
-    def pedal_end(cid, fn):
+    def pedal_end(cid, fn, depth_mm):
         jk = default_jack(jacks_data.get(cid) or [], fn)
-        return endpoint(placed[cid], jk) if jk and cid in placed else None
+        return endpoint(placed[cid], jk, depth_mm) if jk and cid in placed else None
 
     signal, power = [], []
     def jack_name(cid, fn, fallback):
         jk = default_jack(jacks_data.get(cid) or [], fn)
         return f"{cid}.{jk['id'] if jk else fallback}"
 
-    for a, b in zip(chain, chain[1:]):
+    for n, (a, b) in enumerate(zip(chain, chain[1:]), 1):
+        d = depth("signal", f"S{n}")
         signal.append({"from": jack_name(a, "output", "out"), "to": jack_name(b, "input", "in"),
-                       **cable(pedal_end(a, "output"), pedal_end(b, "input"))})
+                       **cable(pedal_end(a, "output", d), pedal_end(b, "input", d))})
+    p_depth = depth("power")
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
         for row in s["rows"]:
             if not row["pedals"]:
                 continue
             jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], row["port"])
-            prev = endpoint(it, jk) if it and jk else None
+            prev = endpoint(it, jk, p_depth) if it and jk else None
             prev_name = f"{s['inst']['id']}.{row['port']}"
             for pid in row["pedals"]:
-                here = pedal_end(pid, "power")
+                here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
                 power.append({"output": row["id"], "from": prev_name, "to": to_name, **cable(prev, here)})
                 prev, prev_name = here, to_name

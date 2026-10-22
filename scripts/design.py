@@ -168,18 +168,22 @@ def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None):
     cable leaves the head there, `exit_offset_mm` out from the jack face, the plug body reaches
     `body_reach_mm` from the jack axis, then the cable runs `run_mm` straight before it may bend.
     Straight plugs: the cable leaves along the facing at `head_depth_mm`, then runs `run_mm`.
-    Returns {"rects": [(part, rect)], "lead": [points from the jack to the exit], "exit": point, "lead_mm": float}
-    with parts "head", "barrel" (right-angle body beyond the head, if any) and "cable" (the straight run).
+    Returns {"rects": [(part, rect)], "lead": [points from the jack to the exit], "exit": point, "lead_mm": float,
+    "measure": point, "measure_mm": float} with parts "head", "barrel" (right-angle body beyond the head, if any)
+    and "cable" (the straight run). Cable lengths are measured from `measure` (on the jack axis, half the head
+    depth in front of the jack); `measure_mm` is the cable from there to the exit.
     """
     u = FACING[facing]
     depth, width = float(plug["head_depth_mm"]), float(plug["head_width_mm"])
     d = float(diameter_mm)
+    m = (point[0] + u[0] * depth / 2, point[1] + u[1] * depth / 2)
     if plug["style"] == "straight":
         v = side_vector(facing, "left")
         rects = [("head", _rect(point, u, 0, depth, v, -width / 2, width / 2)),
                  ("cable", _rect(point, u, depth, depth + run_mm, v, -d / 2, d / 2))]
         ex = (point[0] + u[0] * (depth + run_mm), point[1] + u[1] * (depth + run_mm))
-        return {"rects": rects, "lead": [point, ex], "exit": ex, "lead_mm": depth + run_mm}
+        return {"rects": rects, "lead": [point, ex], "exit": ex, "lead_mm": depth + run_mm,
+                "measure": m, "measure_mm": depth / 2 + run_mm}
     if side not in SIDES:
         raise ValueError(f"right-angle plug needs side left/right, got {side!r}")
     s = side_vector(facing, side)
@@ -195,7 +199,8 @@ def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None):
     rects.append(("cable", _rect(point, u, off - d / 2, off + d / 2, s, reach, reach + run_mm)))
     bend = (point[0] + u[0] * off, point[1] + u[1] * off)
     ex = (bend[0] + s[0] * (reach + run_mm), bend[1] + s[1] * (reach + run_mm))
-    return {"rects": rects, "lead": [point, bend, ex], "exit": ex, "lead_mm": off + reach + run_mm}
+    return {"rects": rects, "lead": [point, bend, ex], "exit": ex, "lead_mm": off + reach + run_mm,
+            "measure": m, "measure_mm": abs(off - depth / 2) + reach + run_mm}
 
 
 def part_depth(part, facing, side, ov):

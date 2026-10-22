@@ -165,6 +165,7 @@ def test_right_angle_head_footprint_for_each_facing_and_side(facing, side, head,
     assert set(parts) == {"head", "cable"}
     assert close(parts["head"], head) and close(parts["cable"], cable) and close(g["exit"], exit_)
     assert g["lead_mm"] == pytest.approx(10 + 8 + 6)
+    assert g["measure_mm"] == pytest.approx(8 + 6)            # from half the 20 mm head depth: the cable axis
     assert close(g["lead"][0], P) and close(g["lead"][-1], exit_)
 
 
@@ -175,6 +176,7 @@ def test_right_angle_barrel_beyond_the_head():
     assert close(parts["barrel"], (108, 30, 118, 42))       # 13 +- 5 out, 8..20 up
     assert close(parts["cable"], (110, 24, 116, 30))        # 13 +- 3 out, 20..26 up
     assert close(g["exit"], (113, 24)) and g["lead_mm"] == pytest.approx(13 + 20 + 6)
+    assert close(g["measure"], (110, 50)) and g["measure_mm"] == pytest.approx(3 + 20 + 6)   # 10 -> 13 out, then up
 
 
 def test_straight_plug_leaves_along_the_facing():
@@ -183,6 +185,7 @@ def test_straight_plug_leaves_along_the_facing():
     parts = dict(g["rects"])
     assert close(parts["head"], (94, 50, 106, 90)) and close(parts["cable"], (97, 90, 103, 96))
     assert close(g["exit"], (100, 96)) and g["lead_mm"] == pytest.approx(46)
+    assert close(g["measure"], (100, 70)) and g["measure_mm"] == pytest.approx(26)           # from 20 mm out
 
 
 def test_right_angle_plug_needs_a_side():
@@ -221,6 +224,7 @@ def test_ernie_ball_flat_patch_plug_facing_right_exit_left():
     assert close(parts["barrel"], (100, 31, 106.4, 43.65))        # 6.35..19 up, 0..6.4 out
     assert close(parts["cable"], (101.45, 27.5, 104.95, 31))      # 3.2 +- 1.75 out, 19..22.5 up
     assert close(g["exit"], (103.2, 27.5)) and g["lead_mm"] == pytest.approx(3.2 + 19 + 3.5)
+    assert close(g["measure"], (103.2, 50)) and g["measure_mm"] == pytest.approx(19 + 3.5)   # 3.2 mm in front of the jack
 
 
 def test_dc_low_profile_plug_facing_top_exit_right():

@@ -18,6 +18,7 @@ PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
     ("power_consumption", "current_ma"), ("power_consumption", "min_voltage_v"),
     ("power_consumption", "max_voltage_v"), ("power_consumption", "needs_isolated_output"),
+    ("power_consumption", "polarity"),
 ]
 BOARD_REQUIRED = ["brand", "model", "width_in", "height_in"]
 
@@ -232,6 +233,8 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 errors.append(f"{oid}: {out['voltage_v']}V not available on {sup['id']} {out['port']}")
                 continue
             row["limit"] = limit
+            row["polarity"] = odef.get("polarity") or sup.get("polarity")
+            need(f"supply {sup['id']}.polarity", row["polarity"])
             for pid in row["pedals"]:
                 if pid not in pedals:
                     errors.append(f"power: {oid} feeds '{pid}' which is not in the signal chain")
@@ -244,6 +247,12 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
                 if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
                     errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
+                pol = pc.get("polarity")
+                if pol is not None and pol not in routing.POLARITIES:
+                    errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(routing.POLARITIES)})")
+                elif pol and row["polarity"] and pol != row["polarity"]:
+                    warnings.append(f"{oid}: {pid} is {pol.replace('_', '-')} but the output is {row['polarity'].replace('_', '-')}: "
+                                    f"use a polarity-reversing cable")
                 if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
                     errors.append(f"{oid}: {pid} needs an isolated output but shares it")
                 if pc.get("current_ma") is None:
@@ -251,6 +260,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 else:
                     row["load"] += pc["current_ma"]
             if len(row["pedals"]) > 1:
+                pols = {pedals[x]["power_consumption"].get("polarity") for x in row["pedals"] if x in pedals} - {None}
+                if len(pols) > 1:
+                    errors.append(f"{oid}: center-negative and center-positive pedals share one output (their grounds are "
+                                  f"joined through the audio cables): give them separate outputs")
                 clocked = [x for x in row["pedals"] if pedals.get(x, {}).get("clocked_noise") is True]
                 quiet = [x for x in row["pedals"] if sensitive & set(pedals.get(x, {}).get("tags", []))]
                 if clocked and quiet:
@@ -287,7 +300,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
-    routing.route_project(ctx, cat_pedals, slack_mm=ctx.get("jack_settings", {}).get("slack_mm", 50))
+    routing.route_project(ctx, cat_pedals)
     return ctx
 
 
@@ -459,17 +472,19 @@ def routing_section(ctx):
              if cfg.get("power_type") else "."), ""]
     if ctx["routing"].get("grid"):
         md += ["![Cable routing](cables.svg)", ""]
-    md += ["| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Routed (mm) | Suggested (mm) | Status |",
-           "|---|---|---|---|---|---|---|---|:-:|--:|--:|---|"]
+    md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
+           "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
+           "'~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).", "",
+           "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
+           "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
-        routed = fmt_mm(c["routed_mm"]) if c["routed_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
+        length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
         md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {c.get('polarity', '-')} | "
-                  f"{'yes' if c['under_board'] else 'no'} | {routed} | {fmt_mm(c['suggested_mm'])} | {c['status']} |")
-    sig = [c for c in cables if c["kind"] == "signal" and c["routed_mm"] is not None]
+                  f"{'yes' if c['under_board'] else 'no'} | {length} | {c['status']} |")
+    sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
-        md += ["", f"Routed signal cable: {sum(c['routed_mm'] for c in sig):.0f} mm over {len(sig)} cables "
-                   f"(suggested lengths add up to {sum(c['suggested_mm'] for c in sig)} mm). '~' marks a power estimate (not routed)."]
+        md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
     return md
 
 
@@ -512,17 +527,7 @@ def jacks_section(ctx):
         md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {violation_where(v)}" for v in ctx["violations"]] + [""]
     else:
         md += [f"No blocked cable space found ({zone}).", ""]
-    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends (a quick estimate "
-           f"without plug heads or obstacles; the signal lengths routed around the pedals with the plug model are under Cable routing). "
-           f"Suggested = routed + {st['slack_mm']:g} mm slack, rounded up to the next 50 mm.", ""]
-    for title, rows in (("Signal cables", cables["signal"]), ("Power cables", cables["power"])):
-        if not rows:
-            continue
-        md += [f"### {title}", "", "| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |", "|---|---|--:|--:|--:|"]
-        for c in rows:
-            md.append(f"| {c['from']} | {c['to']} | {fmt_mm(c['direct_mm'])} | {fmt_mm(c['routed_mm'])} | {fmt_mm(c['suggested_mm'])} |")
-        known = [c["suggested_mm"] for c in rows if c["suggested_mm"] is not None]
-        md += ["", f"Total suggested: {sum(known)} mm over {len(known)} of {len(rows)} cables.", ""]
+    md += ["Cable lengths: see Cable routing.", ""]
     return md
 
 

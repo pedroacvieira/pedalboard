@@ -25,7 +25,7 @@ def main():
         "name": args.name.replace("-", " ").title(),
         "instrument": args.instrument,
         "validation": {"no_unknown": True, "require_jacks": False, "strict_clearance": False},
-        "jacks": {"clearance": {"outward_mm": 6.3, "side_mm": 7}, "power_clearance": {"outward_mm": 5.5, "side_mm": 5.5}, "extra_used": {}, "supplies_layer": "under", "slack_mm": 50},
+        "jacks": {"clearance": {"outward_mm": 6.3, "side_mm": 7}, "power_clearance": {"outward_mm": 5.5, "side_mm": 5.5}, "extra_used": {}, "supplies_layer": "under"},
         "cables": {"type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {}},
         "board": {"brand": None, "model": None, "width_in": None, "height_in": None},
         "playground": {"scale": 45},

@@ -23,7 +23,7 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
   voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
-  without a power type, extra_used, supplies_layer, slack_mm), `cables` (`type` = default patch type, must have role
+  without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
   `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `validation` flags.
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
@@ -56,6 +56,9 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
 - Rule priorities: rules expand to pairwise "a before b" constraints; higher priority wins, overrides are listed.
 - Power policy: digital pedals alone on an output; clocked (BBD/digital) pedals never share with gain/compressor;
   18V pedals share 18V outputs; operating voltage must be within the pedal's range.
+  Polarity: `power_consumption.polarity` per pedal and `polarity` per supply (an output may override it); a
+  mismatch warns (use a polarity-reversing cable), mixed polarities on one output are an error; power cables carry
+  the pedal's polarity. Every current pedal is center-negative (owner, 2026-10-22).
 - Supplies sit under the board (`supplies_layer: "under"`): not obstacles; power cables are modelled, not routed.
 - Plug heads (`design.plug_geometry`): head = depth x width rectangle centred on the jack, extending along the
   facing. Right-angle: cable leaves to the LEFT or RIGHT of the facing (seen from above looking out along the
@@ -77,6 +80,11 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
   diameter is a corridor); area = board + `edge_margin_mm` (default one diameter, 6 mm) at back and sides,
   nothing in front of the lowest pedals; at most `max_stack` (2) cables per cell; signal cables only.
+- Cable lengths are a **minimum to buy**, not a product suggestion (owner uses DIY kits / any brand): measured from a
+  point on each jack's axis half the clearance depth in front of the jack (half the plug head depth, else half the
+  fixed box), along the plug's cable exit and the routed path; no slack, no rounding (`min_mm`). Power cables: a
+  right-angle estimate between those points. Goal is an approximation, not a real 3D simulation: all cables bend
+  the same (no bend radius, flat or round), routes are not hand-tuned.
 - Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
 - Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.
 

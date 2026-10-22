@@ -62,8 +62,7 @@ def test_clear_gap_has_no_violation_and_computes_the_signal_cable(tmp_path):
     (hop,) = ctx["cables"]["signal"]
     assert hop["from"] == "a.out" and hop["to"] == "b.in"
     assert hop["direct_mm"] == pytest.approx(25.4)
-    assert hop["routed_mm"] == pytest.approx(25.4)     # 6.3 + 6.3 + 12.8
-    assert hop["suggested_mm"] == 100                  # 25.4 + 50 slack -> next 50
+    assert hop["min_mm"] == pytest.approx(25.4 - 6.3)  # from 3.15 mm in front of each jack (half the 6.3 mm box)
 
 
 def test_zero_distance_side_by_side_is_blocked(tmp_path):

@@ -35,7 +35,7 @@ DEFAULTS = {
     "max_stack": 2,              # cables allowed on top of each other in one cell
     "default_tip": "TS",         # signal plugs unless a jack or an override says TRS / XLR
     "power_tip": "DC 2.1 mm",
-    "power_polarity": "center_negative",
+    "power_polarity": "center_negative",   # only when the pedal's catalog polarity is unknown
     "iterations": 40,
 }
 TIPS = ("TS", "TRS", "XLR", "DC 2.1 mm", "DC 2.5 mm")
@@ -235,10 +235,6 @@ def path_length(grid, path):
 
 
 # --- the project step ---------------------------------------------------------------------------
-def _round_up(mm, step=50):
-    return int(math.ceil(mm / step) * step)
-
-
 def validate_types(types):
     """Problems in catalog/cables.json, as strings."""
     errs = []
@@ -290,7 +286,8 @@ def end_options(item, jack, ctype, exit_fixed, cfg, outward):
     facing = design.jack_facing(item, jack["facing"])
     if ctype is None:
         st = design.stub(pt, facing, outward)
-        return facing, [{"side": None, "rects": [], "lead": [pt, st], "exit": st, "lead_mm": outward}]
+        return facing, [{"side": None, "rects": [], "lead": [pt, st], "exit": st, "lead_mm": outward,
+                         "measure": design.stub(pt, facing, outward / 2), "measure_mm": outward / 2}]
     plug = ctype["plug"]
     sides = [None] if plug["style"] == "straight" else ([exit_fixed] if exit_fixed in design.SIDES else list(design.SIDES))
     opts = []
@@ -313,9 +310,13 @@ def blocked_parts(opt, own_id, obstacles):
     return hits
 
 
-def route_project(ctx, cat_pedals, slack_mm=50, cable_types=None):
+def route_project(ctx, cat_pedals, cable_types=None):
     """Build ctx['cable_list'] (signal + power cables with attributes), route the signal cables and check the
-    clearance of their plugs (appended to ctx['violations'])."""
+    clearance of their plugs (appended to ctx['violations']).
+
+    `min_mm` is the minimum cable length to buy: measured from a point on each jack's axis half the clearance
+    depth in front of the jack (half the plug head depth, or half the fixed box), along the plug's cable exit
+    and the routed path. No slack and no rounding: the owner picks the cable."""
     project, warnings, errors = ctx["project"], ctx["warnings"], ctx["errors"]
     if cable_types is None:
         from common import load_cable_types
@@ -330,6 +331,10 @@ def route_project(ctx, cat_pedals, slack_mm=50, cable_types=None):
     cables = []
     over = cfg["overrides"]
 
+    def pedal_polarity(jack_name):
+        pc = (cat_pedals.get(jack_name.split(".")[0]) or {}).get("power_consumption") or {}
+        return pc.get("polarity") or cfg["power_polarity"]
+
     def tip_of(jack, default):
         return (jack or {}).get("connector") or default
 
@@ -343,15 +348,15 @@ def route_project(ctx, cat_pedals, slack_mm=50, cable_types=None):
         c = {"id": f"S{n}", "kind": "signal", "from": f"{a}.{ja['id'] if ja else 'out'}", "to": f"{b}.{jb['id'] if jb else 'in'}",
              "type": tid, "exit_a": None, "exit_b": None,
              "tip_a": tip_of(ja, cfg["default_tip"]), "tip_b": tip_of(jb, cfg["default_tip"]), "under_board": False,
-             "routed_mm": None, "suggested_mm": None, "path": None, "status": "not routed", "_ends": (a, ja, b, jb)}
+             "min_mm": None, "path": None, "status": "not routed", "_ends": (a, ja, b, jb)}
         cables.append(c)
     # power cables: model and estimate only (they run under the board)
     under = (project.get("jacks", {}).get("supplies_layer", "under") == "under")
     for n, hop in enumerate((ctx.get("cables") or {}).get("power", []), 1):
         cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
-                       "polarity": cfg["power_polarity"], "under_board": under, "routed_mm": None,
-                       "suggested_mm": hop.get("suggested_mm"), "estimate_mm": hop.get("routed_mm"), "path": None,
+                       "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
+                       "estimate_mm": hop.get("min_mm"), "path": None,
                        "status": "not routed (under the board)" if under else "not routed (power routing not implemented)"})
     for c in cables:
         for k, v in over.get(c["id"], {}).items():
@@ -407,7 +412,7 @@ def route_project(ctx, cat_pedals, slack_mm=50, cable_types=None):
         best = None
         for key, oa, ob in (x for x in combos if x[0] == top):   # A* only for the best-ranked combinations
             path = astar(grid, oa["cell"], ob["cell"], lambda _: 1.0, squeeze=key[1] == 1) if key[1] < 2 else None
-            length = (oa["lead_mm"] + ob["lead_mm"] + path_length(grid, path)) if path else \
+            length = (oa["measure_mm"] + ob["measure_mm"] + path_length(grid, path)) if path else \
                 math.hypot(oa["exit"][0] - ob["exit"][0], oa["exit"][1] - ob["exit"][1])
             if best is None or length < best[0][3]:
                 best = ((*key, length), oa, ob)
@@ -442,9 +447,9 @@ def route_project(ctx, cat_pedals, slack_mm=50, cable_types=None):
         squeezed = sum(1 for p in path if p in grid.blocked) * grid.cell
         first, last = grid.centre(path[0]), grid.centre(path[-1])
         ea, eb = oa["exit"], ob["exit"]
-        length = (oa["lead_mm"] + ob["lead_mm"] + math.hypot(ea[0] - first[0], ea[1] - first[1]) + path_length(grid, path)
+        length = (oa["measure_mm"] + ob["measure_mm"] + math.hypot(ea[0] - first[0], ea[1] - first[1]) + path_length(grid, path)
                   + math.hypot(eb[0] - last[0], eb[1] - last[1]))
-        c.update(routed_mm=length, suggested_mm=_round_up(length + slack_mm), status="routed",
+        c.update(min_mm=length, status="routed",
                  path=list(oa["lead"]) + [grid.centre(p) for p in path] + list(reversed(ob["lead"])))
         if c.get("_squeeze") and squeezed:
             c["status"] = "routed, squeezed (gap narrower than the cable)"

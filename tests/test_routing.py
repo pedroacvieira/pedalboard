@@ -145,13 +145,14 @@ def test_router_picks_the_shorter_exit_sides():
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
     assert c["status"] == "routed" and (c["exit_a"], c["exit_b"]) == ("right", "right")   # (80, 94) -> (190, 126)
     assert c["path"][0] == (70.0, 80.0) and c["path"][1] == (80.0, 80.0) and c["path"][2] == (80.0, 94.0)
-    # leads 2 x 24 mm + about 110 mm across and 32 mm down (octile ~ 123 mm, grid accuracy ~ a few mm)
-    assert 48 + 123 - 4 <= c["routed_mm"] <= 48 + 123 + 8
+    # measured from 10 mm in front of each jack (half the 20 mm head): 2 x (8 + 6) mm to the exits, then about
+    # 110 mm across and 32 mm down (octile ~ 123 mm, grid accuracy ~ a few mm)
+    assert 28 + 123 - 4 <= c["min_mm"] <= 28 + 123 + 8
     assert ctx["violations"] == [] and ctx["errors"] == []
     fixed = plug_ctx({"type": "ra", "overrides": {"S1": {"exit_a": "left"}}})
     routing.route_project(fixed, {}, cable_types=TYPES)
     (f,) = [x for x in fixed["cable_list"] if x["kind"] == "signal"]
-    assert f["exit_a"] == "left" and f["routed_mm"] > c["routed_mm"]
+    assert f["exit_a"] == "left" and f["min_mm"] > c["min_mm"]
 
 
 def test_straight_plug_type_per_cable_and_its_diameter():
@@ -267,3 +268,13 @@ def test_project_type_roles_are_checked():
     ctx = plug_ctx({"type": "ra", "power_type": "dc", "overrides": {"S1": {"type": "dc"}}})
     routing.route_project(ctx, {}, cable_types=types)
     assert any("cables.overrides.S1.type: dc is a DC power cable" in e for e in ctx["errors"])
+
+
+def test_power_cable_polarity_follows_the_pedal():
+    ctx = power_ctx()
+    routing.route_project(ctx, {"a": {"power_consumption": {"polarity": "center_positive"}}}, cable_types={**TYPES, **DC})
+    (p,) = [x for x in ctx["cable_list"] if x["kind"] == "power"]
+    assert p["polarity"] == "center_positive" and ctx["errors"] == []
+    ctx = power_ctx()
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})          # unknown -> the project default
+    assert [x for x in ctx["cable_list"] if x["kind"] == "power"][0]["polarity"] == "center_negative"
