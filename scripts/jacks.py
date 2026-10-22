@@ -156,24 +156,25 @@ def validate_jacks_file(data, pedals, supplies):
 
 
 # --- project check (called from build.validate) -------------------------------------------------
-CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}
-
-
-def _round_up(mm, step=50):
-    return int(math.ceil(mm / step) * step)
+CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}          # audio jacks without a modelled plug
+POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
 def _jack_by_id(jacks, jid):
     return next((j for j in jacks if j["id"] == jid), None)
 
 
-def check(ctx, cat_pedals, cat_supplies, jacks_data):
+def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False):
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
     cables {"signal": [...], "power": [...]} (None without a design file), jack_settings.
     Missing jack data and blocked clearance are warnings unless the project sets
     validation.require_jacks / validation.strict_clearance.
+    Every used jack gets the fixed clearance box here. With `defer` the results wait in ctx['fixed_box'] and
+    routing.route_project reports them (report_fixed_box) for the jacks it did not check with a plug model, so
+    each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
+    if None) for the plug depth used to measure cable lengths.
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
@@ -181,13 +182,16 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     jset = project.get("jacks", {})
     outward = float(jset.get("clearance", {}).get("outward_mm", CLEARANCE_DEFAULT["outward_mm"]))
     side = float(jset.get("clearance", {}).get("side_mm", CLEARANCE_DEFAULT["side_mm"]))
+    p_out = float(jset.get("power_clearance", {}).get("outward_mm", POWER_CLEARANCE_DEFAULT["outward_mm"]))
+    p_side = float(jset.get("power_clearance", {}).get("side_mm", POWER_CLEARANCE_DEFAULT["side_mm"]))
+    power_modelled = bool((project.get("cables") or {}).get("power_type"))
     extra_used = jset.get("extra_used", {})
     supplies_layer = jset.get("supplies_layer", "under")
-    slack = float(jset.get("slack_mm", 50))
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None,
-               jack_settings={"outward_mm": outward, "side_mm": side, "slack_mm": slack, "supplies_layer": supplies_layer})
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, fixed_box=[],
+               jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
+                              "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
     chain = ctx["chain"]
     insts = ctx.get("supplies", [])
@@ -271,14 +275,21 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
                 inst_item[s["inst"]["id"]] = match
 
     pedal_items = [i for i in items if i["kind"] == "pedal"]
-    mapped_ids = {i["id"] for i in placed.values()}
     obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
+    boards = [i for i in items if i["kind"] == "pedalboard"]
+    # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
+    ctx["layout"] = {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles,
+                     "inst_item": inst_item, "jacks": jacks_data, "outward_mm": outward}
 
-    # 3) clearance in front of every used jack
+    # 3) fixed clearance box in front of every used jack: power jacks (and on-board supply ports) the small
+    #    `power_clearance` box, the rest the audio `clearance` box. Jacks that routing.route_project checks with a
+    #    plug model (signal cables with a type, power jacks with cables.power_type) drop theirs (report_fixed_box).
+    from routing import cable_type_id  # late import: routing imports jacks lazily too
     owners = []  # (label, item, jack)
     for cid, it in placed.items():
         have = jacks_data.get(cid) or []
-        ids = [(default_jack(have, fn) or {}).get("id") for fn in ("input", "output", "power")] + list(extra_used.get(cid, []))
+        ids = [(default_jack(have, fn) or {}).get("id") for fn in ("input", "output", "power")]
+        ids += list(extra_used.get(cid, []))
         for jid in dict.fromkeys(i for i in ids if i):
             jk = _jack_by_id(have, jid)
             if jk:
@@ -293,54 +304,85 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data):
     for cid, it, jk in owners:
         pt = design.jack_point(it, jk["x"], jk["y"])
         facing = design.jack_facing(it, jk["facing"])
-        zone = design.clearance_rect(pt, facing, outward, side)
+        is_power = jk["function"] in ("power", "power_out")
+        out_mm, side_mm = (p_out, p_side) if is_power else (outward, side)
+        zone = design.clearance_rect(pt, facing, out_mm, side_mm)
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
             ov = design.overlap(zone, design.footprint(ob))
             if ov:
                 depth = design.overlap_depth(facing, ov)
-                ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth})
-                clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: "
-                                  f"it reaches {depth:.1f} mm into the {outward:g} mm zone")
+                ctx["fixed_box"].append((f"{cid}.{jk['id']}",
+                    {"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth, "zone": "power" if is_power else "audio"},
+                    f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: "
+                    f"it reaches {depth:.1f} mm into the {out_mm:g} mm {'power' if is_power else 'audio'} zone"))
+    if not defer:
+        report_fixed_box(ctx)
 
     # 4) cable lengths between jacks
-    def endpoint(item, jack):
+    #    Lengths are measured from a point on the jack axis half the clearance depth in front of the jack (half
+    #    the plug head depth with a cable type, else half the fixed box): min_mm is a right-angle path between
+    #    those points (no obstacles; routing.route_project measures signal cables around the pedals).
+    if cable_types is None:
+        from common import load_cable_types
+        cable_types = load_cable_types()
+
+    def depth(kind, cable_id=None):
+        tid = (project.get("cables") or {}).get("power_type") if kind == "power" else cable_type_id(project, cable_id)
+        if tid in cable_types:
+            return float(cable_types[tid]["plug"]["head_depth_mm"])
+        return p_out if kind == "power" else outward
+
+    def endpoint(item, jack, depth_mm):
         pt = design.jack_point(item, jack["x"], jack["y"])
         facing = design.jack_facing(item, jack["facing"])
-        return pt, design.stub(pt, facing, outward)
+        return pt, design.stub(pt, facing, depth_mm / 2)
 
     def cable(a, b):
         if a is None or b is None:
-            return {"direct_mm": None, "routed_mm": None, "suggested_mm": None}
-        (pa, sa), (pb, sb) = a, b
-        direct = math.hypot(pa[0] - pb[0], pa[1] - pb[1])
-        routed = 2 * outward + abs(sa[0] - sb[0]) + abs(sa[1] - sb[1])
-        return {"direct_mm": direct, "routed_mm": routed, "suggested_mm": _round_up(routed + slack)}
+            return {"direct_mm": None, "min_mm": None}
+        (pa, ma), (pb, mb) = a, b
+        return {"direct_mm": math.hypot(pa[0] - pb[0], pa[1] - pb[1]),
+                "min_mm": abs(ma[0] - mb[0]) + abs(ma[1] - mb[1])}
 
-    def pedal_end(cid, fn):
+    def pedal_end(cid, fn, depth_mm):
         jk = default_jack(jacks_data.get(cid) or [], fn)
-        return endpoint(placed[cid], jk) if jk and cid in placed else None
+        return endpoint(placed[cid], jk, depth_mm) if jk and cid in placed else None
 
     signal, power = [], []
     def jack_name(cid, fn, fallback):
         jk = default_jack(jacks_data.get(cid) or [], fn)
         return f"{cid}.{jk['id'] if jk else fallback}"
 
-    for a, b in zip(chain, chain[1:]):
+    for n, (a, b) in enumerate(zip(chain, chain[1:]), 1):
+        d = depth("signal", f"S{n}")
         signal.append({"from": jack_name(a, "output", "out"), "to": jack_name(b, "input", "in"),
-                       **cable(pedal_end(a, "output"), pedal_end(b, "input"))})
+                       **cable(pedal_end(a, "output", d), pedal_end(b, "input", d))})
+    p_depth = depth("power")
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
         for row in s["rows"]:
             if not row["pedals"]:
                 continue
             jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], row["port"])
-            prev = endpoint(it, jk) if it and jk else None
+            prev = endpoint(it, jk, p_depth) if it and jk else None
             prev_name = f"{s['inst']['id']}.{row['port']}"
             for pid in row["pedals"]:
-                here = pedal_end(pid, "power")
+                here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
                 power.append({"output": row["id"], "from": prev_name, "to": to_name, **cable(prev, here)})
                 prev, prev_name = here, to_name
     ctx["cables"] = {"signal": signal, "power": power}
+
+
+def report_fixed_box(ctx, plug_checked=()):
+    """Report the fixed-box clearance results that jacks.check kept in ctx['fixed_box'], except for the jacks in
+    `plug_checked` ("<id>.<jack id>"), which were checked with a plug model instead."""
+    sink = ctx["errors"] if ctx["project"].get("validation", {}).get("strict_clearance") else ctx["warnings"]
+    skip = set(plug_checked)
+    for key, violation, message in ctx.get("fixed_box") or []:
+        if key not in skip:
+            ctx["violations"].append(violation)
+            sink.append(message)
+    ctx["fixed_box"] = []

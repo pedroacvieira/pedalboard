@@ -50,8 +50,9 @@
   "power_policy": { "separate_clocked_from_tags": ["gain", "overdrive", "compressor"], "strength": "required", "group_18v": true },
   "jacks": {
     "clearance": { "outward_mm": 6.3, "side_mm": 7 },
+    "power_clearance": { "outward_mm": 5.5, "side_mm": 5.5 },
     "extra_used": {},
-    "supplies_layer": "under",
-    "slack_mm": 50
-  }
+    "supplies_layer": "under"
+  },
+  "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} }
 }

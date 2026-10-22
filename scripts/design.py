@@ -141,3 +141,70 @@ def overlap(a, b, tol_mm=TOL_MM):
 def overlap_depth(zone_facing, ov):
     """How far an obstacle reaches into a clearance zone: measured along the facing axis."""
     return ov[0] if zone_facing in ("left", "right") else ov[1]
+
+
+# --- plug heads (mm) --------------------------------------------------------------------------
+SIDES = ("left", "right")
+
+
+def side_vector(facing, side):
+    """Unit vector to the `side` ('left'/'right') of a jack, seen looking out along its facing from above
+    (canvas y down): facing right -> left is up (top), right is down."""
+    dx, dy = FACING[facing]
+    return (dy, -dx) if side == "left" else (-dy, dx)
+
+
+def _rect(p, u, a0, a1, v, b0, b1):
+    """Axis-aligned rectangle spanned by a0..a1 along unit u and b0..b1 along unit v, from point p."""
+    xs = [p[0] + u[0] * a + v[0] * b for a in (a0, a1) for b in (b0, b1)]
+    ys = [p[1] + u[1] * a + v[1] * b for a in (a0, a1) for b in (b0, b1)]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None):
+    """Footprint and cable lead of a plug in a jack at `point` (all mm, canvas frame).
+
+    plug: catalog/cables.json `plug` block. Right-angle plugs need `side` ('left'/'right' of the facing): the
+    cable leaves the head there, `exit_offset_mm` out from the jack face, the plug body reaches
+    `body_reach_mm` from the jack axis, then the cable runs `run_mm` straight before it may bend.
+    Straight plugs: the cable leaves along the facing at `head_depth_mm`, then runs `run_mm`.
+    Returns {"rects": [(part, rect)], "lead": [points from the jack to the exit], "exit": point, "lead_mm": float,
+    "measure": point, "measure_mm": float} with parts "head", "barrel" (right-angle body beyond the head, if any)
+    and "cable" (the straight run). Cable lengths are measured from `measure` (on the jack axis, half the head
+    depth in front of the jack); `measure_mm` is the cable from there to the exit.
+    """
+    u = FACING[facing]
+    depth, width = float(plug["head_depth_mm"]), float(plug["head_width_mm"])
+    d = float(diameter_mm)
+    m = (point[0] + u[0] * depth / 2, point[1] + u[1] * depth / 2)
+    if plug["style"] == "straight":
+        v = side_vector(facing, "left")
+        rects = [("head", _rect(point, u, 0, depth, v, -width / 2, width / 2)),
+                 ("cable", _rect(point, u, depth, depth + run_mm, v, -d / 2, d / 2))]
+        ex = (point[0] + u[0] * (depth + run_mm), point[1] + u[1] * (depth + run_mm))
+        return {"rects": rects, "lead": [point, ex], "exit": ex, "lead_mm": depth + run_mm,
+                "measure": m, "measure_mm": depth / 2 + run_mm}
+    if side not in SIDES:
+        raise ValueError(f"right-angle plug needs side left/right, got {side!r}")
+    s = side_vector(facing, side)
+    off = plug.get("exit_offset_mm")
+    off = depth / 2 if off is None else float(off)
+    reach = plug.get("body_reach_mm")
+    reach = width / 2 if reach is None else max(float(reach), width / 2)
+    bw = plug.get("barrel_width_mm")
+    bw = d if bw is None else float(bw)
+    rects = [("head", _rect(point, u, 0, depth, s, -width / 2, width / 2))]
+    if reach > width / 2:
+        rects.append(("barrel", _rect(point, u, off - bw / 2, off + bw / 2, s, width / 2, reach)))
+    rects.append(("cable", _rect(point, u, off - d / 2, off + d / 2, s, reach, reach + run_mm)))
+    bend = (point[0] + u[0] * off, point[1] + u[1] * off)
+    ex = (bend[0] + s[0] * (reach + run_mm), bend[1] + s[1] * (reach + run_mm))
+    return {"rects": rects, "lead": [point, bend, ex], "exit": ex, "lead_mm": off + reach + run_mm,
+            "measure": m, "measure_mm": abs(off - depth / 2) + reach + run_mm}
+
+
+def part_depth(part, facing, side, ov):
+    """How far an obstacle reaches into a plug part: along the facing for the head, else along the exit side."""
+    if part == "head" or side is None:
+        return overlap_depth(facing, ov)
+    return overlap_depth("top" if facing in ("left", "right") else "left", ov)

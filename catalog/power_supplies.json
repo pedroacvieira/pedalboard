@@ -5,6 +5,7 @@
       "brand": "Strymon",
       "model": "Ojai R30",
       "quantity": 2,
+      "polarity": "center_negative",
       "playground_title": "Strymon Ojai R30",
       "outputs": [
         {
@@ -64,6 +65,7 @@
       "brand": "Harley Benton",
       "model": "PowerPlant ISO-5 Pro",
       "quantity": 1,
+      "polarity": "center_negative",
       "playground_title": null,
       "outputs": [
         {

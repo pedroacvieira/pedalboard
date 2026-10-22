@@ -140,3 +140,99 @@ def test_real_design_file_parses():
     assert sum(1 for i in items if i["title"] == "Strymon Ojai R30") == 2
     assert all(i["w_mm"] > 0 and i["h_mm"] > 0 and i["image"] for i in items)
     assert {i["rot"] for i in items} <= {0, 90, 180, 270}
+
+
+# --- plug heads ----------------------------------------------------------------------------------
+# Right-angle placeholder plug: head 20 deep x 16 wide; cable axis 10 mm out (depth/2); body ends at the head side
+# (8 mm from the jack axis); 6 mm cable, then a 6 mm straight run -> exit 14 mm to the side, 10 mm out. Jack at (100, 50).
+RA = {"style": "right_angle", "head_depth_mm": 20.0, "head_width_mm": 16.0}
+P = (100.0, 50.0)
+
+
+@pytest.mark.parametrize("facing,side,head,cable,exit_", [
+    ("right", "left", (100, 42, 120, 58), (107, 36, 113, 42), (110, 36)),    # looking right, left is up
+    ("right", "right", (100, 42, 120, 58), (107, 58, 113, 64), (110, 64)),
+    ("left", "left", (80, 42, 100, 58), (87, 58, 93, 64), (90, 64)),         # looking left, left is down
+    ("left", "right", (80, 42, 100, 58), (87, 36, 93, 42), (90, 36)),
+    ("top", "left", (92, 30, 108, 50), (86, 37, 92, 43), (86, 40)),          # looking up, left is left
+    ("top", "right", (92, 30, 108, 50), (108, 37, 114, 43), (114, 40)),
+    ("down", "left", (92, 50, 108, 70), (108, 57, 114, 63), (114, 60)),      # looking down, left is canvas right
+    ("down", "right", (92, 50, 108, 70), (86, 57, 92, 63), (86, 60)),
+])
+def test_right_angle_head_footprint_for_each_facing_and_side(facing, side, head, cable, exit_):
+    g = design.plug_geometry(P, facing, RA, 6.0, 6.0, side)
+    parts = dict(g["rects"])
+    assert set(parts) == {"head", "cable"}
+    assert close(parts["head"], head) and close(parts["cable"], cable) and close(g["exit"], exit_)
+    assert g["lead_mm"] == pytest.approx(10 + 8 + 6)
+    assert g["measure_mm"] == pytest.approx(8 + 6)            # from half the 20 mm head depth: the cable axis
+    assert close(g["lead"][0], P) and close(g["lead"][-1], exit_)
+
+
+def test_right_angle_barrel_beyond_the_head():
+    plug = dict(RA, exit_offset_mm=13.0, body_reach_mm=20.0, barrel_width_mm=10.0)
+    g = design.plug_geometry(P, "right", plug, 6.0, 6.0, "left")
+    parts = dict(g["rects"])
+    assert close(parts["barrel"], (108, 30, 118, 42))       # 13 +- 5 out, 8..20 up
+    assert close(parts["cable"], (110, 24, 116, 30))        # 13 +- 3 out, 20..26 up
+    assert close(g["exit"], (113, 24)) and g["lead_mm"] == pytest.approx(13 + 20 + 6)
+    assert close(g["measure"], (110, 50)) and g["measure_mm"] == pytest.approx(3 + 20 + 6)   # 10 -> 13 out, then up
+
+
+def test_straight_plug_leaves_along_the_facing():
+    plug = {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0}
+    g = design.plug_geometry(P, "down", plug, 6.0, 6.0)
+    parts = dict(g["rects"])
+    assert close(parts["head"], (94, 50, 106, 90)) and close(parts["cable"], (97, 90, 103, 96))
+    assert close(g["exit"], (100, 96)) and g["lead_mm"] == pytest.approx(46)
+    assert close(g["measure"], (100, 70)) and g["measure_mm"] == pytest.approx(26)           # from 20 mm out
+
+
+def test_right_angle_plug_needs_a_side():
+    with pytest.raises(ValueError):
+        design.plug_geometry(P, "right", RA, 6.0, 6.0)
+
+
+@pytest.mark.parametrize("rot,facing,head,exit_", [
+    # reference pedal, jack at fx 1, fy 0.5 facing right (unrotated); exit side left
+    (90, "down", (42.8, 127.0, 58.8, 147.0), (64.8, 137.0)),    # jack at (50.8, 127.0), left of 'down' is +x
+    (270, "top", (42.8, 56.2, 58.8, 76.2), (36.8, 66.2)),       # jack at (50.8, 76.2), left of 'top' is -x
+])
+def test_plug_on_a_rotated_pedal(rot, facing, head, exit_):
+    it = item(rot=rot)
+    pt, f = design.jack_point(it, 1.0, 0.5), design.jack_facing(it, "right")
+    assert f == facing
+    g = design.plug_geometry(pt, f, RA, 6.0, 6.0, "left")
+    assert close(dict(g["rects"])["head"], head) and close(g["exit"], exit_)
+
+
+# --- the real plug types (catalog/cables.json), hand-computed ------------------------------------
+def _catalog_plug(tid):
+    from common import load_cable_types
+    t = load_cable_types()[tid]
+    return t["plug"], t["diameter_mm"]
+
+
+def test_ernie_ball_flat_patch_plug_facing_right_exit_left():
+    # head 6.4 deep x 12.7 wide; ribbon axis 3.2 out; block to 19 mm from the jack axis (6.4 deep); 3.5 mm ribbon,
+    # 3.5 mm run. Facing right: left is up (-y).
+    plug, d = _catalog_plug("ernie_ball_flat_patch_ra")
+    assert d == 3.5
+    g = design.plug_geometry(P, "right", plug, d, d, "left")
+    parts = dict(g["rects"])
+    assert close(parts["head"], (100, 43.65, 106.4, 56.35))
+    assert close(parts["barrel"], (100, 31, 106.4, 43.65))        # 6.35..19 up, 0..6.4 out
+    assert close(parts["cable"], (101.45, 27.5, 104.95, 31))      # 3.2 +- 1.75 out, 19..22.5 up
+    assert close(g["exit"], (103.2, 27.5)) and g["lead_mm"] == pytest.approx(3.2 + 19 + 3.5)
+    assert close(g["measure"], (103.2, 50)) and g["measure_mm"] == pytest.approx(19 + 3.5)   # 3.2 mm in front of the jack
+
+
+def test_dc_low_profile_plug_facing_top_exit_right():
+    # head 11 x 11; cable axis 5.5 out; body to 14.5 mm (6 mm wide); 3.2 mm cable and run. Facing top: right is +x.
+    plug, d = _catalog_plug("dc_ra_2_1_low_profile")
+    g = design.plug_geometry(P, "top", plug, d, d, "right")
+    parts = dict(g["rects"])
+    assert close(parts["head"], (94.5, 39, 105.5, 50))
+    assert close(parts["barrel"], (105.5, 41.5, 114.5, 47.5))
+    assert close(parts["cable"], (114.5, 42.9, 117.7, 46.1))
+    assert close(g["exit"], (117.7, 44.5)) and g["lead_mm"] == pytest.approx(5.5 + 14.5 + 3.2)

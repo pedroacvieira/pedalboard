@@ -4,11 +4,13 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
+- **Validation:** OK, 3 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN clearance: monk.out (Output, facing left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 0.9 mm into the 6.3 mm zone
+- WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
+- WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
+- WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
 
 </details>
 
@@ -252,56 +254,57 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 Jack data: 18 of 18 catalog items set up (pedals and supplies in this project).
 
-Blocked cable space (zone: 6.3 mm outward, 7 mm to each side of the jack):
+Blocked cable space (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side):
 
-- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 0.9 mm into the zone
+- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right
+- `red_muck.power` is blocked by MXR Analog Chorus: 3.0 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left
+- `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left
 
-Direct = jack to jack. Routed = out of each jack by 6.3 mm, then a right-angle path between the plug ends. Suggested = routed + 50 mm slack, rounded up to the next 50 mm.
+Cable lengths: see Cable routing.
 
-### Signal cables
 
-| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |
-|---|---|--:|--:|--:|
-| sun_face.out | danelectro_3699.in | 73 | 107 | 200 |
-| danelectro_3699.out | beano.in | 130 | 182 | 250 |
-| beano.out | polytune_3.in | 123 | 153 | 250 |
-| polytune_3.out | mini_ego.in | 81 | 91 | 150 |
-| mini_ego.out | fulldrive_2.in | 106 | 149 | 200 |
-| fulldrive_2.out | phase_95.in | 217 | 302 | 400 |
-| phase_95.out | retrovibe.in | 99 | 147 | 200 |
-| retrovibe.out | red_muck.in | 68 | 86 | 150 |
-| red_muck.out | ratsbane.in | 101 | 133 | 200 |
-| ratsbane.out | protein.in | 64 | 80 | 150 |
-| protein.out | reticon.in | 249 | 354 | 450 |
-| reticon.out | analog_chorus.in | 193 | 232 | 300 |
-| analog_chorus.out | monk.in | 84 | 103 | 200 |
-| monk.out | belle_epoch.in | 68 | 105 | 200 |
-| belle_epoch.out | flight_delay.in | 139 | 207 | 300 |
-| flight_delay.out | tumnus_deluxe.in | 48 | 62 | 150 |
+## Cable routing
 
-Total suggested: 3750 mm over 16 of 16 cables.
+Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 3.5 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable width on the board 3.5 mm). Plugs are modelled (default cable type `ernie_ball_flat_patch_ra`, catalog/cables.json): a right-angle plug's cable leaves the head to the left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs 3.5 mm straight, then is routed; grey boxes in the picture are the plug heads and their cable exits. Power cables run under the board and are listed, not routed yet; their plug at each pedal's power jack is modelled for clearance (`dc_ra_2_1_low_profile`, exit side in the Exits column).
 
-### Power cables
+![Cable routing](cables.svg)
 
-| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |
-|---|---|--:|--:|--:|
-| psu1.F1 | flight_delay.power | 111 | 140 | 200 |
-| psu1.F2 | belle_epoch.power | 160 | 187 | 250 |
-| psu1.F3 | monk.power | 80 | 119 | 200 |
-| psu1.SW_A | reticon.power | 113 | 142 | 200 |
-| psu1.SW_B | analog_chorus.power | 42 | 75 | 150 |
-| psu2.F1 | red_muck.power | 32 | 63 | 150 |
-| red_muck.power | beano.power | 291 | 318 | 400 |
-| beano.power | danelectro_3699.power | 142 | 211 | 300 |
-| danelectro_3699.power | sun_face.power | 138 | 218 | 300 |
-| psu2.F2 | polytune_3.power | 212 | 297 | 350 |
-| psu2.F3 | ratsbane.power | 91 | 106 | 200 |
-| ratsbane.power | protein.power | 90 | 135 | 200 |
-| protein.power | tumnus_deluxe.power | 208 | 249 | 300 |
-| psu2.SW_A | fulldrive_2.power | 126 | 154 | 250 |
-| fulldrive_2.power | mini_ego.power | 180 | 267 | 350 |
-| psu2.SW_B | phase_95.power | 54 | 72 | 150 |
-| phase_95.power | retrovibe.power | 109 | 177 | 250 |
+Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).
 
-Total suggested: 4200 mm over 17 of 17 cables.
+| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
+|---|---|---|---|---|---|---|---|:-:|--:|---|
+| S1 | signal | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 95 | routed |
+| S2 | signal | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 163 | routed |
+| S3 | signal | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 199 | routed |
+| S4 | signal | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 110 | routed |
+| S5 | signal | mini_ego.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 128 | routed |
+| S6 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 289 | routed |
+| S7 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 132 | routed |
+| S8 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 69 | routed |
+| S9 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 176 | routed |
+| S10 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 146 | routed |
+| S11 | signal | protein.out | reticon.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 327 | routed |
+| S12 | signal | reticon.out | analog_chorus.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 276 | routed |
+| S13 | signal | analog_chorus.out | monk.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 133 | routed |
+| S14 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 92 | routed |
+| S15 | signal | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 190 | routed |
+| S16 | signal | flight_delay.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 51 | routed |
+| P1 | power | psu1.F1 | flight_delay.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~129 | not routed (under the board) |
+| P2 | power | psu1.F2 | belle_epoch.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~173 | not routed (under the board) |
+| P3 | power | psu1.F3 | monk.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~107 | not routed (under the board) |
+| P4 | power | psu1.SW_A | reticon.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~130 | not routed (under the board) |
+| P5 | power | psu1.SW_B | analog_chorus.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~61 | not routed (under the board) |
+| P6 | power | psu2.F1 | red_muck.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~48 | not routed (under the board) |
+| P7 | power | red_muck.power | beano.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~304 | not routed (under the board) |
+| P8 | power | beano.power | danelectro_3699.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~198 | not routed (under the board) |
+| P9 | power | danelectro_3699.power | sun_face.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~204 | not routed (under the board) |
+| P10 | power | psu2.F2 | polytune_3.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~283 | not routed (under the board) |
+| P11 | power | psu2.F3 | ratsbane.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~95 | not routed (under the board) |
+| P12 | power | ratsbane.power | protein.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~122 | not routed (under the board) |
+| P13 | power | protein.power | tumnus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~237 | not routed (under the board) |
+| P14 | power | psu2.SW_A | fulldrive_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~143 | not routed (under the board) |
+| P15 | power | fulldrive_2.power | mini_ego.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~254 | not routed (under the board) |
+| P16 | power | psu2.SW_B | phase_95.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~59 | not routed (under the board) |
+| P17 | power | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~163 | not routed (under the board) |
 
+Signal cable, minimum: 2576 mm over 16 cables.

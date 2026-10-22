@@ -11,12 +11,14 @@ import argparse
 import sys
 
 import jacks
-from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_catalog, load_json, pedal_name, project_dirs
+import routing
+from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
     ("power_consumption", "current_ma"), ("power_consumption", "min_voltage_v"),
     ("power_consumption", "max_voltage_v"), ("power_consumption", "needs_isolated_output"),
+    ("power_consumption", "polarity"),
 ]
 BOARD_REQUIRED = ["brand", "model", "width_in", "height_in"]
 
@@ -231,6 +233,11 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 errors.append(f"{oid}: {out['voltage_v']}V not available on {sup['id']} {out['port']}")
                 continue
             row["limit"] = limit
+            row["polarity"] = odef.get("polarity") or sup.get("polarity")
+            need(f"supply {sup['id']}.polarity", row["polarity"])
+            if row["polarity"] is not None and row["polarity"] not in routing.POLARITIES:
+                errors.append(f"{oid}: {sup['id']} has unknown polarity '{row['polarity']}' ({', '.join(routing.POLARITIES)})")
+                row["polarity"] = None
             for pid in row["pedals"]:
                 if pid not in pedals:
                     errors.append(f"power: {oid} feeds '{pid}' which is not in the signal chain")
@@ -243,6 +250,12 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
                 if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
                     errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
+                pol = pc.get("polarity")
+                if pol is not None and pol not in routing.POLARITIES:
+                    errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(routing.POLARITIES)})")
+                elif pol and row["polarity"] and pol != row["polarity"]:
+                    warnings.append(f"{oid}: {pid} is {pol.replace('_', '-')} but the output is {row['polarity'].replace('_', '-')}: "
+                                    f"use a polarity-reversing cable")
                 if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
                     errors.append(f"{oid}: {pid} needs an isolated output but shares it")
                 if pc.get("current_ma") is None:
@@ -250,6 +263,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                 else:
                     row["load"] += pc["current_ma"]
             if len(row["pedals"]) > 1:
+                pols = {pedals[x]["power_consumption"].get("polarity") for x in row["pedals"] if x in pedals} - {None}
+                if len(pols) > 1:
+                    errors.append(f"{oid}: center-negative and center-positive pedals share one output (their grounds are "
+                                  f"joined through the audio cables): give them separate outputs")
                 clocked = [x for x in row["pedals"] if pedals.get(x, {}).get("clocked_noise") is True]
                 quiet = [x for x in row["pedals"] if sensitive & set(pedals.get(x, {}).get("tags", []))]
                 if clocked and quiet:
@@ -285,7 +302,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["instances"] = instances
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
-    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data)
+    cable_types = load_cable_types()
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
+                cable_types=cable_types, defer=True)
+    routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     return ctx
 
 
@@ -438,6 +458,50 @@ def mermaid_power(ctx):
     return lines
 
 
+def routing_section(ctx):
+    """README section: routed signal cables (picture + table) and the power cable list."""
+    cables = ctx.get("cable_list") or []
+    if not cables:
+        return []
+    cfg = ctx["routing"]["settings"]
+    md = ["", "## Cable routing", "",
+          f"Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, "
+          f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
+          f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
+          + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
+             f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
+             f"{cfg['exit_run_mm']:g} mm straight, then is routed; grey boxes in the picture are the plug heads and their cable exits. "
+             if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
+          + "Power cables run under the board and are listed, not routed yet"
+          + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
+             if cfg.get("power_type") else "."), ""]
+    if ctx["routing"].get("grid"):
+        md += ["![Cable routing](cables.svg)", ""]
+    md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
+           "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
+           "'~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).", "",
+           "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
+           "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
+    for c in cables:
+        length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
+        exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
+        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
+                  f"{'yes' if c['under_board'] else 'no'} | {length} | {c['status']} |")
+    sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
+    if sig:
+        md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
+    return md
+
+
+def violation_where(v):
+    """'3.2 mm into the power zone' or '3.2 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits left'."""
+    if not v.get("cable_type"):
+        return f"{v['depth_mm']:.1f} mm into the {v.get('zone', 'audio')} zone"
+    side = f", cable exits {v['side']}" if v.get("side") else ""
+    part = "cable run" if v["part"] == "cable" else v["part"]
+    return f"{v['depth_mm']:.1f} mm into the {part} of the {v['cable_type']} plug{side}"
+
+
 def run_v_cell(ctx, pid):
     rv = ctx["run_v"]
     return f"{rv[pid]}V" if pid in rv else "-"
@@ -459,21 +523,16 @@ def jacks_section(ctx):
     if cables is None:
         return md
     st = ctx["jack_settings"]
+    power = ("power jacks: the DC plug head plus its cable exit on the less blocked side" if st.get("power_modelled") else
+             f"power jacks: {st['power_outward_mm']:g} mm outward, {st['power_side_mm']:g} mm to each side")
+    zone = (f"signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); "
+            f"{power}; other jacks: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side")
     if ctx["violations"]:
-        md += [f"Blocked cable space (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack):", ""]
-        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {v['depth_mm']:.1f} mm into the zone" for v in ctx["violations"]] + [""]
+        md += [f"Blocked cable space ({zone}):", ""]
+        md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {violation_where(v)}" for v in ctx["violations"]] + [""]
     else:
-        md += [f"No blocked cable space found (zone: {st['outward_mm']:g} mm outward, {st['side_mm']:g} mm to each side of the jack).", ""]
-    md += [f"Direct = jack to jack. Routed = out of each jack by {st['outward_mm']:g} mm, then a right-angle path between the plug ends. "
-           f"Suggested = routed + {st['slack_mm']:g} mm slack, rounded up to the next 50 mm.", ""]
-    for title, rows in (("Signal cables", cables["signal"]), ("Power cables", cables["power"])):
-        if not rows:
-            continue
-        md += [f"### {title}", "", "| From | To | Direct (mm) | Routed (mm) | Suggested (mm) |", "|---|---|--:|--:|--:|"]
-        for c in rows:
-            md.append(f"| {c['from']} | {c['to']} | {fmt_mm(c['direct_mm'])} | {fmt_mm(c['routed_mm'])} | {fmt_mm(c['suggested_mm'])} |")
-        known = [c["suggested_mm"] for c in rows if c["suggested_mm"] is not None]
-        md += ["", f"Total suggested: {sum(known)} mm over {len(known)} of {len(rows)} cables.", ""]
+        md += [f"No blocked cable space found ({zone}).", ""]
+    md += ["Cable lengths: see Cable routing.", ""]
     return md
 
 
@@ -550,12 +609,13 @@ def project_readme(ctx, cat_pedals):
     if ctx["supplies"]:
         md += [f"**All supplies combined:** {grand} mA", ""]
     md += jacks_section(ctx)
+    md += routing_section(ctx)
     return "\n".join(md) + "\n"
 
 
 KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
-    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied; cable clearance is a fixed zone (6.3 mm outward, 7 mm to each side by default), not a model of a specific plug.",
+    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
     "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
     "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
@@ -576,7 +636,7 @@ def open_issues(ctxs, jacks_data):
         for cid, cmd in c.get("jack_fixes", []):
             items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
         for v in c.get("violations", []):
-            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({v['depth_mm']:.1f} mm into the zone); move one of the pedals apart")
+            items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({violation_where(v)}); move one of the pedals apart")
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
         if items:
@@ -614,7 +674,9 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
-        "Clearance (`jacks.clearance.outward_mm` / `side_mm`, default 6.3 / 7 mm) and all cable figures are in mm.",
+        "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
+        "power jacks against the DC plug type (`cables.power_type`) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
+        "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). All cable figures are in mm.",
         "",
         "## Projects",
         "",
@@ -709,6 +771,11 @@ def main():
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
+        picture = routing.svg(ctx, {pid: cat_pedals[pid]["name"] for pid in ctx["chain"]})
+        if picture:
+            (pdir / "cables.svg").write_text(picture)
+        else:
+            (pdir / "cables.svg").unlink(missing_ok=True)
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
