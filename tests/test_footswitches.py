@@ -19,8 +19,8 @@ import jacks  # noqa: E402
 from test_check import DATA, PEDALS, canvas  # noqa: E402
 
 
-def sw(fid="bypass", x=0.5, y=0.8, bypass=True, **kw):
-    return {"id": fid, "label": fid.title(), "x": x, "y": y, "bypass": bypass, **kw}
+def sw(fid="bypass", x=0.5, y=0.8, type="bypass", **kw):
+    return {"id": fid, "label": fid.title(), "x": x, "y": y, "type": type, **kw}
 
 
 def run(tmp_path, specs, fs_data, project=None, items=None):
@@ -67,11 +67,11 @@ def test_rotated_pedal(tmp_path):
 
 
 def test_same_pedal_pairs_are_ignored_and_pairs_are_sorted(tmp_path):
-    data = {"a": [sw("left", x=0.2, bypass=True), sw("right", x=0.8, bypass=False)], "b": [sw()]}
+    data = {"a": [sw("left", x=0.2), sw("right", x=0.8, type="function")], "b": [sw()]}
     ctx = run(tmp_path, [A(), B()], data)
-    got = [(r["a"], r["b"], round(r["distance_mm"], 2), r["a_bypass"], r["b_bypass"]) for r in ctx["footswitch_pairs"]]
+    got = [(r["a"], r["b"], round(r["distance_mm"], 2), r["a_type"], r["b_type"]) for r in ctx["footswitch_pairs"]]
     # a.right at x 40.64 -> 60.96 mm to b; a.left at 10.16 -> 91.44 mm
-    assert got == [("a.right", "b.bypass", 60.96, False, True), ("a.left", "b.bypass", 91.44, True, True)]
+    assert got == [("a.right", "b.bypass", 60.96, "function", "bypass"), ("a.left", "b.bypass", 91.44, "bypass", "bypass")]
 
 
 def test_fixed_minimum_gives_warnings_or_strict_errors(tmp_path):
@@ -126,7 +126,7 @@ def test_save_keeps_empty_lists_and_none_removes(tmp_path):
     fsw.save_footswitches("p1", [sw(x=0.123456)], path)
     fsw.save_footswitches("p2", [], path)
     data = json.loads(path.read_text())
-    assert data["footswitches"] == {"p1": [{"id": "bypass", "label": "Bypass", "x": 0.1235, "y": 0.8, "bypass": True}], "p2": []}
+    assert data["footswitches"] == {"p1": [{"id": "bypass", "label": "Bypass", "x": 0.1235, "y": 0.8, "type": "bypass"}], "p2": []}
     assert '"p2": []' in path.read_text() and data["_doc"] == fsw.DOC
     fsw.save_footswitches("p1", None, path)
     assert fsw.read_file(path)["footswitches"] == {"p2": []} and not list(tmp_path.glob("*.tmp"))
@@ -134,16 +134,16 @@ def test_save_keeps_empty_lists_and_none_removes(tmp_path):
 
 def test_dump_is_one_switch_per_line_and_stable(tmp_path):
     path = tmp_path / "footswitches.json"
-    fsw.save_footswitches("p1", [sw("left", bypass=False, diameter_mm=None), sw("right")], path)
+    fsw.save_footswitches("p1", [sw("left", type="function", diameter_mm=None), sw("right")], path)
     text = path.read_text()
     assert len([l for l in text.splitlines() if l.strip().startswith('{"id"')]) == 2
-    assert '{"id": "left", "label": "Left", "x": 0.5, "y": 0.8, "bypass": false, "diameter_mm": null}' in text
+    assert '{"id": "left", "label": "Left", "x": 0.5, "y": 0.8, "type": "function", "diameter_mm": null}' in text
     fsw.save_footswitches("p1", fsw.read_file(path)["footswitches"]["p1"], path)
     assert path.read_text() == text
 
 
 @pytest.mark.parametrize("bad,fragment", [
-    ({"id": "x"}, "missing"), (sw(x=1.5), "0..1"), (sw(bypass="yes"), "bypass must be"),
+    ({"id": "x"}, "missing"), (sw(x=1.5), "0..1"), (sw(type="stomp"), "type must be one of"),
     (sw(diameter_mm=-3), "diameter_mm"),
 ])
 def test_validate_flags_bad_switches(bad, fragment):
@@ -161,7 +161,7 @@ def test_validate_flags_duplicates_supplies_and_unknown_ids():
 
 
 def test_usable_drops_malformed_switches_and_keeps_empty_lists():
-    assert fsw.usable({"p1": [sw(), {"id": "x"}, sw(bypass=1)], "p2": [], "p3": "bad"}) == {"p1": [sw()], "p2": []}
+    assert fsw.usable({"p1": [sw(), {"id": "x"}, sw(type=True)], "p2": [], "p3": "bad"}) == {"p1": [sw()], "p2": []}
 
 
 def test_real_file_is_valid():
@@ -190,18 +190,31 @@ def test_gig_build_with_switch_data_has_no_findings_under_auto():
     assert picture.count("<circle") == len(chain) and "stroke-dasharray=\"3 2\"" not in picture
 
 
-def test_tap_flag_is_optional_stored_only_when_true_and_validated(tmp_path):
+def test_types_are_stored_and_validated(tmp_path):
     path = tmp_path / "footswitches.json"
-    fsw.save_footswitches("p1", [sw("bypass"), sw("tap", bypass=False, tap=True), sw("preset", bypass=False, tap=False)], path)
+    fsw.save_footswitches("p1", [sw("bypass"), sw("tap", type="tap"), sw("boost", type="boost"), sw("oct", type="function")], path)
     stored = fsw.read_file(path)["footswitches"]["p1"]
-    assert [f.get("tap") for f in stored] == [None, True, None]
-    assert '{"id": "tap", "label": "Tap", "x": 0.5, "y": 0.8, "bypass": false, "tap": true}' in path.read_text()
-    problems = fsw.validate_file({"footswitches": {"p1": [sw(tap="yes")]}}, {"p1": {}}, {})
-    assert problems == {"p1": ["footswitch bypass: tap must be true or false"]}
+    assert [f["type"] for f in stored] == ["bypass", "tap", "boost", "function"]
+    assert '{"id": "tap", "label": "Tap", "x": 0.5, "y": 0.8, "type": "tap"}' in path.read_text()
     assert fsw.validate_file({"footswitches": {"p1": stored}}, {"p1": {}}, {}) == {}
+    problems = fsw.validate_file({"footswitches": {"p1": [{**sw(), "type": "preset"}]}}, {"p1": {}}, {})
+    assert problems == {"p1": ["footswitch bypass: type must be one of bypass, tap, boost, function, got 'preset'"]}
 
 
-def test_pairs_carry_the_tap_flags(tmp_path):
-    ctx = run(tmp_path, [A(), B()], {"a": [sw("tap", bypass=False, tap=True)], "b": [sw()]})
+def test_priorities_and_pair_priority():
+    prio = fsw.priorities({})
+    assert prio == {"bypass": 1.0, "boost": 0.8, "tap": 0.8, "function": 0.5}
+    assert fsw.pair_priority(prio, "function", "bypass") == 1.0 and fsw.pair_priority(prio, "function", "tap") == 0.8
+    assert fsw.pair_priority(prio, "function", "function") == 0.5
+    assert fsw.priorities({"footswitches": {"priority": {"function": 0.2}}})["function"] == 0.2
+
+
+def test_pairs_carry_the_types(tmp_path):
+    ctx = run(tmp_path, [A(), B()], {"a": [sw("tap", type="tap")], "b": [sw()]})
     (pair,) = ctx["footswitch_pairs"]
-    assert (pair["a_bypass"], pair["a_tap"], pair["b_bypass"], pair["b_tap"]) == (False, True, True, False)
+    assert (pair["a_type"], pair["b_type"]) == ("tap", "bypass")
+
+
+def test_svg_has_a_marker_style_per_type():
+    import routing
+    assert set(routing.FOOTSWITCH_STYLE) == set(fsw.TYPES)

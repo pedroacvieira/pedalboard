@@ -545,6 +545,10 @@ PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f
            "#008080", "#800000", "#808000", "#000075", "#e6beff", "#aaffc3", "#ffd8b1", "#808080"]
 
 
+FOOTSWITCH_STYLE = {"bypass": ("#263238", "#263238"), "boost": ("#e53935", "#263238"), "tap": ("#1e88e5", "#263238"),
+                    "function": ("#ffffff", "#263238")}   # footswitch dots in cables.svg: (fill, stroke) per type
+
+
 def svg(ctx, names):
     """An SVG of the board, the routing area, the pedals and the routed signal cables."""
     r = ctx.get("routing") or {}
@@ -588,13 +592,13 @@ def svg(ctx, names):
         (ax, ay), (bx, by) = pr["points"]
         out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" stroke="#d50000" stroke-width="1.2" '
                    f'stroke-dasharray="3 2"/>')
-    for fp in ctx.get("footswitch_points") or []:   # filled: bypass switch, hollow: other switch
-        out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{"#263238" if fp["bypass"] else "#ffffff"}" '
-                   f'stroke="#263238" stroke-width="0.8"/>')
+    for fp in ctx.get("footswitch_points") or []:
+        fill, stroke = FOOTSWITCH_STYLE.get(fp["type"], ("#ffffff", "#263238"))
+        out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>')
     out.append(f'<text x="{grid.x0:.1f}" y="{board[3] + 14:.1f}" font-size="7" fill="#455a64">dashed: routing area '
                f'(board + {r["settings"]["edge_margin_mm"]:g} mm at back and sides, nothing in front of the lowest pedals); '
                f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits'
-               + ('; dots: footswitches (filled = bypass), red dashed line: closer than the minimum'
+               + ('; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum'
                   if ctx.get("footswitch_points") else '') + '</text>')
     out.append("</svg>")
     return "\n".join(out) + "\n"

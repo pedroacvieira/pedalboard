@@ -242,3 +242,14 @@ Phases 1-2 give value (footswitch check on the real layout) before any optimizer
    - Configurable: `layout.access` = tag -> `front` | `back` | `avoid_front` with weights, plus per-pedal overrides.
    - Tap tempo comes from the footswitch data: each switch has an optional `"tap": true` (tap-tempo switch), set in the
      pedal editor next to the bypass flag.
+
+### Owner correction, 2026-10-22: footswitch types
+Each footswitch has a **`type`**: `bypass` | `tap` (tap tempo) | `boost` | `function` (a function switch: octave, hard
+clipping, extra gain stage, multiple/single delay, ...). It replaces the `bypass` / `tap` booleans (the data file is
+still empty, so no migration). Spacing priority by type, configurable (`footswitches.priority`), proposed defaults:
+bypass 1.0, boost 0.8, tap 0.8, function 0.5; a pair weighs the max of its two switches' priorities (a pair with a
+bypass switch counts fully). Accessibility: a pedal with a `tap` switch counts as tap tempo (front, modulation
+exception); a `boost` switch also prefers the front. The pedal editor picks the type per switch (one choice of four,
+default `bypass` for the first switch, `function` after that).
+Clarification (owner): a `boost` **switch** only slightly prefers the front (weaker than a tap switch or a drive);
+a **boost pedal** (tags `boost` / `eq` / `master`, e.g. the Tumnus) has the higher front priority.

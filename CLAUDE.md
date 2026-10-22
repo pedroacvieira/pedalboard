@@ -21,8 +21,10 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
   x,y = fractions (0..1) of the Pedal Playground image (unrotated), at the OUTER EDGE of the physical jack;
   facing = side the plug enters from (left/right/top/down); function input|output|power|power_out|other.
 - `catalog/footswitches.json`: footswitches per pedal id, written ONLY by `scripts/pedal_editor.py`. x,y = fractions of
-  the image (unrotated) at the CENTRE of the switch cap; `bypass` true|false (turns the pedal or one side of it on/off);
-  optional `tap: true` (tap tempo, stored only when true), optional `diameter_mm`. `[]` = verified no footswitch (kept);
+  the image (unrotated) at the CENTRE of the switch cap; `type` bypass|tap|boost|function (bypass = turns the pedal or
+  one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
+  `diameter_mm`. Spacing priority per type `footswitches.priority` (bypass 1.0, boost 0.8, tap 0.8, function 0.5; a
+  pair weighs the max of its two). `[]` = verified no footswitch (kept);
   missing id = unknown. Supplies have none. The owner places the data (empty map for now).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
@@ -104,7 +106,7 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
 - Footswitch spacing: every pair of switches on DIFFERENT pedals >= `footswitches.min_distance_mm`; default "auto" =
   the smallest such distance in the owner's `playground_design.json` (also for injected layouts), so the owner's
   layout has no findings by construction. Missing data is one aggregated warning per project. README lists the 8
-  closest pairs with bypass/tap flags; `cables.svg` draws the switches (filled = bypass) and too-close lines.
+  closest pairs with their types; `cables.svg` draws the switches (colour per type) and too-close lines.
 
 ## Working agreements with the owner
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.

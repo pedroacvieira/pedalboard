@@ -11,8 +11,9 @@
 The image is downloaded on demand into .cache/images/ (git-ignored) and never copied into the repo.
 Jacks: mark each one at the OUTER EDGE of the physical socket (where the plug starts), not its centre: the
 clearance zone and the cable begin there. Saved to catalog/jacks.json (id / label / function / x / y / facing).
-Footswitches: mark the CENTRE of each switch cap and say whether it is a bypass switch (turns the pedal, or one
-side of it, on/off) or another switch (preset, toggle...), and whether it is a tap-tempo switch. Saved to catalog/footswitches.json; tick
+Footswitches: mark the CENTRE of each switch cap and pick its type: bypass (turns the pedal, or one side of it,
+on/off), tap (tap tempo), boost (a boost / extra-gain stomp) or function (octave, clipping, preset, ...). Saved to
+catalog/footswitches.json; tick
 "This pedal has no footswitch" to record that there is none ([]). x and y are stored as fractions of the image;
 the editor shows millimetres (the image is stretched to the pedal's Pedal Playground size, as the site draws it).
 
@@ -35,7 +36,7 @@ from common import CACHE, IN_MM, database, load_catalog, project_dirs
 IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
 IMAGE_DIR = CACHE / "images"
 FUNCTION_COLOURS = {"input": "#1565c0", "output": "#2e7d32", "power": "#ef6c00", "power_out": "#ef6c00", "other": "#6a1b9a"}
-FOOTSWITCH_COLOURS = {True: "#c62828", False: "#00838f"}   # bypass / other
+FOOTSWITCH_COLOURS = {"bypass": "#c62828", "boost": "#ef6c00", "tap": "#1565c0", "function": "#00838f"}
 COMMAND = jacks.COMMAND
 MODES = ("jacks", "footswitches")
 SPACING_PREVIEW_MM = 60.0   # dashed circle around a selected switch: diameter = this spacing (preview only)
@@ -160,12 +161,13 @@ def jack_problems(jack_list):
 
 
 def new_footswitch(existing, fx, fy):
-    """The switch a click adds: the first is the bypass switch; later ones are 'Switch n', not bypass (tick it)."""
+    """The switch a click adds: the first is the bypass switch; later ones are 'Switch n' of type function (pick
+    another type in the panel)."""
     ids = [f["id"] for f in existing]
     if not existing:
-        return {"id": "bypass", "label": "Bypass", "x": fx, "y": fy, "bypass": True}
+        return {"id": "bypass", "label": "Bypass", "x": fx, "y": fy, "type": "bypass"}
     n = len(existing) + 1
-    return {"id": jacks.unique_id(ids, f"switch {n}"), "label": f"Switch {n}", "x": fx, "y": fy, "bypass": False}
+    return {"id": jacks.unique_id(ids, f"switch {n}"), "label": f"Switch {n}", "x": fx, "y": fy, "type": "function"}
 
 
 def footswitch_problems(fs_list, no_footswitch=False):
@@ -183,9 +185,8 @@ def footswitch_problems(fs_list, no_footswitch=False):
 
 
 def switch_kind(fs):
-    """'bypass', 'tap', 'bypass, tap' or 'other': how the editor lists a switch."""
-    kinds = [k for k in ("bypass", "tap") if fs.get(k)]
-    return ", ".join(kinds) or "other"
+    """The switch's type as the editor lists it ('?' if it has none or an unknown one)."""
+    return fs.get("type") if fs.get("type") in footswitches.TYPES else "?"
 
 
 def footswitch_payload(fs_list, no_footswitch):
@@ -383,19 +384,22 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
             tk.Label(frame, justify="left", anchor="w", wraplength=300, background="#e3f2fd", foreground="#0d47a1",
                      relief="solid", borderwidth=1, padx=8, pady=6, text=(
                 "Put each point on the CENTRE of the switch cap. Record every switch (bypass, tap, preset, toggle...). "
-                "Tick 'bypass' for switches that turn the pedal (or one side of it) on and off, 'tap tempo' for tap switches.")).pack(fill="x", pady=(6, 0))
+                "Type: bypass = turns the pedal (or one side of it) on and off, tap = tap tempo, boost = a boost / extra-gain "
+                "stomp, function = any other switch (octave, clipping, preset...).")).pack(fill="x", pady=(6, 0))
             form = ttk.Frame(frame)
             form.pack(fill="x", pady=6)
-            self.v_fs_label, self.v_bypass, self.v_tap = tk.StringVar(), tk.BooleanVar(), tk.BooleanVar()
+            self.v_fs_label, self.v_type = tk.StringVar(), tk.StringVar()
             self.v_fs_x, self.v_fs_y = tk.StringVar(), tk.StringVar()
             self.v_none, self.v_spacing = tk.BooleanVar(), tk.StringVar(value=f"{SPACING_PREVIEW_MM:g}")
             ttk.Label(form, text="Label").grid(row=0, column=0, sticky="w")
             ttk.Entry(form, textvariable=self.v_fs_label, width=25).grid(row=0, column=1, sticky="ew")
             self.v_fs_label.trace_add("write", lambda *a: self._apply_label())
-            ttk.Checkbutton(form, text="bypass switch (turns the pedal on/off)", variable=self.v_bypass,
-                            command=lambda: self._apply("bypass", self.v_bypass.get())).grid(row=1, column=1, sticky="w")
-            ttk.Checkbutton(form, text="tap tempo", variable=self.v_tap,
-                            command=lambda: self._apply("tap", self.v_tap.get())).grid(row=2, column=1, sticky="w")
+            ttk.Label(form, text="Type").grid(row=1, column=0, sticky="nw")
+            types = ttk.Frame(form)
+            types.grid(row=1, column=1, rowspan=2, sticky="w")
+            for k, t in enumerate(footswitches.TYPES):
+                ttk.Radiobutton(types, text=t, value=t, variable=self.v_type,
+                                command=lambda: self._apply("type", self.v_type.get())).grid(row=k // 2, column=k % 2, sticky="w")
             row = self._coord_rows(form, 3, self.v_fs_x, self.v_fs_y)
             self.fs_frac_label = ttk.Label(form, text="")
             self.fs_frac_label.grid(row=row, column=1, sticky="w")
@@ -555,7 +559,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
         def _draw_footswitch(self, f, active, selected):
             c = self.canvas
             px, py = self.to_px(f["x"], f["y"])
-            colour = FOOTSWITCH_COLOURS[bool(f.get("bypass"))] if active else "#9e9e9e"
+            colour = FOOTSWITCH_COLOURS.get(f.get("type"), "#757575") if active else "#9e9e9e"
             if selected:
                 try:
                     rad = float(self.v_spacing.get()) / 2 * self.zoom
@@ -640,7 +644,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
         def _apply(self, key, value):
             if self._busy or self.sel is None:
                 return
-            if key in ("default", "tap") and not value:   # optional flags are stored only when true
+            if key == "default" and not value:   # optional flags are stored only when true
                 self.items[self.sel].pop("default", None)
             else:
                 self.items[self.sel][key] = value
@@ -718,8 +722,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
                 self.v_default.set(bool(it and it.get("default")))
             else:
                 self.v_fs_label.set(it["label"] if it else "")
-                self.v_bypass.set(bool(it and it.get("bypass")))
-                self.v_tap.set(bool(it and it.get("tap")))
+                self.v_type.set(it.get("type", "") if it else "")
                 self._refresh_none()
             self._busy = False
             self._refresh_coords()

@@ -44,8 +44,9 @@ def test_new_footswitch_first_is_bypass_then_other_switches():
     a = pe.new_footswitch([], 0.5, 0.8)
     b = pe.new_footswitch([a], 0.2, 0.8)
     c = pe.new_footswitch([a, b], 0.8, 0.8)
-    assert (a["id"], a["label"], a["bypass"]) == ("bypass", "Bypass", True)
-    assert (b["id"], b["label"], b["bypass"]) == ("switch_2", "Switch 2", False) and c["id"] == "switch_3"
+    assert (a["id"], a["label"], a["type"]) == ("bypass", "Bypass", "bypass")
+    assert (b["id"], b["label"], b["type"]) == ("switch_2", "Switch 2", "function") and c["id"] == "switch_3"
+    assert c["type"] == "function"
     assert footswitches.validate_file({"footswitches": {"beano": [a, b, c]}}, {"beano": {}}, {}) == {}
 
 
@@ -128,5 +129,6 @@ def test_cli_rejects_only_without_list_missing_and_footswitches_on_a_supply():
 
 
 def test_switch_kind():
-    assert pe.switch_kind({"bypass": True}) == "bypass" and pe.switch_kind({"bypass": False, "tap": True}) == "tap"
-    assert pe.switch_kind({"bypass": True, "tap": True}) == "bypass, tap" and pe.switch_kind({"bypass": False}) == "other"
+    assert [pe.switch_kind({"type": t}) for t in ("bypass", "tap", "boost", "function")] == ["bypass", "tap", "boost", "function"]
+    assert pe.switch_kind({}) == "?" and pe.switch_kind({"type": "preset"}) == "?"
+    assert set(pe.FOOTSWITCH_COLOURS) == set(footswitches.TYPES)

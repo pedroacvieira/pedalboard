@@ -563,14 +563,15 @@ def footswitch_section(ctx, cat_pedals):
     else:
         rule = f"{lim:g} mm (`footswitches.min_distance_mm`)"
     md += [f"Minimum distance between switches of different pedals (centre to centre): {rule}. "
-           "Switches on the same pedal are not checked. Bypass = the switch turns (part of) the pedal on and off; Tap = tap-tempo switch.", ""]
+           "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), "
+           "boost (a boost / extra-gain stomp), function (any other switch).", ""]
     prs = ctx.get("footswitch_pairs") or []
     if not prs:
         return md + ["No pair of footswitches on different pedals is known yet.", ""]
     md += [f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
-           "| Switch | Bypass | Tap | Switch | Bypass | Tap | Distance (mm) | Status |", "|---|:-:|:-:|---|:-:|:-:|--:|---|"]
+           "| Switch | Type | Switch | Type | Distance (mm) | Status |", "|---|---|---|---|--:|---|"]
     for r in prs[:footswitches.TOP_PAIRS]:
-        md.append(f"| {r['a']} | {yn(r['a_bypass'])} | {yn(r['a_tap'])} | {r['b']} | {yn(r['b_bypass'])} | {yn(r['b_tap'])} | {r['distance_mm']:.1f} | "
+        md.append(f"| {r['a']} | {r['a_type']} | {r['b']} | {r['b_type']} | {r['distance_mm']:.1f} | "
                   f"{'too close' if r['too_close'] else 'ok'} |")
     close = sum(1 for r in prs if r["too_close"])
     md += ["", f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]

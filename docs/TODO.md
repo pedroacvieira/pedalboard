@@ -8,7 +8,7 @@ done, and keep `CLAUDE.md` current when a decision changes.
 - [ ] Plan: `docs/plans/pedal-position.md` (handover `docs/handovers/pedal-position.md`); answer its open questions.
 - [x] Phases 0-2 (2026-10-22): layout injection, `design.move` / `write_canvas`, footswitch data + spacing check,
       `scripts/pedal_editor.py` (renamed from jack_setter, footswitch mode, Pillow instead of numpy).
-- [ ] Manual GUI check of the pedal editor (footswitch mode, J/F, no-footswitch box, bypass/tap boxes) by the owner.
+- [ ] Manual GUI check of the pedal editor (footswitch mode, J/F, no-footswitch box, the four-way switch type) by the owner.
 - [ ] Phases 3-5: surrogate score, layout search, proposals (see the plan and its owner decisions/corrections).
 - [ ] `feat/cable-routing` is merged into `main` locally (2026-10-22); push `main` when the owner asks.
 - [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
@@ -16,7 +16,7 @@ done, and keep `CLAUDE.md` current when a decision changes.
 
 ## Owner input needed
 - [ ] Place the footswitches of the 17 gig pedals (`python3 scripts/pedal_editor.py --list-missing guitar-gig --only
-      footswitches`), ticking bypass / tap per switch; then read the auto minimum in the gig README and calibrate
+      footswitches`), picking the type (bypass / tap / boost / function) per switch; then read the auto minimum in the gig README and calibrate
       `footswitches.min_distance_mm` if wanted.
 - [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length
       from the jack axis to where the ribbon leaves (catalog: 19 mm, estimate). Update
