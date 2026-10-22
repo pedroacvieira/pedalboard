@@ -12,7 +12,9 @@ import sys
 
 import footswitches
 import jacks
+import power
 import routing
+from power import volt_range
 from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
 
 PEDAL_REQUIRED = [
@@ -37,12 +39,13 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
-    candidate layout can be scored without writing a file."""
-    project = load_json(pdir / "project.json")
+    candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
+    project.json (e.g. with a proposal's power wiring)."""
+    project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
     no_unknown = project.get("validation", {}).get("no_unknown", True)
@@ -203,12 +206,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
 
     # ----- power ----------------------------------------------------------
     policy = project.get("power_policy", {})
-    sensitive = set(policy.get("separate_clocked_from_tags", ["gain", "overdrive", "compressor"]))
-    pol_strength = policy.get("strength", "required")
-    power = project.get("power", {}).get("supplies", [])
+    sensitive, pol_strength, _ = power.policy_settings(project)
     ctx["supplies"] = []
     powered, instances, run_v = {}, {}, {}
-    for inst in power:
+    for inst in project.get("power", {}).get("supplies", []):
         sup = cat_supplies.get(inst["supply"])
         if sup is None:
             errors.append(f"power: {inst['id']}: unknown supply '{inst['supply']}'")
@@ -250,55 +251,17 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
                     errors.append(f"power: '{pid}' is on both {powered[pid]} and {oid}")
                 powered[pid] = oid
                 run_v[pid] = out["voltage_v"]
-                pc = pedals[pid]["power_consumption"]
-                lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
-                if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
-                    errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
-                pol = pc.get("polarity")
-                if pol is not None and pol not in routing.POLARITIES:
-                    errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(routing.POLARITIES)})")
-                elif pol and row["polarity"] and pol != row["polarity"]:
-                    warnings.append(f"{oid}: {pid} is {pol.replace('_', '-')} but the output is {row['polarity'].replace('_', '-')}: "
-                                    f"use a polarity-reversing cable")
-                if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
-                    errors.append(f"{oid}: {pid} needs an isolated output but shares it")
-                if pc.get("current_ma") is None:
-                    warnings.append(f"{oid}: {pid} has unknown current_ma (left out of totals)")
-                else:
-                    row["load"] += pc["current_ma"]
-            if len(row["pedals"]) > 1:
-                pols = {pedals[x]["power_consumption"].get("polarity") for x in row["pedals"] if x in pedals} - {None}
-                if len(pols) > 1:
-                    errors.append(f"{oid}: center-negative and center-positive pedals share one output (their grounds are "
-                                  f"joined through the audio cables): give them separate outputs")
-                clocked = [x for x in row["pedals"] if pedals.get(x, {}).get("clocked_noise") is True]
-                quiet = [x for x in row["pedals"] if sensitive & set(pedals.get(x, {}).get("tags", []))]
-                if clocked and quiet:
-                    (errors if pol_strength == "required" else warnings).append(
-                        f"{oid}: time-based/clocked {clocked} share an output with noise-sensitive {quiet}")
-                for pid in row["pedals"]:
-                    d = pedals.get(pid, {}).get("digital")
-                    if d is True:
-                        errors.append(f"{oid}: digital pedal '{pid}' shares an output with {[o for o in row['pedals'] if o != pid]}")
-                    elif d is None:
-                        warnings.append(f"{oid}: '{pid}' shares an output but its digital status is unknown")
-            if row["load"] > limit:
-                errors.append(f"{oid}: {row['load']} mA exceeds {limit} mA limit")
-            elif row["load"] > 0.8 * limit:
-                warnings.append(f"{oid}: {row['load']} mA is over 80% of {limit} mA")
+            errs, warns, row["load"] = power.output_findings(oid, row["pedals"], out["voltage_v"], limit, row["polarity"],
+                                                             pedals, sensitive, pol_strength)
+            errors += errs
+            warnings += warns
         ctx["supplies"].append({"inst": inst, "sup": sup, "rows": rows})
     for pid in chain:
         if pid not in powered:
             errors.append(f"power: '{pid}' has no power output")
     # 18V-capable pedals should share 18V outputs instead of spreading over several
     if policy.get("group_18v", True):
-        rows18 = [r for s in ctx["supplies"] for r in s["rows"] if r["voltage_v"] == 18 and r["pedals"] and r["limit"]]
-        for i, a in enumerate(rows18):
-            for b2 in rows18[i + 1:]:
-                both = a["pedals"] + b2["pedals"]
-                if sum(pedals[x]["power_consumption"]["current_ma"] or 0 for x in both if x in pedals) <= min(a["limit"], b2["limit"]) \
-                        and not any(pedals[x]["power_consumption"].get("needs_isolated_output") for x in both if x in pedals):
-                    warnings.append(f"power: 18V outputs {a['id']} and {b2['id']} could be merged into one")
+        warnings += power.merge_18v_findings([r for s in ctx["supplies"] for r in s["rows"]], pedals)
     for sid, n in instances.items():
         q = cat_supplies[sid].get("quantity")
         if q is not None and n > q:
@@ -326,13 +289,6 @@ def bypass(p):
     if b is None:
         return "Unknown"
     return ("Buffered" if b else "True") + (" (switchable)" if sw else "")
-
-
-def volt_range(pc):
-    lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
-    if lo is None or hi is None:
-        return "?"
-    return f"{lo}V" if lo == hi else f"{lo}-{hi}V"
 
 
 def ma(p):
