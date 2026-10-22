@@ -36,8 +36,11 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
-    """Return a context dict (project data, derived power/rule info, errors, warnings)."""
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None):
+    """Return a context dict (project data, derived power/rule info, errors, warnings).
+
+    `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
+    candidate layout can be scored without writing a file."""
     project = load_json(pdir / "project.json")
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
@@ -304,7 +307,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True)
+                cable_types=cable_types, defer=True, items=items)
     routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     return ctx
 
