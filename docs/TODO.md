@@ -4,8 +4,13 @@ Hand-written backlog (not generated). Build-derived findings (warnings, data to 
 generated `README.md`; this file holds the work and the questions for the owner. Tick items off or delete them when
 done, and keep `CLAUDE.md` current when a decision changes.
 
-## Branch `feat/cable-routing`
-- [ ] Code review of the branch, apply the fixes, merge into `main`, push (owner asks for each step).
+## Branch `feat/pedal-position` (current)
+- [ ] Plan: `docs/plans/pedal-position.md` (handover `docs/handovers/pedal-position.md`); answer its open questions.
+- [ ] Rename the jack setter to a pedal editor and place footswitches; propose pedal positions (clearance, power
+      distance, signal distance, footswitch spacing).
+- [ ] `feat/cable-routing` is merged into `main` locally (2026-10-22); push `main` when the owner asks.
+- [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
+      `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
 
 ## Owner input needed
 - [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length
@@ -16,6 +21,8 @@ done, and keep `CLAUDE.md` current when a decision changes.
       Ernie Ball plug, against the owner's expectation; RockBoard's own page also gives 5/16 in height.
 - [ ] Confirm the power-jack fallback box `jacks.power_clearance` (default 5.5 x 5.5 mm, estimate).
 - [ ] Power plug side: when neither side is blocked the tool reports "left". Does the side matter?
+- [ ] Polarity: every pedal and supply is recorded center-negative (owner); add the real value when a
+      center-positive pedal arrives.
 
 ## Gig board layout
 - [ ] Monk / Belle Epoch are too close: `monk.out` (1.0 mm) and `monk.power` (5.1 mm) plug heads are blocked by the
