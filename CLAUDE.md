@@ -28,14 +28,15 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
   `diameter_mm`. Spacing priority per type `footswitches.priority` (bypass 1.0, boost 0.8, tap 0.8, function 0.5; a
   pair weighs the max of its two). `[]` = verified no footswitch (kept);
-  missing id = unknown. Supplies have none. The owner places the data (9 pedals so far).
+  missing id = unknown. Supplies have none. The owner places the data (every project pedal has it, 2026-10-23).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
   voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
-  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.min_distance_mm`
-  ("auto" default or mm) and `footswitches.priority` (spacing weight per switch type), `layout` (optional: pins,
+  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.comfort_mm`
+  (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
+  weight per switch type), `layout` (optional: pins,
   rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
   (`require_footswitches`, `strict_footswitches` among them).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
@@ -116,15 +117,18 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
 - Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.
 - Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
   (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's file and never written by tools.
-- Footswitch spacing: every pair of switches on DIFFERENT pedals >= `footswitches.min_distance_mm`; default "auto" =
-  the smallest such distance in the owner's `playground_design.json` (also for injected layouts), so the owner's
-  layout has no findings by construction. Missing data is one aggregated warning per project. README lists the 8
-  closest pairs with their types; `cables.svg` draws the switches (colour per type) and too-close lines.
+- Footswitch spacing is comfort, not a hard rule (owner, 2026-10-23: no real minimum; maximise the distance against
+  the other goals). Crowding of a pair of switches on DIFFERENT pedals = priority x max(0, comfort - d)^2 / comfort
+  (`footswitches.crowding`, comfort `footswitches.comfort_mm` default 100 mm): the closest pairs count most. The
+  build reports the sum (README: crowding, 8 closest pairs with types); the layout search minimises it (weight
+  `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
+  errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
+  aggregated warning per project. `cables.svg` draws the switches (colour per type) and too-close lines.
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
   penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
-  crossed pedals), power 0.1/mm, footswitch spacing by type priority, first input to the right edge, last output
+  crossed pedals), power 0.1/mm, footswitch crowding by type priority, first input to the right edge, last output
   to the nearest left/right/back edge, small right-to-left flow, accessibility (tuner back; boost/eq/master pedals
   front 0.3; drives and tap switches front 0.1; a boost switch front 0.05; modulation avoids the front unless tap),
   rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). The surrogate checks the
@@ -132,7 +136,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   (default: max 40 mm, no swaps/rotations) / rearrange / free. Finalists AND the owner's layout get their own power
   wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` follow their
   pedal, `power.remap_overrides`) and are checked with `build.validate(items=, project=)`; a proposal must not be
-  worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs. Proposals never
+  worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs below a set minimum. Proposals never
   touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
   `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
   project's catalog entries incl. jacks and footswitches) or the chain changed.

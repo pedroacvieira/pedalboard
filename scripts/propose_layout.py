@@ -52,6 +52,7 @@ def metrics(ctx, model, state, move_factor):
         "overflow": sum("stacking limit" in s for s in status),
         "fs_close": sum(1 for r in prs if r.get("too_close")),
         "fs_closest_mm": round(prs[0]["distance_mm"], 1) if prs else None,
+        "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding") or 0.0, 1),
         "fs_known": det["fs_known"],
         "signal_mm": round(sum(c["min_mm"] for c in sig if c["min_mm"] is not None), 1),
         "signal_routed": sum(1 for c in sig if c["min_mm"] is not None), "signal_cables": len(sig),
@@ -160,7 +161,9 @@ def print_score(model, owner_ctx):
     if not model.fs_known:
         print("Footswitch term: 0 (no footswitch data for these pedals yet)")
     else:
-        print(f"Footswitch minimum {model.fs_limit:.1f} mm; pairs closer: {len(det['fs_close'])}")
+        lim = "none" if model.fs_limit is None else f"{model.fs_limit:g} mm"
+        print(f"Footswitch crowding {det['terms']['footswitch'][0]:.1f} (comfort {model.fs_comfort:g} mm); "
+              f"minimum {lim}, pairs closer: {len(det['fs_close'])}")
     print(f"Build check of the owner's layout: {len(owner_ctx['violations'])} blocked plug(s), "
           f"{len(owner_ctx['errors'])} error(s), {len(owner_ctx['warnings'])} warning(s)")
 
@@ -272,7 +275,8 @@ def main(argv=None):
 
 def report(pdir, meta, owner):
     def line(label, m):
-        fs = "no footswitch data" if not m["fs_known"] else f"{m['fs_close']} pair(s) too close, closest {m['fs_closest_mm']} mm"
+        fs = ("no footswitch data" if not m["fs_known"] else
+              f"crowding {m['fs_crowding']:.0f}, closest {m['fs_closest_mm']} mm, {m['fs_close']} below the minimum")
         return (f"  {label:9} blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; routing problems "
                 f"{routing_problems(m)}; signal {m['signal_mm']:.0f} mm ({m['signal_routed']}/{m['signal_cables']} routed); "
                 f"power ~{m['power_mm']:.0f} mm; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")

@@ -48,13 +48,19 @@ def foot(ctx):
     return [m for m in ctx["warnings"] + ctx["errors"] if m.startswith("footswitch")]
 
 
-def test_distance_between_two_pedals_and_auto_minimum(tmp_path):
+def test_distance_and_crowding_without_a_minimum(tmp_path):
+    """76.2 mm apart, comfort 100 mm, bypass pair (priority 1): crowding = 23.8^2 / 100 = 5.6644; no minimum."""
     ctx = run(tmp_path, [A(), B()], ONE_EACH)
     (pair,) = ctx["footswitch_pairs"]
     assert (pair["a"], pair["b"]) == ("a.bypass", "b.bypass") and pair["distance_mm"] == pytest.approx(76.2)
     st = ctx["footswitch_settings"]
-    assert st["mode"] == "auto" and st["auto_mm"] == pytest.approx(76.2) and st["min_distance_mm"] == pytest.approx(76.2)
-    assert not pair["too_close"] and foot(ctx) == []      # the owner's layout has no findings by construction
+    assert st["min_distance_mm"] is None and st["comfort_mm"] == 100.0
+    assert pair["crowding"] == pytest.approx(23.8 ** 2 / 100) and st["crowding"] == pytest.approx(pair["crowding"])
+    assert not pair["too_close"] and foot(ctx) == []
+    far = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"comfort_mm": 70}})
+    assert far["footswitch_settings"]["crowding"] == 0.0                             # beyond the comfort distance
+    fn = run(tmp_path, [A(), B()], {"a": [sw(type="function")], "b": [sw(type="tap")]})
+    assert fn["footswitch_pairs"][0]["crowding"] == pytest.approx(0.8 * 23.8 ** 2 / 100)   # max(0.5, 0.8)
 
 
 def test_rotated_pedal(tmp_path):
@@ -78,26 +84,26 @@ def test_fixed_minimum_gives_warnings_or_strict_errors(tmp_path):
     proj = {"footswitches": {"min_distance_mm": 80}}
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)
     assert ctx["footswitch_pairs"][0]["too_close"] and ctx["errors"] == []
-    assert foot(ctx) == ["footswitch: a.bypass and b.bypass are 76.2 mm apart (min 80.0 mm)"]
+    assert foot(ctx) == ["footswitch: a.bypass and b.bypass are 76.2 mm apart (min 80 mm)"]
     proj["validation"] = {"strict_footswitches": True}
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)
-    assert ctx["errors"] == ["footswitch: a.bypass and b.bypass are 76.2 mm apart (min 80.0 mm)"]
+    assert ctx["errors"] == ["footswitch: a.bypass and b.bypass are 76.2 mm apart (min 80 mm)"]
     ok = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"min_distance_mm": 76.2}})
     assert not ok["footswitch_pairs"][0]["too_close"]                                   # equal is fine
 
 
-def test_bad_minimum_setting_is_an_error(tmp_path):
-    ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"min_distance_mm": "big"}})
-    assert any("min_distance_mm" in e for e in ctx["errors"])
+def test_bad_spacing_settings_are_errors(tmp_path):
+    for bad in ({"min_distance_mm": "big"}, {"min_distance_mm": "auto"}, {"comfort_mm": 0}):   # "auto" was dropped
+        ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": bad})
+        assert any(next(iter(bad)) in e for e in ctx["errors"])
 
 
-def test_auto_comes_from_the_owner_file_not_the_injected_layout(tmp_path):
-    """The owner's file has 76.2 mm; a candidate with B 22.5 px (12.7 mm) closer is 63.5 mm -> too close."""
+def test_an_injected_layout_is_measured_itself(tmp_path):
+    """A candidate with B 22.5 px (12.7 mm) closer: 63.5 mm, crowding 36.5^2 / 100; no minimum -> no finding."""
     items = design.parse_canvas(canvas(A(), B(112.5)))
     ctx = run(tmp_path, [A(), B()], ONE_EACH, items=items)
-    assert ctx["layout_source"] == "injected" and ctx["footswitch_settings"]["auto_mm"] == pytest.approx(76.2)
-    assert ctx["footswitch_pairs"][0]["distance_mm"] == pytest.approx(63.5)
-    assert foot(ctx) == ["footswitch: a.bypass and b.bypass are 63.5 mm apart (min 76.2 mm, auto)"]
+    assert ctx["layout_source"] == "injected" and ctx["footswitch_pairs"][0]["distance_mm"] == pytest.approx(63.5)
+    assert ctx["footswitch_settings"]["crowding"] == pytest.approx(36.5 ** 2 / 100) and foot(ctx) == []
 
 
 def test_empty_list_is_not_missing_and_missing_is_reported(tmp_path):
@@ -170,9 +176,9 @@ def test_real_file_is_valid():
     assert fsw.validate_file(fsw.read_file(), pedals, supplies) == {}
 
 
-def test_gig_build_with_switch_data_has_no_findings_under_auto():
-    """One centre switch per gig pedal (invented positions, test only): auto = the closest pair, so no findings;
-    the README lists the closest pairs and the SVG draws the switches."""
+def test_gig_build_with_switch_data_has_no_findings_without_a_minimum():
+    """One centre switch per gig pedal (invented positions, test only): no minimum, so no findings; the README
+    lists the crowding and the closest pairs, the SVG draws the switches."""
     import build
     import routing
     from common import load_catalog
@@ -182,10 +188,10 @@ def test_gig_build_with_switch_data_has_no_findings_under_auto():
     ctx = build.validate(gig, pedals, supplies, footswitch_data={c: [sw()] for c in chain})
     prs = ctx["footswitch_pairs"]
     assert len(prs) == len(chain) * (len(chain) - 1) // 2 and not any(r["too_close"] for r in prs)
-    assert ctx["footswitch_settings"]["min_distance_mm"] == pytest.approx(prs[0]["distance_mm"])
-    assert foot(ctx) == []
+    assert ctx["footswitch_settings"]["min_distance_mm"] is None and foot(ctx) == []
     md = "\n".join(build.footswitch_section(ctx, pedals))
-    assert f"Closest pairs ({fsw.TOP_PAIRS} of {len(prs)})" in md and "No pair is closer than the minimum." in md
+    assert f"Closest pairs ({fsw.TOP_PAIRS} of {len(prs)})" in md and "No minimum distance is set." in md
+    assert f"Crowding: {ctx['footswitch_settings']['crowding']:.1f}" in md
     picture = routing.svg(ctx, {})
     assert picture.count("<circle") == len(chain) and "stroke-dasharray=\"3 2\"" not in picture
 

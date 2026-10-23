@@ -4,14 +4,13 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 4 warning(s) (`no_unknown` on)
+- **Validation:** OK, 3 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
 - WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
 - WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
 - WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
-- WARN footswitches: no footswitch data for 7 of 17 pedals (red_muck, protein, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -312,53 +311,39 @@ Signal cable, minimum: 2576 mm over 16 cables.
 
 ## Footswitches
 
-Footswitch data: 10 of 17 pedals (catalog/footswitches.json).
+Footswitch data: 17 of 17 pedals (catalog/footswitches.json).
 
-Missing (place the switches on the pedal image, then rebuild):
+Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
-```
-uv run scripts/pedal_editor.py red_muck --footswitches
-uv run scripts/pedal_editor.py protein --footswitches
-uv run scripts/pedal_editor.py analog_chorus --footswitches
-uv run scripts/pedal_editor.py monk --footswitches
-uv run scripts/pedal_editor.py belle_epoch --footswitches
-uv run scripts/pedal_editor.py flight_delay --footswitches
-uv run scripts/pedal_editor.py tumnus_deluxe --footswitches
-```
+Crowding: 184.3 (18 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 
-Minimum distance between switches of different pedals (centre to centre): auto = 48.5 mm, the smallest distance between switches of different pedals in playground_design.json (the owner's layout is the reference). Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
-
-Closest pairs (8 of 64):
-
-| Switch | Type | Switch | Type | Distance (mm) | Status |
-|---|---|---|---|--:|---|
-| danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 48.5 | ok |
-| sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 61.7 | ok |
-| beano.bypass | bypass | mini_ego.bypass | bypass | 65.2 | ok |
-| danelectro_3699.switch_2 | function | fulldrive_2.switch_2 | boost | 85.3 | ok |
-| mini_ego.bypass | bypass | retrovibe.bypass | bypass | 93.1 | ok |
-| sun_face.bypass | bypass | danelectro_3699.bypass | bypass | 97.2 | ok |
-| sun_face.bypass | bypass | beano.bypass | bypass | 117.6 | ok |
-| polytune_3.bypass | bypass | phase_95.bypass | bypass | 117.9 | ok |
-
-No pair is closer than the minimum.
+| Switch | Type | Switch | Type | Distance (mm) | Crowding |
+|---|---|---|---|--:|--:|
+| monk.bypass | bypass | belle_epoch.bypass | bypass | 45.6 | 29.6 |
+| protein.switch_2 | bypass | flight_delay.switch_2 | tap | 46.6 | 28.5 |
+| danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 48.5 | 26.5 |
+| ratsbane.bypass | bypass | monk.switch_2 | tap | 58.0 | 17.7 |
+| flight_delay.bypass | bypass | tumnus_deluxe.bypass | bypass | 58.4 | 17.3 |
+| sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 61.7 | 14.6 |
+| fulldrive_2.bypass | bypass | protein.bypass | bypass | 63.3 | 13.5 |
+| beano.bypass | bypass | mini_ego.bypass | bypass | 65.2 | 12.1 |
 
 
 ## Layout proposals
 
-Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 13.4 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 11.6 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
 
 | | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
 |---|--:|--:|--:|--:|
 | Blocked plugs | 3 (24.7 mm) | 0 (0.0 mm) | 0 (0.0 mm) | 0 (0.0 mm) |
 | Unroutable / squeezed / over the stacking limit | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
-| Footswitch pairs below the minimum | 0 | 0 | 0 | 0 |
-| Closest footswitch pair (mm) | 48.5 | 48.5 | 48.5 | 48.5 |
-| Signal cables, routed minimum (mm) | 2576 | 2453 | 2734 | 2744 |
-| Power cables, estimate (mm) | 2504 | 2467 | 2500 | 2506 |
-| First input / last output to the board edges (mm) | 28 | 28 | 21 | 21 |
-| Build errors / warnings | 0 / 4 | 0 / 1 | 0 / 1 | 0 / 1 |
-| Score (lower is better) | 4028 | 3205 | 3443 | 3459 |
+| Footswitch crowding (lower is better) | 184 | 163 | 160 | 166 |
+| Closest footswitch pair (mm) | 45.6 | 48.5 | 48.5 | 48.5 |
+| Signal cables, routed minimum (mm) | 2576 | 2513 | 2439 | 2739 |
+| Power cables, estimate (mm) | 2504 | 2500 | 2479 | 2501 |
+| First input / last output to the board edges (mm) | 28 | 21 | 21 | 21 |
+| Build errors / warnings | 0 / 3 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Score (lower is better) | 4397 | 3618 | 3625 | 3780 |
 
 ### Proposal 1
 
@@ -370,9 +355,11 @@ Pedal Playground file: [proposals/1.json](proposals/1.json); blocked plugs fixed
 |---|--:|--:|--:|---|
 | JAM Pedals Retrovibe | +5.6 | -3.4 | 6.6 | 0 deg |
 | JAM Pedals Red Muck Mk2 | +4.5 | +9.0 | 10.1 | 0 deg |
-| MXR Analog Chorus | +1.7 | -0.6 | 1.8 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +0.6 | -40.1 | 40.1 | 0 deg |
-| Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+| MXR Analog Chorus | +1.7 | -9.0 | 9.2 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +1.1 | -2.3 | 2.5 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +5.6 | 6.9 | 0 deg |
+| JHS Flight Delay | -10.7 | +3.4 | 11.2 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +5.6 | 9.3 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 
@@ -397,26 +384,29 @@ Pedal Playground file: [proposals/2.json](proposals/2.json); blocked plugs fixed
 
 | Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
 |---|--:|--:|--:|---|
-| JAM Pedals Retrovibe | +4.5 | -3.4 | 5.6 | 0 deg |
-| JAM Pedals Red Muck Mk2 | +4.0 | +9.0 | 9.9 | 0 deg |
-| MXR Analog Chorus | -1.1 | -11.9 | 11.9 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +4.5 | -0.6 | 4.6 | 0 deg |
-| Catalinbread Belle Epoch Deluxe | -2.3 | +5.1 | 5.6 | 0 deg |
-| JHS Flight Delay | -10.7 | +2.3 | 11.0 | 0 deg |
-| Wampler Tumnus Deluxe | -7.3 | +5.1 | 8.9 | 0 deg |
+| MXR Phase 95 | +12.4 | -6.8 | 14.1 | 270 deg |
+| JAM Pedals Retrovibe | +6.8 | -10.2 | 12.2 | 0 deg |
+| JAM Pedals Red Muck Mk2 | +6.2 | +0.0 | 6.2 | 0 deg |
+| Wampler Ratsbane | +35.0 | -9.0 | 36.1 | 90 deg |
+| Browne Protein V3 | -6.2 | -18.6 | 19.6 | 0 deg |
+| MXR Analog Chorus | +2.8 | -7.3 | 7.9 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +1.1 | +0.0 | 1.1 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +10.7 | 11.4 | 0 deg |
+| JHS Flight Delay | -10.7 | +8.5 | 13.7 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +10.2 | 12.5 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 
 | Supply | Output | Voltage | Daisy chain |
 |---|---|--:|---|
-| Ojai R30 (left) | F1 | 9V | JHS Flight Delay |
-| Ojai R30 (left) | F2 | 9V | Catalinbread Belle Epoch Deluxe |
-| Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
+| Ojai R30 (left) | F1 | 9V | Catalinbread Belle Epoch Deluxe |
+| Ojai R30 (left) | F2 | 9V | JAM Pedals Harmonious Monk Mk2 |
+| Ojai R30 (left) | F3 | 9V | JHS Flight Delay |
 | Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
-| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
-| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
-| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
-| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (left) | SW_B | 9V | Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F1 | 9V | MXR Analog Chorus, MXR Phase 95 |
+| Ojai R30 (right) | F2 | 9V | JAM Pedals Red Muck Mk2 |
+| Ojai R30 (right) | F3 | 9V | Wampler Ratsbane, Danelectro 3699 Fuzz, JAM Pedals Retrovibe, AnalogMan Beano Boost, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
 | Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
 
@@ -428,13 +418,13 @@ Pedal Playground file: [proposals/3.json](proposals/3.json); blocked plugs fixed
 
 | Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
 |---|--:|--:|--:|---|
-| JAM Pedals Retrovibe | +4.0 | -3.4 | 5.2 | 0 deg |
-| JAM Pedals Red Muck Mk2 | +3.4 | +9.0 | 9.6 | 0 deg |
-| MXR Analog Chorus | -2.3 | -10.7 | 11.0 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +3.4 | +0.6 | 3.4 | 0 deg |
-| Catalinbread Belle Epoch Deluxe | -2.8 | +2.8 | 4.0 | 0 deg |
-| JHS Flight Delay | -13.0 | +0.0 | 13.0 | 0 deg |
-| Wampler Tumnus Deluxe | -7.3 | +3.4 | 8.1 | 0 deg |
+| JAM Pedals Retrovibe | +4.5 | -3.4 | 5.6 | 0 deg |
+| JAM Pedals Red Muck Mk2 | +4.0 | +9.0 | 9.9 | 0 deg |
+| MXR Analog Chorus | -2.3 | -5.1 | 5.6 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +2.8 | +6.2 | 6.8 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +6.8 | 7.8 | 0 deg |
+| JHS Flight Delay | -10.7 | +4.5 | 11.6 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +6.8 | 10.0 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 

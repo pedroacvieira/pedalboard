@@ -503,7 +503,7 @@ def jacks_section(ctx):
 
 
 def footswitch_section(ctx, cat_pedals):
-    """README section: footswitch data status, the minimum spacing and the closest pairs (all mm)."""
+    """README section: footswitch data status, the spacing (crowding, optional minimum) and the closest pairs (all mm)."""
     md = ["", "## Footswitches", ""]
     setup, chain = ctx.get("footswitch_setup", {}), ctx["chain"]
     have = [c for c in chain if setup.get(c) in ("ok", "none")]
@@ -516,26 +516,29 @@ def footswitch_section(ctx, cat_pedals):
     st = ctx.get("footswitch_settings") or {}
     if not st.get("layout"):
         return md + ["*No playground_design.json: footswitch spacing is not checked.*", ""]
-    lim = st.get("min_distance_mm")
-    if st.get("mode") == "auto":
-        rule = (f"auto = {lim:.1f} mm, the smallest distance between switches of different pedals in playground_design.json "
-                f"(the owner's layout is the reference)" if lim is not None else
-                "auto: no pair of footswitches is known yet, so there is no limit")
-    else:
-        rule = f"{lim:g} mm (`footswitches.min_distance_mm`)"
-    md += [f"Minimum distance between switches of different pedals (centre to centre): {rule}. "
-           "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), "
-           "boost (a boost / extra-gain stomp), function (any other switch).", ""]
+    lim, comfort = st.get("min_distance_mm"), st.get("comfort_mm")
+    md += ["Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals "
+           f"allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance "
+           f"({comfort:g} mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, "
+           "`footswitches.priority`); lower is better, the layout proposals minimise it. "
+           + (f"Minimum: {lim:g} mm (`footswitches.min_distance_mm`). " if lim is not None else "No minimum distance is set. ")
+           + "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), "
+           "tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).", ""]
     prs = ctx.get("footswitch_pairs") or []
     if not prs:
         return md + ["No pair of footswitches on different pedals is known yet.", ""]
-    md += [f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
-           "| Switch | Type | Switch | Type | Distance (mm) | Status |", "|---|---|---|---|--:|---|"]
+    crowded = sum(1 for r in prs if r["crowding"] > 0)
+    md += [f"Crowding: {st['crowding']:.1f} ({crowded} of {len(prs)} pairs closer than {comfort:g} mm). "
+           f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
+           "| Switch | Type | Switch | Type | Distance (mm) | Crowding |" + (" Status |" if lim is not None else ""),
+           "|---|---|---|---|--:|--:|" + ("---|" if lim is not None else "")]
     for r in prs[:footswitches.TOP_PAIRS]:
-        md.append(f"| {r['a']} | {r['a_type']} | {r['b']} | {r['b_type']} | {r['distance_mm']:.1f} | "
-                  f"{'too close' if r['too_close'] else 'ok'} |")
-    close = sum(1 for r in prs if r["too_close"])
-    md += ["", f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
+        md.append(f"| {r['a']} | {r['a_type']} | {r['b']} | {r['b_type']} | {r['distance_mm']:.1f} | {r['crowding']:.1f} |"
+                  + (f" {'too close' if r['too_close'] else 'ok'} |" if lim is not None else ""))
+    md.append("")
+    if lim is not None:
+        close = sum(1 for r in prs if r["too_close"])
+        md += [f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
     return md
 
 
@@ -566,11 +569,9 @@ def proposals_section(ctx, cat_pedals):
     if not props:
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
 
-    def fs(m):
-        return "no data" if not m.get("fs_known") else str(m["fs_close"])
     rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
             ("Unroutable / squeezed / over the stacking limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
-            ("Footswitch pairs below the minimum", fs),
+            ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
             ("Power cables, estimate (mm)", lambda m: f"{m['power_mm']:.0f}"),
@@ -752,7 +753,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "uv run pytest tests                       geometry and jack-check tests",
         "```",
         "",
-        "Footswitches: switches of different pedals must be at least `footswitches.min_distance_mm` apart (default \"auto\" = the smallest distance in the owner's playground_design.json). Missing footswitch data and pairs that are too close are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",
+        "Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",

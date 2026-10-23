@@ -14,7 +14,7 @@ done, and keep `CLAUDE.md` current when a decision changes.
 - [ ] Owner: look at the guitar-gig proposals (`projects/guitar-gig/proposals/1.json`, Load from File) and say whether
       the moves are acceptable; tune `layout.weights` / `max_move_mm` if not.
 - [ ] Owner: try `--max-change rearrange` (bigger moves, swaps, rotations) once and judge the result.
-- [ ] Rerun the proposals once all footswitches are placed (10 pedals so far).
+- [x] Proposals rerun with all gig footswitches (2026-10-23).
 - [ ] Surrogate vs router: the signal estimate (octile + detour around crossed pedals) still misjudges some routes
       (finalists are checked with the router, so proposals are safe, but the search may miss better ones).
 - [x] `feat/cable-routing` merged into `main` and pushed.
@@ -26,9 +26,10 @@ done, and keep `CLAUDE.md` current when a decision changes.
       `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
 
 ## Owner input needed
-- [ ] Place the footswitches of the remaining gig pedals (10 done 2026-10-23; `uv run scripts/pedal_editor.py --list-missing guitar-gig --only
-      footswitches`), picking the type (bypass / tap / boost / function) per switch; then read the auto minimum in the gig README and calibrate
-      `footswitches.min_distance_mm` if wanted.
+- [x] Footswitches of every project pedal placed (2026-10-23).
+- [x] Footswitch spacing is comfort, no minimum (owner, 2026-10-23): crowding term, maximised by the search.
+- [ ] Owner: judge whether the proposals spread the switches enough; tune `footswitches.comfort_mm` (100) or
+      `layout.weights.footswitch` (2) if not.
 - [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length
       from the jack axis to where the ribbon leaves (catalog: 19 mm, estimate). Update
       `catalog/cables.json` `ernie_ball_flat_patch_ra` and its `verified` list.

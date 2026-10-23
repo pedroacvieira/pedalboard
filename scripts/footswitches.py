@@ -11,10 +11,11 @@ delay...).
 `[]` = checked: the pedal has no footswitch. A missing id = unknown. Optional: `diameter_mm` (null if unknown).
 Written only by scripts/pedal_editor.py; jack positions live in catalog/jacks.json and are never touched here.
 
-Spacing rule (build): every pair of switches on DIFFERENT pedals must be at least `footswitches.min_distance_mm`
-apart (centre to centre, mm). The default "auto" is the smallest such distance in the owner's
-playground_design.json (the hand-made layout is the reference), so that layout has no findings by construction; a
-number overrides it.
+Spacing (owner, 2026-10-23: there is no real minimum, it is comfort): switches on DIFFERENT pedals should be as far
+apart as the other goals allow. Crowding of a pair = priority x max(0, comfort - d)^2 / comfort (mm; d centre to
+centre, comfort = `footswitches.comfort_mm`, default COMFORT_MM; priority per switch type, PRIORITY): the closest
+pairs count most, pairs at least `comfort_mm` apart not at all. The layout search minimises the sum; the build
+reports it. Optional `footswitches.min_distance_mm` (mm, default none): pairs closer are warnings.
 """
 import json
 import math
@@ -36,6 +37,7 @@ DOC = ("Footswitch positions per pedal catalog id. Written ONLY by scripts/pedal
        "[] = checked: the pedal has no footswitch. A missing id = unknown. "
        "No image is stored.")
 TOP_PAIRS = 8   # closest pairs shown in the README
+COMFORT_MM = 100.0   # pairs at least this far apart are not crowded
 
 
 # --- file ---------------------------------------------------------------------------------------
@@ -127,6 +129,28 @@ def priorities(project):
     return {**PRIORITY, **((project.get("footswitches") or {}).get("priority") or {})}
 
 
+def spacing_settings(project):
+    """(min_distance_mm or None, comfort_mm, [problems]) from project `footswitches`."""
+    cfg = project.get("footswitches") or {}
+    problems = []
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0
+    lim = cfg.get("min_distance_mm")
+    if lim is not None and not num(lim):
+        problems.append(f"footswitches.min_distance_mm must be a positive number (mm) or null (no minimum), got {lim!r}")
+        lim = None
+    comfort = cfg.get("comfort_mm", COMFORT_MM)
+    if not num(comfort):
+        problems.append(f"footswitches.comfort_mm must be a positive number (mm), got {comfort!r}")
+        comfort = COMFORT_MM
+    return (None if lim is None else float(lim)), float(comfort), problems
+
+
+def crowding(distance_mm, priority, comfort_mm):
+    """Crowding of one pair (mm): priority x max(0, comfort - d)^2 / comfort."""
+    gap = max(0.0, comfort_mm - distance_mm)
+    return priority * gap * gap / comfort_mm
+
+
 def pair_priority(prio, type_a, type_b):
     """A pair weighs the larger priority of its two switches (a pair with a bypass switch counts fully)."""
     return max(prio.get(type_a, 0.0), prio.get(type_b, 0.0))
@@ -158,28 +182,14 @@ def pairs(pts):
     return out
 
 
-def owner_minimum(ctx, cat_pedals, fs_data, current_pairs):
-    """Smallest distance between switches of different pedals in the owner's playground_design.json (None if no
-    pair is known). Uses the current pairs when the build checks that file, else parses it (never a proposal)."""
-    if ctx.get("layout_source") == "file":
-        prs = current_pairs
-    else:
-        from jacks import load_items, place_chain   # late: jacks imports design only
-        items = load_items(ctx["dir"]) if ctx.get("dir") else None
-        if items is None:
-            return None
-        placed, _ = place_chain(items, ctx["chain"], cat_pedals)
-        prs = pairs(points(placed, fs_data))
-    return prs[0]["distance_mm"] if prs else None
-
-
 # --- project check (called from build.validate) -------------------------------------------------
 def check(ctx, cat_pedals, fs_data):
     """Footswitch findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: footswitch_setup {pedal id: ok|none|missing|no playground_title}, footswitch_fixes [(id, command)],
-    footswitch_points, footswitch_pairs (closest first, with too_close), footswitch_settings. Missing data and pairs
-    closer than the minimum are warnings unless validation.require_footswitches / strict_footswitches are set.
+    footswitch_points, footswitch_pairs (closest first, with crowding and too_close), footswitch_settings
+    (min_distance_mm, comfort_mm, crowding = the sum). Missing data and pairs closer than an optional minimum are
+    warnings unless validation.require_footswitches / strict_footswitches are set.
     Run after jacks.check (it uses ctx['layout']).
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
@@ -188,13 +198,10 @@ def check(ctx, cat_pedals, fs_data):
     dist_sink = errors if val.get("strict_footswitches") else warnings
     fs_data = usable(fs_data)
     chain = ctx["chain"]
-    setting = (project.get("footswitches") or {}).get("min_distance_mm", "auto")
-    if not (setting == "auto" or (isinstance(setting, (int, float)) and not isinstance(setting, bool) and setting > 0)):
-        errors.append(f"footswitches.min_distance_mm must be \"auto\" or a positive number (mm), got {setting!r}")
-        setting = "auto"
+    limit, comfort, problems = spacing_settings(project)
+    errors += problems
     ctx.update(footswitch_setup={}, footswitch_fixes=[], footswitch_points=[], footswitch_pairs=[],
-               footswitch_settings={"mode": "auto" if setting == "auto" else "fixed", "min_distance_mm": None,
-                                    "auto_mm": None, "layout": False})
+               footswitch_settings={"min_distance_mm": limit, "comfort_mm": comfort, "crowding": None, "layout": False})
 
     missing = []
     for cid in chain:
@@ -216,14 +223,14 @@ def check(ctx, cat_pedals, fs_data):
         return
     pts = points(layout["placed"], fs_data)
     prs = pairs(pts)
-    auto = owner_minimum(ctx, cat_pedals, fs_data, prs)
-    limit = auto if setting == "auto" else float(setting)
+    prio = priorities(project)
     ctx["footswitch_points"] = pts
-    ctx["footswitch_settings"].update(min_distance_mm=limit, auto_mm=auto, layout=True)
     for r in prs:
+        r["crowding"] = crowding(r["distance_mm"], pair_priority(prio, r["a_type"], r["b_type"]), comfort)
         r["too_close"] = limit is not None and r["distance_mm"] < limit - 1e-6
         if r["too_close"]:
             dist_sink.append(f"footswitch: {r['a']} and {r['b']} are {r['distance_mm']:.1f} mm apart "
-                             f"(min {limit:.1f} mm{', auto' if setting == 'auto' else ''})")
+                             f"(min {limit:g} mm)")
     ctx["footswitch_pairs"] = prs
+    ctx["footswitch_settings"].update(crowding=sum(r["crowding"] for r in prs), layout=True)
 

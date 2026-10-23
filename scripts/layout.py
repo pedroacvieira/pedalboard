@@ -23,9 +23,12 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  exits crosses (layout.detour; 0.6 because the estimate is rough, calibrated on guitar-gig)
   power          0.1 / mm DC cable: Manhattan between half-depth measure points along each daisy chain (jacks.check)
                  for a fixed wiring (the search keeps it; finalists get their own wiring from power.assign)
-  footswitch     20 / mm below the minimum distance + footswitch_pair 100 per pair, both times the pair's priority
-                 (footswitches.priority per switch type: bypass 1.0, boost 0.8, tap 0.8, function 0.5; a pair weighs
-                 the larger of its two); no footswitch data -> 0
+  footswitch     2 x crowding: per pair of switches on different pedals priority x max(0, comfort - d)^2 / comfort
+                 (footswitches.crowding; comfort `footswitches.comfort_mm`, default 100; priority per switch type:
+                 bypass 1.0, boost 0.8, tap 0.8, function 0.5, a pair weighs the larger of its two): spacing is
+                 maximised against the other terms, the closest pairs count most. With an optional
+                 `footswitches.min_distance_mm` also footswitch_min 20 / mm below it + footswitch_pair 100 per pair
+                 (times the priority). No footswitch data -> 0
   io             1 / mm: first pedal's input to the right board edge + last pedal's output to the nearest of the
                  left, right and back edges
   flow           0.1 / mm a pedal's centre lies to the right of the previous pedal's (signal flows right to left)
@@ -51,7 +54,7 @@ TOUCH_GAP_MM = 1.0
 SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
-           "footswitch": 20.0, "footswitch_pair": 100.0, "io": 1.0, "flow": 0.1, "access": 1.0,
+           "footswitch": 2.0, "footswitch_min": 20.0, "footswitch_pair": 100.0, "io": 1.0, "flow": 0.1, "access": 1.0,
            "rotation_used": 10.0, "rotation_new": 40.0, "move": 0.2, "move_pedal": 25.0, "rotate_change": 20.0,
            "touch": 0.02}
 ACCESS = {
@@ -216,14 +219,8 @@ class Model:
             raise ValueError(f"layout.pins: not a placed chain pedal: {', '.join(sorted(unknown_pins))}")
         # footswitches
         self.fs_known = any(self.fs_data.get(p) for p in self.ids)
-        self.fs_limit = fs_limit
-        if self.fs_limit is None:
-            setting = (project.get("footswitches") or {}).get("min_distance_mm", "auto")
-            if setting == "auto":
-                prs = footswitches.pairs(footswitches.points(self.placed, self.fs_data))
-                self.fs_limit = prs[0]["distance_mm"] if prs else None
-            else:
-                self.fs_limit = float(setting)
+        limit, self.fs_comfort, _ = footswitches.spacing_settings(project)
+        self.fs_limit = limit if fs_limit is None else fs_limit
         self.fs_priority = footswitches.priorities(project)
         self.access = [access_rule({**cat_pedals[p], "id": p}, [f["type"] for f in self.fs_data.get(p) or []],
                                    self.cfg["access"]) for p in self.ids]
@@ -486,18 +483,22 @@ class Model:
                 prev = here if here is not None else prev
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
-        if self.fs_limit is not None and self.fs_known:
+        if self.fs_known:
             pts = [(n, g2[0] + state[n][0], g2[1] + state[n][1], g2[2], g2[3]) for n, g in enumerate(geo) for g2 in g["fs"]]
-            lim = self.fs_limit
+            lim, comfort = self.fs_limit, self.fs_comfort
             for i, p in enumerate(pts):
                 for q in pts[i + 1:]:
                     if p[0] == q[0]:
                         continue
                     d = math.hypot(p[1] - q[1], p[2] - q[2])
-                    if d < lim - 1e-6:
-                        fac = footswitches.pair_priority(self.fs_priority, p[3], q[3])
-                        terms["footswitch"] += fac * (w["footswitch"] * (lim - d) + w["footswitch_pair"])
-                        raw["footswitch"] += lim - d
+                    if d >= comfort and (lim is None or d >= lim):
+                        continue
+                    fac = footswitches.pair_priority(self.fs_priority, p[3], q[3])
+                    crowd = footswitches.crowding(d, fac, comfort)
+                    raw["footswitch"] += crowd
+                    terms["footswitch"] += w["footswitch"] * crowd
+                    if lim is not None and d < lim - 1e-6:
+                        terms["footswitch"] += fac * (w["footswitch_min"] * (lim - d) + w["footswitch_pair"])
                         fs_close.append({"a": p[4], "b": q[4], "distance_mm": d})
                         issues.append((p[0], self.titles[q[0]], lim - d))
         # io: first input to the right edge, last output to the nearest of left / right / back

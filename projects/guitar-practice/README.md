@@ -4,13 +4,7 @@
 
 - **Instrument:** guitar
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
-
-<details><summary>Validation messages</summary>
-
-- WARN footswitches: no footswitch data for 7 of 7 pedals (octahive, jhs_pulp_n_peel_v4, jhs_hard_drive, duke_of_tone, e_lady, carbon_copy, ditto_looper) -> run: uv run scripts/pedal_editor.py --list-missing guitar-practice --only footswitches
-
-</details>
+- **Validation:** OK, 0 warning(s) (`no_unknown` on)
 
 ## Signal chain
 
@@ -151,19 +145,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 
 ## Footswitches
 
-Footswitch data: 0 of 7 pedals (catalog/footswitches.json).
-
-Missing (place the switches on the pedal image, then rebuild):
-
-```
-uv run scripts/pedal_editor.py octahive --footswitches
-uv run scripts/pedal_editor.py jhs_pulp_n_peel_v4 --footswitches
-uv run scripts/pedal_editor.py jhs_hard_drive --footswitches
-uv run scripts/pedal_editor.py duke_of_tone --footswitches
-uv run scripts/pedal_editor.py e_lady --footswitches
-uv run scripts/pedal_editor.py carbon_copy --footswitches
-uv run scripts/pedal_editor.py ditto_looper --footswitches
-```
+Footswitch data: 7 of 7 pedals (catalog/footswitches.json).
 
 *No playground_design.json: footswitch spacing is not checked.*
 

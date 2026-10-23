@@ -123,15 +123,21 @@ def sw(t="bypass", x=0.5, y=0.8):
     return {"id": t, "label": t, "x": x, "y": y, "type": t}
 
 
-def test_footswitch_hinge_weighs_the_pair_by_type_priority():
-    extra = {"footswitches": {"min_distance_mm": 100}}
-    m = model([ped("T A", 0), ped("T B", 180)], fs={"a": [sw()], "b": [sw()]}, project_extra=extra)
-    state = at((25.4, 50.8, 0), (105.4, 50.8, 0))                     # switches 80 mm apart
+def test_footswitch_crowding_weighs_the_pair_by_type_priority():
+    """Switches 80 mm apart, comfort 100: crowding = priority x 20^2 / 100 = 4, weighted x 2. An optional minimum
+    of 100 mm adds 20 / mm below it + 100 per pair (times the priority) and reports the pair."""
+    pair = {"a": [sw()], "b": [sw()]}
+    state = at((25.4, 50.8, 0), (105.4, 50.8, 0))
+    m = model([ped("T A", 0), ped("T B", 180)], fs=pair)
     _, det = m.score(state, detail=True)
-    assert det["terms"]["footswitch"] == pytest.approx((20.0, 1.0 * (20 * 20 + 100)))
-    m2 = model([ped("T A", 0), ped("T B", 180)], fs={"a": [sw("function")], "b": [sw("tap")]}, project_extra=extra)
-    assert m2.score(state, detail=True)[1]["terms"]["footswitch"][1] == pytest.approx(0.8 * 500)   # max(0.5, 0.8)
-    m3 = model([ped("T A", 0), ped("T B", 180)], project_extra=extra)  # no footswitch data: term 0
+    assert det["terms"]["footswitch"] == pytest.approx((4.0, 8.0)) and det["fs_close"] == []
+    assert m.score(at((25.4, 50.8, 0), (130.0, 50.8, 0)), detail=True)[1]["terms"]["footswitch"][0] < 4.0   # further: less
+    m1 = model([ped("T A", 0), ped("T B", 180)], fs=pair, project_extra={"footswitches": {"min_distance_mm": 100}})
+    _, det1 = m1.score(state, detail=True)
+    assert det1["terms"]["footswitch"] == pytest.approx((4.0, 8.0 + 1.0 * (20 * 20 + 100))) and len(det1["fs_close"]) == 1
+    m2 = model([ped("T A", 0), ped("T B", 180)], fs={"a": [sw("function")], "b": [sw("tap")]})
+    assert m2.score(state, detail=True)[1]["terms"]["footswitch"] == pytest.approx((3.2, 6.4))   # max(0.5, 0.8)
+    m3 = model([ped("T A", 0), ped("T B", 180)])                      # no footswitch data: term 0
     assert m3.score(state, detail=True)[1]["terms"]["footswitch"] == (0.0, 0.0) and not m3.fs_known
 
 
@@ -320,3 +326,13 @@ def test_isolated_need_and_unknown_max_ma_are_one_policy_for_build_and_assign():
     res = power.assign(ctx["chain"], ctx["pedals"], insts, project, pts, ports, run_v=ctx["run_v"])
     used = {(s["id"], o["port"]) for s in res["supplies"] for o in s["outputs"]}
     assert (insts[0]["id"], port["port"]) not in used
+
+
+def test_surrogate_crowding_equals_the_builds_on_the_gig_layout():
+    pedals, supplies = load_catalog()
+    fs_data = footswitches.read_file()["footswitches"]
+    ctx = build.validate(GIG, pedals, supplies, footswitch_data=fs_data)
+    m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
+                     supplies, jacks.read_file()["jacks"], fs_data, load_cable_types())
+    raw = m.score(m.owner, detail=True)[1]["terms"]["footswitch"][0]
+    assert ctx["footswitch_settings"]["crowding"] > 0 and raw == pytest.approx(ctx["footswitch_settings"]["crowding"])

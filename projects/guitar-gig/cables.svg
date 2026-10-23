@@ -225,7 +225,19 @@
 <circle cx="443.0" cy="331.2" r="3.5" fill="#e53935" stroke="#263238" stroke-width="0.8"/>
 <circle cx="472.3" cy="64.0" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
 <circle cx="434.2" cy="204.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="358.5" cy="150.2" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="318.9" cy="150.4" r="3.5" fill="#e53935" stroke="#263238" stroke-width="0.8"/>
 <circle cx="257.1" cy="206.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="296.6" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="228.5" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
 <circle cx="119.1" cy="67.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="259.1" cy="124.0" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="162.3" cy="190.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="201.4" cy="190.6" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8"/>
+<circle cx="116.8" cy="192.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="41.6" cy="192.5" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8"/>
+<circle cx="112.7" cy="328.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="182.0" cy="328.1" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8"/>
+<circle cx="56.2" cy="313.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
 <text x="12.3" y="367.7" font-size="7" fill="#455a64">dashed: routing area (board + 3.5 mm at back and sides, nothing in front of the lowest pedals); red: more than 2 stacked cables; grey: plug heads and their cable exits; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum</text>
 </svg>
