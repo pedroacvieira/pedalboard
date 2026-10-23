@@ -86,7 +86,8 @@ Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs
 - [ ] `power.svg` (top view: on-board legs solid, under-board legs dashed, supplies and crossings drawn) + table:
       cable, from -> to, min length, crossing used; README section next to the signal routing.
 - [ ] `power.assign` and the layout surrogate use the routed (or crossing-aware) length instead of Manhattan.
-- Open: power cables stacking with patch cables on top (same `max_stack` or their own)?
+- Owner (2026-10-23): power and patch cables are independent (they do not count against each other); the
+  stacking limit (`max_stack`) applies among power cables in the same place, as among patch cables.
 
 ### 3. `feat/supply-placement`: supplies on or under the board, board holes
 Goal: per supply instance `placement` on_board | under (today one global `jacks.supplies_layer`), and the board's
