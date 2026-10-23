@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import routing  # noqa: E402
+import svgdraw  # noqa: E402
 
 CFG = {**routing.DEFAULTS, "grid_mm": 6.0, "edge_margin_mm": 6.0}
 
@@ -474,6 +475,16 @@ def test_a_bundle_squeezed_between_two_pedals_stays_stacked():
     res = routing.lanes(routes, gap, {}, AREA, 6.0)
     assert res["S1"]["corners"] == routes["S1"][0] and res["S2"]["corners"] == routes["S2"][0]
     assert res["S1"]["stacked"] == ["S2"] and res["S2"]["stacked"] == ["S1"]
+    assert res["S1"]["stacked_runs"] == [routes["S1"][0]]
+
+
+def test_stacked_runs_cover_only_the_stacked_stretch():
+    # S1 runs on through the 6 mm gap (x 0..100) and then turns down into open space: only the gap is stacked
+    gap = [(0.0, 0.0, 100.0, 97.0), (0.0, 103.0, 100.0, 200.0)]
+    routes = {"S1": ([(0.0, 100.0), (100.0, 100.0), (150.0, 250.0)], set()),
+              "S2": ([(0.0, 100.0), (100.0, 100.0)], set())}
+    res = routing.lanes(routes, gap, {}, AREA, 6.0)
+    assert res["S1"]["stacked_runs"] == [[(0.0, 100.0), (100.0, 100.0)]] and res["S2"]["stacked_runs"] == [routes["S2"][0]]
 
 
 def test_half_spacing_is_tried_when_the_full_one_does_not_fit():
@@ -537,7 +548,7 @@ def test_route_project_lanes_only_fill_draw_path(monkeypatch):
         routing.route_project(ctx, {}, cable_types=TYPES)
         return {c["id"]: c for c in ctx["cable_list"] if c["kind"] == "signal"}
     laned = build()["S1"]
-    monkeypatch.setattr(routing, "lanes", lambda routes, *a, **k: {cid: {"corners": list(pts), "stacked": []}
+    monkeypatch.setattr(routing, "lanes", lambda routes, *a, **k: {cid: {"corners": list(pts), "stacked": [], "stacked_runs": []}
                                                                   for cid, (pts, _) in routes.items()})
     plain = build()["S1"]
     assert laned["min_mm"] == plain["min_mm"] and laned["path"] == plain["path"]
@@ -566,4 +577,4 @@ def test_route_project_moves_lanes_away_from_the_pedal_edge_they_hug():
     for s in (s1, s2):                                   # never closer to B than the centreline (capped at the radius)
         assert min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["draw_path"], s["draw_path"][1:])) >= \
             min(3.0, min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["path"], s["path"][1:]))) - 1e-6
-    assert "<polyline" in routing.svg(ctx, {}) and "stroke-dasharray=\"3 3\"" not in routing.svg(ctx, {})
+    assert 'class="cable"' in svgdraw.render(ctx, {}) and 'class="stacked"' not in svgdraw.render(ctx, {})

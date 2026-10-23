@@ -25,16 +25,14 @@ import argparse
 import difflib
 import os
 import sys
-import urllib.request
 from pathlib import Path
 
+import common
 import design
 import footswitches
 import jacks
-from common import CACHE, IN_MM, database, load_catalog, project_dirs
+from common import IN_MM, database, load_catalog, project_dirs
 
-IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
-IMAGE_DIR = CACHE / "images"
 FUNCTION_COLOURS = {"input": "#1565c0", "output": "#2e7d32", "power": "#ef6c00", "power_out": "#ef6c00", "other": "#6a1b9a"}
 FOOTSWITCH_COLOURS = {"bypass": "#c62828", "boost": "#ef6c00", "tap": "#1565c0", "function": "#00838f"}
 COMMAND = jacks.COMMAND
@@ -67,25 +65,11 @@ def database_entry(item, cid):
 
 
 def fetch_image(image_name, refresh=False):
-    """Download the PNG into .cache/images/ (larger version first); returns the cached path."""
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    path = IMAGE_DIR / image_name
-    if path.exists() and not refresh:
-        return path
-    errors = []
-    for url in IMAGE_URLS:
-        url = url.format(image_name)
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                data = r.read()
-            tmp = path.with_suffix(".part")
-            tmp.write_bytes(data)
-            os.replace(tmp, path)
-            return path
-        except Exception as e:  # noqa: BLE001  (report every failure, then give up)
-            errors.append(f"{url}: {e}")
-    sys.exit("Could not download the image:\n  " + "\n  ".join(errors) + "\nUse --image FILE to mark on a local PNG instead.")
+    """common.fetch_image, but exits with its message (the editor cannot go on without the image)."""
+    try:
+        return common.fetch_image(image_name, refresh)
+    except RuntimeError as e:
+        sys.exit(str(e))
 
 
 def list_rows(pedals, supplies, jacks_data, fs_data):

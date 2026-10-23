@@ -43,24 +43,27 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
   (`require_footswitches`, `strict_footswitches` among them).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
-  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`;
+  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `playground.json` (and the
+  git-ignored `routing.local.svg` with pedal images, `build.py --images`);
   `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
   loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
   saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
   `footswitches.py` (footswitch data, spacing check), `routing.py` (cable model, plug
-  heads, side choice, grid router, plug-head clearance), `power.py` (power policy checks shared with the build,
+  heads, side choice, grid router, smoothing, lanes, plug-head clearance), `svgdraw.py` (shared SVG drawing: board,
+  pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~213 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~247 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
 ```
 uv sync                                        # once: create .venv (Pillow, pytest)
-uv run scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
+uv run scripts/build.py [project...] [--images]   # validate + regenerate (fast, no network after the DB cache;
+                                               # --images: also routing.local.svg with pedal images, git-ignored)
 uv run pytest tests -q                     # all tests
 uv run scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
 uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
@@ -110,7 +113,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
   diameter is a corridor); area = board + `edge_margin_mm` (default one diameter, 6 mm) at back and sides,
-  nothing in front of the lowest pedals; at most `max_stack` (2) cables per cell; signal cables only.
+  nothing in front of the lowest pedals; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
+  cables across one plug (head + barrel, signal and power plugs; its own cable excluded); signal cables only.
+  The grid path is then smoothed (`routing.smooth`: string pulling to any-angle segments, never closer to a pedal
+  than the grid path, no new plug crossings); `min_mm` and `path` follow it. Stacking is counted on the grid paths.
+  `routing.lanes` (drawing only, `draw_path` / `stacked_with` / `stacked_runs`): cables sharing a corridor are drawn
+  side by side one width apart (the lane set may shift off-centre), else marked stacked; lanes never change lengths.
 - Cable lengths are a **minimum to buy**, not a product suggestion (owner uses DIY kits / any brand): measured from a
   point on each jack's axis half the clearance depth in front of the jack (half the plug head depth, else half the
   fixed box), along the plug's cable exit and the routed path; no slack, no rounding (`min_mm`). Power cables: a
@@ -126,7 +134,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   build reports the sum (README: crowding, 8 closest pairs with types); the layout search minimises it (weight
   `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
   errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
-  aggregated warning per project. `cables.svg` draws the switches (colour per type) and too-close lines.
+  aggregated warning per project. `routing.svg` draws the switches (colour per type) and too-close lines.
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
@@ -143,6 +151,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
   `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
   project's catalog entries incl. jacks and footswitches) or the chain changed.
+- Pictures (`svgdraw.render`): sized in mm (prints 1:1 from a browser); committed SVGs have outlines only, pedal
+  images only in git-ignored `routing.local.svg` (data URIs from `.cache/images`, `common.fetch_image`).
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner

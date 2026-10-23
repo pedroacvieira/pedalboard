@@ -462,7 +462,7 @@ def lanes(routes, pedal_rects, plug_rects, area, width):
     """Draw cables that run along the same corridor side by side, `width` apart (drawing geometry only: lengths
     never change).  routes: {cable id: (corners, own plug keys)}, the corners from exit to exit; area = (x0, y0,
     x1, y1) of the routing area.  Returns {cable id: {"corners": the corners with the lane offsets, "stacked":
-    sorted ids of the cables it is drawn on top of}}.
+    sorted ids of the cables it is drawn on top of, "stacked_runs": the stacked stretches as polylines}}.
 
     Bundles (`lane_bundles`): each cable gets one lane per bundle, ordered by the side it comes from and goes to
     (perpendicular position of the corner before and after the bundle, summed; ties by id), so lanes do not cross.
@@ -473,6 +473,7 @@ def lanes(routes, pedal_rects, plug_rects, area, width):
     radius, eps = width / 2, 1e-6
     shifts = {cid: [(0.0, 0.0)] * (len(pts) - 1) for cid, (pts, _) in routes.items()}
     stacked = {cid: set() for cid in routes}
+    stacked_segs = {cid: set() for cid in routes}   # segment indices of the cable in a stacked bundle
     touch = lambda p, q, rs: any(seg_rect_distance(p, q, r) <= radius for r in rs)
 
     def valid(cid, trial):
@@ -524,8 +525,21 @@ def lanes(routes, pedal_rects, plug_rects, area, width):
         else:
             for cid in order:
                 stacked[cid] |= set(order) - {cid}
+                stacked_segs[cid] |= set(by_cable[cid])
+
+    def runs(pts, segs):
+        """consecutive stacked segments joined into polylines (on the centreline: a stacked bundle is not shifted)"""
+        out = []
+        for j in sorted(segs):
+            if out and out[-1][1] == j:
+                out[-1] = (out[-1][0], j + 1)
+            else:
+                out.append((j, j + 1))
+        return [pts[a:b + 1] for a, b in out]
+
     return {cid: {"corners": offset_polyline(pts, shifts[cid])[0] if any(s != (0.0, 0.0) for s in shifts[cid]) else list(pts),
-                  "stacked": sorted(stacked[cid], key=natural_key)} for cid, (pts, _) in routes.items()}
+                  "stacked": sorted(stacked[cid], key=natural_key), "stacked_runs": runs(pts, stacked_segs[cid])}
+            for cid, (pts, _) in routes.items()}
 
 
 # --- the project step ---------------------------------------------------------------------------
@@ -796,6 +810,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             lead_a, lead_b = c["_leads"]
             c["draw_path"] = lead_a + laned[c["id"]]["corners"] + lead_b
             c["stacked_with"] = laned[c["id"]]["stacked"]
+            c["stacked_runs"] = laned[c["id"]]["stacked_runs"]
 
     # clearance of every modelled plug, on the side the router chose
     checked = set()   # "<id>.<jack id>" checked with a plug model; the others keep jacks.check's fixed box
@@ -878,73 +893,3 @@ def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, c
             clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                               f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
     return checked
-
-
-# --- picture ------------------------------------------------------------------------------------
-PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#9a6324",
-           "#008080", "#800000", "#808000", "#000075", "#e6beff", "#aaffc3", "#ffd8b1", "#808080"]
-
-
-FOOTSWITCH_STYLE = {"bypass": ("#263238", "#263238"), "boost": ("#e53935", "#263238"), "tap": ("#1e88e5", "#263238"),
-                    "function": ("#ffffff", "#263238")}   # footswitch dots in cables.svg: (fill, stroke) per type
-
-
-def svg(ctx, names, overlay=None, legend=None):
-    """An SVG of the board, the routing area, the pedals and the routed signal cables. `overlay`: extra SVG
-    elements drawn on top (e.g. a layout proposal's old positions), `legend`: an extra legend sentence."""
-    r = ctx.get("routing") or {}
-    grid, layout = r.get("grid"), ctx.get("layout")
-    if not grid or not layout:
-        return None
-    board = design.footprint(layout["board"])
-    pad = 20
-    x0, y0 = grid.x0 - pad, grid.y0 - pad
-    w, h = grid.nx * grid.cell + 2 * pad, (board[3] - grid.y0) + 2 * pad + 20
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0:.1f} {y0:.1f} {w:.1f} {h:.1f}" width="{w * 1.6:.0f}" '
-           f'font-family="sans-serif">',
-           f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#ffffff"/>',
-           f'<rect x="{board[0]:.1f}" y="{board[1]:.1f}" width="{board[2] - board[0]:.1f}" height="{board[3] - board[1]:.1f}" '
-           f'fill="#eceff1" stroke="#90a4ae" stroke-width="1"/>',
-           f'<rect x="{grid.x0:.1f}" y="{grid.y0:.1f}" width="{grid.nx * grid.cell:.1f}" height="{r["front_y"] - grid.y0:.1f}" '
-           f'fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8"/>']
-    for o in layout["obstacles"]:
-        f = design.footprint(o)
-        out.append(f'<rect x="{f[0]:.1f}" y="{f[1]:.1f}" width="{f[2] - f[0]:.1f}" height="{f[3] - f[1]:.1f}" fill="#cfd8dc" '
-                   f'stroke="#455a64" stroke-width="0.8" rx="2"/>')
-    for cid, it in layout["placed"].items():
-        f = design.footprint(it)
-        out.append(f'<text x="{(f[0] + f[2]) / 2:.1f}" y="{(f[1] + f[3]) / 2:.1f}" font-size="7" text-anchor="middle" fill="#263238">'
-                   f'{names.get(cid, cid)[:18]}</text>')
-    for c in r.get("overflow") or []:
-        x, y, x2, y2 = grid.rect(c)
-        out.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{x2 - x:.1f}" height="{y2 - y:.1f}" fill="#ff1744" opacity="0.35"/>')
-    for h in r.get("heads") or []:
-        for _, (hx0, hy0, hx1, hy1) in h["rects"]:
-            out.append(f'<rect x="{hx0:.1f}" y="{hy0:.1f}" width="{hx1 - hx0:.1f}" height="{hy1 - hy0:.1f}" fill="#90a4ae" '
-                       f'opacity="0.45" stroke="#37474f" stroke-width="0.3"/>')
-    sig = [c for c in ctx.get("cable_list", []) if c["kind"] == "signal" and c.get("path")]
-    for n, c in enumerate(sig):
-        path = c.get("draw_path") or c["path"]
-        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in path)
-        col = PALETTE[n % len(PALETTE)]
-        out.append(f'<polyline points="{pts}" fill="none" stroke="{col}" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>')
-        if c.get("stacked_with"):
-            out.append(f'<polyline points="{pts}" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" '
-                       f'stroke-linejoin="round"/>')
-        mx, my = path[len(path) // 2]
-        out.append(f'<text x="{mx:.1f}" y="{my - 2:.1f}" font-size="6" fill="{col}" font-weight="bold">{c["id"]}</text>')
-    for pr in (x for x in ctx.get("footswitch_pairs") or [] if x.get("too_close")):
-        (ax, ay), (bx, by) = pr["points"]
-        out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" stroke="#d50000" stroke-width="1.2" '
-                   f'stroke-dasharray="3 2"/>')
-    for fp in ctx.get("footswitch_points") or []:
-        fill, stroke = FOOTSWITCH_STYLE.get(fp["type"], ("#ffffff", "#263238"))
-        out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>')
-    out += list(overlay or [])
-    out.append(f'<text x="{grid.x0:.1f}" y="{board[3] + 14:.1f}" font-size="7" fill="#455a64">dashed: routing area '
-               f'(board + {r["settings"]["edge_margin_mm"]:g} mm at back and sides, nothing in front of the lowest pedals); '
-               f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits; white dashes: cables stacked on top of each other'
-               + ('; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum'
-                  if ctx.get("footswitch_points") else '') + (f'; {legend}' if legend else '') + '</text>')
-    out.append("</svg>")
-    return "\n".join(out) + "\n"

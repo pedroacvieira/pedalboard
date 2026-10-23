@@ -1,5 +1,6 @@
 """Shared paths and loaders for the pedalboard scripts."""
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -12,6 +13,8 @@ JACKS_FILE = CATALOG / "jacks.json"
 FOOTSWITCHES_FILE = CATALOG / "footswitches.json"
 CABLES_FILE = CATALOG / "cables.json"
 SITE = "https://pedalplayground.com/public/data/"
+IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
+IMAGE_DIR = CACHE / "images"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
 
@@ -119,3 +122,26 @@ def dumps_per_line(doc, key, mapping, key_order):
         lines.append("    ]" + comma)
     lines += ["  }", "}"]
     return "\n".join(lines) + "\n"
+
+
+def fetch_image(image_name, refresh=False):
+    """Download a Pedal Playground pedal PNG into .cache/images/ (larger version first); returns the cached path.
+    Raises RuntimeError with every failure when none of the URLs works."""
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    path = IMAGE_DIR / image_name
+    if path.exists() and not refresh:
+        return path
+    errors = []
+    for url in IMAGE_URLS:
+        url = url.format(image_name)
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = r.read()
+            tmp = path.with_suffix(".part")
+            tmp.write_bytes(data)
+            os.replace(tmp, path)
+            return path
+        except Exception as e:  # noqa: BLE001  (report every failure, then give up)
+            errors.append(f"{url}: {e}")
+    raise RuntimeError("Could not download the image:\n  " + "\n  ".join(errors) + "\nUse --image FILE to mark on a local PNG instead.")

@@ -64,7 +64,12 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
 - [x] Phase 2 (handover `docs/handovers/routing-view-2.md`, 2026-10-23): parallel lanes (`routing.lanes`, drawing
       only: `draw_path`, `stacked_with`); the lane set may shift off-centre (cables hug pedal edges). Gig: S6/S8 in
       lanes; S11/S13 and S14/S15 stacked (gaps ~5.5 mm between pedals, two 3.5 mm ribbons need 7).
-- [ ] Phase 3: `svgdraw.py` + `routing.svg` (+ `routing.local.svg`). Phase 4: wiring in.
+- [x] Phases 3-4 (handover `docs/handovers/routing-view-3.md`, 2026-10-23): `scripts/svgdraw.py`, `routing.svg`
+      (mm, 1:1 print, jacks, plug heads, legend table), `routing.local.svg` (`--images`, git-ignored), README and
+      proposals use it; `fetch_image` in common.py; stacked dashes only on the stacked stretches.
+- [ ] Owner: look at `projects/guitar-gig/routing.svg` (and `--images`); label placement is basic (some S# labels on
+      short segments or overlapping in lanes).
+- [ ] Code review of the branch, then merge.
 - [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.

@@ -33,6 +33,7 @@ import jacks
 import layout
 import power
 import routing
+import svgdraw
 from common import load_cable_types, load_catalog, load_json, project_dirs, proposal_inputs_sha1
 
 META = "meta.json"
@@ -264,7 +265,7 @@ def main(argv=None):
         moved_ids = {model.placed[mv["pedal"]]["id"] for mv in f["moved"]}
         canvas = design.write_canvas(design_doc["canvas"], [i for i in items_new if i["id"] in moved_ids])
         (out / pm["file"]).write_text(json.dumps({**design_doc, "canvas": canvas}))
-        picture = routing.svg(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),
+        picture = svgdraw.render(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),
                               legend="orange: moved pedals (dashed grey: the owner's position, arrow: the move)")
         if picture:
             (out / pm["svg"]).write_text(picture)
