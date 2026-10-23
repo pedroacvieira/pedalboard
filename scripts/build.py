@@ -15,7 +15,8 @@ import jacks
 import power
 import routing
 from power import volt_range
-from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
+from common import (IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs,
+                    proposal_inputs_sha1)
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
@@ -39,12 +40,13 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
     candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
-    project.json (e.g. with a proposal's power wiring)."""
+    project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
+    signal and power jacks falls back to the fixed boxes): for callers that only need the data findings."""
     project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
@@ -252,7 +254,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
                 powered[pid] = oid
                 run_v[pid] = out["voltage_v"]
             errs, warns, row["load"] = power.output_findings(oid, row["pedals"], out["voltage_v"], limit, row["polarity"],
-                                                             pedals, sensitive, pol_strength)
+                                                             pedals, sensitive, pol_strength, odef.get("isolated"))
             errors += errs
             warnings += warns
         ctx["supplies"].append({"inst": inst, "sup": sup, "rows": rows})
@@ -272,7 +274,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
                 cable_types=cable_types, defer=True, items=items)
-    routing.route_project(ctx, cat_pedals, cable_types=cable_types)
+    if route:
+        routing.route_project(ctx, cat_pedals, cable_types=cable_types)
+    else:
+        jacks.report_fixed_box(ctx)
     footswitches.check(ctx, cat_pedals, footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
     return ctx
 
@@ -537,7 +542,6 @@ def footswitch_section(ctx, cat_pedals):
 def proposals_section(ctx, cat_pedals):
     """README section from projects/<name>/proposals/meta.json (written by scripts/propose_layout.py; the search
     never runs here): before/after figures, moved pedals, each proposal's power wiring, stale detection."""
-    import hashlib
     pdir = ctx["dir"]
     meta_path = pdir / "proposals" / "meta.json"
     design_path = pdir / "playground_design.json"
@@ -548,7 +552,7 @@ def proposals_section(ctx, cat_pedals):
         return md + [f"None yet: `uv run scripts/propose_layout.py {ctx['key']}` searches for better pedal positions "
                      "(it never changes playground_design.json).", ""]
     meta = load_json(meta_path)
-    stale = (meta.get("design_sha1") != hashlib.sha1(design_path.read_bytes()).hexdigest() or meta.get("chain") != ctx["chain"])
+    stale = meta.get("inputs_sha1") != proposal_inputs_sha1(pdir) or meta.get("chain") != ctx["chain"]
     md += [f"Made by `{meta['command']}` (max_change `{meta['max_change']}`, max move "
            f"{'none' if meta.get('max_move_mm') is None else format(meta['max_move_mm'], 'g') + ' mm'}, seed {meta['seed']}, "
            f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is a Pedal "
@@ -556,7 +560,8 @@ def proposals_section(ctx, cat_pedals):
            "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
-        md += ["**Stale:** playground_design.json or the signal chain changed since these proposals were made; rerun the command above.", ""]
+        md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, "
+               "cables, specs) changed since these proposals were made; rerun the command above.", ""]
     props = meta.get("proposals") or []
     if not props:
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]

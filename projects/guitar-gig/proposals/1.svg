@@ -215,6 +215,18 @@
 <text x="137.3" y="147.5" font-size="6" fill="#ffd8b1" font-weight="bold">S15</text>
 <polyline points="118.6,218.1 118.6,214.9 96.1,214.9 95.3,215.5 95.3,213.5 93.3,213.5 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke="#808080" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="95.3" y="211.5" font-size="6" fill="#808080" font-weight="bold">S16</text>
+<circle cx="586.4" cy="308.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="491.5" cy="329.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="528.3" cy="329.1" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8"/>
+<circle cx="591.8" cy="190.8" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="590.2" cy="66.2" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="526.9" cy="195.4" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="359.9" cy="331.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="443.0" cy="331.2" r="3.5" fill="#e53935" stroke="#263238" stroke-width="0.8"/>
+<circle cx="472.3" cy="64.0" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="439.8" cy="201.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="257.1" cy="206.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
+<circle cx="119.1" cy="67.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
 <defs><marker id="arr" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#e65100"/></marker></defs>
 <rect x="383.8" y="97.1" width="104.1" height="119.4" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
 <rect x="389.5" y="93.7" width="104.1" height="119.4" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
@@ -236,5 +248,5 @@
 <rect x="15.8" y="110.6" width="119.4" height="97.0" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
 <line x1="79.4" y1="158.6" x2="75.5" y2="159.1" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
 <text x="75.5" y="168.1" font-size="6" text-anchor="middle" fill="#e65100">4 mm</text>
-<text x="12.3" y="367.7" font-size="7" fill="#455a64">dashed: routing area (board + 3.5 mm at back and sides, nothing in front of the lowest pedals); red: more than 2 stacked cables; grey: plug heads and their cable exits; orange: moved pedals (dashed grey: the owner's position, arrow: the move)</text>
+<text x="12.3" y="367.7" font-size="7" fill="#455a64">dashed: routing area (board + 3.5 mm at back and sides, nothing in front of the lowest pedals); red: more than 2 stacked cables; grey: plug heads and their cable exits; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum; orange: moved pedals (dashed grey: the owner's position, arrow: the move)</text>
 </svg>

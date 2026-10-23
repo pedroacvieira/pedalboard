@@ -138,3 +138,10 @@ def test_switch_drawing_is_a_10_mm_cap_in_an_18_mm_ring():
     assert pe.switch_diameters_mm({"type": "bypass"}) == (10.0, 18.0)
     assert pe.switch_diameters_mm({"type": "tap", "diameter_mm": None}) == (10.0, 18.0)
     assert pe.switch_diameters_mm({"type": "tap", "diameter_mm": 12}) == (10.0, 18.0)
+
+
+def test_list_missing_does_not_run_the_router(monkeypatch):
+    import routing
+    monkeypatch.setattr(routing, "route_project", lambda *a, **k: (_ for _ in ()).throw(AssertionError("routed")))
+    pedals, supplies = load_catalog()
+    assert pe.missing_lines(["guitar-gig"], pedals, supplies, only="footswitches")

@@ -132,3 +132,17 @@ def test_unrotating_removes_the_class_and_fractional_px_are_kept():
 def test_write_canvas_rejects_unknown_ids():
     with pytest.raises(KeyError):
         design.write_canvas(CANVAS, [{**design.parse_canvas(CANVAS)[1], "id": "item-99"}])
+
+
+def test_write_canvas_ignores_longer_names_containing_the_keys():
+    """data-id= / data-class= and margin-left: / padding-top: must not be taken for id, class, left, top."""
+    canvas = CANVAS.replace('<div id="item-2" class="item pedal undefined"',
+                            '<div data-id="item-3" data-class="x" id="item-2" class="item pedal undefined"')
+    canvas = canvas.replace("style=\"touch-action: none; left: 45px; top: 90px;\">\t",
+                            "style=\"margin-left: 0px; padding-top: 1px; left: 45px; top: 90px;\">\t")
+    items = design.parse_canvas(canvas)
+    a = design.move(items[1], 100.0, 200.0)
+    out = design.write_canvas(canvas, [a])
+    tag = out[out.index('<div data-id="item-3"'):].split(">", 1)[0]
+    assert "margin-left: 0px; padding-top: 1px; left: 132px; top: 264px;" in tag and 'data-class="x"' in tag
+    assert out.count("left: 200px; top: 50px;") == 1                        # item-3 itself untouched

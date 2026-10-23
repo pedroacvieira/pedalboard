@@ -270,3 +270,53 @@ def test_detour_around_touching_pedals_goes_around_both():
     want = 2 * (49 * 120 + 110 * 2) / (2 ** 2 + 120 ** 2) ** 0.5
     assert layout.detour((49.0, -10.0), (51.0, 110.0), [left, right]) == pytest.approx(want) and want == pytest.approx(101.65, abs=0.01)
     assert layout.detour((49.0, -10.0), (51.0, 110.0), [left]) < 2.0     # alone: a small step to the right clears it
+
+
+def test_first_input_and_last_output_get_the_fixed_box_as_in_jacks_check():
+    """The guitar input of the first pedal has no patch cable: the fixed 6.3 mm audio box, as jacks.check."""
+    pedals = {**PEDALS, "z": {"brand": "T", "name": "Z", "playground_title": "T Z", "tags": []}}
+    proj = {"signal_chain": ["a", "b"], "cables": {"type": "t"}, "jacks": {}}
+    items = design.parse_canvas(canvas(BOARD, ped("T Z", 0), ped("T A", 92), ped("T B", 300)))   # 2 px = 1.13 mm gap
+    m = layout.Model(proj, items, pedals, {}, JACKS, {}, TYPES)
+    _, det = m.score(m.owner, margin=0, detail=True)
+    hits = {(b["jack"], b["obstacle"], b["part"]): b["depth_mm"] for b in det["blocked"]}
+    assert hits[("a.in", "T Z", "box")] == pytest.approx(6.3 - 2 * 25.4 / 45, abs=1e-3)
+    assert ("b.out", "T Z", "box") not in hits
+
+
+def test_power_plug_side_override_follows_its_pedal():
+    pedals, supplies = load_catalog()
+    project = load_json(GIG / "project.json")
+    ids = power.cable_ids(project["power"]["supplies"])
+    pid = next(p for p, c in ids.items() if c == "P1")
+    project["cables"].setdefault("overrides", {})["P1"] = {"exit_b": "right"}
+    m = layout.Model(project, design.parse_design(GIG / "playground_design.json"), pedals, supplies,
+                     jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types())
+    n = m.index[pid]
+    assert m.p_exit[pid] == "right" and {o["side"] for o in m._geom[(n, m.owner[n][2])]["power"]["opts"]} == {"right"}
+
+
+def test_power_cable_ids_and_override_remap():
+    old = [{"outputs": [{"pedals": ["x", "y"]}, {"pedals": []}, {"pedals": ["z"]}]}]
+    new = [{"outputs": [{"pedals": ["z"]}, {"pedals": ["y", "x"]}]}]
+    assert power.cable_ids(old) == {"x": "P1", "y": "P2", "z": "P3"}
+    over = {"P1": {"exit_b": "left"}, "P3": {"exit_b": "right"}, "S2": {"exit_a": "left"}}
+    assert power.remap_overrides(over, old, new) == {"P3": {"exit_b": "left"}, "P1": {"exit_b": "right"},
+                                                     "S2": {"exit_a": "left"}}
+
+
+def test_isolated_need_and_unknown_max_ma_are_one_policy_for_build_and_assign():
+    pc = {"current_ma": 50, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": True, "polarity": "center_negative"}
+    pedals = {"i": {"digital": False, "clocked_noise": False, "tags": [], "power_consumption": pc}}
+    errs, _, _ = power.output_findings("p_F1", ["i"], 9, 500, "center_negative", pedals, set(), "required", isolated=False)
+    assert errs == ["p_F1: i needs an isolated output but this port is not isolated"]
+    assert power.output_findings("p_F1", ["i"], 9, 500, "center_negative", pedals, set(), "required", isolated=True)[0] == []
+    # assign never uses a voltage option whose max_ma is unknown (the build reports that output as an error)
+    _, _, ctx, project, insts, pts, ports = gig_assignment()
+    insts = copy.deepcopy(insts)
+    port = insts[0]["sup"]["outputs"][0]
+    for op in port["options"]:
+        op["max_ma"] = None
+    res = power.assign(ctx["chain"], ctx["pedals"], insts, project, pts, ports, run_v=ctx["run_v"])
+    used = {(s["id"], o["port"]) for s in res["supplies"] for o in s["outputs"]}
+    assert (insts[0]["id"], port["port"]) not in used

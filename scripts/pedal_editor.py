@@ -109,7 +109,7 @@ def missing_lines(names, pedals, supplies, only=None, jacks_data=None, fs_data=N
     kinds = [only] if only else list(MODES)
     wanted, in_project = {k: {} for k in kinds}, set()
     for pdir in project_dirs(names or None):
-        ctx = build.validate(pdir, pedals, supplies, jacks_data, footswitch_data=fs_data)
+        ctx = build.validate(pdir, pedals, supplies, jacks_data, footswitch_data=fs_data, route=False)
         in_project.update(ctx["chain"])
         for kind in kinds:
             for cid, cmd in ctx["jack_fixes" if kind == "jacks" else "footswitch_fixes"]:

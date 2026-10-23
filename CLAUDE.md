@@ -127,12 +127,16 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   crossed pedals), power 0.1/mm, footswitch spacing by type priority, first input to the right edge, last output
   to the nearest left/right/back edge, small right-to-left flow, accessibility (tuner back; boost/eq/master pedals
   front 0.3; drives and tap switches front 0.1; a boost switch front 0.05; modulation avoids the front unless tap),
-  rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). `max_change` fix (default:
-  max 40 mm, no swaps/rotations) / rearrange / free. Finalists get their own power wiring (`power.assign`) and are
-  checked with `build.validate(items=, project=)`; a proposal must not be worse than the owner's layout on errors,
-  blocked plugs, routing problems and footswitch pairs. Proposals never touch `playground_design.json` or the
-  owner's power wiring in project.json; the README section is rendered from `proposals/meta.json` (stale when the
-  design file or chain changed).
+  rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). The surrogate checks the
+  same jacks as the build (first input / last output: fixed audio box; power plug side overrides). `max_change` fix
+  (default: max 40 mm, no swaps/rotations) / rearrange / free. Finalists AND the owner's layout get their own power
+  wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` follow their
+  pedal, `power.remap_overrides`) and are checked with `build.validate(items=, project=)`; a proposal must not be
+  worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs. Proposals never
+  touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
+  `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
+  project's catalog entries incl. jacks and footswitches) or the chain changed.
+- `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.

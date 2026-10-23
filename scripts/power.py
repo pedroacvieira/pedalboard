@@ -29,9 +29,10 @@ def policy_settings(project):
             policy.get("strength", "required"), policy.get("group_18v", True))
 
 
-def output_findings(oid, row_pedals, voltage, limit, out_polarity, pedals, sensitive, pol_strength):
+def output_findings(oid, row_pedals, voltage, limit, out_polarity, pedals, sensitive, pol_strength, isolated=None):
     """(errors, warnings, load mA) of one supply output feeding `row_pedals` at `voltage` (limit in mA, None if the
-    port has no such voltage: only the per-pedal checks run). `pedals`: chain pedals by id (others are ignored)."""
+    port has no such voltage: only the per-pedal checks run). `pedals`: chain pedals by id (others are ignored).
+    `isolated`: the port's catalog flag (False: a pedal that needs an isolated output may not use it)."""
     errors, warnings, load = [], [], 0
     for pid in row_pedals:
         if pid not in pedals:
@@ -48,6 +49,8 @@ def output_findings(oid, row_pedals, voltage, limit, out_polarity, pedals, sensi
                             f"use a polarity-reversing cable")
         if pc.get("needs_isolated_output") and len(row_pedals) > 1:
             errors.append(f"{oid}: {pid} needs an isolated output but shares it")
+        elif pc.get("needs_isolated_output") and isolated is False:
+            errors.append(f"{oid}: {pid} needs an isolated output but this port is not isolated")
         if pc.get("current_ma") is None:
             warnings.append(f"{oid}: {pid} has unknown current_ma (left out of totals)")
         else:
@@ -86,6 +89,29 @@ def merge_18v_findings(rows, pedals):
             if sum(pedals[x]["power_consumption"]["current_ma"] or 0 for x in both if x in pedals) <= min(a["limit"], b["limit"]) \
                     and not any(pedals[x]["power_consumption"].get("needs_isolated_output") for x in both if x in pedals):
                 out.append(f"power: 18V outputs {a['id']} and {b['id']} could be merged into one")
+    return out
+
+
+def cable_ids(supplies):
+    """{pedal id: power cable id} of a project-style wiring (`power.supplies`): P1, P2... in the order jacks.check
+    lists the power cables (supply, output, daisy chain), so `cables.overrides.<P#>` can follow its pedal."""
+    ids, n = {}, 0
+    for s in supplies:
+        for o in s.get("outputs", []):
+            for pid in o.get("pedals", []):
+                n += 1
+                ids.setdefault(pid, f"P{n}")
+    return ids
+
+
+def remap_overrides(overrides, old_supplies, new_supplies):
+    """`cables.overrides` with the power cable entries renumbered from one wiring to another (by pedal)."""
+    old, new = cable_ids(old_supplies), cable_ids(new_supplies)
+    by_old = {cid: pid for pid, cid in old.items()}
+    out = {k: v for k, v in overrides.items() if not (k.startswith("P") and k in by_old)}
+    for k, v in overrides.items():
+        if k in by_old and by_old[k] in new:
+            out[new[by_old[k]]] = v
     return out
 
 
@@ -139,7 +165,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     chain = [p for p in chain if p in pedals]
     run_v = dict(run_v or {})
     volts = {p: run_v.get(p) or default_voltage(pedals[p]["power_consumption"]) for p in chain}
-    slots = []   # (inst id, port, {voltage: (limit, polarity)}, isolated)
+    slots = []   # (inst id, port, {voltage: max_ma}, polarity, isolated)
     for inst in insts:
         sup = inst["sup"]
         for o in sup.get("outputs") or []:
@@ -158,13 +184,13 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
             else:
                 vs = {volts[p] for p in members}
                 v = next(iter(vs))
-                if len(vs) > 1 or v not in opts:
+                if len(vs) > 1 or opts.get(v) is None:   # as the build: an option without max_ma is not available
                     cache[key] = (False, [], 0.0, [])
                 else:
-                    errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive, strength)
-                    iso_bad = isolated is False and any(pedals[p]["power_consumption"].get("needs_isolated_output") for p in members)
+                    errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive,
+                                                     strength, isolated)
                     length, order = chain_order(port_points.get((inst, port)), members, points)
-                    cache[key] = (not errs and not iso_bad, warns, length, order)
+                    cache[key] = (not errs, warns, length, order)
         return cache[key]
 
     def total(state):

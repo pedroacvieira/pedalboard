@@ -196,6 +196,10 @@ class Model:
         ptype_id = (project.get("cables") or {}).get("power_type")
         self.ptype = cable_types.get(ptype_id) if ptype_id else None
         self.p_depth = float(self.ptype["plug"]["head_depth_mm"]) if self.ptype else self.p_out
+        import power   # a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal (owner's wiring)
+        over = self.rcfg["overrides"]
+        self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
+                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", [])).items()}
         self.owner = [self._state_of(self.placed[p]) for p in self.ids]
         self.names = {p: cat_pedals[p].get("name", p) for p in self.ids}
         self.titles = [self.placed[p]["title"] for p in self.ids]
@@ -252,7 +256,14 @@ class Model:
             jk = default_jack(have, fn)
             if jk:
                 g["in" if fn == "input" else "out"] = design.jack_point(tmp, jk["x"], jk["y"])
-            if not jk or hop < 1 or hop >= len(chain):
+            if not jk:
+                continue
+            if hop < 1 or hop >= len(chain):   # guitar input / amp output: the fixed audio box, as jacks.check
+                pt = design.jack_point(tmp, jk["x"], jk["y"])
+                facing = design.jack_facing(tmp, jk["facing"])
+                g["extra"].append({"jack": f"{pid}.{jk['id']}", "facing": facing, "opts": [self._opt(
+                    {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
+                     "exit": pt, "measure_mm": 0.0})]})
                 continue
             cid = f"S{hop}"
             tid = routing.cable_type_id(self.project, cid)
@@ -269,7 +280,8 @@ class Model:
             pt = design.jack_point(tmp, jk["x"], jk["y"])
             facing = design.jack_facing(tmp, jk["facing"])
             if self.ptype:
-                _, opts = routing.end_options(tmp, jk, self.ptype, None, {"exit_run_mm": float(self.ptype["diameter_mm"])}, self.outward)
+                _, opts = routing.end_options(tmp, jk, self.ptype, self.p_exit.get(pid),
+                                              {"exit_run_mm": float(self.ptype["diameter_mm"])}, self.outward)
             else:
                 opts = [{"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))],
                          "exit": pt, "measure_mm": 0.0}]
@@ -277,7 +289,7 @@ class Model:
                           "measure": design.stub(pt, facing, self.p_depth / 2)}
         for jid in self.extra_used.get(pid, []):
             jk = _jack_by_id(have, jid)
-            if jk:
+            if jk and f"{pid}.{jid}" not in {e["jack"] for e in g["extra"]}:   # each jack once, as jacks.check
                 pt = design.jack_point(tmp, jk["x"], jk["y"])
                 facing = design.jack_facing(tmp, jk["facing"])
                 g["extra"].append({"jack": f"{pid}.{jid}", "facing": facing, "opts": [self._opt(
@@ -607,7 +619,6 @@ def search(model, level="fix", seed=1, iterations=None, restarts=None, max_move_
     restart (seeds seed, seed+1, ...). Deterministic for a given seed and iteration budget (`time_limit_s` is only
     a safety cap). Returns [(score, state)] of the distinct, snapped, feasible results, best first, including the
     owner's layout itself (score of the start) so callers can compare."""
-    import time
     lv = level_settings(model, level, max_move_mm)
     model.max_move = lv["max_move_mm"]
     try:

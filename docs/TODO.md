@@ -14,17 +14,19 @@ done, and keep `CLAUDE.md` current when a decision changes.
 - [ ] Owner: look at the guitar-gig proposals (`projects/guitar-gig/proposals/1.json`, Load from File) and say whether
       the moves are acceptable; tune `layout.weights` / `max_move_mm` if not.
 - [ ] Owner: try `--max-change rearrange` (bigger moves, swaps, rotations) once and judge the result.
-- [ ] Rerun the proposals once all footswitches are placed (9 of 21 so far; `proposals/meta.json` still records the
-      old `python3` command until then).
+- [ ] Rerun the proposals once all footswitches are placed (10 pedals so far).
 - [ ] Surrogate vs router: the signal estimate (octile + detour around crossed pedals) still misjudges some routes
       (finalists are checked with the router, so proposals are safe, but the search may miss better ones).
 - [x] `feat/cable-routing` merged into `main` and pushed.
 - [x] uv project (2026-10-23): `pyproject.toml`, `uv.lock`, `.venv`; all commands are `uv run ...`.
+- [x] Code review of the branch (2026-10-23): 9 findings fixed (fair power comparison, first/last jack and power
+      side in the surrogate, one power policy, stale detection by input hash, write_canvas patterns, faster
+      --list-missing, small cleanups); gig proposals regenerated.
 - [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
       `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
 
 ## Owner input needed
-- [ ] Place the footswitches of the remaining 12 gig pedals (9 done 2026-10-23; `uv run scripts/pedal_editor.py --list-missing guitar-gig --only
+- [ ] Place the footswitches of the remaining gig pedals (10 done 2026-10-23; `uv run scripts/pedal_editor.py --list-missing guitar-gig --only
       footswitches`), picking the type (bypass / tap / boost / function) per switch; then read the auto minimum in the gig README and calibrate
       `footswitches.min_distance_mm` if wanted.
 - [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length

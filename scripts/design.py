@@ -237,7 +237,7 @@ def _px(v):
 
 
 _ITEM_TAG = re.compile(r"<div\b[^>]*>")
-_ATTR = r'(\b{}\s*=\s*")([^"]*)(")'
+_ATTR = r'((?<![\w-]){}\s*=\s*")([^"]*)(")'   # not data-id=, x-class=...
 
 
 def write_canvas(canvas_html, items):
@@ -266,7 +266,7 @@ def write_canvas(canvas_html, items):
             st = x.group(2)
             for key, val in (("left", it["left_px"]), ("top", it["top_px"])):
                 new = f"{key}: {_px(val)}px"
-                st, n = re.subn(rf"\b{key}:\s*-?[\d.]+px", new, st, count=1)
+                st, n = re.subn(rf"(?<![\w-]){key}:\s*-?[\d.]+px", new, st, count=1)   # not margin-left:
                 if not n:
                     st = st.rstrip()
                     st = (st + ("" if not st or st.endswith(";") else ";") + f" {new};").strip()

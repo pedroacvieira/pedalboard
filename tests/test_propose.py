@@ -16,7 +16,7 @@ import common  # noqa: E402
 import design  # noqa: E402
 import layout  # noqa: E402
 import propose_layout as pl  # noqa: E402
-from common import load_catalog  # noqa: E402
+from common import load_catalog, proposal_inputs_sha1  # noqa: E402
 from test_layout import at, model, ped, sw  # noqa: E402
 
 GIG = ROOT / "projects" / "guitar-gig"
@@ -141,15 +141,22 @@ def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeyp
     assert "## Layout proposals" in md and "| Blocked plugs | 3 (24.7 mm) |" in md and "Stale" not in md
     assert "![Proposal 1](proposals/1.svg)" in md and "Daisy chain" in md and "--iterations 300 --restarts 1" in md
     design_path = pdir / "playground_design.json"
-    doc = json.loads(design_path.read_text())
+    original = design_path.read_bytes()
+    doc = json.loads(original)
     design_path.write_text(json.dumps({**doc, "canvas": doc["canvas"] + " "}))   # the owner saved a new layout
     assert "**Stale:**" in "\n".join(build.proposals_section(ctx, pedals))
+    design_path.write_bytes(original)
+    assert "**Stale:**" not in "\n".join(build.proposals_section(ctx, pedals))
+    proj_path = pdir / "project.json"
+    proj = json.loads(proj_path.read_text())
+    proj_path.write_text(json.dumps({**proj, "jacks": {**proj.get("jacks", {}), "clearance": {"outward_mm": 9, "side_mm": 7}}}))
+    assert "**Stale:**" in "\n".join(build.proposals_section(ctx, pedals))   # a setting the metrics depend on
 
 
 def test_readme_section_without_a_better_layout(tmp_path, monkeypatch):
     pdir = gig_copy(tmp_path, monkeypatch)
     meta = {"command": "x", "max_change": "fix", "max_move_mm": 40, "seed": 1, "iterations": 1, "restarts": 1,
-            "runtime_s": 0.1, "design_sha1": pl.design_sha1(pdir), "finalists": 2, "owner": {}, "proposals": [],
+            "runtime_s": 0.1, "inputs_sha1": proposal_inputs_sha1(pdir), "finalists": 2, "owner": {}, "proposals": [],
             "chain": json.loads((pdir / "project.json").read_text())["signal_chain"]}
     (pdir / "proposals").mkdir()
     (pdir / "proposals" / "meta.json").write_text(json.dumps(meta))

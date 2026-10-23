@@ -156,12 +156,18 @@ def load_items(pdir):
     return design.parse_design(path) if path.exists() else None
 
 
-def place_chain(items, chain, cat_pedals):
-    """({pedal id: first layout item with its playground_title}, {pedal id: number of matches}) for a chain."""
+def items_by_title(items):
+    """{playground_title: [layout items]} in layout order."""
     by_title = {}
     for it in items:
         if it["title"]:
             by_title.setdefault(it["title"], []).append(it)
+    return by_title
+
+
+def place_chain(items, chain, cat_pedals, by_title=None):
+    """({pedal id: first layout item with its playground_title}, {pedal id: number of matches}) for a chain."""
+    by_title = items_by_title(items) if by_title is None else by_title
     placed, count = {}, {}
     for cid in chain:
         found = by_title.get(cat_pedals[cid].get("playground_title") or "", [])
@@ -177,17 +183,15 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item}};
     placement problems go to `warnings` / `clear_sink` (missing chain pedal)."""
     supplies_layer = jset.get("supplies_layer", "under")
-    placed, count = place_chain(items, chain, cat_pedals)
+    by_title = items_by_title(items)
+    placed, count = place_chain(items, chain, cat_pedals, by_title)
     for cid in chain:
         if not count[cid]:
             clear_sink.append(f"layout: {cid} is in the signal chain but not in playground_design.json")
         elif count[cid] > 1:
             warnings.append(f"layout: {cid} appears {count[cid]} times in playground_design.json (using the first)")
-    by_title = {}
-    for it in items:
-        if it["title"]:
-            by_title.setdefault(it["title"], []).append(it)
     inst_item, supply_titles = {}, set()
+    explicit = jset.get("supply_items", {})
     by_supply = {}
     for s in insts:
         by_supply.setdefault(s["sup"]["id"], []).append(s)
@@ -196,7 +200,6 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
         if title:
             supply_titles.add(title)
         found = sorted(by_title.get(title or "", []), key=lambda i: (i["left_mm"], i["top_mm"]))
-        explicit = jset.get("supply_items", {})
         for n, s in enumerate(group):
             want = explicit.get(s["inst"]["id"])
             match = next((i for i in found if i["id"] == want), None) if want else (found[n] if n < len(found) else None)
