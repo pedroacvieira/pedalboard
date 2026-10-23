@@ -2,12 +2,15 @@
 
 Read this first. It gives the basics so a new conversation or agent only needs a goal and an approach.
 Task-specific handovers live in `docs/handovers/` (one file per delegated task; read the one you are given).
-Open work and questions for the owner: `docs/TODO.md` (hand-written backlog; keep it current).
+Open work and questions for the owner: `docs/TODO.md` (hand-written backlog; keep it current). Planned features,
+with owner decisions and the suggested order, are in its "Next features" section (one `feat/<name>` branch each).
 
 ## What this repo is
 A data-driven planner for the owner's three pedalboards (projects): `guitar-gig` (Fender Professional Medium,
 2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (Rockboard Duo 2.1,
-Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for the jack app). No other deps.
+Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for the jack app) today. New
+dependencies are fine when there is a reason for each: Python ones via uv only, anything else (npm, system
+packages) only after asking the owner.
 Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.venv`): never `pip install` into the
 system; add a dependency with `uv add <pkg>` (dev-only: `uv add --dev`), run everything with `uv run`. pytest runs
 with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH (ROS) are not loaded.
@@ -51,7 +54,7 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~205 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~213 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
