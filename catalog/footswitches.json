@@ -27,6 +27,9 @@
     "reticon": [
       {"id": "bypass", "label": "Bypass", "x": 0.4957, "y": 0.85, "type": "bypass"}
     ],
+    "retrovibe": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4838, "y": 0.9015, "type": "bypass"}
+    ],
     "sun_face": [
       {"id": "bypass", "label": "Bypass", "x": 0.4934, "y": 0.6926, "type": "bypass"}
     ]
