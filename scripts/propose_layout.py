@@ -12,7 +12,7 @@ and iteration budget) yields distinct finalists. Each finalist gets its own powe
 outputs and daisy chains for the shortest DC cable under the power policy) and is checked with the real pipeline
 (build.validate with the injected layout: plug clearance, routed cables, footswitch spacing). A finalist becomes a
 proposal only if it is not worse than the owner's layout on blocked plugs, routing problems (unroutable, squeezed,
-over the stacking limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
+over the stacking or plug limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
 blocked mm, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
 penalties).
 
@@ -49,7 +49,7 @@ def metrics(ctx, model, state, move_factor):
         "blocked": len(ctx["violations"]), "blocked_mm": round(sum(v["depth_mm"] for v in ctx["violations"]), 1),
         "blocked_jacks": sorted({v["jack"] for v in ctx["violations"]}),
         "unroutable": sum(s.startswith("unroutable") for s in status), "squeezed": sum("squeezed" in s for s in status),
-        "overflow": sum("stacking limit" in s for s in status),
+        "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         "fs_close": sum(1 for r in prs if r.get("too_close")),
         "fs_closest_mm": round(prs[0]["distance_mm"], 1) if prs else None,
         "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding") or 0.0, 1),

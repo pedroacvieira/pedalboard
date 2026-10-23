@@ -86,7 +86,7 @@ def test_stacking_limit_spreads_cables_over_a_corridor():
     for r in ((18.0, 0.0, 54.0, 24.0), (18.0, 30.0, 54.0, 54.0)):           # a corridor two cells wide (rows 4..4 and 5)
         g.block_rect(r)
     nets = [(f"n{i}", (0, 4), (11, 4)) for i in range(3)]
-    paths, users, overflow = routing.route_all(g, nets, max_stack=2, iterations=20)
+    paths, users, overflow, _ = routing.route_all(g, nets, max_stack=2, iterations=20)
     assert all(paths.values())
     corridor = [c for c in users if 3 <= c[0] <= 8]
     assert max(len(users[c]) for c in corridor) <= 2 or overflow
@@ -97,7 +97,7 @@ def test_too_many_cables_through_a_one_cell_gap_report_overflow():
     g.block_rect((30.0, 0.0, 36.0, 24.0))
     g.block_rect((30.0, 30.0, 36.0, 54.0))            # single free cell at (5, 4)
     nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(3)]
-    paths, users, overflow = routing.route_all(g, nets, max_stack=2, iterations=10)
+    paths, users, overflow, _ = routing.route_all(g, nets, max_stack=2, iterations=10)
     assert (5, 4) in overflow and len(users[(5, 4)]) == 3
 
 
@@ -106,7 +106,7 @@ def test_two_cables_fit_through_a_one_cell_gap_with_the_default_limit():
     g.block_rect((30.0, 0.0, 36.0, 24.0))
     g.block_rect((30.0, 30.0, 36.0, 54.0))
     nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(2)]
-    paths, users, overflow = routing.route_all(g, nets, max_stack=2, iterations=10)
+    paths, users, overflow, _ = routing.route_all(g, nets, max_stack=2, iterations=10)
     assert not overflow and len(users[(5, 4)]) == 2
 
 
@@ -145,9 +145,11 @@ def test_router_picks_the_shorter_exit_sides():
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
     assert c["status"] == "routed" and (c["exit_a"], c["exit_b"]) == ("right", "right")   # (80, 94) -> (190, 126)
     assert c["path"][0] == (70.0, 80.0) and c["path"][1] == (80.0, 80.0) and c["path"][2] == (80.0, 94.0)
-    # measured from 10 mm in front of each jack (half the 20 mm head): 2 x (8 + 6) mm to the exits, then about
-    # 110 mm across and 32 mm down (octile ~ 123 mm, grid accuracy ~ a few mm)
-    assert 28 + 123 - 4 <= c["min_mm"] <= 28 + 123 + 8
+    # measured from 10 mm in front of each jack (half the 20 mm head): 2 x (8 + 6) mm to the exits, then 110 mm
+    # across and 32 mm down; the open field smooths to one segment: hypot(110, 32) = 114.56 mm (the grid path was
+    # octile 110 + 0.414 x 32 = 123.3 mm)
+    assert c["min_mm"] == pytest.approx(28 + math.hypot(110, 32), abs=0.01)
+    assert c["path"][2:4] == [(80.0, 94.0), (190.0, 126.0)] and len(c["path"]) == 6
     assert ctx["violations"] == [] and ctx["errors"] == []
     fixed = plug_ctx({"type": "ra", "overrides": {"S1": {"exit_a": "left"}}})
     routing.route_project(fixed, {}, cable_types=TYPES)
@@ -295,3 +297,126 @@ def test_clearance_reports_the_deepest_part_per_obstacle():
     opt = {"side": "left", "hits": [("head", {"id": "x"}, (0.2, 5.0)), ("cable", {"id": "x"}, (3.0, 8.0))]}
     (hit,) = routing.deepest_hits(opt, "right")     # facing right: head depth along x (0.2), cable along y (8.0)
     assert hit[0] == "cable" and hit[2] == pytest.approx(8.0)
+
+
+# --- smoothing (string pulling) -------------------------------------------------------------------
+def min_dist(points, rect):
+    return min(routing.seg_rect_distance(p, q, rect) for p, q in zip(points, points[1:]))
+
+
+def test_seg_rect_distance_is_exact():
+    r = (0.0, 0.0, 10.0, 10.0)
+    assert routing.seg_rect_distance((-5, 5), (15, 5), r) == 0.0                       # through it
+    assert routing.seg_rect_distance((2, 2), (4, 4), r) == 0.0                         # inside
+    assert routing.seg_rect_distance((0, 14), (10, 14), r) == pytest.approx(4.0)       # parallel, 4 mm above
+    assert routing.seg_rect_distance((-4, 0), (-4, 10), r) == pytest.approx(4.0)       # left, 4 mm away
+    # diagonal segment past the corner (10, 10): from (13, 20) to (20, 13) the nearest point is (16.5, 16.5)
+    assert routing.seg_rect_distance((13, 20), (20, 13), r) == pytest.approx(math.hypot(6.5, 6.5))
+    # segment ends short of the rectangle: the end point (12, 5) is 2 mm from the right side
+    assert routing.seg_rect_distance((30, 5), (12, 5), r) == pytest.approx(2.0)
+
+
+def test_smooth_turns_a_staircase_in_the_open_into_one_segment():
+    stairs = [(0, 0), (10, 0), (10, 10), (20, 10), (20, 20)]
+    out = routing.smooth(stairs, [], 3.0, {})
+    assert out == [(0, 0), (20, 20)] and routing.polyline_length(out) == pytest.approx(20 * math.sqrt(2))
+    assert routing.smooth([(0, 0), (5, 5)], [], 3.0, {}) == [(0, 0), (5, 5)]            # nothing to remove
+
+
+def test_smooth_keeps_one_corner_at_the_grown_pedal_corner():
+    pedal = (0.0, 0.0, 20.0, 20.0)
+    path = [(5, 23), (14, 23), (23, 23), (23, 14), (23, 5)]                  # 3 mm (= radius) below / right of it
+    out = routing.smooth(path, [pedal], 3.0, {})
+    # (5,23)->(23,23) is 3 mm from the pedal (valid); (5,23)->(23,14) cuts through it. Then (23,23)->(23,5) is valid.
+    assert out == [(5, 23), (23, 23), (23, 5)] and routing.polyline_length(out) == pytest.approx(36.0)
+    assert min_dist(out, pedal) >= 3.0 - 1e-6
+
+
+def test_smooth_never_moves_a_squeezed_stretch_closer_to_the_pedal():
+    pedal = (0.0, 0.0, 20.0, 20.0)
+    path = [(10, 22), (16, 22), (22, 22), (22, 16), (22, 10)]                 # 2 mm from the pedal: squeezed (radius 3)
+    out = routing.smooth(path, [pedal], 3.0, {})
+    # the corner stays (the diagonal (10,22)->(22,10) crosses the pedal) and nothing comes closer than the 2 mm of the path
+    assert out == [(10, 22), (22, 22), (22, 10)]
+    assert min_dist(out, pedal) >= 2.0 - 1e-6
+    # a slightly rounded corner at 2.83 mm (the true corner distance of (22, 22)) is not cut closer than 2 mm either
+    out = routing.smooth([(10, 22), (20, 23), (23, 20), (22, 10)], [pedal], 3.0, {})
+    assert min_dist(out, pedal) >= min(2.0, 2.0) - 1e-6 and (20, 23) in out and (23, 20) in out
+
+
+def test_smooth_refuses_a_shortcut_across_a_plug_the_path_did_not_cross():
+    plug = {"k": [(40.0, -5.0, 50.0, 5.0)]}
+    path = [(30, 0), (30, 15), (60, 15), (60, 0)]                           # detour round the plug, 10 mm away from it
+    assert routing.smooth(path, [], 3.0, plug) == path                      # (30,0)->(60,0) would cross it
+    assert routing.smooth(path, [], 3.0, plug, own_plugs=("k",)) == [(30, 0), (60, 0)]   # an own plug may be crossed
+    # a path that already touched it may be shortened across it
+    assert routing.smooth([(30, 0), (45, 0), (60, 0)], [], 3.0, plug) == [(30, 0), (60, 0)]
+
+
+# --- the plug limit in route_all -------------------------------------------------------------------
+def test_three_cables_through_a_one_cell_gap_over_a_plug_are_reported_but_the_owner_never_counts():
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 36.0, 24.0))
+    g.block_rect((30.0, 30.0, 36.0, 54.0))            # single free cell at (5, 4), which is the plug
+    nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(3)]
+    paths, _, _, over = routing.route_all(g, nets, max_stack=5, iterations=10, plugs={"p.out": (None, {(5, 4)})})
+    assert all(paths.values()) and over == {"p.out": ["n0", "n1", "n2"]}
+    # the same gap is the plug of n0: only n1 and n2 count against the limit of 2
+    _, _, _, over = routing.route_all(g, nets, max_stack=5, iterations=10, plugs={"p.out": ("n0", {(5, 4)})})
+    assert over == {}
+    _, _, _, over = routing.route_all(g, nets, max_stack=5, iterations=10, plugs={"p.out": (None, {(5, 4)})}, max_over_plug=3)
+    assert over == {}
+
+
+def test_a_third_cable_detours_round_a_plug_when_it_can():
+    g = free_grid(nx=12, ny=9)
+    plug = {(5, 3), (5, 4), (5, 5)}
+    nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(3)]
+    paths, _, overflow, over = routing.route_all(g, nets, max_stack=5, iterations=20, plugs={"p.out": (None, plug)})
+    assert over == {} and not overflow and all(paths.values())
+    assert sum(1 for p in paths.values() if set(p) & plug) == 2               # two cross it, one goes round
+    # without plugs the three take the same straight line
+    paths, _, _, over = routing.route_all(g, nets, max_stack=5, iterations=20)
+    assert over == {} and all(set(p) & plug for p in paths.values())
+
+
+def test_plug_cells_follow_the_grown_rectangle():
+    g = free_grid()
+    assert routing.rect_cells(g, (5.0, 5.0, 13.0, 7.0)) == set()              # no cell centre (3, 9, 15 ...) inside
+    assert routing.rect_cells(g, (5.0, 5.0, 13.0, 7.0), 3.0) == {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}
+
+
+# --- smoothing + plug limit in route_project --------------------------------------------------------
+def test_route_project_smooths_the_path_and_never_lengthens_it(monkeypatch):
+    wall = mm_item("i-c", "C", 120, 0, 20, 130)               # between A and B, open below y = 130 (front of the pedals: 160)
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    monkeypatch.setattr(routing, "smooth", lambda pts, *a, **k: list(pts))  # the old, unsmoothed formula
+    old = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    routing.route_project(old, {}, cable_types=TYPES)
+    (o,) = [x for x in old["cable_list"] if x["kind"] == "signal"]
+    assert c["status"] == "routed" and c["min_mm"] < o["min_mm"] - 2.0
+    assert len(c["path"]) < len(o["path"]) / 3
+    # the path is the lead, the corners and the other lead; it stays as far from the wall as the grid path did
+    wall_r = (120.0, 0.0, 140.0, 130.0)
+    grid_min = min(routing.point_rect_distance(p, wall_r) for p in o["path"][2:-2])
+    assert min_dist(c["path"][2:-2], wall_r) >= min(3.0, grid_min) - 1e-6
+    assert c["path"][0] == (70.0, 80.0) and c["path"][-1] == (200.0, 140.0)
+    # min_mm = both measure lengths + the smoothed polyline from exit to exit
+    exits = c["path"][2:-2]
+    assert c["min_mm"] == pytest.approx(2 * (8 + 6) + routing.polyline_length(exits), abs=1e-6)
+
+
+def test_plug_over_the_limit_is_a_routing_finding_and_a_status():
+    ctx = power_ctx()
+    ctx["project"]["cables"]["max_over_plug"] = 0
+    # A's power jack moves to its right side at y = 100: the DC head (70..80 x 95..105) holds S1's cable exit (80, 94)
+    # once grown by 2 mm
+    ctx["layout"]["jacks"]["a"][-1].update(x=1.0, y=0.4, facing="right")
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    over = ctx["routing"]["plug_over"]
+    assert over and all(names == ["S1"] for names in over.values())
+    assert any(w.startswith("routing: S1 crosses the plug at a.") and "(limit 0 other cables)" in w for w in ctx["warnings"])
+    assert c["status"] == "routed, over the plug limit"

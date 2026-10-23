@@ -55,6 +55,14 @@ Suggested order: 1 routing-view -> 3 supply-placement -> 2 power-routing -> 6 fo
 
 ### 1. `feat/routing-view`: a clearer signal routing picture (routing.svg; `cables.svg` today)
 Goal: a picture the owner can wire the board from. Today: grid staircase paths, pedal boxes, S# labels.
+Plan: `docs/plans/routing-view.md` (owner decisions 2026-10-23: any angle; lanes not in the length; rename to
+routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_plug` 2; printable 1:1 in mm).
+- [x] Phase 1 (handover `docs/handovers/routing-view-1.md`, 2026-10-23): plug-head limit + smoothing; gig signal
+      total 2576 -> 2512 mm, no cable longer, no plug-limit findings. Proposals count plug-limit cables as overflow.
+- [ ] The layout surrogate (octile) now overestimates the smoothed router by up to ~8 % per cable; consider an
+      any-angle estimate in `layout.py` (adds to "Surrogate vs router" above).
+- [ ] Phase 2: parallel lanes. Phase 3: `svgdraw.py` + `routing.svg` (+ `routing.local.svg`). Phase 4: wiring in.
+- [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.
 - [ ] Paths: reduce each routed path to its necessary corners (any-angle straight segments between them where the
@@ -102,6 +110,7 @@ crossings (holes, slots, rail gaps, open edges) where power cables go from under
 - [ ] Board edges as crossings with the per-project allowed / avoided / forbidden setting of 2 (front forbidden by
       default); holes preferred.
 - [ ] Layout search: optional term for DC length through crossings; optionally move on-board supplies.
+- [ ] Keep the crossing model usable for patch cables too (see "Later: patch cables under the board" below).
 - Acceptance: today's projects (all supplies under) give identical results with placement defaulting to under.
 
 ### 4. `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
@@ -143,6 +152,18 @@ Goal: a topper (larger, higher cap) on a switch makes it easier to hit and its n
       higher priority type, then the one nearer the front), within `max_toppers`, stopping when the next topper
       gains little (threshold); listed in the README, not applied automatically.
 - [ ] Layout search: ignores toppers entirely (the layout is optimised first, toppers finish it).
+
+### Later: patch cables under the board and more plug orientations (owner, 2026-10-23; after 3, needs board holes)
+- [ ] Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
+      under pedals. Add this routing option once the boards have their holes set; same crossing model as power (2).
+- [ ] Plug orientation, today: a right-angle plug's cable leaves left or right of the facing and the plug occupies
+      more space on that side (modelled: `design.plug_geometry`, side chosen by the router). New case, U-turn: when
+      the plug cannot point to the side the cable has to go, point it to the opposite side and turn the cable back
+      (U-turn) towards the right direction; longer minimum length (the turn and the way back past the plug) and the
+      turned cable occupies space on both sides; the router considers it when the direct side is blocked or worse.
+- [ ] Plug pointing down into a hole: a jack above or next to a board hole can have its plug's cable pointed down
+      into the hole; the cable then either runs under the board until it has to resurface (another hole / edge), or
+      comes straight back up through the same hole and is routed on top from there.
 
 ## Features
 - [ ] Model the guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): needs guitar
