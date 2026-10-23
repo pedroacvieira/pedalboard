@@ -25,7 +25,7 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
   one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
   `diameter_mm`. Spacing priority per type `footswitches.priority` (bypass 1.0, boost 0.8, tap 0.8, function 0.5; a
   pair weighs the max of its two). `[]` = verified no footswitch (kept);
-  missing id = unknown. Supplies have none. The owner places the data (empty map for now).
+  missing id = unknown. Supplies have none. The owner places the data (9 pedals so far).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
   voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
@@ -134,5 +134,9 @@ python3 scripts/propose_layout.py <project> --score   # surrogate term breakdown
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.
 - Commit messages end with the Co-Authored-By line given by the harness.
 - When delegating to an agent, write a handover (goal, context, constraints, files, acceptance, what not to
-  touch) to `docs/handovers/<task>.md` and point the agent at this file plus the handover.
+  touch) to `docs/handovers/<task>.md` and point the agent at that handover only. Keep its scope and inputs
+  minimal: one well-bounded task, only the decisions, conventions and file/function names that task needs
+  (copy the relevant lines in), no "read the whole plan / other handovers / all of CLAUDE.md" pointers.
+- Delegated implementation agents (`general-purpose`) run on `model: sonnet`; use Opus only for planning, code
+  review, or when the owner asks.
 - Keep this file current when structure, conventions or decisions change.

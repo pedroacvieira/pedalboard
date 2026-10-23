@@ -132,3 +132,9 @@ def test_switch_kind():
     assert [pe.switch_kind({"type": t}) for t in ("bypass", "tap", "boost", "function")] == ["bypass", "tap", "boost", "function"]
     assert pe.switch_kind({}) == "?" and pe.switch_kind({"type": "preset"}) == "?"
     assert set(pe.FOOTSWITCH_COLOURS) == set(footswitches.TYPES)
+
+
+def test_switch_drawing_is_a_10_mm_cap_in_an_18_mm_ring():
+    assert pe.switch_diameters_mm({"type": "bypass"}) == (10.0, 18.0)
+    assert pe.switch_diameters_mm({"type": "tap", "diameter_mm": None}) == (10.0, 18.0)
+    assert pe.switch_diameters_mm({"type": "tap", "diameter_mm": 12}) == (10.0, 18.0)

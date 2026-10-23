@@ -1,4 +1,34 @@
 {
   "_doc": "Footswitch positions per pedal catalog id. Written ONLY by scripts/pedal_editor.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, at the CENTRE of the switch cap. type: bypass (turns the pedal, or one side of it, on/off) | tap (tap tempo) | boost (a boost / extra-gain stomp) | function (any other switch: octave, clipping, preset...). Optional diameter_mm (null if unknown). [] = checked: the pedal has no footswitch. A missing id = unknown. No image is stored.",
-  "footswitches": {}
+  "footswitches": {
+    "beano": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4976, "y": 0.8574, "type": "bypass"}
+    ],
+    "danelectro_3699": [
+      {"id": "bypass", "label": "Bypass", "x": 0.2026, "y": 0.8706, "type": "bypass"},
+      {"id": "switch_2", "label": "Octave", "x": 0.7817, "y": 0.8706, "type": "function"}
+    ],
+    "fulldrive_2": [
+      {"id": "bypass", "label": "Bypass", "x": 0.2174, "y": 0.8885, "type": "bypass"},
+      {"id": "switch_2", "label": "Boost", "x": 0.7826, "y": 0.8853, "type": "boost"}
+    ],
+    "mini_ego": [
+      {"id": "bypass", "label": "Bypass", "x": 0.496, "y": 0.8897, "type": "bypass"}
+    ],
+    "phase_95": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4972, "y": 0.8338, "type": "bypass"}
+    ],
+    "polytune_3": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5018, "y": 0.8176, "type": "bypass"}
+    ],
+    "ratsbane": [
+      {"id": "bypass", "label": "Bypass", "x": 0.499, "y": 0.8794, "type": "bypass"}
+    ],
+    "reticon": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4957, "y": 0.85, "type": "bypass"}
+    ],
+    "sun_face": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4934, "y": 0.6926, "type": "bypass"}
+    ]
+  }
 }

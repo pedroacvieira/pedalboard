@@ -49,7 +49,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 - Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right); move one of the pedals apart
 - Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (3.0 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
 - Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
-- Footswitches not placed for 17 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
+- Footswitches not placed for 8 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 

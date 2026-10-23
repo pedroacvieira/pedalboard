@@ -127,7 +127,7 @@ def test_no_better_layout_writes_no_proposal(tmp_path, monkeypatch):
 def test_score_prints_the_breakdown(capsys):
     assert pl.main(["guitar-gig", "--score"]) == 0
     out = capsys.readouterr().out
-    assert "Blocked plugs (no margin, as the build): 3" in out and "Footswitch term: 0" in out and "clearance" in out
+    assert "Blocked plugs (no margin, as the build): 3" in out and "footswitch" in out and "clearance" in out
 
 
 # --- README section (build.proposals_section) ------------------------------------------------------

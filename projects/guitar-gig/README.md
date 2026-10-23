@@ -11,7 +11,7 @@
 - WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
 - WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
 - WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
-- WARN footswitches: no footswitch data for 17 of 17 pedals (sun_face, danelectro_3699, beano, polytune_3, mini_ego, fulldrive_2, phase_95, retrovibe, red_muck, ratsbane, protein, reticon, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
+- WARN footswitches: no footswitch data for 8 of 17 pedals (retrovibe, red_muck, protein, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -312,23 +312,14 @@ Signal cable, minimum: 2576 mm over 16 cables.
 
 ## Footswitches
 
-Footswitch data: 0 of 17 pedals (catalog/footswitches.json).
+Footswitch data: 9 of 17 pedals (catalog/footswitches.json).
 
 Missing (place the switches on the pedal image, then rebuild):
 
 ```
-python3 scripts/pedal_editor.py sun_face --footswitches
-python3 scripts/pedal_editor.py danelectro_3699 --footswitches
-python3 scripts/pedal_editor.py beano --footswitches
-python3 scripts/pedal_editor.py polytune_3 --footswitches
-python3 scripts/pedal_editor.py mini_ego --footswitches
-python3 scripts/pedal_editor.py fulldrive_2 --footswitches
-python3 scripts/pedal_editor.py phase_95 --footswitches
 python3 scripts/pedal_editor.py retrovibe --footswitches
 python3 scripts/pedal_editor.py red_muck --footswitches
-python3 scripts/pedal_editor.py ratsbane --footswitches
 python3 scripts/pedal_editor.py protein --footswitches
-python3 scripts/pedal_editor.py reticon --footswitches
 python3 scripts/pedal_editor.py analog_chorus --footswitches
 python3 scripts/pedal_editor.py monk --footswitches
 python3 scripts/pedal_editor.py belle_epoch --footswitches
@@ -336,9 +327,22 @@ python3 scripts/pedal_editor.py flight_delay --footswitches
 python3 scripts/pedal_editor.py tumnus_deluxe --footswitches
 ```
 
-Minimum distance between switches of different pedals (centre to centre): auto: no pair of footswitches is known yet, so there is no limit. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
+Minimum distance between switches of different pedals (centre to centre): auto = 48.5 mm, the smallest distance between switches of different pedals in playground_design.json (the owner's layout is the reference). Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
-No pair of footswitches on different pedals is known yet.
+Closest pairs (8 of 53):
+
+| Switch | Type | Switch | Type | Distance (mm) | Status |
+|---|---|---|---|--:|---|
+| danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 48.5 | ok |
+| sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 61.7 | ok |
+| beano.bypass | bypass | mini_ego.bypass | bypass | 65.2 | ok |
+| danelectro_3699.switch_2 | function | fulldrive_2.switch_2 | boost | 85.3 | ok |
+| sun_face.bypass | bypass | danelectro_3699.bypass | bypass | 97.2 | ok |
+| sun_face.bypass | bypass | beano.bypass | bypass | 117.6 | ok |
+| polytune_3.bypass | bypass | phase_95.bypass | bypass | 117.9 | ok |
+| beano.bypass | bypass | polytune_3.bypass | bypass | 124.7 | ok |
+
+No pair is closer than the minimum.
 
 
 ## Layout proposals

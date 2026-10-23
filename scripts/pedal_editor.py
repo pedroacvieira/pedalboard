@@ -41,6 +41,9 @@ COMMAND = jacks.COMMAND
 MODES = ("jacks", "footswitches")
 SPACING_PREVIEW_MM = 60.0   # dashed circle around a selected switch: diameter = this spacing (preview only)
 ALPHA_WIDTH_PX = 256        # resolution of the transparency mask used for the on-body checks
+SWITCH_CAP_MM = 10.0        # footswitch drawing: semi-transparent cap of this diameter
+SWITCH_RING_MM = 18.0       # ... inside a fainter ring of this diameter; the cross spans the ring
+SWITCH_ALPHA = (150, 70)    # opacity (0..255) of the cap and of the ring; dimmed switches use half
 
 
 # --- finding things (no GUI) -------------------------------------------------------------------
@@ -184,6 +187,11 @@ def footswitch_problems(fs_list, no_footswitch=False):
     return msgs
 
 
+def switch_diameters_mm(fs):
+    """Drawn (cap, ring) diameters in mm: fixed sizes for every switch, whatever its diameter_mm."""
+    return SWITCH_CAP_MM, SWITCH_RING_MM
+
+
 def switch_kind(fs):
     """The switch's type as the editor lists it ('?' if it has none or an unknown one)."""
     return fs.get("type") if fs.get("type") in footswitches.TYPES else "?"
@@ -230,7 +238,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
     import tkinter as tk
     from tkinter import messagebox, ttk
 
-    from PIL import Image, ImageDraw, ImageTk
+    from PIL import Image, ImageColor, ImageDraw, ImageTk
 
     MARGIN = 30
     HIT = 10  # px
@@ -510,6 +518,8 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
                     if (gx // 12 + gy // 12) % 2:
                         d.rectangle([gx, gy, gx + 11, gy + 11], fill="#d9d9d9")
             base.alpha_composite(self.img.resize((wp, hp), Image.LANCZOS))
+            for f in self.lists["footswitches"]:     # Tk has no alpha: the switch discs are painted into the image
+                self._paint_footswitch(base, f, self.mode == "footswitches")
             self.photo = ImageTk.PhotoImage(base)
             c = self.canvas
             c.delete("all")
@@ -556,23 +566,33 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
             if active:
                 c.create_text(px + 10, py - 12, text=j["label"], anchor="w", font=("TkDefaultFont", 9, "bold" if selected else "normal"))
 
+        def _paint_footswitch(self, base, f, active):
+            """Semi-transparent cap (SWITCH_CAP_MM) and fainter ring (+SWITCH_RING_MM), at true size, into the image."""
+            colour = ImageColor.getrgb(FOOTSWITCH_COLOURS.get(f.get("type"), "#757575") if active else "#9e9e9e")
+            cx, cy = f["x"] * w_mm * self.zoom, f["y"] * h_mm * self.zoom
+            layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            d = ImageDraw.Draw(layer)
+            for dia, alpha in zip(reversed(switch_diameters_mm(f)), reversed(SWITCH_ALPHA)):   # ring first, cap over it
+                r = dia / 2 * self.zoom
+                d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=colour + (alpha if active else alpha // 2,))
+            base.alpha_composite(layer)
+
         def _draw_footswitch(self, f, active, selected):
             c = self.canvas
             px, py = self.to_px(f["x"], f["y"])
-            colour = FOOTSWITCH_COLOURS.get(f.get("type"), "#757575") if active else "#9e9e9e"
             if selected:
                 try:
                     rad = float(self.v_spacing.get()) / 2 * self.zoom
                     c.create_oval(px - rad, py - rad, px + rad, py + rad, outline="#c62828", dash=(4, 3))
                 except ValueError:
                     pass
-            r = 8 if selected else 6
-            c.create_oval(px - r, py - r, px + r, py + r, fill=colour, outline="#ffd600" if selected else ("#000" if active else "#9e9e9e"),
-                          width=3 if selected else 1)
-            c.create_line(px - r - 4, py, px + r + 4, py, fill="#000" if active else "#9e9e9e")
-            c.create_line(px, py - r - 4, px, py + r + 4, fill="#000" if active else "#9e9e9e")
+            r = switch_diameters_mm(f)[1] / 2 * self.zoom     # the cross spans the whole ring
+            if selected:
+                c.create_oval(px - r, py - r, px + r, py + r, outline="#ffd600", width=3)
+            c.create_line(px - r, py, px + r, py, fill="#000" if active else "#9e9e9e")
+            c.create_line(px, py - r, px, py + r, fill="#000" if active else "#9e9e9e")
             if active:
-                c.create_text(px + 12, py - 12, text=f"{f['label']} ({switch_kind(f)})", anchor="w",
+                c.create_text(px + r + 4, py - r, text=f"{f['label']} ({switch_kind(f)})", anchor="w",
                               font=("TkDefaultFont", 9, "bold" if selected else "normal"))
 
         # -- items --
