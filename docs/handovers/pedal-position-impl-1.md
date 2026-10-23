@@ -31,7 +31,7 @@ Not in this part: the optimizer (layout.py, propose_layout.py), power re-assignm
   this handover when done.
 
 ## Acceptance
-- Build green; tests pass; `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches` prints the
+- Build green; tests pass; `uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches` prints the
   17 gig pedals' commands; README of guitar-gig shows the Footswitches section (data missing for now).
 - Report: what changed per phase, commits, test count, what could not be verified (GUI), open questions.
 

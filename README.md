@@ -15,12 +15,13 @@ projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_
 ```
 
 ```
-python3 scripts/build.py [project...]        validate + regenerate docs
-python3 scripts/to_playground.py [project...] write projects/<name>/playground.json
-python3 scripts/new_project.py <name> --instrument guitar|bass
-python3 scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)
-python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)
-python3 -m pytest tests                       geometry and jack-check tests
+uv sync                                      once: .venv with the dependencies (pyproject.toml, uv.lock)
+uv run scripts/build.py [project...]        validate + regenerate docs
+uv run scripts/to_playground.py [project...] write projects/<name>/playground.json
+uv run scripts/new_project.py <name> --instrument guitar|bass
+uv run scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)
+uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)
+uv run pytest tests                       geometry and jack-check tests
 ```
 
 Footswitches: switches of different pedals must be at least `footswitches.min_distance_mm` apart (default "auto" = the smallest distance in the owner's playground_design.json). Missing footswitch data and pairs that are too close are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.
@@ -42,19 +43,19 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 ### Bass board
 
 - No playground_design.json: cable lengths and clearance are not checked
-- Footswitches not placed for 5 pedal(s): `python3 scripts/pedal_editor.py --list-missing bass --only footswitches`
+- Footswitches not placed for 5 pedal(s): `uv run scripts/pedal_editor.py --list-missing bass --only footswitches`
 
 ### Guitar gig board
 
 - Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right); move one of the pedals apart
 - Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (3.0 mm into the head of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
 - Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
-- Footswitches not placed for 8 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
+- Footswitches not placed for 8 pedal(s): `uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 
 - No playground_design.json: cable lengths and clearance are not checked
-- Footswitches not placed for 7 pedal(s): `python3 scripts/pedal_editor.py --list-missing guitar-practice --only footswitches`
+- Footswitches not placed for 7 pedal(s): `uv run scripts/pedal_editor.py --list-missing guitar-practice --only footswitches`
 
 ### Known limitations
 

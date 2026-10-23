@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scaffold a new project: python3 scripts/new_project.py <name> --instrument guitar|bass
+"""Scaffold a new project: uv run scripts/new_project.py <name> --instrument guitar|bass
 
 The scaffold leaves the board and power wiring unknown (null) on purpose: with
 `no_unknown` on, the build fails until you fill them in.

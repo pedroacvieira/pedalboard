@@ -15,7 +15,7 @@ from common import JACKS_FILE, load_catalog  # noqa: E402
 
 
 def test_command_names_the_editor():
-    assert jacks.COMMAND == footswitches.COMMAND == pe.COMMAND == "python3 scripts/pedal_editor.py"
+    assert jacks.COMMAND == footswitches.COMMAND == pe.COMMAND == "uv run scripts/pedal_editor.py"
     assert not (ROOT / "scripts" / "jack_setter.py").exists()
 
 
@@ -112,9 +112,9 @@ def test_list_missing_footswitches_for_the_gig_board():
     import json
     chain = json.loads((ROOT / "projects" / "guitar-gig" / "project.json").read_text())["signal_chain"]
     lines = pe.missing_lines(["guitar-gig"], pedals, supplies, "footswitches", fs_data={})
-    assert lines == [f"python3 scripts/pedal_editor.py {c} --footswitches    # guitar-gig" for c in chain]
+    assert lines == [f"uv run scripts/pedal_editor.py {c} --footswitches    # guitar-gig" for c in chain]
     some = pe.missing_lines(["guitar-gig"], pedals, supplies, "footswitches", fs_data={c: [] for c in chain[1:]})
-    assert some == [f"python3 scripts/pedal_editor.py {chain[0]} --footswitches    # guitar-gig"]
+    assert some == [f"uv run scripts/pedal_editor.py {chain[0]} --footswitches    # guitar-gig"]
     both = pe.missing_lines(["guitar-gig"], pedals, supplies, None, fs_data={c: [] for c in chain})
     assert both[0] == "# jacks" and "# footswitches" in both
     assert "Every pedal used by these projects has footswitch data." in both

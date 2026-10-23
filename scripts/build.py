@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate projects against the shared catalog and generate their docs.
 
-    python3 scripts/build.py              # every project
-    python3 scripts/build.py guitar-gig   # one project
+    uv run scripts/build.py              # every project
+    uv run scripts/build.py guitar-gig   # one project
 
 Per project: projects/<name>/README.md and diagram.mmd. Plus the root README.md.
 Exit status is 1 if any project has validation errors.
@@ -545,7 +545,7 @@ def proposals_section(ctx, cat_pedals):
         return []
     md = ["", "## Layout proposals", ""]
     if not meta_path.exists():
-        return md + [f"None yet: `python3 scripts/propose_layout.py {ctx['key']}` searches for better pedal positions "
+        return md + [f"None yet: `uv run scripts/propose_layout.py {ctx['key']}` searches for better pedal positions "
                      "(it never changes playground_design.json).", ""]
     meta = load_json(meta_path)
     stale = (meta.get("design_sha1") != hashlib.sha1(design_path.read_bytes()).hexdigest() or meta.get("chain") != ctx["chain"])
@@ -738,12 +738,13 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "```",
         "",
         "```",
-        "python3 scripts/build.py [project...]        validate + regenerate docs",
-        "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
-        "python3 scripts/new_project.py <name> --instrument guitar|bass",
-        "python3 scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)",
-        "python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)",
-        "python3 -m pytest tests                       geometry and jack-check tests",
+        "uv sync                                      once: .venv with the dependencies (pyproject.toml, uv.lock)",
+        "uv run scripts/build.py [project...]        validate + regenerate docs",
+        "uv run scripts/to_playground.py [project...] write projects/<name>/playground.json",
+        "uv run scripts/new_project.py <name> --instrument guitar|bass",
+        "uv run scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)",
+        "uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)",
+        "uv run pytest tests                       geometry and jack-check tests",
         "```",
         "",
         "Footswitches: switches of different pedals must be at least `footswitches.min_distance_mm` apart (default \"auto\" = the smallest distance in the owner's playground_design.json). Missing footswitch data and pairs that are too close are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",

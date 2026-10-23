@@ -103,7 +103,7 @@ def test_missing_jacks_warn_with_the_fix_command(tmp_path):
     ctx = project(tmp_path, [A(0), B(135)])
     jacks.check(ctx, PEDALS, SUPPLIES, {"a": pedal_jacks()})
     assert any("unknown jack setup for b" in w and "scripts/pedal_editor.py b" in w for w in ctx["warnings"])
-    assert ("b", "python3 scripts/pedal_editor.py b") in ctx["jack_fixes"] and ctx["errors"] == []
+    assert ("b", "uv run scripts/pedal_editor.py b") in ctx["jack_fixes"] and ctx["errors"] == []
     assert ctx["cables"]["signal"][0]["direct_mm"] is None
 
 

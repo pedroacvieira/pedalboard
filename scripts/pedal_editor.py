@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Place jacks and footswitches on a pedal's (or a power supply's jacks on its) Pedal Playground image.
 
-    python3 scripts/pedal_editor.py <catalog id>                  open the editor on the jacks
-    python3 scripts/pedal_editor.py <catalog id> --footswitches   open it on the footswitches (pedals only)
-    python3 scripts/pedal_editor.py --list                        every catalog id with its jack and footswitch counts
-    python3 scripts/pedal_editor.py --list-missing [project ...] [--only jacks|footswitches]
+    uv run scripts/pedal_editor.py <catalog id>                  open the editor on the jacks
+    uv run scripts/pedal_editor.py <catalog id> --footswitches   open it on the footswitches (pedals only)
+    uv run scripts/pedal_editor.py --list                        every catalog id with its jack and footswitch counts
+    uv run scripts/pedal_editor.py --list-missing [project ...] [--only jacks|footswitches]
                                                                   what is still missing, with the commands
-    python3 scripts/pedal_editor.py <catalog id> --image FILE     mark on a local PNG instead of downloading
+    uv run scripts/pedal_editor.py <catalog id> --image FILE     mark on a local PNG instead of downloading
 
 The image is downloaded on demand into .cache/images/ (git-ignored) and never copied into the repo.
 Jacks: mark each one at the OUTER EDGE of the physical socket (where the plug starts), not its centre: the

@@ -28,7 +28,7 @@ KEY_ORDER = ("id", "label", "x", "y", "type", "diameter_mm")
 REQUIRED = ("id", "label", "x", "y", "type")
 TYPES = ("bypass", "tap", "boost", "function")
 PRIORITY = {"bypass": 1.0, "boost": 0.8, "tap": 0.8, "function": 0.5}   # spacing weight per type (layout search)
-COMMAND = "python3 scripts/pedal_editor.py"
+COMMAND = "uv run scripts/pedal_editor.py"
 DOC = ("Footswitch positions per pedal catalog id. Written ONLY by scripts/pedal_editor.py. x,y are fractions (0..1) of "
        "the Pedal Playground image, origin top-left, in the UNROTATED pedal, at the CENTRE of the switch cap. type: "
        "bypass (turns the pedal, or one side of it, on/off) | tap (tap tempo) | boost (a boost / extra-gain stomp) | "

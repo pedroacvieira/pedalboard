@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Propose better pedal positions for a project's Pedal Playground layout (never writes playground_design.json).
 
-    python3 scripts/propose_layout.py guitar-gig                         # fix level: small moves, no swaps
-    python3 scripts/propose_layout.py guitar-gig --max-change rearrange  # larger moves, swaps, rotations
-    python3 scripts/propose_layout.py guitar-gig --score                 # term breakdown of the owner's layout
+    uv run scripts/propose_layout.py guitar-gig                         # fix level: small moves, no swaps
+    uv run scripts/propose_layout.py guitar-gig --max-change rearrange  # larger moves, swaps, rotations
+    uv run scripts/propose_layout.py guitar-gig --score                 # term breakdown of the owner's layout
     options: --max-change fix|rearrange|free  --max-move-mm MM|none  --seed S  --iterations N  --restarts R
              --top N (default 3)  --pin ID ...  --dry-run
 
@@ -228,7 +228,7 @@ def main(argv=None):
     chosen = [f for f in finals if f["ok"]][:top]
     runtime = time.monotonic() - t0
 
-    cmd = ["python3 scripts/propose_layout.py", pdir.name, "--max-change", level, "--seed", str(seed)]
+    cmd = ["uv run scripts/propose_layout.py", pdir.name, "--max-change", level, "--seed", str(seed)]
     for flag, val in (("--max-move-mm", args.max_move_mm), ("--iterations", args.iterations), ("--restarts", args.restarts),
                       ("--top", args.top)):
         if val is not None:

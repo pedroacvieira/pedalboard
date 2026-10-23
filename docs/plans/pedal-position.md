@@ -40,7 +40,7 @@ only by the editor, same diff-friendly format (one footswitch per line, ids sort
 - `[]` = verified "no footswitch" and must be kept (unlike `jacks.save_jacks`, which deletes on `[]`); missing id =
   unknown, reported like missing jacks. Supplies have no footswitches (a non-pedal id is a validation error).
 - Code: new `scripts/footswitches.py` mirroring `jacks.py` (`read_file`, `dumps`, `normalize`,
-  `save_footswitches`, `usable`, `validate_file`, `check`, `COMMAND = "python3 scripts/pedal_editor.py"`). Optionally
+  `save_footswitches`, `usable`, `validate_file`, `check`, `COMMAND = "uv run scripts/pedal_editor.py"`). Optionally
   factor the shared line-per-item `dumps` into one helper.
 
 **Footswitch clearance rule** (checked by `build.py` on the owner's layout, independent of the optimizer):
@@ -141,7 +141,7 @@ Configuration (optional blocks, also in the `new_project.py` scaffold):
   total, io distance, unroutable/squeezed, weighted total), moved-pedals table (dx, dy, distance, rotation), SVG link,
   the producing command (from `layout-proposal.meta.json`), and a "stale: rerun" note when the proposal no longer
   matches the chain.
-- CLI: `python3 scripts/propose_layout.py guitar-gig [--mode polish|explore] [--iterations N] [--restarts R]
+- CLI: `uv run scripts/propose_layout.py guitar-gig [--mode polish|explore] [--iterations N] [--restarts R]
   [--seed S] [--pin id ...] [--score] [--dry-run]`. `--score` prints the term breakdown of the current layout
   (weight calibration). Projects without a design file exit with a clear message.
 

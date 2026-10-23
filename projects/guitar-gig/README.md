@@ -11,7 +11,7 @@
 - WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
 - WARN clearance: red_muck.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 3.0 mm into the plug's head
 - WARN clearance: monk.power (Power, facing left, dc_ra_2_1_low_profile right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 9.0 mm into the plug's barrel
-- WARN footswitches: no footswitch data for 8 of 17 pedals (retrovibe, red_muck, protein, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: python3 scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
+- WARN footswitches: no footswitch data for 8 of 17 pedals (retrovibe, red_muck, protein, analog_chorus, monk, belle_epoch, flight_delay, tumnus_deluxe) -> run: uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -317,14 +317,14 @@ Footswitch data: 9 of 17 pedals (catalog/footswitches.json).
 Missing (place the switches on the pedal image, then rebuild):
 
 ```
-python3 scripts/pedal_editor.py retrovibe --footswitches
-python3 scripts/pedal_editor.py red_muck --footswitches
-python3 scripts/pedal_editor.py protein --footswitches
-python3 scripts/pedal_editor.py analog_chorus --footswitches
-python3 scripts/pedal_editor.py monk --footswitches
-python3 scripts/pedal_editor.py belle_epoch --footswitches
-python3 scripts/pedal_editor.py flight_delay --footswitches
-python3 scripts/pedal_editor.py tumnus_deluxe --footswitches
+uv run scripts/pedal_editor.py retrovibe --footswitches
+uv run scripts/pedal_editor.py red_muck --footswitches
+uv run scripts/pedal_editor.py protein --footswitches
+uv run scripts/pedal_editor.py analog_chorus --footswitches
+uv run scripts/pedal_editor.py monk --footswitches
+uv run scripts/pedal_editor.py belle_epoch --footswitches
+uv run scripts/pedal_editor.py flight_delay --footswitches
+uv run scripts/pedal_editor.py tumnus_deluxe --footswitches
 ```
 
 Minimum distance between switches of different pedals (centre to centre): auto = 48.5 mm, the smallest distance between switches of different pedals in playground_design.json (the owner's layout is the reference). Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).

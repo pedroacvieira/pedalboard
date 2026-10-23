@@ -103,9 +103,9 @@ def test_auto_comes_from_the_owner_file_not_the_injected_layout(tmp_path):
 def test_empty_list_is_not_missing_and_missing_is_reported(tmp_path):
     ctx = run(tmp_path, [A(), B()], {"a": []})
     assert ctx["footswitch_setup"] == {"a": "none", "b": "missing"}
-    assert ctx["footswitch_fixes"] == [("b", "python3 scripts/pedal_editor.py b --footswitches")]
+    assert ctx["footswitch_fixes"] == [("b", "uv run scripts/pedal_editor.py b --footswitches")]
     assert foot(ctx) == ["footswitches: no footswitch data for 1 of 2 pedals (b) -> run: "
-                         "python3 scripts/pedal_editor.py --list-missing t --only footswitches"]
+                         "uv run scripts/pedal_editor.py --list-missing t --only footswitches"]
     assert ctx["footswitch_pairs"] == [] and ctx["footswitch_settings"]["min_distance_mm"] is None
     strict = run(tmp_path, [A(), B()], {"a": []}, project={"validation": {"require_footswitches": True}})
     assert len(strict["errors"]) == 1 and strict["errors"][0].startswith("footswitches: no footswitch data")

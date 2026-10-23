@@ -9,7 +9,7 @@
 <details><summary>Validation messages</summary>
 
 - WARN jacks: harley_benton_iso5_pro (Harley Benton PowerPlant ISO-5 Pro) has no playground_title, so there is no image to mark jacks on
-- WARN footswitches: no footswitch data for 5 of 5 pedals (polytune_2_mini, darkglass_hyper_luminal, mxr_bass_synth, ehx_bass_big_muff_2, tech21_vt_bass_di) -> run: python3 scripts/pedal_editor.py --list-missing bass --only footswitches
+- WARN footswitches: no footswitch data for 5 of 5 pedals (polytune_2_mini, darkglass_hyper_luminal, mxr_bass_synth, ehx_bass_big_muff_2, tech21_vt_bass_di) -> run: uv run scripts/pedal_editor.py --list-missing bass --only footswitches
 
 </details>
 
@@ -143,11 +143,11 @@ Footswitch data: 0 of 5 pedals (catalog/footswitches.json).
 Missing (place the switches on the pedal image, then rebuild):
 
 ```
-python3 scripts/pedal_editor.py polytune_2_mini --footswitches
-python3 scripts/pedal_editor.py darkglass_hyper_luminal --footswitches
-python3 scripts/pedal_editor.py mxr_bass_synth --footswitches
-python3 scripts/pedal_editor.py ehx_bass_big_muff_2 --footswitches
-python3 scripts/pedal_editor.py tech21_vt_bass_di --footswitches
+uv run scripts/pedal_editor.py polytune_2_mini --footswitches
+uv run scripts/pedal_editor.py darkglass_hyper_luminal --footswitches
+uv run scripts/pedal_editor.py mxr_bass_synth --footswitches
+uv run scripts/pedal_editor.py ehx_bass_big_muff_2 --footswitches
+uv run scripts/pedal_editor.py tech21_vt_bass_di --footswitches
 ```
 
 *No playground_design.json: footswitch spacing is not checked.*

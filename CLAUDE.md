@@ -8,6 +8,9 @@ Open work and questions for the owner: `docs/TODO.md` (hand-written backlog; kee
 A data-driven planner for the owner's three pedalboards (projects): `guitar-gig` (Fender Professional Medium,
 2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (Rockboard Duo 2.1,
 Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for the jack app). No other deps.
+Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.venv`): never `pip install` into the
+system; add a dependency with `uv add <pkg>` (dev-only: `uv add --dev`), run everything with `uv run`. pytest runs
+with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH (ROS) are not loaded.
 
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
@@ -47,20 +50,21 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`python3 -m pytest tests`), ~205 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~205 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
 ```
-python3 scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
-python3 -m pytest tests -q                     # all tests
-python3 scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
-python3 scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
-python3 scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
-python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
-python3 scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
+uv sync                                        # once: create .venv (Pillow, pytest)
+uv run scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
+uv run pytest tests -q                     # all tests
+uv run scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
+uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
+uv run scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
+uv run scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
+uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
-python3 scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
+uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
 ```
 
 ## Conventions and decisions (keep them)

@@ -19,7 +19,7 @@ items injection in `build.validate(..., items=)`, `design.move`, `design.write_c
     `layout.access` per tag + per-pedal overrides; depth from footswitches, else centre), rotation preference
     (0 best, then angles already used on the board, then new ones; soft), move cost from the owner's layout,
     small touching/compactness bonus where clearance holds.
-  - `python3 scripts/propose_layout.py <project> --score`: term breakdown of the owner's current layout.
+  - `uv run scripts/propose_layout.py <project> --score`: term breakdown of the owner's current layout.
 - **Power re-assignment per arrangement** (decision 10): a pure function that assigns chain pedals to the project's
   supply outputs (ports, voltages, daisy-chain order) under the power policy already enforced by `build.validate`
   (digital alone, clocked vs gain/compressor, 18 V grouping, voltage range, mA limits, isolated needs, polarity),
@@ -39,7 +39,7 @@ items injection in `build.validate(..., items=)`, `design.move`, `design.write_c
 
 ## Constraints
 - Approximation, not simulation (owner): keep models simple; mm everywhere; no images in the repo.
-- Keep `python3 scripts/build.py` fast (rendering proposals must not run the search; budget +~0.5 s max) and green.
+- Keep `uv run scripts/build.py` fast (rendering proposals must not run the search; budget +~0.5 s max) and green.
 - Search targets on guitar-gig: `fix` < ~15 s, others < ~90 s. Mark long tests slow or keep budgets tiny in tests.
 - Never change `catalog/jacks.json` / `catalog/footswitches.json` data or `playground_design.json`.
 - Commit per phase on `feat/pedal-position` (messages end with
@@ -48,7 +48,7 @@ items injection in `build.validate(..., items=)`, `design.move`, `design.write_c
 
 ## Acceptance
 - Tests pass (hand-computed scoring cases, feasibility, determinism, power assignment passes validation, gating).
-- `python3 scripts/propose_layout.py guitar-gig` (fix level) writes up to 3 proposals; report for the best one:
+- `uv run scripts/propose_layout.py guitar-gig` (fix level) writes up to 3 proposals; report for the best one:
   which pedals moved and by how much, whether the Monk/Belle Epoch and Red Muck power findings are gone, signal min
   length before/after, footswitch term (0 until data exists), runtime. Also run `--max-change rearrange` once and
   report the same (do not commit its proposal files unless they are the default run's).

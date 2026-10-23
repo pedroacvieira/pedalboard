@@ -27,7 +27,7 @@ stored like jacks (fractions 0..1 of the unrotated Pedal Playground image; catal
 - Router: `scripts/routing.py` (2 mm grid A*, negotiated congestion; ~0.2 s per board). Fine to call it to score a
   final candidate, probably too slow to call inside a large search loop: plan a cheap surrogate + final check.
 - Board area, front limit, edge margin: see `routing.settings` / `build_grid`.
-- Tests: pytest with hand-computed geometry (`tests/`). Build: `python3 scripts/build.py`.
+- Tests: pytest with hand-computed geometry (`tests/`). Build: `uv run scripts/build.py`.
 
 ## Owner preferences (keep)
 - Approximation, not simulation: all cables bend alike, no 3D, simple models.

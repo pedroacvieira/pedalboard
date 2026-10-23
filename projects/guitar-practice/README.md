@@ -8,7 +8,7 @@
 
 <details><summary>Validation messages</summary>
 
-- WARN footswitches: no footswitch data for 7 of 7 pedals (octahive, jhs_pulp_n_peel_v4, jhs_hard_drive, duke_of_tone, e_lady, carbon_copy, ditto_looper) -> run: python3 scripts/pedal_editor.py --list-missing guitar-practice --only footswitches
+- WARN footswitches: no footswitch data for 7 of 7 pedals (octahive, jhs_pulp_n_peel_v4, jhs_hard_drive, duke_of_tone, e_lady, carbon_copy, ditto_looper) -> run: uv run scripts/pedal_editor.py --list-missing guitar-practice --only footswitches
 
 </details>
 
@@ -156,13 +156,13 @@ Footswitch data: 0 of 7 pedals (catalog/footswitches.json).
 Missing (place the switches on the pedal image, then rebuild):
 
 ```
-python3 scripts/pedal_editor.py octahive --footswitches
-python3 scripts/pedal_editor.py jhs_pulp_n_peel_v4 --footswitches
-python3 scripts/pedal_editor.py jhs_hard_drive --footswitches
-python3 scripts/pedal_editor.py duke_of_tone --footswitches
-python3 scripts/pedal_editor.py e_lady --footswitches
-python3 scripts/pedal_editor.py carbon_copy --footswitches
-python3 scripts/pedal_editor.py ditto_looper --footswitches
+uv run scripts/pedal_editor.py octahive --footswitches
+uv run scripts/pedal_editor.py jhs_pulp_n_peel_v4 --footswitches
+uv run scripts/pedal_editor.py jhs_hard_drive --footswitches
+uv run scripts/pedal_editor.py duke_of_tone --footswitches
+uv run scripts/pedal_editor.py e_lady --footswitches
+uv run scripts/pedal_editor.py carbon_copy --footswitches
+uv run scripts/pedal_editor.py ditto_looper --footswitches
 ```
 
 *No playground_design.json: footswitch spacing is not checked.*
