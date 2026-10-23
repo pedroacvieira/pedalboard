@@ -14,7 +14,11 @@ Signal cables (each pedal's output -> the next pedal's input) are routed on the 
     straight (default one diameter) before the router takes over. Without a cable type the cable leaves
     the jack straight out by the fixed clearance depth (`jacks.clearance.outward_mm`);
   - the grid path is the shortest 8-connected one; crowded cells are resolved by rip-up-and-reroute with
-    rising congestion costs (negotiated congestion, as in FPGA routers);
+    rising congestion costs (negotiated congestion, as in FPGA routers); at most `max_over_plug` (default 2)
+    other cables may cross one plug (head or barrel), handled the same way;
+  - the grid path is then reduced to its necessary corners (`smooth`: any-angle straight segments that stay as
+    far from the pedals as the grid path did and cross no plug it did not cross); the minimum cable length
+    follows the smoothed path;
   - the clearance of every signal jack with a modelled plug is checked here (head footprint + barrel +
     straight cable run on the chosen side against the other pedals); other jacks keep the fixed box (jacks.py).
 Power cables get the same cable model (tips, centre polarity, under_board) and a length estimate, but are
@@ -25,6 +29,7 @@ that plug's head on the less blocked exit side; without it jacks.py uses the sma
 import heapq
 import itertools
 import math
+import re
 
 import design
 
@@ -33,6 +38,7 @@ DEFAULTS = {
     "power_type": None,          # DC plug type for power-jack clearance (role power); None: the jacks.power_clearance box
     "diameter_mm": 6.0,          # routing width of a signal cable; the type's diameter_mm (on-board width) when a type is set
     "max_stack": 2,              # cables allowed on top of each other in one cell
+    "max_over_plug": 2,          # other cables allowed across one plug (head + barrel); the plug's own cable never counts
     "default_tip": "TS",         # signal plugs unless a jack or an override says TRS / XLR
     "power_tip": "DC 2.1 mm",
     "iterations": 40,
@@ -93,14 +99,9 @@ class Grid:
     def block_rect(self, r, grow=0.0):
         """Block every cell whose centre lies inside rectangle r grown by `grow` (use the cable radius: a cable
         centred there would overlap the obstacle). Gaps at least one cable diameter wide stay open."""
-        x0, y0, x1, y1 = r[0] - grow, r[1] - grow, r[2] + grow, r[3] + grow
-        for i in range(max(0, int((x0 - self.x0) / self.cell) - 1), min(self.nx, int((x1 - self.x0) / self.cell) + 2)):
-            for j in range(max(0, int((y0 - self.y0) / self.cell) - 1), min(self.ny, int((y1 - self.y0) / self.cell) + 2)):
-                cx, cy = self.centre((i, j))
-                if x0 <= cx <= x1 and y0 <= cy <= y1:
-                    self.blocked.add((i, j))
-                    if r[0] <= cx <= r[2] and r[1] <= cy <= r[3]:
-                        self.body.add((i, j))
+        cells = rect_cells(self, r, grow)
+        self.blocked |= cells
+        self.body |= {c for c in cells if r[0] <= self.centre(c)[0] <= r[2] and r[1] <= self.centre(c)[1] <= r[3]}
         self._comps = {}
 
     def walls(self, squeeze=False):
@@ -140,14 +141,31 @@ class Grid:
         return bool(reach(a) & reach(b))
 
 
+def grow_of(cfg):
+    """How far pedals (and plugs, for the plug limit) are grown for the cell-centre test: the cable radius minus
+    half a cell, so every gap at least one cable diameter wide keeps a row of free cell centres."""
+    return max(0.0, cfg["diameter_mm"] / 2 - cfg["grid_mm"] / 2 - 0.01)
+
+
+def rect_cells(grid, r, grow=0.0):
+    """Cells whose centre lies inside rectangle r grown by `grow` (what `Grid.block_rect` blocks)."""
+    x0, y0, x1, y1 = r[0] - grow, r[1] - grow, r[2] + grow, r[3] + grow
+    out = set()
+    for i in range(max(0, int((x0 - grid.x0) / grid.cell) - 1), min(grid.nx, int((x1 - grid.x0) / grid.cell) + 2)):
+        for j in range(max(0, int((y0 - grid.y0) / grid.cell) - 1), min(grid.ny, int((y1 - grid.y0) / grid.cell) + 2)):
+            cx, cy = grid.centre((i, j))
+            if x0 <= cx <= x1 and y0 <= cy <= y1:
+                out.add((i, j))
+    return out
+
+
 def build_grid(board_rect, obstacle_rects, front_y, cfg):
     """Routing area = board + margin at the back and sides, cut off at `front_y` (no cables in front)."""
     m = cfg["edge_margin_mm"]
     x0, y0, x1 = board_rect[0] - m, board_rect[1] - m, board_rect[2] + m
     g = Grid(x0, y0, x1, front_y, cfg["grid_mm"])
-    # grow by the cable radius minus half a cell: every gap at least one cable diameter wide keeps a row of free
-    # cell centres whatever the grid alignment (a narrower gap may still pass by up to half a cell: grid accuracy)
-    grow = max(0.0, cfg["diameter_mm"] / 2 - cfg["grid_mm"] / 2 - 0.01)
+    # a gap narrower than one cable diameter may still pass by up to half a cell: grid accuracy
+    grow = grow_of(cfg)
     for r in obstacle_rects:
         g.block_rect(r, grow=grow)
     return g
@@ -196,14 +214,30 @@ def astar(grid, start, goal, cell_cost, squeeze=False):
     return None
 
 
-def route_all(grid, nets, max_stack, iterations=40):
-    """nets: [(name, start_cell, goal_cell[, squeeze])]. Returns ({name: path or None}, {cell: [names]}, overflow cells).
+def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2):
+    """nets: [(name, start_cell, goal_cell[, squeeze])]. Returns ({name: path or None}, {cell: [names]}, overflow cells,
+    plug_over).
 
     Every round, each net is ripped up and re-routed against the others' current paths; a cell already holding
     `max_stack` cables costs more (present factor, growing each round), and cells that stayed over the limit
     get a permanent history cost, so cables spread out until the limit holds (or the rounds run out).
-    """
-    history, paths, present = {}, {}, 0.5
+
+    plugs: {key: (owner cable name or None, cells)}. A net entering a cell of a plug it does not own, where that
+    plug already carries `max_over_plug` OTHER cables (owner and this net excluded), pays the over-limit penalty
+    like an over-stacked cell; plugs still over the limit after a round get a history cost (for the cables that
+    do not own them). plug_over = {key: [names]}: the plugs that stayed over the limit, with their crossing cables."""
+    plugs = plugs or {}
+    plug_at = {}   # cell -> [plug keys]
+    for key, (_, cells) in plugs.items():
+        for c in cells:
+            plug_at.setdefault(c, []).append(key)
+    history, plug_history, paths, present = {}, {}, {}, 0.5
+    cross = {key: set() for key in plugs}   # plug key -> cables other than its owner whose path enters it
+
+    def crossed(name, path):
+        """plugs a path enters, not counting its own plugs nor its two end cells (a cable may start next to a plug)"""
+        return {k for c in (path or [])[1:-1] for k in plug_at.get(c, ()) if plugs[k][0] != name}
+
     for _ in range(iterations):
         usage = {}
         for path in paths.values():
@@ -212,29 +246,302 @@ def route_all(grid, nets, max_stack, iterations=40):
         for name, s, t, *sq in nets:
             for c in paths.get(name) or []:
                 usage[c] -= 1
+            for k in crossed(name, paths.get(name)):
+                cross[k].discard(name)
 
             def cost(c):
                 over = max(0, usage.get(c, 0) + 1 - max_stack)
-                return (1.0 + history.get(c, 0.0)) * (1.0 + present * over * 10)
+                hist = history.get(c, 0.0)
+                if c != s and c != t:
+                    for key in plug_at.get(c, ()):
+                        if plugs[key][0] != name:
+                            over += len(cross[key]) >= max_over_plug
+                            hist += plug_history.get(key, 0.0)
+                return (1.0 + hist) * (1.0 + present * over * 10)
 
             paths[name] = astar(grid, s, t, cost, squeeze=bool(sq and sq[0]))
             for c in paths[name] or []:
                 usage[c] = usage.get(c, 0) + 1
+            for k in crossed(name, paths[name]):
+                cross[k].add(name)
         overflow = {c for c, n in usage.items() if n > max_stack}
-        if not overflow:
+        too_many = {k for k, v in cross.items() if len(v) > max_over_plug}
+        if not overflow and not too_many:
             break
         for c in overflow:
             history[c] = history.get(c, 0.0) + 0.5
+        for k in too_many:
+            plug_history[k] = plug_history.get(k, 0.0) + 0.5
         present *= 1.6
     users = {}
     for name, path in paths.items():
         for c in path or []:
             users.setdefault(c, []).append(name)
-    return paths, users, {c for c, u in users.items() if len(u) > max_stack}
+    plug_over = {k: sorted(v) for k, v in cross.items() if len(v) > max_over_plug}
+    return paths, users, {c for c, u in users.items() if len(u) > max_stack}, plug_over
 
 
 def path_length(grid, path):
     return sum(grid.cell * (math.sqrt(2) if a[0] != b[0] and a[1] != b[1] else 1.0) for a, b in zip(path, path[1:]))
+
+
+# --- smoothing ----------------------------------------------------------------------------------
+def point_rect_distance(p, r):
+    return math.hypot(max(r[0] - p[0], 0.0, p[0] - r[2]), max(r[1] - p[1], 0.0, p[1] - r[3]))
+
+
+def point_seg_distance(c, p, q):
+    dx, dy = q[0] - p[0], q[1] - p[1]
+    n = dx * dx + dy * dy
+    t = 0.0 if n == 0 else max(0.0, min(1.0, ((c[0] - p[0]) * dx + (c[1] - p[1]) * dy) / n))
+    return math.hypot(c[0] - (p[0] + t * dx), c[1] - (p[1] + t * dy))
+
+
+def seg_rect_distance(p, q, r):
+    """Exact distance between segment pq and the (closed) rectangle r = (x0, y0, x1, y1); 0 if they intersect."""
+    t0, t1 = 0.0, 1.0   # Liang-Barsky: the part of the segment inside the rectangle
+    for lo, hi, a, da in ((r[0], r[2], p[0], q[0] - p[0]), (r[1], r[3], p[1], q[1] - p[1])):
+        if da == 0:
+            if a < lo or a > hi:
+                t0, t1 = 1.0, 0.0
+            continue
+        ta, tb = (lo - a) / da, (hi - a) / da
+        t0, t1 = max(t0, min(ta, tb)), min(t1, max(ta, tb))
+    if t0 <= t1:
+        return 0.0
+    # disjoint convex shapes: the minimum is reached at a vertex of one of them
+    corners = ((r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3]))
+    return min([point_rect_distance(p, r), point_rect_distance(q, r)] + [point_seg_distance(c, p, q) for c in corners])
+
+
+def polyline_length(points):
+    return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(points, points[1:]))
+
+
+def smooth(points, obstacles, radius, plugs, own_plugs=()):
+    """Reduce a routed polyline [exit_a, cell centres..., exit_b] to its necessary corners (string pulling).
+
+    From the anchor p_i, p_j (j = i+2, i+3, ...) is accepted while the straight segment (p_i, p_j) is valid; the
+    first invalid j stops the search and the last valid one becomes the next corner. A segment is valid when
+      (a) it keeps at least min(radius, the closest any replaced point p_i..p_j came to that rectangle) from every
+          obstacle rectangle: never closer to a pedal than the grid path was (a squeezed stretch stays as it is,
+          a free one keeps the full cable radius);
+      (b) every plug it touches (`plugs`: {key: [rects]}; touched = within `radius`) was also touched by one of the
+          replaced consecutive segments, or is in `own_plugs`.
+    The first and last point are kept."""
+    eps = 1e-6
+    n = len(points)
+    if n <= 2:
+        return list(points)
+    # every segment between two path points lies in the points' bounding box: only plugs near it can be touched
+    bx0, by0 = min(p[0] for p in points) - radius, min(p[1] for p in points) - radius
+    bx1, by1 = max(p[0] for p in points) + radius, max(p[1] for p in points) + radius
+    plugs = {k: rs for k, rs in plugs.items() if k not in own_plugs and
+             any(r[0] <= bx1 and r[2] >= bx0 and r[1] <= by1 and r[3] >= by0 for r in rs)}
+    touch = lambda p, q, key: any(seg_rect_distance(p, q, r) <= radius for r in plugs[key])
+    # never closer than the grid path; a replaced point touching or inside a pedal (a plug exit inside a neighbour)
+    # allows no shortcut through it: the segment must then stay clear of that pedal
+    clear = lambda d, c: d >= min(radius, c) - eps if c > eps else d > eps
+    steps = [{k for k in plugs if touch(a, b, k)} for a, b in zip(points, points[1:])]   # plugs per grid step
+    out, i = [points[0]], 0
+    while i < n - 1:
+        # over the replaced points: closest approach per obstacle, plugs touched by the replaced segments
+        closest = [min(point_rect_distance(points[i], o), point_rect_distance(points[i + 1], o)) for o in obstacles]
+        allowed = set(steps[i])
+        best, j = i + 1, i + 2
+        while j < n:
+            closest = [min(c, point_rect_distance(points[j], o)) for c, o in zip(closest, obstacles)]
+            allowed |= steps[j - 1]
+            p, q = points[i], points[j]
+            if not all(clear(seg_rect_distance(p, q, o), c) for o, c in zip(obstacles, closest)):
+                break
+            if not all(k in allowed or k in own_plugs for k in plugs if touch(p, q, k)):
+                break
+            best, j = j, j + 1
+        out.append(points[best])
+        i = best
+    return out
+
+
+# --- lanes: drawing geometry for cables that share a corridor ---------------------------------------
+def natural_key(cid):
+    """Sort key putting S2 before S10."""
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", cid)]
+
+
+def _unit(p, q):
+    n = math.hypot(q[0] - p[0], q[1] - p[1])
+    return None if n < 1e-9 else ((q[0] - p[0]) / n, (q[1] - p[1]) / n)
+
+
+def lane_pair(s, t, width):
+    """Segments s = (p, q) and t of two cables belong together when they are nearly parallel (<= 10 deg), overlap by at
+    least `width` along the longer one and their centrelines stay closer than `width` over that overlap."""
+    if polyline_length(s) < polyline_length(t):
+        s, t = t, s
+    u, v = _unit(*s), _unit(*t)
+    if u is None or v is None or abs(u[0] * v[1] - u[1] * v[0]) > math.sin(math.radians(10)):
+        return False
+    n = (-u[1], u[0])
+    ta, tb = ((p[0] - s[0][0]) * u[0] + (p[1] - s[0][1]) * u[1] for p in t)
+    lo, hi = max(0.0, min(ta, tb)), min(polyline_length(s), max(ta, tb))
+    if hi - lo < width - 1e-6:
+        return False
+    wa, wb = ((p[0] - s[0][0]) * n[0] + (p[1] - s[0][1]) * n[1] for p in t)   # t's side position at its two ends
+    at = lambda x: wa + (x - ta) / (tb - ta) * (wb - wa)
+    return max(abs(at(lo)), abs(at(hi))) < width - 1e-6
+
+
+def lane_bundles(routes, width):
+    """Groups of segments (cable id, segment index) that run side by side: pairs of `lane_pair` joined (union-find)."""
+    segs = [(cid, j) for cid, (pts, _) in routes.items() for j in range(len(pts) - 1)]
+    seg = lambda s: routes[s[0]][0][s[1]:s[1] + 2]
+    parent = {s: s for s in segs}
+
+    def find(s):
+        while parent[s] != s:
+            parent[s] = s = parent[parent[s]]
+        return s
+
+    for i, s in enumerate(segs):
+        for t in segs[i + 1:]:
+            if s[0] != t[0] and find(s) != find(t) and lane_pair(seg(s), seg(t), width):
+                parent[find(s)] = find(t)
+    groups = {}
+    for s in segs:
+        groups.setdefault(find(s), []).append(s)
+    key = lambda s: (natural_key(s[0]), s[1])
+    return sorted((sorted(g, key=key) for g in groups.values() if len(g) > 1), key=lambda g: key(g[0]))
+
+
+def offset_polyline(pts, shift):
+    """pts shifted per segment by shift[j] (a vector); the corners are mitred (intersection of the shifted lines),
+    nearly parallel neighbours (< 5 deg) meet at the midpoint of their shifted ends, a sharper turn than 6 x the
+    shift gets a bevel. The first and last point never move: a shifted first / last segment gets an extra corner.
+    Returns (points, src): src[t] = index of the original segment the new segment t -> t+1 comes from."""
+    m = len(pts) - 1
+    out, src = [pts[0]], []
+    plus = lambda p, v: (p[0] + v[0], p[1] + v[1])
+
+    def add(p, j):
+        out.append(p)
+        src.append(j)
+
+    if shift[0] != (0.0, 0.0):
+        add(plus(pts[0], shift[0]), 0)
+    for j in range(1, m):
+        a, b = shift[j - 1], shift[j]
+        if a == b == (0.0, 0.0):
+            add(pts[j], j - 1)
+            continue
+        da, db = _unit(pts[j - 1], pts[j]), _unit(pts[j], pts[j + 1])
+        pa, pb = plus(pts[j], a), plus(pts[j], b)
+        cross = None if da is None or db is None else da[0] * db[1] - da[1] * db[0]
+        if cross is None or abs(cross) < math.sin(math.radians(5)):
+            add(((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2), j - 1)
+            continue
+        t = ((pb[0] - pa[0]) * db[1] - (pb[1] - pa[1]) * db[0]) / cross
+        p = (pa[0] + t * da[0], pa[1] + t * da[1])
+        if math.hypot(p[0] - pts[j][0], p[1] - pts[j][1]) > 6 * max(math.hypot(*a), math.hypot(*b)):
+            add(pa, j - 1)
+            add(pb, j - 1)
+        else:
+            add(p, j - 1)
+    if shift[m - 1] != (0.0, 0.0):
+        add(plus(pts[m], shift[m - 1]), m - 1)
+    add(pts[m], m - 1)
+    return out, src
+
+
+LANE_STEP = 0.25   # mm: search step of a lane set's sideways shift (see lanes)
+
+
+def lanes(routes, pedal_rects, plug_rects, area, width):
+    """Draw cables that run along the same corridor side by side, `width` apart (drawing geometry only: lengths
+    never change).  routes: {cable id: (corners, own plug keys)}, the corners from exit to exit; area = (x0, y0,
+    x1, y1) of the routing area.  Returns {cable id: {"corners": the corners with the lane offsets, "stacked":
+    sorted ids of the cables it is drawn on top of, "stacked_runs": the stacked stretches as polylines}}.
+
+    Bundles (`lane_bundles`): each cable gets one lane per bundle, ordered by the side it comes from and goes to
+    (perpendicular position of the corner before and after the bundle, summed; ties by id), so lanes do not cross.
+    A bundle is accepted when every changed segment keeps the smoothing rules (at least min(radius, the original
+    distance) from every pedal, touches no other plug than the original did) and stays inside the area; the lane set may
+    shift sideways off its centre (cables hug pedal edges: closest to centred first), first at full, then at half
+    spacing; else it stays on the original centrelines and its cables are `stacked`."""
+    radius, eps = width / 2, 1e-6
+    shifts = {cid: [(0.0, 0.0)] * (len(pts) - 1) for cid, (pts, _) in routes.items()}
+    stacked = {cid: set() for cid in routes}
+    stacked_segs = {cid: set() for cid in routes}   # segment indices of the cable in a stacked bundle
+    touch = lambda p, q, rs: any(seg_rect_distance(p, q, r) <= radius for r in rs)
+    clear = lambda d, orig: d >= min(radius, orig) - eps if orig > eps else d > eps   # as in smooth
+
+    def valid(cid, trial):
+        pts, own = routes[cid]
+        new, src = offset_polyline(pts, trial)
+        if not all(area[0] - eps <= x <= area[2] + eps and area[1] - eps <= y <= area[3] + eps for x, y in new):
+            return False
+        for (p, q), j in zip(zip(new, new[1:]), src):
+            a, b = pts[j], pts[j + 1]
+            if (p, q) == (a, b) or p == q:
+                continue
+            if any(not clear(seg_rect_distance(p, q, r), seg_rect_distance(a, b, r)) for r in pedal_rects):
+                return False
+            if any(k not in own and touch(p, q, rs) and not touch(a, b, rs) for k, rs in plug_rects.items()):
+                return False
+        return True
+
+    for members in lane_bundles(routes, width):
+        by_cable = {}
+        for cid, j in members:
+            by_cable.setdefault(cid, []).append(j)
+        longest = max(members, key=lambda s: polyline_length(routes[s[0]][0][s[1]:s[1] + 2]))
+        o, e = routes[longest[0]][0][longest[1]:longest[1] + 2]
+        d = _unit(o, e)
+        n = (-d[1], d[0])
+        pos = lambda p: (p[0] - o[0]) * n[0] + (p[1] - o[1]) * n[1]
+
+        def side(cid):
+            pts, js = routes[cid][0], by_cable[cid]
+            before = pts[min(js) - 1] if min(js) > 0 else pts[0]       # where the cable comes from / goes to
+            after = pts[max(js) + 2] if max(js) + 2 < len(pts) else pts[-1]
+            return round(pos(before) + pos(after), 6)
+
+        order = sorted(by_cable, key=lambda c: (side(c), natural_key(c)))
+        k = len(order)
+        # smoothed cables hug pedal edges, so the lane set may shift off-centre: the first lane's offset is searched in
+        # LANE_STEP steps from one spacing beyond one-sided on either side, closest to centred first
+        span = lambda s: [round(-(k - 1) * s - s + LANE_STEP * m, 6) for m in range(int(round((k + 1) * s / LANE_STEP)) + 1)]
+        for spacing, first in ((s, f) for s in (width, width / 2)
+                               for f in sorted(span(s), key=lambda f: (abs(f + (k - 1) * s / 2), f))):
+            trial = {cid: list(s) for cid, s in shifts.items()}
+            for i, cid in enumerate(order):
+                off = first + i * spacing
+                for j in by_cable[cid]:
+                    trial[cid][j] = (off * n[0], off * n[1])
+            if all(valid(cid, trial[cid]) for cid in order):
+                shifts = trial
+                break
+        else:
+            for cid in order:
+                stacked[cid] |= set(order) - {cid}
+                stacked_segs[cid] |= set(by_cable[cid])
+
+    def result(cid):
+        pts = routes[cid][0]
+        new, src = offset_polyline(pts, shifts[cid]) if any(s != (0.0, 0.0) for s in shifts[cid]) else \
+            (list(pts), list(range(len(pts) - 1)))
+        runs = []   # consecutive drawn segments that come from stacked segments, on the drawn (mitred) geometry
+        for t, j in enumerate(src):
+            if j not in stacked_segs[cid]:
+                continue
+            if runs and runs[-1][1] == t:
+                runs[-1] = (runs[-1][0], t + 1)
+            else:
+                runs.append((t, t + 1))
+        return {"corners": new, "stacked": sorted(stacked[cid], key=natural_key),
+                "stacked_runs": [new[a:b + 1] for a, b in runs]}
+
+    return {cid: result(cid) for cid in routes}
 
 
 # --- the project step ---------------------------------------------------------------------------
@@ -443,8 +750,26 @@ def route_project(ctx, cat_pedals, cable_types=None):
         c["_squeeze"] = bool(mode)
         nets.append((c["id"], oa["cell"], ob["cell"], bool(mode)))
 
-    paths, users, overflow = route_all(grid, nets, int(cfg["max_stack"]), int(cfg["iterations"])) if grid else ({}, {}, set())
+    # every plug of the layout (head + barrel): the power plugs' sides are chosen before routing, as the signal ones
+    power_choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles) if grid else []
+    plug_rects, plug_owner = {}, {}   # "<pedal id>.<jack id>" -> [head / barrel rects], owner cable id
+    if grid:
+        for c in (x for x in cables if x["kind"] == "signal" and x["id"] in chosen):
+            for e, o in zip(c["_sides"], chosen[c["id"]]):
+                if e and o:
+                    plug_rects[f"{e['cid']}.{e['jack']['id']}"], plug_owner[f"{e['cid']}.{e['jack']['id']}"] = \
+                        [r for part, r in o["rects"] if part in ("head", "barrel")], c["id"]
+        for cid, jk, pc, _, o in power_choices:
+            plug_rects[f"{cid}.{jk['id']}"], plug_owner[f"{cid}.{jk['id']}"] = \
+                [r for part, r in o["rects"] if part in ("head", "barrel")], (pc or {}).get("id")
+    plug_rects = {k: v for k, v in plug_rects.items() if v}
+    grow = grow_of(cfg)
+    plugs = {k: (plug_owner[k], set().union(*(rect_cells(grid, r, grow) for r in rs))) for k, rs in plug_rects.items()}
+    paths, users, overflow, plug_over = (route_all(grid, nets, int(cfg["max_stack"]), int(cfg["iterations"]), plugs,
+                                                   int(cfg["max_over_plug"])) if grid else ({}, {}, set(), {}))
     ctx["routing"]["overflow"] = overflow
+    ctx["routing"]["plug_over"] = plug_over
+    pedal_rects = [design.footprint(o) for o in obstacles]
     for c in cables:
         if c["id"] not in paths:
             continue
@@ -455,20 +780,38 @@ def route_project(ctx, cat_pedals, cable_types=None):
             continue
         oa, ob = chosen[c["id"]]
         squeezed = sum(1 for p in path if p in grid.blocked) * grid.cell
-        first, last = grid.centre(path[0]), grid.centre(path[-1])
-        ea, eb = oa["exit"], ob["exit"]
-        length = (oa["measure_mm"] + ob["measure_mm"] + math.hypot(ea[0] - first[0], ea[1] - first[1]) + path_length(grid, path)
-                  + math.hypot(eb[0] - last[0], eb[1] - last[1]))
-        c.update(min_mm=length, status="routed",
-                 path=list(oa["lead"]) + [grid.centre(p) for p in path] + list(reversed(ob["lead"])))
+        own = {f"{e['cid']}.{e['jack']['id']}" for e in c["_sides"]}
+        corners = smooth([oa["exit"]] + [grid.centre(p) for p in path] + [ob["exit"]], pedal_rects, cfg["diameter_mm"] / 2,
+                         plug_rects, own)
+        c.update(min_mm=oa["measure_mm"] + ob["measure_mm"] + polyline_length(corners), status="routed",
+                 path=list(oa["lead"][:-1]) + corners + list(reversed(ob["lead"]))[1:])
+        c["_corners"], c["_own"] = corners, own
+        c["_leads"] = (list(oa["lead"][:-1]), list(reversed(ob["lead"]))[1:])   # fixed geometry round the routed corners
         if c.get("_squeeze") and squeezed:
             c["status"] = "routed, squeezed (gap narrower than the cable)"
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) only fits by squeezing about {squeezed:.0f} mm of cable "
                         f"through gaps narrower than the {cfg['diameter_mm']:g} mm cable (move the pedals apart)")
         crowded = sorted({x for p in path if p in overflow for x in users[p]} - {c["id"]})
         if crowded:
-            c["status"] = "routed, over the stacking limit"
+            c["status"] += ", over the stacking limit"
             sink.append(f"routing: {c['id']} shares cells with {', '.join(crowded)} beyond the limit of {cfg['max_stack']} stacked cables")
+    by_id = {c["id"]: c for c in cables}
+    for key, names in sorted(plug_over.items()):
+        who = ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
+        sink.append(f"routing: {who} {'cross' if len(names) > 1 else 'crosses'} the plug at {key} (limit {cfg['max_over_plug']} other cables)")
+        for n in names:
+            by_id[n]["status"] += ", over the plug limit"   # appended: a cable keeps every problem it has
+
+    # lanes: cables along the same corridor are drawn side by side (drawing only: path and min_mm stay on the centrelines)
+    routed = {c["id"]: (c["_corners"], c["_own"]) for c in cables if "_corners" in c}
+    laned = lanes(routed, pedal_rects, plug_rects, (grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell, front_y),
+                  cfg["diameter_mm"]) if routed else {}
+    for c in cables:
+        if c["id"] in laned:
+            lead_a, lead_b = c["_leads"]
+            c["draw_path"] = lead_a + laned[c["id"]]["corners"] + lead_b
+            c["stacked_with"] = laned[c["id"]]["stacked"]
+            c["stacked_runs"] = laned[c["id"]]["stacked_runs"]
 
     # clearance of every modelled plug, on the side the router chose
     checked = set()   # "<id>.<jack id>" checked with a plug model; the others keep jacks.check's fixed box
@@ -488,10 +831,10 @@ def route_project(ctx, cat_pedals, cable_types=None):
                                           "cable": c["id"], "cable_type": c["type"], "side": o["side"], "part": part})
                 clear_sink.append(f"clearance: {e['cid']}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                                   f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
-    checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink)
+    checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, power_choices if grid else None)
     report_fixed_box(ctx, checked)
     for c in cables:
-        for k in ("_ends", "_sides", "_squeeze"):
+        for k in ("_ends", "_sides", "_squeeze", "_corners", "_own", "_leads"):
             c.pop(k, None)
 
 
@@ -505,19 +848,18 @@ def deepest_hits(opt, facing):
     return list(best.values())
 
 
-def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink):
-    """Clearance of every placed pedal's power jack with the project's DC plug (`cables.power_type`): head + barrel
-    + the cable's first straight run (one power-cable diameter) on the exit side with the fewest blocked parts
-    (then the least overlap; a power cable override `exit_b` fixes it). The power cable then drops under the
-    board, so nothing is routed. Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
+def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
+    """The DC plug of every placed pedal's power jack (`cables.power_type`) with the exit side that has the fewest
+    blocked parts (then the least overlap; a power cable override `exit_b` fixes it): [(pedal id, jack, power cable
+    or None, facing, plug option)]. Sets the power cable's `exit_b`. Empty without a power type."""
     ptype = cable_types.get(cfg.get("power_type") or "")
     layout = ctx.get("layout") or {}
-    checked = set()
     if not ptype or not layout.get("placed"):
-        return checked
+        return []
     from jacks import default_jack
     by_jack = {c["to"]: c for c in cables if c["kind"] == "power"}
     run = {"exit_run_mm": float(ptype["diameter_mm"])}
+    out = []
     for cid, it in layout["placed"].items():
         jk = default_jack((layout.get("jacks") or {}).get(cid) or [], "power")
         if not jk:
@@ -529,78 +871,26 @@ def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink):
         o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
         if pc is not None:
             pc["exit_b"] = o["side"]
+        out.append((cid, jk, pc, facing, o))
+    return out
+
+
+def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, choices=None):
+    """Clearance of every placed pedal's power jack with the project's DC plug (`cables.power_type`): head + barrel
+    + the cable's first straight run (one power-cable diameter) on the exit side with the fewest blocked parts
+    (`power_plug_choices`, pass its result as `choices` to avoid choosing twice). The power cable then drops under
+    the board, so nothing is routed. Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
+    if choices is None:
+        choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles)
+    checked = set()
+    for cid, jk, pc, facing, o in choices:
         ctx["routing"]["heads"].append({"cable": (pc or {}).get("id"), "rects": o["rects"]})
         checked.add(f"{cid}.{jk['id']}")
-        how = f"{cfg['power_type']} {ptype['plug']['style'].replace('_', '-')} plug" + (f", cable exits {o['side']}" if o["side"] else "")
+        how = f"{cfg['power_type']} {cable_types[cfg['power_type']]['plug']['style'].replace('_', '-')} plug" + \
+              (f", cable exits {o['side']}" if o["side"] else "")
         for part, ob, depth in deepest_hits(o, facing):
             ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth,
                                       "cable": (pc or {}).get("id"), "cable_type": cfg["power_type"], "side": o["side"], "part": part})
             clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                               f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
     return checked
-
-
-# --- picture ------------------------------------------------------------------------------------
-PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#9a6324",
-           "#008080", "#800000", "#808000", "#000075", "#e6beff", "#aaffc3", "#ffd8b1", "#808080"]
-
-
-FOOTSWITCH_STYLE = {"bypass": ("#263238", "#263238"), "boost": ("#e53935", "#263238"), "tap": ("#1e88e5", "#263238"),
-                    "function": ("#ffffff", "#263238")}   # footswitch dots in cables.svg: (fill, stroke) per type
-
-
-def svg(ctx, names, overlay=None, legend=None):
-    """An SVG of the board, the routing area, the pedals and the routed signal cables. `overlay`: extra SVG
-    elements drawn on top (e.g. a layout proposal's old positions), `legend`: an extra legend sentence."""
-    r = ctx.get("routing") or {}
-    grid, layout = r.get("grid"), ctx.get("layout")
-    if not grid or not layout:
-        return None
-    board = design.footprint(layout["board"])
-    pad = 20
-    x0, y0 = grid.x0 - pad, grid.y0 - pad
-    w, h = grid.nx * grid.cell + 2 * pad, (board[3] - grid.y0) + 2 * pad + 20
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0:.1f} {y0:.1f} {w:.1f} {h:.1f}" width="{w * 1.6:.0f}" '
-           f'font-family="sans-serif">',
-           f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#ffffff"/>',
-           f'<rect x="{board[0]:.1f}" y="{board[1]:.1f}" width="{board[2] - board[0]:.1f}" height="{board[3] - board[1]:.1f}" '
-           f'fill="#eceff1" stroke="#90a4ae" stroke-width="1"/>',
-           f'<rect x="{grid.x0:.1f}" y="{grid.y0:.1f}" width="{grid.nx * grid.cell:.1f}" height="{r["front_y"] - grid.y0:.1f}" '
-           f'fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8"/>']
-    for o in layout["obstacles"]:
-        f = design.footprint(o)
-        out.append(f'<rect x="{f[0]:.1f}" y="{f[1]:.1f}" width="{f[2] - f[0]:.1f}" height="{f[3] - f[1]:.1f}" fill="#cfd8dc" '
-                   f'stroke="#455a64" stroke-width="0.8" rx="2"/>')
-    for cid, it in layout["placed"].items():
-        f = design.footprint(it)
-        out.append(f'<text x="{(f[0] + f[2]) / 2:.1f}" y="{(f[1] + f[3]) / 2:.1f}" font-size="7" text-anchor="middle" fill="#263238">'
-                   f'{names.get(cid, cid)[:18]}</text>')
-    for c in r.get("overflow") or []:
-        x, y, x2, y2 = grid.rect(c)
-        out.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{x2 - x:.1f}" height="{y2 - y:.1f}" fill="#ff1744" opacity="0.35"/>')
-    for h in r.get("heads") or []:
-        for _, (hx0, hy0, hx1, hy1) in h["rects"]:
-            out.append(f'<rect x="{hx0:.1f}" y="{hy0:.1f}" width="{hx1 - hx0:.1f}" height="{hy1 - hy0:.1f}" fill="#90a4ae" '
-                       f'opacity="0.45" stroke="#37474f" stroke-width="0.3"/>')
-    sig = [c for c in ctx.get("cable_list", []) if c["kind"] == "signal" and c.get("path")]
-    for n, c in enumerate(sig):
-        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in c["path"])
-        col = PALETTE[n % len(PALETTE)]
-        out.append(f'<polyline points="{pts}" fill="none" stroke="{col}" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>')
-        mx, my = c["path"][len(c["path"]) // 2]
-        out.append(f'<text x="{mx:.1f}" y="{my - 2:.1f}" font-size="6" fill="{col}" font-weight="bold">{c["id"]}</text>')
-    for pr in (x for x in ctx.get("footswitch_pairs") or [] if x.get("too_close")):
-        (ax, ay), (bx, by) = pr["points"]
-        out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" stroke="#d50000" stroke-width="1.2" '
-                   f'stroke-dasharray="3 2"/>')
-    for fp in ctx.get("footswitch_points") or []:
-        fill, stroke = FOOTSWITCH_STYLE.get(fp["type"], ("#ffffff", "#263238"))
-        out.append(f'<circle cx="{fp["x"]:.1f}" cy="{fp["y"]:.1f}" r="3.5" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>')
-    out += list(overlay or [])
-    out.append(f'<text x="{grid.x0:.1f}" y="{board[3] + 14:.1f}" font-size="7" fill="#455a64">dashed: routing area '
-               f'(board + {r["settings"]["edge_margin_mm"]:g} mm at back and sides, nothing in front of the lowest pedals); '
-               f'red: more than {r["settings"]["max_stack"]} stacked cables; grey: plug heads and their cable exits'
-               + ('; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum'
-                  if ctx.get("footswitch_points") else '') + (f'; {legend}' if legend else '') + '</text>')
-    out.append("</svg>")
-    return "\n".join(out) + "\n"

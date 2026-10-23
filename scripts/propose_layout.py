@@ -12,7 +12,7 @@ and iteration budget) yields distinct finalists. Each finalist gets its own powe
 outputs and daisy chains for the shortest DC cable under the power policy) and is checked with the real pipeline
 (build.validate with the injected layout: plug clearance, routed cables, footswitch spacing). A finalist becomes a
 proposal only if it is not worse than the owner's layout on blocked plugs, routing problems (unroutable, squeezed,
-over the stacking limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
+over the stacking or plug limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
 blocked mm, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
 penalties).
 
@@ -33,6 +33,7 @@ import jacks
 import layout
 import power
 import routing
+import svgdraw
 from common import load_cable_types, load_catalog, load_json, project_dirs, proposal_inputs_sha1
 
 META = "meta.json"
@@ -49,7 +50,7 @@ def metrics(ctx, model, state, move_factor):
         "blocked": len(ctx["violations"]), "blocked_mm": round(sum(v["depth_mm"] for v in ctx["violations"]), 1),
         "blocked_jacks": sorted({v["jack"] for v in ctx["violations"]}),
         "unroutable": sum(s.startswith("unroutable") for s in status), "squeezed": sum("squeezed" in s for s in status),
-        "overflow": sum("stacking limit" in s for s in status),
+        "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         "fs_close": sum(1 for r in prs if r.get("too_close")),
         "fs_closest_mm": round(prs[0]["distance_mm"], 1) if prs else None,
         "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding") or 0.0, 1),
@@ -264,7 +265,7 @@ def main(argv=None):
         moved_ids = {model.placed[mv["pedal"]]["id"] for mv in f["moved"]}
         canvas = design.write_canvas(design_doc["canvas"], [i for i in items_new if i["id"] in moved_ids])
         (out / pm["file"]).write_text(json.dumps({**design_doc, "canvas": canvas}))
-        picture = routing.svg(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),
+        picture = svgdraw.render(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),
                               legend="orange: moved pedals (dashed grey: the owner's position, arrow: the move)")
         if picture:
             (out / pm["svg"]).write_text(picture)

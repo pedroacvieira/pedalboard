@@ -53,8 +53,27 @@ Each starts with a short plan in `docs/plans/<branch>.md` + owner decisions, the
 Suggested order: 1 routing-view -> 3 supply-placement -> 2 power-routing -> 6 footswitch-toppers ->
 5 pedal-preferences -> 4 web-ui.
 
-### 1. `feat/routing-view`: a clearer signal routing picture (routing.svg; `cables.svg` today)
+### 1. `feat/routing-view` (merged into main 2026-10-23): a clearer signal routing picture (routing.svg)
 Goal: a picture the owner can wire the board from. Today: grid staircase paths, pedal boxes, S# labels.
+Plan: `docs/plans/routing-view.md` (owner decisions 2026-10-23: any angle; lanes not in the length; rename to
+routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_plug` 2; printable 1:1 in mm).
+- [x] Phase 1 (handover `docs/handovers/routing-view-1.md`, 2026-10-23): plug-head limit + smoothing; gig signal
+      total 2576 -> 2512 mm, no cable longer, no plug-limit findings. Proposals count plug-limit cables as overflow.
+- [ ] The layout surrogate (octile) now overestimates the smoothed router by up to ~8 % per cable; consider an
+      any-angle estimate in `layout.py` (adds to "Surrogate vs router" above).
+- [x] Phase 2 (handover `docs/handovers/routing-view-2.md`, 2026-10-23): parallel lanes (`routing.lanes`, drawing
+      only: `draw_path`, `stacked_with`); the lane set may shift off-centre (cables hug pedal edges). Gig: S6/S8 in
+      lanes; S11/S13 and S14/S15 stacked (gaps ~5.5 mm between pedals, two 3.5 mm ribbons need 7).
+- [x] Phases 3-4 (handover `docs/handovers/routing-view-3.md`, 2026-10-23): `scripts/svgdraw.py`, `routing.svg`
+      (mm, 1:1 print, jacks, plug heads, legend table), `routing.local.svg` (`--images`, git-ignored), README and
+      proposals use it; `fetch_image` in common.py; stacked dashes only on the stacked stretches.
+- [ ] Owner: look at `projects/guitar-gig/routing.svg` (and `--images`); label placement is basic (some S# labels on
+      short segments or overlapping in lanes).
+- [x] Code review of the branch (2026-10-23): 10 findings fixed (smoothing / lanes could pass through a pedal a plug
+      exit touches, statuses keep every problem, incremental plug crossings, a cable's end cells never cross a plug,
+      stacked dashes on the drawn geometry, shared rect_cells / jack colours, xlink:href, fetch_image message);
+      merged into main.
+- [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.
 - [ ] Paths: reduce each routed path to its necessary corners (any-angle straight segments between them where the
@@ -68,6 +87,20 @@ Goal: a picture the owner can wire the board from. Today: grid staircase paths, 
 - [ ] Shared SVG helpers (board, pedals, jacks, legend) in one module, so power.svg (2) and the web views (4) reuse them.
 - Acceptance: same corridors as before; paths straighter and never overlapping (lengths can only get shorter);
   README embeds it.
+
+### 1b. `feat/pedal-outlines`: route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
+Finding (2026-10-23, `.cache/images`): the Pedal Playground images are tightly cropped RGBA, 80-98 % opaque. The
+side strips are mostly the protruding jacks and the corners are rounded: the enclosure itself is narrower than the
+box by about 5-10 % of the width per side (TC minis / Mini Ego / MXR / Jam / Reticon), i.e. a few mm per pedal.
+That matters: the gig's stacked spots (S11/S13, S14/S15) sit in 5.4-5.6 mm box gaps.
+- [ ] Outline per catalog id from the image alpha: a few axis-aligned rects (run-length rows merged at ~1 mm, or a
+      simplified polygon), in image fractions like jacks.json; rotated with the item (`design.jack_point`).
+- [ ] Router and smoothing: block the outline rects instead of the footprint (grid + `smooth` / `lanes` distances).
+- [ ] Verify first: does Pedal Playground's data-width/height cover the image incl. jacks (then the outline is
+      right), or only the enclosure (then the image is squeezed)? Check 2-3 pedals against maker dimensions.
+- [ ] Owner decisions: commit the outlines (small derived data, build works offline; no images) or keep them in
+      `.cache`; use them for plug clearance too (fewer findings at rounded corners) or only for routing; keep the
+      bounding box for pedal-pedal overlap in the layout search (jacks of neighbours cannot interleave freely).
 
 ### 2. `feat/power-routing`: power cables routed and drawn (power.svg)
 Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs 3 for where cables cross the board.
@@ -102,6 +135,7 @@ crossings (holes, slots, rail gaps, open edges) where power cables go from under
 - [ ] Board edges as crossings with the per-project allowed / avoided / forbidden setting of 2 (front forbidden by
       default); holes preferred.
 - [ ] Layout search: optional term for DC length through crossings; optionally move on-board supplies.
+- [ ] Keep the crossing model usable for patch cables too (see "Later: patch cables under the board" below).
 - Acceptance: today's projects (all supplies under) give identical results with placement defaulting to under.
 
 ### 4. `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
@@ -143,6 +177,18 @@ Goal: a topper (larger, higher cap) on a switch makes it easier to hit and its n
       higher priority type, then the one nearer the front), within `max_toppers`, stopping when the next topper
       gains little (threshold); listed in the README, not applied automatically.
 - [ ] Layout search: ignores toppers entirely (the layout is optimised first, toppers finish it).
+
+### Later: patch cables under the board and more plug orientations (owner, 2026-10-23; after 3, needs board holes)
+- [ ] Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
+      under pedals. Add this routing option once the boards have their holes set; same crossing model as power (2).
+- [ ] Plug orientation, today: a right-angle plug's cable leaves left or right of the facing and the plug occupies
+      more space on that side (modelled: `design.plug_geometry`, side chosen by the router). New case, U-turn: when
+      the plug cannot point to the side the cable has to go, point it to the opposite side and turn the cable back
+      (U-turn) towards the right direction; longer minimum length (the turn and the way back past the plug) and the
+      turned cable occupies space on both sides; the router considers it when the direct side is blocked or worse.
+- [ ] Plug pointing down into a hole: a jack above or next to a board hole can have its plug's cable pointed down
+      into the hole; the cable then either runs under the board until it has to resurface (another hole / edge), or
+      comes straight back up through the same hole and is routed on top from there.
 
 ## Features
 - [ ] Model the guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): needs guitar

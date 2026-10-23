@@ -14,8 +14,9 @@ import footswitches
 import jacks
 import power
 import routing
+import svgdraw
 from power import volt_range
-from common import (IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs,
+from common import (IN_MM, ROOT, effective_quantity, fetch_image, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs,
                     proposal_inputs_sha1)
 
 PEDAL_REQUIRED = [
@@ -436,13 +437,18 @@ def routing_section(ctx):
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
              f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
-             f"{cfg['exit_run_mm']:g} mm straight, then is routed; grey boxes in the picture are the plug heads and their cable exits. "
+             f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
           + "Power cables run under the board and are listed, not routed yet"
           + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
              if cfg.get("power_type") else "."), ""]
     if ctx["routing"].get("grid"):
-        md += ["![Cable routing](cables.svg)", ""]
+        md += ["![Signal routing](routing.svg)", "",
+               "The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, "
+               "every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) "
+               "with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where "
+               "they are stacked), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
+               "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
            "'~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).", "",
@@ -570,7 +576,7 @@ def proposals_section(ctx, cat_pedals):
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
 
     rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
-            ("Unroutable / squeezed / over the stacking limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
+            ("Unroutable / squeezed / over the stacking or plug limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
             ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
@@ -843,9 +849,29 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
     return "\n".join(md) + "\n", global_warn
 
 
+def pedal_images(ctx):
+    """{catalog id: PNG path} of the placed pedals' Pedal Playground images, downloaded when not cached yet. A pedal
+    whose image cannot be fetched is left out (drawn without it) and named in one printed line."""
+    out, failed = {}, []
+    for cid, it in ((ctx.get("layout") or {}).get("placed") or {}).items():
+        if not it.get("image"):
+            failed.append(cid)
+            continue
+        try:
+            out[cid] = fetch_image(it["image"])
+        except RuntimeError:
+            failed.append(cid)
+    if failed:
+        print(f"  no image for {ctx['key']}: {', '.join(failed)} (drawn without)")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("projects", nargs="*", help="project folder names (default: all)")
+    ap.add_argument("--images", action="store_true",
+                    help="also write routing.local.svg per project: routing.svg with the pedal images (fetched into .cache/images/; "
+                         "git-ignored, never commit it)")
     args = ap.parse_args()
 
     cat_pedals, cat_supplies = load_catalog()
@@ -857,11 +883,19 @@ def main():
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
-        picture = routing.svg(ctx, {pid: cat_pedals[pid]["name"] for pid in ctx["chain"]})
+        names = {pid: cat_pedals[pid]["name"] for pid in ctx["chain"]}
+        (pdir / "cables.svg").unlink(missing_ok=True)   # renamed to routing.svg
+        picture = svgdraw.render(ctx, names)
         if picture:
-            (pdir / "cables.svg").write_text(picture)
+            (pdir / "routing.svg").write_text(picture)
         else:
-            (pdir / "cables.svg").unlink(missing_ok=True)
+            (pdir / "routing.svg").unlink(missing_ok=True)
+        if args.images:
+            local = svgdraw.render(ctx, names, images=pedal_images(ctx)) if picture else None
+            if local:
+                (pdir / "routing.local.svg").write_text(local)
+            else:
+                (pdir / "routing.local.svg").unlink(missing_ok=True)
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset

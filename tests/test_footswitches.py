@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import design  # noqa: E402
 import footswitches as fsw  # noqa: E402
 import jacks  # noqa: E402
+import svgdraw  # noqa: E402
 from test_check import DATA, PEDALS, canvas  # noqa: E402
 
 
@@ -195,8 +196,8 @@ def test_gig_build_with_switch_data_has_no_findings_without_a_minimum():
     md = "\n".join(build.footswitch_section(ctx, pedals))
     assert f"Closest pairs ({fsw.TOP_PAIRS} of {len(prs)})" in md and "No minimum distance is set." in md
     assert f"Crowding: {ctx['footswitch_settings']['crowding']:.1f}" in md
-    picture = routing.svg(ctx, {})
-    assert picture.count("<circle") == len(chain) and "stroke-dasharray=\"3 2\"" not in picture
+    picture = svgdraw.render(ctx, {})
+    assert picture.count('class="footswitch"') == len(chain) and 'class="too-close"' not in picture
 
 
 def test_types_are_stored_and_validated(tmp_path):
@@ -225,5 +226,4 @@ def test_pairs_carry_the_types(tmp_path):
 
 
 def test_svg_has_a_marker_style_per_type():
-    import routing
-    assert set(routing.FOOTSWITCH_STYLE) == set(fsw.TYPES)
+    assert set(svgdraw.FOOTSWITCH_STYLE) == set(fsw.TYPES)

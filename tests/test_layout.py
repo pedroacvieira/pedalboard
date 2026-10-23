@@ -98,14 +98,15 @@ def test_signal_surrogate_is_measure_plus_octile_and_close_to_the_router():
     # a.out exit: x 50.8 + 10 + 4 = 64.8, y 50.8; b.in exit: x 174.6 - 14 = 160.6, y 70; measure 5 + 4 per end
     want = 9 + 9 + layout.octile((64.8, 50.8), (160.6, 70.0))
     assert det["signal"]["S1"] == pytest.approx(want) and want == pytest.approx(18 + 95.8 + (math.sqrt(2) - 1) * 19.2)
-    # the router on the same layout (open board): equal within a grid cell or two
+    # the router on the same layout (open board): its path is smoothed to one straight segment, so it is exactly the
+    # measure points plus hypot(95.8, 19.2) = 97.7 mm; the surrogate's octile estimate is up to ~8 % longer
     items = m.items_for(state, snap=False)
     proj = {**m.project, "validation": {}}
     ctx = {"project": proj, "dir": None, "errors": [], "warnings": [], "chain": ["a", "b"], "pedals": PEDALS, "supplies": []}
     jacks.check(ctx, PEDALS, {}, JACKS, cable_types=TYPES, defer=True, items=items)
     routing.route_project(ctx, PEDALS, cable_types=TYPES)
     (s1,) = [c for c in ctx["cable_list"] if c["id"] == "S1"]
-    assert s1["status"] == "routed" and abs(s1["min_mm"] - want) < 4.0
+    assert s1["status"] == "routed" and s1["min_mm"] == pytest.approx(18 + math.hypot(95.8, 19.2), abs=0.01) and 0 <= want - s1["min_mm"] < 8.0
 
 
 def test_power_term_is_manhattan_between_measure_points_like_jacks_check():
