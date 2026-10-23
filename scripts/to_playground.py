@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Write a Pedal Playground save file (Load from File) for each project.
 
-    python3 scripts/to_playground.py              # every project
-    python3 scripts/to_playground.py guitar-gig
+    uv run scripts/to_playground.py              # every project
+    uv run scripts/to_playground.py guitar-gig
 
 Output: projects/<name>/playground.json. The board goes at the top of the canvas;
 the supplies and pedals are laid out below it in signal-chain order, ready to be

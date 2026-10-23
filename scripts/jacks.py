@@ -14,13 +14,13 @@ import re
 from pathlib import Path
 
 import design
-from common import JACKS_FILE, pedal_name
+from common import JACKS_FILE, dumps_per_line, pedal_name
 
 FUNCTIONS = ("input", "output", "power", "power_out", "other")
 FACINGS = ("left", "right", "top", "down")
 KEY_ORDER = ("id", "label", "function", "x", "y", "facing", "default")
-DOC = ("Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/jack_setter.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, and mark the OUTER EDGE of the physical jack (where the plug starts): the cable clearance zone begins there. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.")
-COMMAND = "python3 scripts/jack_setter.py"
+DOC = ("Jack positions per catalog id (pedals and power supplies). Written ONLY by scripts/pedal_editor.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, and mark the OUTER EDGE of the physical jack (where the plug starts): the cable clearance zone begins there. facing = the side the plug enters from (left/right/top/down). function: input|output|power|power_out|other. 'default': true picks the jack when several share a function. No image is stored.")
+COMMAND = "uv run scripts/pedal_editor.py"
 
 
 # --- file ---------------------------------------------------------------------------------------
@@ -35,23 +35,9 @@ def read_file(path=JACKS_FILE):
     return data
 
 
-def _jack_line(j):
-    ordered = {k: j[k] for k in KEY_ORDER if k in j}
-    ordered.update({k: v for k, v in j.items() if k not in ordered})
-    return "{" + ", ".join(f"{json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}" for k, v in ordered.items()) + "}"
-
-
 def dumps(data):
     """Compact, diff-friendly JSON: one jack per line, catalog ids sorted."""
-    lines = ["{", f'  "_doc": {json.dumps(data.get("_doc", DOC), ensure_ascii=False)},', '  "jacks": {']
-    ids = sorted(data["jacks"])
-    for n, cid in enumerate(ids):
-        lines.append(f"    {json.dumps(cid)}: [")
-        js = data["jacks"][cid]
-        lines += [f"      {_jack_line(j)}{',' if i < len(js) - 1 else ''}" for i, j in enumerate(js)]
-        lines.append("    ]" + ("," if n < len(ids) - 1 else ""))
-    lines += ["  }", "}"]
-    return "\n".join(lines) + "\n"
+    return dumps_per_line(data.get("_doc", DOC), "jacks", data["jacks"], KEY_ORDER)
 
 
 def normalize(jack):
@@ -164,7 +150,70 @@ def _jack_by_id(jacks, jid):
     return next((j for j in jacks if j["id"] == jid), None)
 
 
-def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False):
+def load_items(pdir):
+    """The parsed playground_design.json of a project folder, or None if it has none."""
+    path = Path(pdir) / "playground_design.json"
+    return design.parse_design(path) if path.exists() else None
+
+
+def items_by_title(items):
+    """{playground_title: [layout items]} in layout order."""
+    by_title = {}
+    for it in items:
+        if it["title"]:
+            by_title.setdefault(it["title"], []).append(it)
+    return by_title
+
+
+def place_chain(items, chain, cat_pedals, by_title=None):
+    """({pedal id: first layout item with its playground_title}, {pedal id: number of matches}) for a chain."""
+    by_title = items_by_title(items) if by_title is None else by_title
+    placed, count = {}, {}
+    for cid in chain:
+        found = by_title.get(cat_pedals[cid].get("playground_title") or "", [])
+        count[cid] = len(found)
+        if found:
+            placed[cid] = found[0]
+    return placed, count
+
+
+def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink):
+    """Which layout item is which chain pedal / supply instance, the board and the obstacles.
+
+    Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item}};
+    placement problems go to `warnings` / `clear_sink` (missing chain pedal)."""
+    supplies_layer = jset.get("supplies_layer", "under")
+    by_title = items_by_title(items)
+    placed, count = place_chain(items, chain, cat_pedals, by_title)
+    for cid in chain:
+        if not count[cid]:
+            clear_sink.append(f"layout: {cid} is in the signal chain but not in playground_design.json")
+        elif count[cid] > 1:
+            warnings.append(f"layout: {cid} appears {count[cid]} times in playground_design.json (using the first)")
+    inst_item, supply_titles = {}, set()
+    explicit = jset.get("supply_items", {})
+    by_supply = {}
+    for s in insts:
+        by_supply.setdefault(s["sup"]["id"], []).append(s)
+    for sid, group in by_supply.items():
+        title = cat_supplies[sid].get("playground_title")
+        if title:
+            supply_titles.add(title)
+        found = sorted(by_title.get(title or "", []), key=lambda i: (i["left_mm"], i["top_mm"]))
+        for n, s in enumerate(group):
+            want = explicit.get(s["inst"]["id"])
+            match = next((i for i in found if i["id"] == want), None) if want else (found[n] if n < len(found) else None)
+            if match is None:
+                warnings.append(f"layout: supply {s['inst']['id']} ({sid}) is not in playground_design.json")
+            else:
+                inst_item[s["inst"]["id"]] = match
+    pedal_items = [i for i in items if i["kind"] == "pedal"]
+    obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
+    boards = [i for i in items if i["kind"] == "pedalboard"]
+    return {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles, "inst_item": inst_item}
+
+
+def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None):
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
@@ -174,7 +223,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     Every used jack gets the fixed clearance box here. With `defer` the results wait in ctx['fixed_box'] and
     routing.route_project reports them (report_fixed_box) for the jacks it did not check with a plug model, so
     each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
-    if None) for the plug depth used to measure cable lengths.
+    if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_canvas) to
+    check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
@@ -189,7 +239,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     supplies_layer = jset.get("supplies_layer", "under")
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, fixed_box=[],
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[],
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
                               "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
@@ -236,50 +286,19 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     for sid in used_ports:
         need_jacks(sid, True)
 
-    # 2) the hand-made layout
-    design_path = ctx["dir"] / "playground_design.json"
-    if not design_path.exists():
+    # 2) the hand-made layout (or the injected candidate)
+    if items is None:
+        items = load_items(ctx["dir"])
+        ctx["layout_source"] = "file" if items is not None else None
+    else:
+        ctx["layout_source"] = "injected"
+    if items is None:
         ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
         return
-    items = design.parse_design(design_path)
-    by_title = {}
-    for it in items:
-        if it["title"]:
-            by_title.setdefault(it["title"], []).append(it)
-
-    placed = {}
-    for cid in chain:
-        found = by_title.get(cat_pedals[cid].get("playground_title") or "", [])
-        if not found:
-            clear_sink.append(f"layout: {cid} is in the signal chain but not in playground_design.json")
-            continue
-        if len(found) > 1:
-            warnings.append(f"layout: {cid} appears {len(found)} times in playground_design.json (using the first)")
-        placed[cid] = found[0]
-    inst_item, supply_titles = {}, set()
-    by_supply = {}
-    for s in insts:
-        by_supply.setdefault(s["sup"]["id"], []).append(s)
-    for sid, group in by_supply.items():
-        title = cat_supplies[sid].get("playground_title")
-        if title:
-            supply_titles.add(title)
-        found = sorted(by_title.get(title or "", []), key=lambda i: (i["left_mm"], i["top_mm"]))
-        explicit = jset.get("supply_items", {})
-        for n, s in enumerate(group):
-            want = explicit.get(s["inst"]["id"])
-            match = next((i for i in found if i["id"] == want), None) if want else (found[n] if n < len(found) else None)
-            if match is None:
-                warnings.append(f"layout: supply {s['inst']['id']} ({sid}) is not in playground_design.json")
-            else:
-                inst_item[s["inst"]["id"]] = match
-
-    pedal_items = [i for i in items if i["kind"] == "pedal"]
-    obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
-    boards = [i for i in items if i["kind"] == "pedalboard"]
+    lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink)
+    placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
-    ctx["layout"] = {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles,
-                     "inst_item": inst_item, "jacks": jacks_data, "outward_mm": outward}
+    ctx["layout"] = {**lay, "jacks": jacks_data, "outward_mm": outward}
 
     # 3) fixed clearance box in front of every used jack: power jacks (and on-board supply ports) the small
     #    `power_clearance` box, the rest the audio `clearance` box. Jacks that routing.route_project checks with a

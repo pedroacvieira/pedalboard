@@ -1,0 +1,22 @@
+[project]
+name = "pedalboard"
+version = "0.1.0"
+description = "Data-driven planner for the owner's pedalboards"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=13.0.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+# no third-party plugin autoload: a global PYTHONPATH (e.g. ROS) would otherwise inject its pytest plugins
+addopts = "--disable-plugin-autoload"
+testpaths = ["tests"]

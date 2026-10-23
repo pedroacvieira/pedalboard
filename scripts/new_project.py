@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scaffold a new project: python3 scripts/new_project.py <name> --instrument guitar|bass
+"""Scaffold a new project: uv run scripts/new_project.py <name> --instrument guitar|bass
 
 The scaffold leaves the board and power wiring unknown (null) on purpose: with
 `no_unknown` on, the build fails until you fill them in.
@@ -24,9 +24,12 @@ def main():
     scaffold = {
         "name": args.name.replace("-", " ").title(),
         "instrument": args.instrument,
-        "validation": {"no_unknown": True, "require_jacks": False, "strict_clearance": False},
+        "validation": {"no_unknown": True, "require_jacks": False, "strict_clearance": False,
+                       "require_footswitches": False, "strict_footswitches": False},
         "jacks": {"clearance": {"outward_mm": 6.3, "side_mm": 7}, "power_clearance": {"outward_mm": 5.5, "side_mm": 5.5}, "extra_used": {}, "supplies_layer": "under"},
         "cables": {"type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {}},
+        "footswitches": {"comfort_mm": 100},
+        "layout": {"pins": [], "max_change": "fix"},
         "board": {"brand": None, "model": None, "width_in": None, "height_in": None},
         "playground": {"scale": 45},
         "signal_chain": [],

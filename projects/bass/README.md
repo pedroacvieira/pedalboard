@@ -134,3 +134,10 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+
+## Footswitches
+
+Footswitch data: 5 of 5 pedals (catalog/footswitches.json).
+
+*No playground_design.json: footswitch spacing is not checked.*
+

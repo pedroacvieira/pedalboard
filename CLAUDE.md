@@ -8,6 +8,9 @@ Open work and questions for the owner: `docs/TODO.md` (hand-written backlog; kee
 A data-driven planner for the owner's three pedalboards (projects): `guitar-gig` (Fender Professional Medium,
 2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (Rockboard Duo 2.1,
 Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for the jack app). No other deps.
+Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.venv`): never `pip install` into the
+system; add a dependency with `uv add <pkg>` (dev-only: `uv add --dev`), run everything with `uv run`. pytest runs
+with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH (ROS) are not loaded.
 
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
@@ -17,31 +20,52 @@ Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for
 - `catalog/cables.json`: cable types with a `role` (patch | instrument | power | reference), `diameter_mm` = width ON
   THE BOARD (routing width; a flat ribbon's narrow side), `jacket`, plug style right_angle|straight, head
   depth/width/thickness, right-angle exit offset / body reach / barrel width, sources, `verified` list, notes. Data.
-- `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/jack_setter.py` (Tkinter).
+- `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/pedal_editor.py` (Tkinter).
   x,y = fractions (0..1) of the Pedal Playground image (unrotated), at the OUTER EDGE of the physical jack;
   facing = side the plug enters from (left/right/top/down); function input|output|power|power_out|other.
+- `catalog/footswitches.json`: footswitches per pedal id, written ONLY by `scripts/pedal_editor.py`. x,y = fractions of
+  the image (unrotated) at the CENTRE of the switch cap; `type` bypass|tap|boost|function (bypass = turns the pedal or
+  one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
+  `diameter_mm`. Spacing priority per type `footswitches.priority` (bypass 1.0, boost 0.8, tap 0.8, function 0.5; a
+  pair weighs the max of its two). `[]` = verified no footswitch (kept);
+  missing id = unknown. Supplies have none. The owner places the data (every project pedal has it, 2026-10-23).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
   voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
-  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `validation` flags.
+  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.comfort_mm`
+  (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
+  weight per switch type), `layout` (optional: pins,
+  rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
+  (`require_footswitches`, `strict_footswitches` among them).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
-  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`.
+  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `cables.svg`, `playground.json`;
+  `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
-  loaders, Pedal Playground DB cache, mm helpers), `design.py` (parse Pedal Playground saves, jack geometry in mm),
-  `jacks.py` (jack data, fixed-box clearance, jack-to-jack length estimates), `routing.py` (cable model, plug
-  heads, side choice, grid router, plug-head clearance),
-  `jack_setter.py` (GUI), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`python3 -m pytest tests`), ~118 tests, hand-computed geometry cases.
+  loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
+  saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
+  `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
+  `footswitches.py` (footswitch data, spacing check), `routing.py` (cable model, plug
+  heads, side choice, grid router, plug-head clearance), `power.py` (power policy checks shared with the build,
+  `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
+  surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
+  `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
+- `tests/`: pytest (`uv run pytest tests`), ~205 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+  full guitar-gig search).
 
 ## Commands
 ```
-python3 scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
-python3 -m pytest tests -q                     # all tests
-python3 scripts/jack_setter.py <catalog id>    # place jacks on a pedal image (needs a display)
-python3 scripts/jack_setter.py --list-missing  # what still needs jacks
-python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
+uv sync                                        # once: create .venv (Pillow, pytest)
+uv run scripts/build.py [project...]          # validate + regenerate (fast, no network after the DB cache)
+uv run pytest tests -q                     # all tests
+uv run scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
+uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
+uv run scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
+uv run scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
+uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
+                                               # layout proposals in projects/<name>/proposals/ (then build)
+uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
 ```
 
 ## Conventions and decisions (keep them)
@@ -91,10 +115,40 @@ python3 scripts/to_playground.py [project...]  # Pedal Playground "Load from Fil
   the same (no bend radius, flat or round), routes are not hand-tuned.
 - Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
 - Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.
+- Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
+  (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's file and never written by tools.
+- Footswitch spacing is comfort, not a hard rule (owner, 2026-10-23: no real minimum; maximise the distance against
+  the other goals). Crowding of a pair of switches on DIFFERENT pedals = priority x max(0, comfort - d)^2 / comfort
+  (`footswitches.crowding`, comfort `footswitches.comfort_mm` default 100 mm): the closest pairs count most. The
+  build reports the sum (README: crowding, 8 closest pairs with types); the layout search minimises it (weight
+  `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
+  errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
+  aggregated warning per project. `cables.svg` draws the switches (colour per type) and too-close lines.
+- Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
+  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
+  overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
+  penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
+  crossed pedals), power 0.1/mm, footswitch crowding by type priority, first input to the right edge, last output
+  to the nearest left/right/back edge, small right-to-left flow, accessibility (tuner back; boost/eq/master pedals
+  front 0.3; drives and tap switches front 0.1; a boost switch front 0.05; modulation avoids the front unless tap),
+  rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). The surrogate checks the
+  same jacks as the build (first input / last output: fixed audio box; power plug side overrides). `max_change` fix
+  (default: max 40 mm, no swaps/rotations) / rearrange / free. Finalists AND the owner's layout get their own power
+  wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` follow their
+  pedal, `power.remap_overrides`) and are checked with `build.validate(items=, project=)`; a proposal must not be
+  worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs below a set minimum. Proposals never
+  touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
+  `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
+  project's catalog entries incl. jacks and footswitches) or the chain changed.
+- `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner
 - Commit/push only when asked; feature work on `feat/<name>` branches, merged into `main` after a code review.
 - Commit messages end with the Co-Authored-By line given by the harness.
 - When delegating to an agent, write a handover (goal, context, constraints, files, acceptance, what not to
-  touch) to `docs/handovers/<task>.md` and point the agent at this file plus the handover.
+  touch) to `docs/handovers/<task>.md` and point the agent at that handover only. Keep its scope and inputs
+  minimal: one well-bounded task, only the decisions, conventions and file/function names that task needs
+  (copy the relevant lines in), no "read the whole plan / other handovers / all of CLAUDE.md" pointers.
+- Delegated implementation agents (`general-purpose`) run on `model: sonnet`; use Opus only for planning, code
+  review, or when the owner asks.
 - Keep this file current when structure, conventions or decisions change.

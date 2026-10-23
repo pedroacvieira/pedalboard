@@ -8,18 +8,23 @@ One shared catalog of pedals and power supplies, plus one folder per pedalboard 
 catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)
 catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own
 catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)
+catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)
 projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring
 projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary
 projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)
 ```
 
 ```
-python3 scripts/build.py [project...]        validate + regenerate docs
-python3 scripts/to_playground.py [project...] write projects/<name>/playground.json
-python3 scripts/new_project.py <name> --instrument guitar|bass
-python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)
-python3 -m pytest tests                       geometry and jack-check tests
+uv sync                                      once: .venv with the dependencies (pyproject.toml, uv.lock)
+uv run scripts/build.py [project...]        validate + regenerate docs
+uv run scripts/to_playground.py [project...] write projects/<name>/playground.json
+uv run scripts/new_project.py <name> --instrument guitar|bass
+uv run scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)
+uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)
+uv run pytest tests                       geometry and jack-check tests
 ```
+
+Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.
 
 Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.
 
@@ -54,7 +59,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 - Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).
 - Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.
 - Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.
-- Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).
+- Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the pedal editor (the PolyTune 3 was marked before the edge-of-jack guidance).
 
 ### Data to verify
 

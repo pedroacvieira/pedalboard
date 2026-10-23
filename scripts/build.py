@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate projects against the shared catalog and generate their docs.
 
-    python3 scripts/build.py              # every project
-    python3 scripts/build.py guitar-gig   # one project
+    uv run scripts/build.py              # every project
+    uv run scripts/build.py guitar-gig   # one project
 
 Per project: projects/<name>/README.md and diagram.mmd. Plus the root README.md.
 Exit status is 1 if any project has validation errors.
@@ -10,9 +10,13 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
+import footswitches
 import jacks
+import power
 import routing
-from common import IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs
+from power import volt_range
+from common import (IN_MM, ROOT, effective_quantity, fmt_mm, load_cable_types, load_catalog, load_json, pedal_name, project_dirs,
+                    proposal_inputs_sha1)
 
 PEDAL_REQUIRED = [
     ("owned",), ("instruments",), ("brand",), ("name",), ("digital",), ("clocked_noise",), ("buffered_bypass",),
@@ -36,9 +40,14 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
-    """Return a context dict (project data, derived power/rule info, errors, warnings)."""
-    project = load_json(pdir / "project.json")
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True):
+    """Return a context dict (project data, derived power/rule info, errors, warnings).
+
+    `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
+    candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
+    project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
+    signal and power jacks falls back to the fixed boxes): for callers that only need the data findings."""
+    project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
     no_unknown = project.get("validation", {}).get("no_unknown", True)
@@ -199,12 +208,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
 
     # ----- power ----------------------------------------------------------
     policy = project.get("power_policy", {})
-    sensitive = set(policy.get("separate_clocked_from_tags", ["gain", "overdrive", "compressor"]))
-    pol_strength = policy.get("strength", "required")
-    power = project.get("power", {}).get("supplies", [])
+    sensitive, pol_strength, _ = power.policy_settings(project)
     ctx["supplies"] = []
     powered, instances, run_v = {}, {}, {}
-    for inst in power:
+    for inst in project.get("power", {}).get("supplies", []):
         sup = cat_supplies.get(inst["supply"])
         if sup is None:
             errors.append(f"power: {inst['id']}: unknown supply '{inst['supply']}'")
@@ -246,55 +253,17 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
                     errors.append(f"power: '{pid}' is on both {powered[pid]} and {oid}")
                 powered[pid] = oid
                 run_v[pid] = out["voltage_v"]
-                pc = pedals[pid]["power_consumption"]
-                lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
-                if lo is not None and hi is not None and not lo <= out["voltage_v"] <= hi:
-                    errors.append(f"{oid}: {pid} would run at {out['voltage_v']}V but only accepts {volt_range(pc)}")
-                pol = pc.get("polarity")
-                if pol is not None and pol not in routing.POLARITIES:
-                    errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(routing.POLARITIES)})")
-                elif pol and row["polarity"] and pol != row["polarity"]:
-                    warnings.append(f"{oid}: {pid} is {pol.replace('_', '-')} but the output is {row['polarity'].replace('_', '-')}: "
-                                    f"use a polarity-reversing cable")
-                if pc.get("needs_isolated_output") and len(row["pedals"]) > 1:
-                    errors.append(f"{oid}: {pid} needs an isolated output but shares it")
-                if pc.get("current_ma") is None:
-                    warnings.append(f"{oid}: {pid} has unknown current_ma (left out of totals)")
-                else:
-                    row["load"] += pc["current_ma"]
-            if len(row["pedals"]) > 1:
-                pols = {pedals[x]["power_consumption"].get("polarity") for x in row["pedals"] if x in pedals} - {None}
-                if len(pols) > 1:
-                    errors.append(f"{oid}: center-negative and center-positive pedals share one output (their grounds are "
-                                  f"joined through the audio cables): give them separate outputs")
-                clocked = [x for x in row["pedals"] if pedals.get(x, {}).get("clocked_noise") is True]
-                quiet = [x for x in row["pedals"] if sensitive & set(pedals.get(x, {}).get("tags", []))]
-                if clocked and quiet:
-                    (errors if pol_strength == "required" else warnings).append(
-                        f"{oid}: time-based/clocked {clocked} share an output with noise-sensitive {quiet}")
-                for pid in row["pedals"]:
-                    d = pedals.get(pid, {}).get("digital")
-                    if d is True:
-                        errors.append(f"{oid}: digital pedal '{pid}' shares an output with {[o for o in row['pedals'] if o != pid]}")
-                    elif d is None:
-                        warnings.append(f"{oid}: '{pid}' shares an output but its digital status is unknown")
-            if row["load"] > limit:
-                errors.append(f"{oid}: {row['load']} mA exceeds {limit} mA limit")
-            elif row["load"] > 0.8 * limit:
-                warnings.append(f"{oid}: {row['load']} mA is over 80% of {limit} mA")
+            errs, warns, row["load"] = power.output_findings(oid, row["pedals"], out["voltage_v"], limit, row["polarity"],
+                                                             pedals, sensitive, pol_strength, odef.get("isolated"))
+            errors += errs
+            warnings += warns
         ctx["supplies"].append({"inst": inst, "sup": sup, "rows": rows})
     for pid in chain:
         if pid not in powered:
             errors.append(f"power: '{pid}' has no power output")
     # 18V-capable pedals should share 18V outputs instead of spreading over several
     if policy.get("group_18v", True):
-        rows18 = [r for s in ctx["supplies"] for r in s["rows"] if r["voltage_v"] == 18 and r["pedals"] and r["limit"]]
-        for i, a in enumerate(rows18):
-            for b2 in rows18[i + 1:]:
-                both = a["pedals"] + b2["pedals"]
-                if sum(pedals[x]["power_consumption"]["current_ma"] or 0 for x in both if x in pedals) <= min(a["limit"], b2["limit"]) \
-                        and not any(pedals[x]["power_consumption"].get("needs_isolated_output") for x in both if x in pedals):
-                    warnings.append(f"power: 18V outputs {a['id']} and {b2['id']} could be merged into one")
+        warnings += power.merge_18v_findings([r for s in ctx["supplies"] for r in s["rows"]], pedals)
     for sid, n in instances.items():
         q = cat_supplies[sid].get("quantity")
         if q is not None and n > q:
@@ -304,8 +273,12 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None):
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True)
-    routing.route_project(ctx, cat_pedals, cable_types=cable_types)
+                cable_types=cable_types, defer=True, items=items)
+    if route:
+        routing.route_project(ctx, cat_pedals, cable_types=cable_types)
+    else:
+        jacks.report_fixed_box(ctx)
+    footswitches.check(ctx, cat_pedals, footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
     return ctx
 
 
@@ -321,13 +294,6 @@ def bypass(p):
     if b is None:
         return "Unknown"
     return ("Buffered" if b else "True") + (" (switchable)" if sw else "")
-
-
-def volt_range(pc):
-    lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
-    if lo is None or hi is None:
-        return "?"
-    return f"{lo}V" if lo == hi else f"{lo}-{hi}V"
 
 
 def ma(p):
@@ -536,6 +502,111 @@ def jacks_section(ctx):
     return md
 
 
+def footswitch_section(ctx, cat_pedals):
+    """README section: footswitch data status, the spacing (crowding, optional minimum) and the closest pairs (all mm)."""
+    md = ["", "## Footswitches", ""]
+    setup, chain = ctx.get("footswitch_setup", {}), ctx["chain"]
+    have = [c for c in chain if setup.get(c) in ("ok", "none")]
+    none = [c for c in chain if setup.get(c) == "none"]
+    md += [f"Footswitch data: {len(have)} of {len(chain)} pedals" + (f" ({len(none)} without a footswitch)" if none else "")
+           + " (catalog/footswitches.json).", ""]
+    if ctx.get("footswitch_fixes"):
+        md += ["Missing (place the switches on the pedal image, then rebuild):", "", "```"]
+        md += [cmd for _, cmd in ctx["footswitch_fixes"]] + ["```", ""]
+    st = ctx.get("footswitch_settings") or {}
+    if not st.get("layout"):
+        return md + ["*No playground_design.json: footswitch spacing is not checked.*", ""]
+    lim, comfort = st.get("min_distance_mm"), st.get("comfort_mm")
+    md += ["Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals "
+           f"allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance "
+           f"({comfort:g} mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, "
+           "`footswitches.priority`); lower is better, the layout proposals minimise it. "
+           + (f"Minimum: {lim:g} mm (`footswitches.min_distance_mm`). " if lim is not None else "No minimum distance is set. ")
+           + "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), "
+           "tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).", ""]
+    prs = ctx.get("footswitch_pairs") or []
+    if not prs:
+        return md + ["No pair of footswitches on different pedals is known yet.", ""]
+    crowded = sum(1 for r in prs if r["crowding"] > 0)
+    md += [f"Crowding: {st['crowding']:.1f} ({crowded} of {len(prs)} pairs closer than {comfort:g} mm). "
+           f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
+           "| Switch | Type | Switch | Type | Distance (mm) | Crowding |" + (" Status |" if lim is not None else ""),
+           "|---|---|---|---|--:|--:|" + ("---|" if lim is not None else "")]
+    for r in prs[:footswitches.TOP_PAIRS]:
+        md.append(f"| {r['a']} | {r['a_type']} | {r['b']} | {r['b_type']} | {r['distance_mm']:.1f} | {r['crowding']:.1f} |"
+                  + (f" {'too close' if r['too_close'] else 'ok'} |" if lim is not None else ""))
+    md.append("")
+    if lim is not None:
+        close = sum(1 for r in prs if r["too_close"])
+        md += [f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
+    return md
+
+
+def proposals_section(ctx, cat_pedals):
+    """README section from projects/<name>/proposals/meta.json (written by scripts/propose_layout.py; the search
+    never runs here): before/after figures, moved pedals, each proposal's power wiring, stale detection."""
+    pdir = ctx["dir"]
+    meta_path = pdir / "proposals" / "meta.json"
+    design_path = pdir / "playground_design.json"
+    if not design_path.exists():
+        return []
+    md = ["", "## Layout proposals", ""]
+    if not meta_path.exists():
+        return md + [f"None yet: `uv run scripts/propose_layout.py {ctx['key']}` searches for better pedal positions "
+                     "(it never changes playground_design.json).", ""]
+    meta = load_json(meta_path)
+    stale = meta.get("inputs_sha1") != proposal_inputs_sha1(pdir) or meta.get("chain") != ctx["chain"]
+    md += [f"Made by `{meta['command']}` (max_change `{meta['max_change']}`, max move "
+           f"{'none' if meta.get('max_move_mm') is None else format(meta['max_move_mm'], 'g') + ' mm'}, seed {meta['seed']}, "
+           f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is a Pedal "
+           "Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as "
+           "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
+           "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
+    if stale:
+        md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, "
+               "cables, specs) changed since these proposals were made; rerun the command above.", ""]
+    props = meta.get("proposals") or []
+    if not props:
+        return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
+
+    rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
+            ("Unroutable / squeezed / over the stacking limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
+            ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
+            ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
+            ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
+            ("Power cables, estimate (mm)", lambda m: f"{m['power_mm']:.0f}"),
+            ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),
+            ("Build errors / warnings", lambda m: f"{m['errors']} / {m['warnings']}"),
+            ("Score (lower is better)", lambda m: f"{m['score']:.0f}")]
+    owner = meta["owner"]
+    md += ["| | Owner's layout | " + " | ".join(f"Proposal {p['n']}" for p in props) + " |",
+           "|---|--:|" + "--:|" * len(props)]
+    for label, f in rows:
+        md.append(f"| {label} | {f(owner)} | " + " | ".join(f(p["metrics"]) for p in props) + " |")
+    md += ["", "All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's "
+           "power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.", ""]
+    nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
+    for p in props:
+        m = p["metrics"]
+        gone = sorted(set(owner.get("blocked_jacks", [])) - set(m.get("blocked_jacks", [])))
+        md += [f"### Proposal {p['n']}", "", f"Pedal Playground file: [proposals/{p['file']}](proposals/{p['file']})"
+               + (f"; blocked plugs fixed: {', '.join(f'`{j}`' for j in gone)}" if gone else "") + ".", "",
+               f"![Proposal {p['n']}](proposals/{p['svg']})", "",
+               "| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |", "|---|--:|--:|--:|---|"]
+        for mv in p["moved"]:
+            rot = f"{mv['rot_from']} -> {mv['rot_to']} deg" if mv["rot_from"] != mv["rot_to"] else f"{mv['rot_to']} deg"
+            md.append(f"| {nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
+        pw = p.get("power") or {}
+        md += ["", f"Power wiring for this layout (computed under the power policy; the build keeps using project.json"
+               + (f"; {pw['error']}, so the owner's wiring is shown" if pw.get("error") else "") + "):", "",
+               "| Supply | Output | Voltage | Daisy chain |", "|---|---|--:|---|"]
+        for sup in pw.get("supplies", []):
+            for o in sup["outputs"]:
+                md.append(f"| {sup.get('label') or sup['id']} | {o['port']} | {o['voltage_v']}V | {', '.join(nm(x) for x in o['pedals'])} |")
+        md.append("")
+    return md
+
+
 def project_readme(ctx, cat_pedals):
     pr, chain, pedals = ctx["project"], ctx["chain"], ctx["pedals"]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
@@ -610,6 +681,8 @@ def project_readme(ctx, cat_pedals):
         md += [f"**All supplies combined:** {grand} mA", ""]
     md += jacks_section(ctx)
     md += routing_section(ctx)
+    md += footswitch_section(ctx, cat_pedals)
+    md += proposals_section(ctx, cat_pedals)
     return "\n".join(md) + "\n"
 
 
@@ -617,7 +690,7 @@ KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
     "Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
     "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
-    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the jack-setter (the PolyTune 3 was marked before the edge-of-jack guidance).",
+    "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the pedal editor (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
 DATA_TO_VERIFY = [
     "Power specs re-checked on 2026-10-21; still retailer-only or unpublished: Sun Face current (1 mA unverified), Full-Drive 2 and Mini Ego current, E-Lady, Danelectro 3699 and Carbon Copy figures, and the maximum voltage of most 9V pedals (their 9V is a rating, not an explicit limit).",
@@ -639,6 +712,13 @@ def open_issues(ctxs, jacks_data):
             items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({violation_where(v)}); move one of the pedals apart")
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
+        if c.get("footswitch_fixes"):
+            items.append(f"Footswitches not placed for {len(c['footswitch_fixes'])} pedal(s): "
+                         f"`{footswitches.COMMAND} --list-missing {c['key']} --only footswitches`")
+        for r in c.get("footswitch_pairs") or []:
+            if r["too_close"]:
+                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {r['distance_mm']:.1f} mm apart "
+                             f"(min {c['footswitch_settings']['min_distance_mm']:.1f} mm)")
         if items:
             md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]
     md += ["### Known limitations", ""] + [f"- {i}" for i in KNOWN_LIMITS]
@@ -658,18 +738,23 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "catalog/pedals.json           everything that is part of a pedal (specs, bypass, digital, tags, intrinsic rules)",
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
         "catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)",
+        "catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)",
         "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
         "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)",
         "```",
         "",
         "```",
-        "python3 scripts/build.py [project...]        validate + regenerate docs",
-        "python3 scripts/to_playground.py [project...] write projects/<name>/playground.json",
-        "python3 scripts/new_project.py <name> --instrument guitar|bass",
-        "python3 scripts/jack_setter.py <catalog id>    place a pedal's jacks on its image (--list-missing shows what is left)",
-        "python3 -m pytest tests                       geometry and jack-check tests",
+        "uv sync                                      once: .venv with the dependencies (pyproject.toml, uv.lock)",
+        "uv run scripts/build.py [project...]        validate + regenerate docs",
+        "uv run scripts/to_playground.py [project...] write projects/<name>/playground.json",
+        "uv run scripts/new_project.py <name> --instrument guitar|bass",
+        "uv run scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)",
+        "uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)",
+        "uv run pytest tests                       geometry and jack-check tests",
         "```",
+        "",
+        "Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
@@ -765,9 +850,10 @@ def main():
 
     cat_pedals, cat_supplies = load_catalog()
     jacks_file = jacks.read_file()
+    fs_file = footswitches.read_file()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"])
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -779,7 +865,8 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"]) for d in project_dirs()]
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
+                for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)
 
@@ -806,6 +893,9 @@ def main():
     for cid, msgs in jacks.validate_jacks_file(jacks_file, cat_pedals, cat_supplies).items():
         for m in msgs:
             print(f"WARN  catalog/jacks.json {cid}: {m}")
+    for cid, msgs in footswitches.validate_file(fs_file, cat_pedals, cat_supplies).items():
+        for m in msgs:
+            print(f"WARN  catalog/footswitches.json {cid}: {m}")
     print("OK" if not bad else "FAILED")
     sys.exit(1 if bad else 0)
 

@@ -61,7 +61,7 @@ Implemented on `feat/cable-routing` (2026-10-22, uncommitted in the working tree
 
 ## Constraints
 - mm everywhere; no images in the repo; keep findings as warnings (strict flags promote them).
-- Keep `python3 scripts/build.py` fast (well under 1 s for guitar-gig today) and green; keep all tests passing;
+- Keep `uv run scripts/build.py` fast (well under 1 s for guitar-gig today) and green; keep all tests passing;
   add tests with hand-computed geometry (head footprint for each facing and both exit sides, rotation 90/270,
   router choosing the shorter exit side).
 - Do not edit generated files by hand; do not touch `catalog/jacks.json` positions (owner-placed).

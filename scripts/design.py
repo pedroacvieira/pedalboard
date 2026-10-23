@@ -208,3 +208,76 @@ def part_depth(part, facing, side, ov):
     if part == "head" or side is None:
         return overlap_depth(facing, ov)
     return overlap_depth("top" if facing in ("left", "right") else "left", ov)
+
+
+# --- editing a layout ------------------------------------------------------------------------
+ROTATIONS = (0, 90, 180, 270)
+
+
+def move(item, cx, cy, rot=None, snap=True):
+    """A copy of `item` with its centre at (cx, cy) mm and rotation `rot` (None keeps it).
+
+    left/top describe the unrotated box (rotation is about its centre), so left = cx - w/2, top = cy - h/2.
+    With `snap` the position is rounded to whole Pedal Playground px (0.56 mm at 45 px/in), as the site stores
+    it, and the mm values are recomputed from the rounded px."""
+    rot = item["rot"] if rot is None else int(rot) % 360
+    if rot not in ROTATIONS:
+        raise ValueError(f"rotation must be one of {ROTATIONS}, got {rot}")
+    s = item["scale"]
+    left_px = (cx - item["w_mm"] / 2) * s / IN_MM
+    top_px = (cy - item["h_mm"] / 2) * s / IN_MM
+    if snap:
+        left_px, top_px = float(round(left_px)), float(round(top_px))
+    return {**item, "rot": rot, "left_px": left_px, "top_px": top_px,
+            "left_mm": px_to_mm(left_px, s), "top_mm": px_to_mm(top_px, s)}
+
+
+def _px(v):
+    return str(int(v)) if float(v).is_integer() else f"{v:.3f}".rstrip("0").rstrip(".")
+
+
+_ITEM_TAG = re.compile(r"<div\b[^>]*>")
+_ATTR = r'((?<![\w-]){}\s*=\s*")([^"]*)(")'   # not data-id=, x-class=...
+
+
+def write_canvas(canvas_html, items):
+    """The canvas HTML with the position (left/top px) and rotation class of the given items rewritten.
+
+    Items are matched by id; only the start tag of each item div changes (its `style` left/top and the
+    `rotate-N` class), every other byte of the canvas is kept, so the result still loads in Pedal Playground.
+    Raises KeyError if an item id is not in the canvas."""
+    want = {it["id"]: it for it in items}
+    done = set()
+
+    def edit(m):
+        tag = m.group(0)
+        idm = re.search(_ATTR.format("id"), tag)
+        clm = re.search(_ATTR.format("class"), tag)
+        if not idm or not clm or idm.group(2) not in want or "item" not in clm.group(2).split():
+            return tag
+        it = want[idm.group(2)]
+        done.add(it["id"])
+        classes = [c for c in clm.group(2).split() if not re.fullmatch(r"rotate-\d+", c)]
+        if it["rot"]:
+            classes.append(f"rotate-{it['rot']}")
+        tag = re.sub(_ATTR.format("class"), lambda x: x.group(1) + " ".join(classes) + x.group(3), tag, count=1)
+
+        def style(x):
+            st = x.group(2)
+            for key, val in (("left", it["left_px"]), ("top", it["top_px"])):
+                new = f"{key}: {_px(val)}px"
+                st, n = re.subn(rf"(?<![\w-]){key}:\s*-?[\d.]+px", new, st, count=1)   # not margin-left:
+                if not n:
+                    st = st.rstrip()
+                    st = (st + ("" if not st or st.endswith(";") else ";") + f" {new};").strip()
+            return x.group(1) + st + x.group(3)
+
+        if re.search(_ATTR.format("style"), tag):
+            return re.sub(_ATTR.format("style"), style, tag, count=1)
+        return tag[:-1] + f' style="left: {_px(it["left_px"])}px; top: {_px(it["top_px"])}px;">'
+
+    out = _ITEM_TAG.sub(edit, canvas_html)
+    missing = set(want) - done
+    if missing:
+        raise KeyError(f"not in the canvas: {', '.join(sorted(missing))}")
+    return out

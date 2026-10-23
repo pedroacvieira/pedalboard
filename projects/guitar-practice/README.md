@@ -142,3 +142,10 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S4 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S5 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 | S6 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+
+## Footswitches
+
+Footswitch data: 7 of 7 pedals (catalog/footswitches.json).
+
+*No playground_design.json: footswitch spacing is not checked.*
+
