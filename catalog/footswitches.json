@@ -1,28 +1,84 @@
 {
   "_doc": "Footswitch positions per pedal catalog id. Written ONLY by scripts/pedal_editor.py. x,y are fractions (0..1) of the Pedal Playground image, origin top-left, in the UNROTATED pedal, at the CENTRE of the switch cap. type: bypass (turns the pedal, or one side of it, on/off) | tap (tap tempo) | boost (a boost / extra-gain stomp) | function (any other switch: octave, clipping, preset...). Optional diameter_mm (null if unknown). [] = checked: the pedal has no footswitch. A missing id = unknown. No image is stored.",
   "footswitches": {
+    "analog_chorus": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4907, "y": 0.7147, "type": "bypass"}
+    ],
     "beano": [
       {"id": "bypass", "label": "Bypass", "x": 0.4976, "y": 0.8574, "type": "bypass"}
+    ],
+    "belle_epoch": [
+      {"id": "bypass", "label": "Bypass", "x": 0.8128, "y": 0.85, "type": "bypass"},
+      {"id": "switch_2", "label": "Echo Osc.", "x": 0.1829, "y": 0.85, "type": "function"}
+    ],
+    "carbon_copy": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5031, "y": 0.7132, "type": "bypass"}
     ],
     "danelectro_3699": [
       {"id": "bypass", "label": "Bypass", "x": 0.2026, "y": 0.8706, "type": "bypass"},
       {"id": "switch_2", "label": "Octave", "x": 0.7817, "y": 0.8706, "type": "function"}
     ],
+    "darkglass_hyper_luminal": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4974, "y": 0.8647, "type": "bypass"}
+    ],
+    "ditto_looper": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5018, "y": 0.8132, "type": "bypass"}
+    ],
+    "duke_of_tone": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5003, "y": 0.8279, "type": "bypass"}
+    ],
+    "e_lady": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4953, "y": 0.8176, "type": "bypass"}
+    ],
+    "ehx_bass_big_muff_2": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5022, "y": 0.6882, "type": "bypass"}
+    ],
+    "flight_delay": [
+      {"id": "bypass", "label": "Bypass", "x": 0.1298, "y": 0.8765, "type": "bypass"},
+      {"id": "switch_2", "label": "Tap", "x": 0.8676, "y": 0.8765, "type": "tap"}
+    ],
     "fulldrive_2": [
       {"id": "bypass", "label": "Bypass", "x": 0.2174, "y": 0.8885, "type": "bypass"},
       {"id": "switch_2", "label": "Boost", "x": 0.7826, "y": 0.8853, "type": "boost"}
     ],
+    "jhs_hard_drive": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4959, "y": 0.8912, "type": "bypass"}
+    ],
+    "jhs_pulp_n_peel_v4": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4999, "y": 0.8882, "type": "bypass"}
+    ],
     "mini_ego": [
       {"id": "bypass", "label": "Bypass", "x": 0.496, "y": 0.8897, "type": "bypass"}
+    ],
+    "monk": [
+      {"id": "bypass", "label": "Bypass", "x": 0.2355, "y": 0.875, "type": "bypass"},
+      {"id": "switch_2", "label": "Tap", "x": 0.7522, "y": 0.875, "type": "tap"}
+    ],
+    "mxr_bass_synth": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4982, "y": 0.7206, "type": "bypass"}
+    ],
+    "octahive": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4603, "y": 0.7441, "type": "bypass"}
     ],
     "phase_95": [
       {"id": "bypass", "label": "Bypass", "x": 0.4972, "y": 0.8338, "type": "bypass"}
     ],
+    "polytune_2_mini": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5046, "y": 0.8132, "type": "bypass"}
+    ],
     "polytune_3": [
       {"id": "bypass", "label": "Bypass", "x": 0.5018, "y": 0.8176, "type": "bypass"}
     ],
+    "protein": [
+      {"id": "bypass", "label": "Bypass Green", "x": 0.7874, "y": 0.8632, "type": "bypass"},
+      {"id": "switch_2", "label": "Bypass Blue", "x": 0.217, "y": 0.8632, "type": "bypass"}
+    ],
     "ratsbane": [
       {"id": "bypass", "label": "Bypass", "x": 0.499, "y": 0.8794, "type": "bypass"}
+    ],
+    "red_muck": [
+      {"id": "bypass", "label": "Bypass", "x": 0.7618, "y": 0.8676, "type": "bypass"},
+      {"id": "switch_2", "label": "More", "x": 0.2379, "y": 0.8691, "type": "boost"}
     ],
     "reticon": [
       {"id": "bypass", "label": "Bypass", "x": 0.4957, "y": 0.85, "type": "bypass"}
@@ -32,6 +88,12 @@
     ],
     "sun_face": [
       {"id": "bypass", "label": "Bypass", "x": 0.4934, "y": 0.6926, "type": "bypass"}
+    ],
+    "tech21_vt_bass_di": [
+      {"id": "bypass", "label": "Bypass", "x": 0.8581, "y": 0.852, "type": "bypass"}
+    ],
+    "tumnus_deluxe": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4648, "y": 0.7647, "type": "bypass"}
     ]
   }
 }
