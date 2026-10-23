@@ -29,11 +29,12 @@ from pathlib import Path
 
 import common
 import design
+import svgdraw
 import footswitches
 import jacks
 from common import IN_MM, database, load_catalog, project_dirs
 
-FUNCTION_COLOURS = {"input": "#1565c0", "output": "#2e7d32", "power": "#ef6c00", "power_out": "#ef6c00", "other": "#6a1b9a"}
+FUNCTION_COLOURS = svgdraw.JACK_COLOURS   # one colour key for the editor and routing.svg
 FOOTSWITCH_COLOURS = {"bypass": "#c62828", "boost": "#ef6c00", "tap": "#1565c0", "function": "#00838f"}
 COMMAND = jacks.COMMAND
 MODES = ("jacks", "footswitches")
@@ -69,7 +70,7 @@ def fetch_image(image_name, refresh=False):
     try:
         return common.fetch_image(image_name, refresh)
     except RuntimeError as e:
-        sys.exit(str(e))
+        sys.exit(f"{e}\nUse --image FILE to mark on a local PNG instead.")
 
 
 def list_rows(pedals, supplies, jacks_data, fs_data):

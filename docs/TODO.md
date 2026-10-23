@@ -53,7 +53,7 @@ Each starts with a short plan in `docs/plans/<branch>.md` + owner decisions, the
 Suggested order: 1 routing-view -> 3 supply-placement -> 2 power-routing -> 6 footswitch-toppers ->
 5 pedal-preferences -> 4 web-ui.
 
-### 1. `feat/routing-view`: a clearer signal routing picture (routing.svg; `cables.svg` today)
+### 1. `feat/routing-view` (merged into main 2026-10-23): a clearer signal routing picture (routing.svg)
 Goal: a picture the owner can wire the board from. Today: grid staircase paths, pedal boxes, S# labels.
 Plan: `docs/plans/routing-view.md` (owner decisions 2026-10-23: any angle; lanes not in the length; rename to
 routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_plug` 2; printable 1:1 in mm).
@@ -69,7 +69,10 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
       proposals use it; `fetch_image` in common.py; stacked dashes only on the stacked stretches.
 - [ ] Owner: look at `projects/guitar-gig/routing.svg` (and `--images`); label placement is basic (some S# labels on
       short segments or overlapping in lanes).
-- [ ] Code review of the branch, then merge.
+- [x] Code review of the branch (2026-10-23): 10 findings fixed (smoothing / lanes could pass through a pedal a plug
+      exit touches, statuses keep every problem, incremental plug crossings, a cable's end cells never cross a plug,
+      stacked dashes on the drawn geometry, shared rect_cells / jack colours, xlink:href, fetch_image message);
+      merged into main.
 - [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.

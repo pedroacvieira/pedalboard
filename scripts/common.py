@@ -144,4 +144,4 @@ def fetch_image(image_name, refresh=False):
             return path
         except Exception as e:  # noqa: BLE001  (report every failure, then give up)
             errors.append(f"{url}: {e}")
-    raise RuntimeError("Could not download the image:\n  " + "\n  ".join(errors) + "\nUse --image FILE to mark on a local PNG instead.")
+    raise RuntimeError("Could not download the image:\n  " + "\n  ".join(errors))

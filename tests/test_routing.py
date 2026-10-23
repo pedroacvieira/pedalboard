@@ -409,17 +409,28 @@ def test_route_project_smooths_the_path_and_never_lengthens_it(monkeypatch):
     assert c["min_mm"] == pytest.approx(2 * (8 + 6) + routing.polyline_length(exits), abs=1e-6)
 
 
-def test_plug_over_the_limit_is_a_routing_finding_and_a_status():
+def test_a_cable_starting_next_to_a_plug_does_not_cross_it():
     ctx = power_ctx()
     ctx["project"]["cables"]["max_over_plug"] = 0
-    # A's power jack moves to its right side at y = 100: the DC head (70..80 x 95..105) holds S1's cable exit (80, 94)
-    # once grown by 2 mm
+    # A's power jack moves to its right side at y = 100: the DC head (70..80 x 95..105), grown by 2 mm, holds S1's
+    # cable exit cell (80, 94) only: the end cells of a cable never count as crossing
     ctx["layout"]["jacks"]["a"][-1].update(x=1.0, y=0.4, facing="right")
     routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
-    over = ctx["routing"]["plug_over"]
-    assert over and all(names == ["S1"] for names in over.values())
-    assert any(w.startswith("routing: S1 crosses the plug at a.") and "(limit 0 other cables)" in w for w in ctx["warnings"])
+    assert ctx["routing"]["plug_over"] == {} and c["status"] == "routed"
+
+
+def test_plug_over_the_limit_is_a_routing_finding_and_an_appended_status(monkeypatch):
+    real = routing.route_all
+
+    def over(*a, **k):   # the router's crossing logic is tested on route_all; here only the reporting
+        paths, users, overflow, _ = real(*a, **k)
+        return paths, users, overflow, {"a.power": ["S1"]}
+    monkeypatch.setattr(routing, "route_all", over)
+    ctx = power_ctx()
+    routing.route_project(ctx, {}, cable_types={**TYPES, **DC})
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert any(w.startswith("routing: S1 crosses the plug at a.power") and "(limit 2 other cables)" in w for w in ctx["warnings"])
     assert c["status"] == "routed, over the plug limit"
 
 
@@ -578,3 +589,22 @@ def test_route_project_moves_lanes_away_from_the_pedal_edge_they_hug():
         assert min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["draw_path"], s["draw_path"][1:])) >= \
             min(3.0, min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["path"], s["path"][1:]))) - 1e-6
     assert 'class="cable"' in svgdraw.render(ctx, {}) and 'class="stacked"' not in svgdraw.render(ctx, {})
+
+
+def test_smoothing_never_cuts_through_a_pedal_a_plug_exit_lies_in():
+    # the exit (8, 5) lies inside pedal R (0..10 x 0..10); the grid path leaves it to the right and turns down: the
+    # shortcut from the exit to (12, 15) would cross R, so the first corner stays at (12, 5)
+    r = (0.0, 0.0, 10.0, 10.0)
+    out = routing.smooth([(8.0, 5.0), (12.0, 5.0), (12.0, 15.0), (12.0, 25.0)], [r], 1.5, {})
+    assert out[1] == (12.0, 5.0)
+    assert all(routing.seg_rect_distance(p, q, r) > 0 for p, q in zip(out[1:], out[2:]))
+
+
+def test_a_lane_never_moves_into_a_pedal_the_centreline_touches():
+    # both cables run along R's front edge (y = 10, distance 0): the centred lanes (+-3) would put one inside R,
+    # so the lane set moves away from R
+    r = (0.0, 0.0, 100.0, 10.0)
+    routes = {"S1": ([(0.0, 10.0), (100.0, 10.0)], set()), "S2": ([(0.0, 10.0), (100.0, 10.0)], set())}
+    res = routing.lanes(routes, [r], {}, AREA, 6.0)
+    for c in ("S1", "S2"):
+        assert all(routing.seg_rect_distance(p, q, r) > 0 for p, q in zip(res[c]["corners"][1:-2], res[c]["corners"][2:-1]))

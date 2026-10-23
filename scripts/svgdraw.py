@@ -90,7 +90,7 @@ def pedal(item, name, image=None):
     out = [f'<g class="pedal" data-id="{esc(item.get("id", ""))}">']
     if image:
         out.append(f'<image x="{f1(item["left_mm"])}" y="{f1(item["top_mm"])}" width="{f1(item["w_mm"])}" '
-                   f'height="{f1(item["h_mm"])}" preserveAspectRatio="none" transform="{rot}" href="{image}"/>')
+                   f'height="{f1(item["h_mm"])}" preserveAspectRatio="none" transform="{rot}" href="{image}" xlink:href="{image}"/>')
     out.append(f'<rect x="{f1(item["left_mm"])}" y="{f1(item["top_mm"])}" width="{f1(item["w_mm"])}" height="{f1(item["h_mm"])}" '
                f'transform="{rot}" rx="2" fill="{"none" if image else "#cfd8dc"}" stroke="#455a64" stroke-width="0.6"/>')
     fs, lines = fit_label(name, x1 - x0 - 4, y1 - y0 - 4, fs_max=min(4.5, max(2.5, min(x1 - x0, y1 - y0) / 12)))
@@ -318,7 +318,7 @@ def key_block(entries, x, y, width, extra=None):
 def document(view_box, body):
     """The svg document, sized in mm like its viewBox (a browser prints it at true scale)."""
     x0, y0, w, h = view_box
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0:.1f} {y0:.1f} {w:.1f} {h:.1f}" width="{w:.1f}mm" '
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="{x0:.1f} {y0:.1f} {w:.1f} {h:.1f}" width="{w:.1f}mm" '
             f'height="{h:.1f}mm" font-family="sans-serif">\n' + rect(x0, y0, x0 + w, y0 + h, fill="#ffffff") + "\n"
             + "\n".join(body) + "\n</svg>\n")
 
