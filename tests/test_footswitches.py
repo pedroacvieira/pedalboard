@@ -93,9 +93,12 @@ def test_fixed_minimum_gives_warnings_or_strict_errors(tmp_path):
 
 
 def test_bad_spacing_settings_are_errors(tmp_path):
-    for bad in ({"min_distance_mm": "big"}, {"min_distance_mm": "auto"}, {"comfort_mm": 0}):   # "auto" was dropped
+    for bad in ({"min_distance_mm": "big"}, {"comfort_mm": 0}):
         ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": bad})
         assert any(next(iter(bad)) in e for e in ctx["errors"])
+    old = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"min_distance_mm": "auto"}})   # the old default
+    assert old["errors"] == [] and old["footswitch_settings"]["min_distance_mm"] is None
+    assert any("\"auto\" is no longer used" in w for w in old["warnings"])
 
 
 def test_an_injected_layout_is_measured_itself(tmp_path):

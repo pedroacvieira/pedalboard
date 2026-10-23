@@ -10,6 +10,7 @@
   using the owner's hand wiring in project.json.
 """
 import itertools
+import re
 
 from routing import POLARITIES
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
@@ -105,10 +106,11 @@ def cable_ids(supplies):
 
 
 def remap_overrides(overrides, old_supplies, new_supplies):
-    """`cables.overrides` with the power cable entries renumbered from one wiring to another (by pedal)."""
+    """`cables.overrides` with the power cable entries renumbered from one wiring to another (by pedal); a P# entry
+    that names no cable of the old wiring is dropped."""
     old, new = cable_ids(old_supplies), cable_ids(new_supplies)
     by_old = {cid: pid for pid, cid in old.items()}
-    out = {k: v for k, v in overrides.items() if not (k.startswith("P") and k in by_old)}
+    out = {k: v for k, v in overrides.items() if not re.fullmatch(r"P\d+", k)}   # signal (S#) overrides stay
     for k, v in overrides.items():
         if k in by_old and by_old[k] in new:
             out[new[by_old[k]]] = v

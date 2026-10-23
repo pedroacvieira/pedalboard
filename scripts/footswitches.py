@@ -130,11 +130,16 @@ def priorities(project):
 
 
 def spacing_settings(project):
-    """(min_distance_mm or None, comfort_mm, [problems]) from project `footswitches`."""
+    """(min_distance_mm or None, comfort_mm, [problems], [notes]) from project `footswitches` (problems are errors,
+    notes warnings)."""
     cfg = project.get("footswitches") or {}
     problems = []
     num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0
     lim = cfg.get("min_distance_mm")
+    notes = []
+    if lim == "auto":
+        notes.append("footswitches.min_distance_mm \"auto\" is no longer used (spacing is a comfort term, no minimum): remove it")
+        lim = None
     if lim is not None and not num(lim):
         problems.append(f"footswitches.min_distance_mm must be a positive number (mm) or null (no minimum), got {lim!r}")
         lim = None
@@ -142,7 +147,7 @@ def spacing_settings(project):
     if not num(comfort):
         problems.append(f"footswitches.comfort_mm must be a positive number (mm), got {comfort!r}")
         comfort = COMFORT_MM
-    return (None if lim is None else float(lim)), float(comfort), problems
+    return (None if lim is None else float(lim)), float(comfort), problems, notes
 
 
 def crowding(distance_mm, priority, comfort_mm):
@@ -198,8 +203,9 @@ def check(ctx, cat_pedals, fs_data):
     dist_sink = errors if val.get("strict_footswitches") else warnings
     fs_data = usable(fs_data)
     chain = ctx["chain"]
-    limit, comfort, problems = spacing_settings(project)
+    limit, comfort, problems, notes = spacing_settings(project)
     errors += problems
+    warnings += notes
     ctx.update(footswitch_setup={}, footswitch_fixes=[], footswitch_points=[], footswitch_pairs=[],
                footswitch_settings={"min_distance_mm": limit, "comfort_mm": comfort, "crowding": None, "layout": False})
 

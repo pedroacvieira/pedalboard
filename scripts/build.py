@@ -583,7 +583,8 @@ def proposals_section(ctx, cat_pedals):
            "|---|--:|" + "--:|" * len(props)]
     for label, f in rows:
         md.append(f"| {label} | {f(owner)} | " + " | ".join(f(p["metrics"]) for p in props) + " |")
-    md.append("")
+    md += ["", "All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's "
+           "power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.", ""]
     nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
     for p in props:
         m = p["metrics"]

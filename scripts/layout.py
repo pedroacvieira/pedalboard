@@ -51,6 +51,7 @@ import routing
 from common import px_to_mm
 
 TOUCH_GAP_MM = 1.0
+CROWD_STEP_MM = 8.0   # largest repair step for a crowded footswitch pair
 SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
@@ -219,7 +220,7 @@ class Model:
             raise ValueError(f"layout.pins: not a placed chain pedal: {', '.join(sorted(unknown_pins))}")
         # footswitches
         self.fs_known = any(self.fs_data.get(p) for p in self.ids)
-        limit, self.fs_comfort, _ = footswitches.spacing_settings(project)
+        limit, self.fs_comfort, _, _ = footswitches.spacing_settings(project)
         self.fs_limit = limit if fs_limit is None else fs_limit
         self.fs_priority = footswitches.priorities(project)
         self.access = [access_rule({**cat_pedals[p], "id": p}, [f["type"] for f in self.fs_data.get(p) or []],
@@ -497,6 +498,8 @@ class Model:
                     crowd = footswitches.crowding(d, fac, comfort)
                     raw["footswitch"] += crowd
                     terms["footswitch"] += w["footswitch"] * crowd
+                    if d < 0.6 * comfort:   # the closest pairs: repair moves of a few mm (CROWD_STEP_MM at most)
+                        issues.append((p[0], self.titles[q[0]], min((comfort - d) / 4, CROWD_STEP_MM)))
                     if lim is not None and d < lim - 1e-6:
                         terms["footswitch"] += fac * (w["footswitch_min"] * (lim - d) + w["footswitch_pair"])
                         fs_close.append({"a": p[4], "b": q[4], "distance_mm": d})

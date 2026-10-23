@@ -171,4 +171,5 @@ def test_gig_fix_level_removes_todays_findings(tmp_path, monkeypatch):
     assert pl.main(["guitar-gig"]) == 0
     meta = json.loads((pdir / "proposals" / "meta.json").read_text())
     best = meta["proposals"][0]
-    assert best["metrics"]["blocked"] == 0 and len(best["moved"]) <= 5
+    assert best["metrics"]["blocked"] == 0 and all(mv["distance_mm"] <= 40.5 for mv in best["moved"])
+    assert best["metrics"]["fs_crowding"] <= meta["owner"]["fs_crowding"]   # switches not more crowded

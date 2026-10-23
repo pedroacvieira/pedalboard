@@ -33,7 +33,8 @@ def proposal_inputs_sha1(pdir):
     import hashlib
     pdir = Path(pdir)
     project = load_json(pdir / "project.json")
-    ids = list(project.get("signal_chain", [])) + [s.get("supply") for s in (project.get("power") or {}).get("supplies", [])]
+    ids = [str(i) for i in list(project.get("signal_chain", [])) + [s.get("supply") for s in (project.get("power") or {}).get("supplies", [])]
+           if i is not None]
     pedals, supplies = load_catalog()
     jacks = load_json(JACKS_FILE).get("jacks", {}) if JACKS_FILE.exists() else {}
     fs = load_json(FOOTSWITCHES_FILE).get("footswitches", {}) if FOOTSWITCHES_FILE.exists() else {}

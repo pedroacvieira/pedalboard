@@ -309,6 +309,7 @@ def test_power_cable_ids_and_override_remap():
     over = {"P1": {"exit_b": "left"}, "P3": {"exit_b": "right"}, "S2": {"exit_a": "left"}}
     assert power.remap_overrides(over, old, new) == {"P3": {"exit_b": "left"}, "P1": {"exit_b": "right"},
                                                      "S2": {"exit_a": "left"}}
+    assert power.remap_overrides({"P4": {"exit_b": "left"}}, old, new + [{"outputs": [{"pedals": ["w"]}]}]) == {}   # stale
 
 
 def test_isolated_need_and_unknown_max_ma_are_one_policy_for_build_and_assign():

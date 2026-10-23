@@ -4,7 +4,7 @@ Hand-written backlog (not generated). Build-derived findings (warnings, data to 
 generated `README.md`; this file holds the work and the questions for the owner. Tick items off or delete them when
 done, and keep `CLAUDE.md` current when a decision changes.
 
-## Branch `feat/pedal-position` (current)
+## Branch `feat/pedal-position` (merged into main 2026-10-23)
 - [ ] Plan: `docs/plans/pedal-position.md` (handover `docs/handovers/pedal-position.md`); answer its open questions.
 - [x] Phases 0-2 (2026-10-22): layout injection, `design.move` / `write_canvas`, footswitch data + spacing check,
       `scripts/pedal_editor.py` (renamed from jack_setter, footswitch mode, Pillow instead of numpy).
