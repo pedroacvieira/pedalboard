@@ -420,3 +420,150 @@ def test_plug_over_the_limit_is_a_routing_finding_and_a_status():
     assert over and all(names == ["S1"] for names in over.values())
     assert any(w.startswith("routing: S1 crosses the plug at a.") and "(limit 0 other cables)" in w for w in ctx["warnings"])
     assert c["status"] == "routed, over the plug limit"
+
+
+# --- lanes (drawing geometry for cables in the same corridor) ---------------------------------------
+AREA = (0.0, 0.0, 400.0, 300.0)
+
+
+def seg_cross(p, q, r, s):
+    """True when segments pq and rs properly intersect."""
+    def o(a, b, c):
+        return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    return o(p, q, r) * o(p, q, s) < 0 and o(r, s, p) * o(r, s, q) < 0
+
+
+def test_two_cables_on_the_same_line_get_lanes_one_width_apart():
+    # both run (0, 100) -> (100, 100): lanes at y = 100 -/+ 3 (width 6), exits (first and last corner) stay put
+    routes = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(0.0, 100.0), (100.0, 100.0)], set())}
+    res = routing.lanes(routes, [], {}, AREA, 6.0)
+    a, b = res["S1"]["corners"], res["S2"]["corners"]
+    assert res["S1"]["stacked"] == [] and res["S2"]["stacked"] == []
+    for c in (a, b):
+        assert c[0] == (0.0, 100.0) and c[-1] == (100.0, 100.0)
+        assert len(c) == 4 and c[1][1] == c[2][1] and (c[1][0], c[2][0]) == (0.0, 100.0)   # extra corners at the exits
+    assert (a[1][1], b[1][1]) == pytest.approx((97.0, 103.0))      # tie in position: S1 before S2, the lower y first
+    assert b[1][1] - a[1][1] == pytest.approx(6.0)                    # centre distance = one width
+
+
+def test_three_cables_get_offsets_minus_width_zero_plus_width():
+    routes = {f"S{i}": ([(0.0, 100.0), (100.0, 100.0)], set()) for i in (1, 2, 3)}
+    res = routing.lanes(routes, [], {}, AREA, 6.0)
+    assert res["S1"]["corners"][1][1] == pytest.approx(94.0) and res["S3"]["corners"][1][1] == pytest.approx(106.0)
+    assert res["S2"]["corners"] == [(0.0, 100.0), (100.0, 100.0)]        # the middle lane is the centreline itself
+
+
+def test_lanes_follow_the_side_the_cables_come_from_and_do_not_cross():
+    # S1 comes from above (y 70) and leaves above, S2 from below (y 130) and leaves below; the bundle is the straight
+    # part y = 100, x 60..140. Position along the normal (down): S1 -30 + -30 = -60, S2 +60 -> S1 gets the upper lane
+    # (y = 97), S2 y = 103. Mitre of S1's first corner: its entering segment (50,70)->(60,100) meets y = 97 at x = 59.
+    routes = {"S2": ([(50.0, 130.0), (60.0, 100.0), (140.0, 100.0), (150.0, 130.0)], set()),
+              "S1": ([(50.0, 70.0), (60.0, 100.0), (140.0, 100.0), (150.0, 70.0)], set())}
+    res = routing.lanes(routes, [], {}, AREA, 6.0)
+    s1, s2 = res["S1"]["corners"], res["S2"]["corners"]
+    assert s1 == pytest.approx([(50.0, 70.0), (59.0, 97.0), (141.0, 97.0), (150.0, 70.0)])
+    assert s2 == pytest.approx([(50.0, 130.0), (59.0, 103.0), (141.0, 103.0), (150.0, 130.0)])
+    assert not any(seg_cross(p, q, r, s) for p, q in zip(s1, s1[1:]) for r, s in zip(s2, s2[1:]))
+
+
+def test_a_bundle_squeezed_between_two_pedals_stays_stacked():
+    # pedals leave a 6 mm gap (y 97..103): the centreline at y = 100 is exactly one radius (3) from both; a lane at
+    # +-3 would touch, +-1.5 is still closer than the radius
+    gap = [(0.0, 0.0, 400.0, 97.0), (0.0, 103.0, 400.0, 200.0)]
+    routes = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(0.0, 100.0), (100.0, 100.0)], set())}
+    res = routing.lanes(routes, gap, {}, AREA, 6.0)
+    assert res["S1"]["corners"] == routes["S1"][0] and res["S2"]["corners"] == routes["S2"][0]
+    assert res["S1"]["stacked"] == ["S2"] and res["S2"]["stacked"] == ["S1"]
+
+
+def test_half_spacing_is_tried_when_the_full_one_does_not_fit():
+    # a 9 mm gap (y 95.5..104.5): +-3 would leave 1.5 mm to a pedal (radius 3), +-1.5 keeps 3.0
+    gap = [(0.0, 0.0, 400.0, 95.5), (0.0, 104.5, 400.0, 200.0)]
+    routes = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(0.0, 100.0), (100.0, 100.0)], set())}
+    res = routing.lanes(routes, gap, {}, AREA, 6.0)
+    assert res["S1"]["stacked"] == [] and res["S2"]["stacked"] == []
+    assert res["S2"]["corners"][1][1] - res["S1"]["corners"][1][1] == pytest.approx(3.0)
+
+
+def test_lanes_stay_inside_the_routing_area():
+    routes = {"S1": ([(0.0, 1.0), (100.0, 1.0)], set()), "S2": ([(0.0, 1.0), (100.0, 1.0)], set())}   # 1 mm from the edge
+    res = routing.lanes(routes, [], {}, AREA, 6.0)       # +-3 leaves the area: the lane set shifts away from the edge
+    ys = sorted(res[c]["corners"][1][1] for c in ("S1", "S2"))
+    assert res["S1"]["stacked"] == [] and ys[0] >= AREA[1] and ys[1] - ys[0] == pytest.approx(6.0)
+    assert ys[0] == pytest.approx(AREA[1])               # closest to centred: the inner lane right at the edge
+    wall = {"S1": ([(0.0, 1.0), (100.0, 1.0)], set()), "S2": ([(0.0, 1.0), (100.0, 1.0)], set())}
+    res = routing.lanes(wall, [(0.0, 3.0, 100.0, 20.0)], {}, AREA, 6.0)   # a pedal 2 mm below, the edge 1 mm above
+    assert res["S1"]["stacked"] == ["S2"] and res["S1"]["corners"] == wall["S1"][0]
+
+
+def test_crossing_and_distant_cables_are_not_bundled():
+    cross = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(50.0, 50.0), (60.0, 150.0)], set())}
+    assert routing.lane_bundles(cross, 6.0) == []
+    res = routing.lanes(cross, [], {}, AREA, 6.0)
+    assert res["S1"]["corners"] == cross["S1"][0] and res["S2"]["corners"] == cross["S2"][0] and res["S1"]["stacked"] == []
+    far = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(0.0, 106.0), (100.0, 106.0)], set())}   # exactly one width apart
+    assert routing.lane_bundles(far, 6.0) == []
+    short = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(96.0, 100.0), (200.0, 100.0)], set())}   # 4 mm overlap < 6
+    assert routing.lane_bundles(short, 6.0) == []
+
+
+def test_a_cable_gets_one_lane_for_all_its_segments_in_a_bundle_and_ids_sort_naturally():
+    # S10 runs along S2 twice (a 4 deg bend between its two segments): one lane, offsets stay equal; S2 < S10
+    routes = {"S10": ([(10.0, 100.0), (60.0, 100.0), (110.0, 103.0)], set()), "S2": ([(10.0, 100.0), (110.0, 101.5)], set())}
+    (bundle,) = routing.lane_bundles(routes, 6.0)
+    assert bundle == [("S2", 0), ("S10", 0), ("S10", 1)]
+    res = routing.lanes(routes, [], {}, AREA, 6.0)
+    assert res["S2"]["stacked"] == [] and res["S10"]["stacked"] == []
+    assert res["S10"]["corners"][1][1] - res["S2"]["corners"][1][1] == pytest.approx(6.0, abs=0.2)   # S2 sorts first (upper)
+
+
+def test_other_plugs_may_not_be_touched_by_a_lane_but_own_plugs_may():
+    # a plug rect 6 mm below the line (y 104..110, x 40..60): the original at y = 100 is 4 mm away (> radius 3); the
+    # lane at +3 would be 1 mm away -> touches -> invalid, even the half lane (+1.5: 2.5 mm) touches
+    routes = {"S1": ([(0.0, 100.0), (100.0, 100.0)], set()), "S2": ([(0.0, 100.0), (100.0, 100.0)], set())}
+    plugs = {"x.in": [(40.0, 104.0, 60.0, 110.0)]}
+    res = routing.lanes(routes, [], plugs, AREA, 6.0)    # the lane set shifts up, away from the plug
+    assert res["S1"]["stacked"] == []
+    assert all(routing.seg_rect_distance(p, q, plugs["x.in"][0]) > 3.0                # never within the radius
+               for c in ("S1", "S2") for p, q in zip(res[c]["corners"], res[c]["corners"][1:]))
+    own = {"S1": (routes["S1"][0], {"x.in"}), "S2": (routes["S2"][0], {"x.in"})}
+    assert routing.lanes(own, [], plugs, AREA, 6.0)["S1"]["stacked"] == []
+
+
+def test_route_project_lanes_only_fill_draw_path(monkeypatch):
+    # two parallel cables A -> B and C -> D side by side in the open: same min_mm and path with and without lanes
+    def build():
+        ctx = plug_ctx({"type": "ra"})
+        routing.route_project(ctx, {}, cable_types=TYPES)
+        return {c["id"]: c for c in ctx["cable_list"] if c["kind"] == "signal"}
+    laned = build()["S1"]
+    monkeypatch.setattr(routing, "lanes", lambda routes, *a, **k: {cid: {"corners": list(pts), "stacked": []}
+                                                                  for cid, (pts, _) in routes.items()})
+    plain = build()["S1"]
+    assert laned["min_mm"] == plain["min_mm"] and laned["path"] == plain["path"]
+    assert plain["draw_path"] == plain["path"] and plain["stacked_with"] == []
+    assert not any(k.startswith("_") for k in laned)
+
+
+def test_route_project_moves_lanes_away_from_the_pedal_edge_they_hug():
+    # A -> B -> C with S1 and S2 both passing over B's back edge (y = 60) at y = 56, 4 mm from B (radius 3): centred
+    # lanes would put one 1 mm from B, so the lane set shifts away from B (one lane stays 3..4 mm from it)
+    a, b, c = mm_item("i-a", "A", 20, 60, 50, 100), mm_item("i-b", "B", 120, 60, 50, 100), mm_item("i-c", "C", 220, 60, 50, 100)
+    jd = {"a": [{"id": "out", "label": "Output", "function": "output", "x": 1.0, "y": 0.1, "facing": "right"}],
+          "b": [{"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.9, "facing": "right"},
+                {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.1, "facing": "left"}],
+          "c": [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.9, "facing": "left"}]}
+    layout = {"board": mm_item("i-board", "Board", 0, 0, 300, 200, "pedalboard"), "placed": {"a": a, "b": b, "c": c},
+              "obstacles": [a, b, c], "inst_item": {}, "jacks": jd, "outward_mm": 6.3}
+    ctx = {"project": {"cables": {"type": "ra"}}, "chain": ["a", "b", "c"], "layout": layout, "errors": [], "warnings": [],
+           "violations": [], "cables": {"power": []}}
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    s1, s2 = (next(x for x in ctx["cable_list"] if x["id"] == i) for i in ("S1", "S2"))
+    assert s1["status"] == s2["status"] == "routed"
+    assert s1["stacked_with"] == s2["stacked_with"] == []
+    assert s1["draw_path"] != s1["path"] or s2["draw_path"] != s2["path"]
+    box_b = (120.0, 60.0, 170.0, 160.0)
+    for s in (s1, s2):                                   # never closer to B than the centreline (capped at the radius)
+        assert min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["draw_path"], s["draw_path"][1:])) >= \
+            min(3.0, min(routing.seg_rect_distance(p, q, box_b) for p, q in zip(s["path"], s["path"][1:]))) - 1e-6
+    assert "<polyline" in routing.svg(ctx, {}) and "stroke-dasharray=\"3 3\"" not in routing.svg(ctx, {})

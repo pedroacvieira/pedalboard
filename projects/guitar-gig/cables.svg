@@ -193,26 +193,30 @@
 <text x="565.3" y="107.5" font-size="6" fill="#f58231" font-weight="bold">S4</text>
 <polyline points="504.2,153.6 501.0,153.6 501.0,176.1 489.3,217.5 487.3,219.5 477.3,219.5 461.4,234.4 438.9,234.4 438.9,237.6" fill="none" stroke="#911eb4" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="487.3" y="217.5" font-size="6" fill="#911eb4" font-weight="bold">S5</text>
-<polyline points="362.5,237.6 362.5,234.4 385.0,234.4 381.3,213.5 381.3,95.5 391.3,39.5 433.8,38.9 456.3,38.9 456.3,42.1" fill="none" stroke="#46f0f0" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
-<text x="381.3" y="93.5" font-size="6" fill="#46f0f0" font-weight="bold">S6</text>
+<polyline points="362.5,237.6 362.5,234.4 385.0,234.4 382.1,217.8 382.1,91.3 391.3,39.5 433.8,38.9 456.3,38.9 456.3,42.1" fill="none" stroke="#46f0f0" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<text x="382.1" y="89.3" font-size="6" fill="#46f0f0" font-weight="bold">S6</text>
 <polyline points="439.5,85.6 439.5,88.8 462.0,88.8 489.3,95.5 490.2,150.2 490.2,172.7 487.0,172.7" fill="none" stroke="#f032e6" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="489.3" y="93.5" font-size="6" fill="#f032e6" font-weight="bold">S7</text>
-<polyline points="383.8,198.0 380.6,198.0 380.6,175.5 379.7,152.9 379.7,130.4 376.5,130.4" fill="none" stroke="#9a6324" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
-<text x="379.7" y="150.9" font-size="6" fill="#9a6324" font-weight="bold">S8</text>
+<polyline points="383.8,198.0 380.6,198.0 380.6,175.5 379.6,175.5 378.7,152.9 379.7,152.9 379.7,130.4 376.5,130.4" fill="none" stroke="#9a6324" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<text x="378.7" y="150.9" font-size="6" fill="#9a6324" font-weight="bold">S8</text>
 <polyline points="300.8,130.9 297.6,130.9 297.6,153.4 295.3,157.5 265.3,181.5 243.3,181.5 243.3,231.5 256.2,232.7 278.7,232.7 278.7,229.5" fill="none" stroke="#008080" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="243.3" y="179.5" font-size="6" fill="#008080" font-weight="bold">S9</text>
 <polyline points="297.9,183.7 297.9,180.5 320.4,180.5 341.3,181.5 341.3,231.5 325.3,235.5 316.6,244.2 294.1,244.2 294.1,247.4" fill="none" stroke="#800000" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="341.3" y="229.5" font-size="6" fill="#800000" font-weight="bold">S10</text>
 <polyline points="229.1,247.4 229.1,244.2 206.6,244.2 221.3,207.5 221.3,81.5 219.3,79.5 137.3,31.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke="#808000" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<polyline points="229.1,247.4 229.1,244.2 206.6,244.2 221.3,207.5 221.3,81.5 219.3,79.5 137.3,31.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" stroke-linejoin="round"/>
 <text x="219.3" y="77.5" font-size="6" fill="#808000" font-weight="bold">S11</text>
 <polyline points="101.1,100.5 101.1,103.7 123.6,103.7 137.3,103.5 143.3,85.5 143.3,81.5 225.3,41.5 295.3,41.5 296.4,63.2 296.4,85.7 293.2,85.7" fill="none" stroke="#000075" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="143.3" y="79.5" font-size="6" fill="#000075" font-weight="bold">S12</text>
 <polyline points="226.3,85.9 223.1,85.9 223.1,108.4 223.4,192.6 223.4,170.1 220.2,170.1" fill="none" stroke="#e6beff" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<polyline points="226.3,85.9 223.1,85.9 223.1,108.4 223.4,192.6 223.4,170.1 220.2,170.1" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" stroke-linejoin="round"/>
 <text x="223.4" y="190.6" font-size="6" fill="#e6beff" font-weight="bold">S13</text>
-<polyline points="144.5,170.3 141.3,170.3 141.3,147.8 141.3,107.5 134.7,107.3 112.2,107.3 112.2,110.5" fill="none" stroke="#aaffc3" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
-<text x="141.3" y="105.5" font-size="6" fill="#aaffc3" font-weight="bold">S14</text>
-<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 141.3,107.5 143.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke="#ffd8b1" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
-<text x="143.3" y="205.5" font-size="6" fill="#ffd8b1" font-weight="bold">S15</text>
+<polyline points="144.5,170.3 141.3,170.3 141.3,147.8 141.3,104.8 134.7,104.5 134.7,107.3 112.2,107.3 112.2,110.5" fill="none" stroke="#aaffc3" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<polyline points="144.5,170.3 141.3,170.3 141.3,147.8 141.3,104.8 134.7,104.5 134.7,107.3 112.2,107.3 112.2,110.5" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" stroke-linejoin="round"/>
+<text x="134.7" y="102.5" font-size="6" fill="#aaffc3" font-weight="bold">S14</text>
+<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 113.2,108.2 141.3,108.3 143.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke="#ffd8b1" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
+<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 113.2,108.2 141.3,108.3 143.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" stroke-linejoin="round"/>
+<text x="141.3" y="106.3" font-size="6" fill="#ffd8b1" font-weight="bold">S15</text>
 <polyline points="118.6,218.1 118.6,214.9 96.1,214.9 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke="#808080" stroke-width="2.2" stroke-linejoin="round" opacity="0.85"/>
 <text x="92.7" y="211.4" font-size="6" fill="#808080" font-weight="bold">S16</text>
 <circle cx="586.4" cy="308.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
@@ -239,5 +243,5 @@
 <circle cx="112.7" cy="328.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
 <circle cx="182.0" cy="328.1" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8"/>
 <circle cx="56.2" cy="313.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8"/>
-<text x="12.3" y="367.7" font-size="7" fill="#455a64">dashed: routing area (board + 3.5 mm at back and sides, nothing in front of the lowest pedals); red: more than 2 stacked cables; grey: plug heads and their cable exits; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum</text>
+<text x="12.3" y="367.7" font-size="7" fill="#455a64">dashed: routing area (board + 3.5 mm at back and sides, nothing in front of the lowest pedals); red: more than 2 stacked cables; grey: plug heads and their cable exits; white dashes: cables stacked on top of each other; dots: footswitches (dark = bypass, red = boost, blue = tap, white = function), red dashed line: closer than the minimum</text>
 </svg>

@@ -61,7 +61,10 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
       total 2576 -> 2512 mm, no cable longer, no plug-limit findings. Proposals count plug-limit cables as overflow.
 - [ ] The layout surrogate (octile) now overestimates the smoothed router by up to ~8 % per cable; consider an
       any-angle estimate in `layout.py` (adds to "Surrogate vs router" above).
-- [ ] Phase 2: parallel lanes. Phase 3: `svgdraw.py` + `routing.svg` (+ `routing.local.svg`). Phase 4: wiring in.
+- [x] Phase 2 (handover `docs/handovers/routing-view-2.md`, 2026-10-23): parallel lanes (`routing.lanes`, drawing
+      only: `draw_path`, `stacked_with`); the lane set may shift off-centre (cables hug pedal edges). Gig: S6/S8 in
+      lanes; S11/S13 and S14/S15 stacked (gaps ~5.5 mm between pedals, two 3.5 mm ribbons need 7).
+- [ ] Phase 3: `svgdraw.py` + `routing.svg` (+ `routing.local.svg`). Phase 4: wiring in.
 - [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.
@@ -76,6 +79,20 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
 - [ ] Shared SVG helpers (board, pedals, jacks, legend) in one module, so power.svg (2) and the web views (4) reuse them.
 - Acceptance: same corridors as before; paths straighter and never overlapping (lengths can only get shorter);
   README embeds it.
+
+### 1b. `feat/pedal-outlines`: route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
+Finding (2026-10-23, `.cache/images`): the Pedal Playground images are tightly cropped RGBA, 80-98 % opaque. The
+side strips are mostly the protruding jacks and the corners are rounded: the enclosure itself is narrower than the
+box by about 5-10 % of the width per side (TC minis / Mini Ego / MXR / Jam / Reticon), i.e. a few mm per pedal.
+That matters: the gig's stacked spots (S11/S13, S14/S15) sit in 5.4-5.6 mm box gaps.
+- [ ] Outline per catalog id from the image alpha: a few axis-aligned rects (run-length rows merged at ~1 mm, or a
+      simplified polygon), in image fractions like jacks.json; rotated with the item (`design.jack_point`).
+- [ ] Router and smoothing: block the outline rects instead of the footprint (grid + `smooth` / `lanes` distances).
+- [ ] Verify first: does Pedal Playground's data-width/height cover the image incl. jacks (then the outline is
+      right), or only the enclosure (then the image is squeezed)? Check 2-3 pedals against maker dimensions.
+- [ ] Owner decisions: commit the outlines (small derived data, build works offline; no images) or keep them in
+      `.cache`; use them for plug clearance too (fewer findings at rounded corners) or only for routing; keep the
+      bounding box for pedal-pedal overlap in the layout search (jacks of neighbours cannot interleave freely).
 
 ### 2. `feat/power-routing`: power cables routed and drawn (power.svg)
 Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs 3 for where cables cross the board.
