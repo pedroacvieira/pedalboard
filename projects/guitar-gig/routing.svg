@@ -2,30 +2,22 @@
 <rect x="2.3" y="8.5" width="638.0" height="396.1" fill="#ffffff"/>
 <rect x="15.8" y="22.0" width="609.6" height="331.7" fill="#eceff1" stroke="#90a4ae" stroke-width="1" class="board"/>
 <g class="holes" opacity="0.3">
-<rect x="191.7" y="36.0" width="257.7" height="5.0" fill="#90a4ae" class="hole"/>
-<rect x="50.8" y="70.0" width="72.9" height="5.0" fill="#90a4ae" class="hole"/>
-<rect x="43.8" y="75.0" width="75.8" height="6.0" fill="#90a4ae" class="hole"/>
-<rect x="527.5" y="70.0" width="72.9" height="5.0" fill="#90a4ae" class="hole"/>
-<rect x="521.5" y="75.0" width="75.8" height="6.0" fill="#90a4ae" class="hole"/>
-<rect x="47.8" y="137.9" width="35.9" height="4.0" fill="#90a4ae" class="hole"/>
-<rect x="42.8" y="141.9" width="40.9" height="6.0" fill="#90a4ae" class="hole"/>
-<rect x="43.8" y="147.9" width="36.9" height="2.0" fill="#90a4ae" class="hole"/>
-<rect x="151.7" y="137.9" width="136.9" height="12.0" fill="#90a4ae" class="hole"/>
-<rect x="356.6" y="137.9" width="136.9" height="12.0" fill="#90a4ae" class="hole"/>
-<rect x="564.4" y="137.9" width="36.9" height="4.0" fill="#90a4ae" class="hole"/>
-<rect x="559.5" y="141.9" width="41.9" height="5.0" fill="#90a4ae" class="hole"/>
-<rect x="560.5" y="146.9" width="36.9" height="3.0" fill="#90a4ae" class="hole"/>
-<rect x="46.8" y="204.9" width="132.8" height="13.9" fill="#90a4ae" class="hole"/>
-<rect x="254.7" y="204.9" width="132.8" height="13.9" fill="#90a4ae" class="hole"/>
-<rect x="462.5" y="204.9" width="133.9" height="13.9" fill="#90a4ae" class="hole"/>
-<rect x="48.8" y="270.8" width="31.0" height="3.0" fill="#90a4ae" class="hole"/>
-<rect x="42.8" y="273.8" width="41.9" height="9.0" fill="#90a4ae" class="hole"/>
-<rect x="44.8" y="282.8" width="34.9" height="3.9" fill="#90a4ae" class="hole"/>
-<rect x="153.8" y="270.8" width="133.9" height="16.0" fill="#90a4ae" class="hole"/>
-<rect x="357.6" y="270.8" width="134.8" height="16.0" fill="#90a4ae" class="hole"/>
-<rect x="565.5" y="270.8" width="30.9" height="3.0" fill="#90a4ae" class="hole"/>
-<rect x="559.5" y="273.8" width="41.9" height="9.0" fill="#90a4ae" class="hole"/>
-<rect x="561.5" y="282.8" width="34.9" height="3.9" fill="#90a4ae" class="hole"/>
+<rect x="43.8" y="80.9" width="75.8" height="0.1" fill="#90a4ae" class="hole"/>
+<rect x="254.7" y="218.4" width="132.8" height="0.5" fill="#90a4ae" class="hole"/>
+<rect x="453.9" y="202.1" width="149.6" height="17.7" fill="#90a4ae" class="hole"/>
+<rect x="246.2" y="202.8" width="148.9" height="15.6" fill="#90a4ae" class="hole"/>
+<rect x="188.1" y="24.1" width="265.1" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="38.5" y="65.2" width="86.5" height="15.6" fill="#90a4ae" class="hole"/>
+<rect x="517.0" y="64.5" width="84.4" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="39.2" y="134.0" width="46.8" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="143.4" y="134.0" width="151.7" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="346.1" y="133.3" width="152.4" height="17.7" fill="#90a4ae" class="hole"/>
+<rect x="555.2" y="133.3" width="48.2" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="38.5" y="201.3" width="148.1" height="18.4" fill="#90a4ae" class="hole"/>
+<rect x="37.8" y="270.1" width="48.2" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="142.7" y="270.1" width="151.0" height="17.0" fill="#90a4ae" class="hole"/>
+<rect x="346.8" y="270.1" width="151.7" height="17.7" fill="#90a4ae" class="hole"/>
+<rect x="555.2" y="270.1" width="48.9" height="17.0" fill="#90a4ae" class="hole"/>
 </g>
 <rect x="12.3" y="18.5" width="618.0" height="326.5" fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8" class="routing-area"/>
 <g class="pedal" data-id="item-4000000004">
@@ -289,9 +281,9 @@
 <polyline points="144.5,170.3 141.3,170.3 141.3,147.8 141.3,109.7 136.6,105.3 134.7,107.3 112.2,107.3 112.2,110.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
 <polyline points="144.5,170.3 141.3,170.3 141.3,147.8 141.3,109.7 136.6,105.3 134.7,107.3 112.2,107.3 112.2,110.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#e65100" stroke-width="2.6" class="cable" data-id="S14"/>
 <polyline points="141.3,147.8 141.3,109.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" class="stacked"/>
-<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 119.3,107.5 136.1,109.4 141.3,114.6 141.3,155.5 143.3,189.5 147.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 119.3,107.5 136.1,109.4 141.3,114.6 141.3,155.5 143.3,189.5 147.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#4a148c" stroke-width="2.6" class="cable" data-id="S15"/>
-<polyline points="141.3,114.6 141.3,155.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" class="stacked"/>
+<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 119.3,107.5 136.1,109.4 141.3,114.6 141.3,185.5 147.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="90.7,110.6 90.7,107.4 113.2,107.4 119.3,107.5 136.1,109.4 141.3,114.6 141.3,185.5 147.3,207.5 155.4,215.0 177.9,215.0 177.9,218.2" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#4a148c" stroke-width="2.6" class="cable" data-id="S15"/>
+<polyline points="141.3,114.6 141.3,185.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" class="stacked"/>
 <polyline points="118.6,218.1 118.6,214.9 96.1,214.9 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
 <polyline points="118.6,218.1 118.6,214.9 96.1,214.9 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#00695c" stroke-width="2.6" class="cable" data-id="S16"/>
 <g class="jack" data-jack="in" data-used="1"><line x1="622.1" y1="290.9" x2="625.5" y2="290.9" stroke="#1565c0" stroke-width="0.7"/><circle cx="622.1" cy="290.9" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
@@ -388,7 +380,7 @@
 <text x="187.3" y="62.6" font-size="3" text-anchor="middle" fill="#b71c1c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S12</text>
 <text x="223.2" y="129.0" font-size="3" text-anchor="middle" fill="#0277bd" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S13</text>
 <text x="141.3" y="129.8" font-size="3" text-anchor="middle" fill="#e65100" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S14</text>
-<text x="141.3" y="136.1" font-size="3" text-anchor="middle" fill="#4a148c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S15</text>
+<text x="141.3" y="151.1" font-size="3" text-anchor="middle" fill="#4a148c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S15</text>
 <text x="107.3" y="215.9" font-size="3" text-anchor="middle" fill="#00695c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S16</text>
 <line x1="13.8" y1="364.0" x2="17.3" y2="364.0" stroke="#1565c0" stroke-width="0.7"/><circle cx="16.3" cy="364.0" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/><text x="22.3" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">used jack (colour: input blue, output green, power orange, other purple)</text>
 <line x1="142.7" y1="364.0" x2="146.2" y2="364.0" stroke="#1565c0" stroke-width="0.7"/><circle cx="145.2" cy="364.0" r="1.4" fill="#ffffff" stroke="#1565c0" stroke-width="0.6"/><text x="151.2" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">unused jack (the tick points to the side the plug enters from)</text>
@@ -415,6 +407,6 @@
 <g class="legend-row" data-id="S12"><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#b71c1c" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c" font-weight="bold">S12</text><text x="263.8" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Reticon Flanger out -&gt; Analog Chorus in</text><text x="356.0" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">257 mm</text><text x="358.0" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S13"><line x1="364.0" y1="378.5" x2="371.0" y2="378.5" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="378.5" x2="371.0" y2="378.5" stroke="#0277bd" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="379.5" font-size="2.8" text-anchor="start" fill="#0277bd" font-weight="bold">S13</text><text x="381.0" y="379.5" font-size="2.8" text-anchor="start" fill="#263238">Analog Chorus out -&gt; Harmonious Monk Mk2 in</text><text x="473.3" y="379.5" font-size="2.8" text-anchor="end" fill="#263238" class="length">84 mm</text><text x="475.3" y="379.5" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S14"><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#e65100" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="384.1" font-size="2.8" text-anchor="start" fill="#e65100" font-weight="bold">S14</text><text x="381.0" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">Harmonious Monk Mk2 out -&gt; Belle Epoch Deluxe in</text><text x="473.3" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">88 mm</text><text x="475.3" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S15"><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#4a148c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="388.7" font-size="2.8" text-anchor="start" fill="#4a148c" font-weight="bold">S15</text><text x="381.0" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Belle Epoch Deluxe out -&gt; Flight Delay in</text><text x="473.3" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">180 mm</text><text x="475.3" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S15"><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#4a148c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="388.7" font-size="2.8" text-anchor="start" fill="#4a148c" font-weight="bold">S15</text><text x="381.0" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Belle Epoch Deluxe out -&gt; Flight Delay in</text><text x="473.3" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">181 mm</text><text x="475.3" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S16"><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#00695c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="393.3" font-size="2.8" text-anchor="start" fill="#00695c" font-weight="bold">S16</text><text x="381.0" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Flight Delay out -&gt; Tumnus Deluxe in</text><text x="473.3" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">49 mm</text><text x="475.3" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 </svg>

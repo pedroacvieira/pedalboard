@@ -166,6 +166,28 @@ def test_inputs_hash_follows_the_outlines_of_the_design_images(tmp_path, monkeyp
     assert proposal_inputs_sha1(pdir) == base                           # an image the layout does not use
 
 
+def test_inputs_hash_follows_the_board_holes(tmp_path, monkeypatch):
+    import boards
+    pdir = gig_copy(tmp_path, monkeypatch)
+    base = proposal_inputs_sha1(pdir)
+    edits = pdir / "board.json"
+    assert edits.exists() and proposal_inputs_sha1(pdir) == base         # deterministic
+    doc = json.loads(edits.read_text())
+    doc["boxes"].append({"type": "filled", "x0": 0.1, "y0": 0.1, "x1": 0.2, "y1": 0.2})
+    edits.write_text(json.dumps(doc))
+    changed = proposal_inputs_sha1(pdir)
+    assert changed != base                                              # the project's board.json changed
+    edits.unlink()
+    assert proposal_inputs_sha1(pdir) not in (base, changed)            # no board.json at all
+    real = boards.load()
+    image = next(i["image"] for i in design.parse_design(pdir / "playground_design.json") if i["kind"] == "pedalboard")
+    after_unlink = proposal_inputs_sha1(pdir)
+    monkeypatch.setattr(boards, "load", lambda: {**real, image: {**real[image], "hole_transit_mm": 99}})
+    assert proposal_inputs_sha1(pdir) != after_unlink                   # the board image's catalog entry changed
+    monkeypatch.setattr(boards, "load", lambda: {**real, "unused-board.png": {"holes": []}})
+    assert proposal_inputs_sha1(pdir) == after_unlink                   # another board's entry
+
+
 def test_readme_section_without_a_better_layout(tmp_path, monkeypatch):
     pdir = gig_copy(tmp_path, monkeypatch)
     meta = {"command": "x", "max_change": "fix", "max_move_mm": 40, "seed": 1, "iterations": 1, "restarts": 1,

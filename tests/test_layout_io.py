@@ -27,9 +27,9 @@ CANVAS = ('<div id="item-1" class="item pedalboard undefined" title="Board" data
 
 
 def strip(ctx):
-    """The comparable part of a build context (drops the folder and the router's grid object)."""
+    """The comparable part of a build context (drops the folder and the router's grid objects)."""
     out = {k: v for k, v in ctx.items() if k not in ("dir", "routing")}
-    out["routing"] = {k: v for k, v in ctx["routing"].items() if k != "grid"}
+    out["routing"] = {k: v for k, v in ctx["routing"].items() if k not in ("grid", "under")}
     out.pop("layout_source")
     return json.loads(json.dumps(out, default=repr, sort_keys=True))
 

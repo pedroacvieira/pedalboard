@@ -195,10 +195,11 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
     "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
-    "holes" [canvas rects]} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
+    "holes" [canvas rects], "hole_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
     instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
-    "on_board"; the outline of every obstacle and
-    placed item, its box without an outline; `no_outline` lists those items; the board's holes, nothing uses them yet;
+    "on_board"; the outline of every obstacle,
+    placed item and under-board supply item, its box without an outline; `no_outline` lists the obstacles / placed items without one; the board's
+    holes (the router's under-board layer uses them);
     `outlines`: catalog/outlines.json, read if None; `board_data`: usable catalog/boards.json entries, read if None;
     `board_edits`: the project's board.json boxes, none if None); placement problems go to `warnings` / `clear_sink` (missing
     chain pedal)."""
@@ -237,12 +238,17 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     outlines = outlines_mod.load() if outlines is None else outlines
     shown = list(obstacles) + list(placed.values())
     shapes = {i["id"]: design.outline_rects(i, outlines) for i in shown}
+    for iid, item in inst_item.items():   # the under-board supplies' outlines: the obstacles of the under-board cable layer
+        if inst_placement[iid] != "on_board":
+            shapes.setdefault(item["id"], design.outline_rects(item, outlines))
     no_outline = sorted({i["title"] for i in shown if not outlines.get(i.get("image") or "")})
     board = boards[0] if boards else None
     board_data = boards_mod.load() if board_data is None else board_data
-    holes = design.board_holes(board, (board_data.get((board or {}).get("image") or "") or {}).get("holes"), board_edits)
+    entry = board_data.get((board or {}).get("image") or "") or {}
+    holes = design.board_holes(board, entry.get("holes"), board_edits)
     return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
-            "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes}
+            "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes,
+            "hole_transit_mm": entry.get("hole_transit_mm")}
 
 
 def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):

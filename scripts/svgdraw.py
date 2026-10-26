@@ -251,12 +251,22 @@ def cables(cable_list, colours, diameter=3.5, ends=None):
                        f'stroke-linecap="round" class="cable-missing" data-id="{c["id"]}"/>')
             continue
         join = 'fill="none" stroke-linejoin="round" stroke-linecap="round"'
-        if "over the" in st:
-            out.append(f'<polyline points="{pts}" {join} stroke="#ff1744" stroke-opacity="0.55" stroke-width="{diameter + 2.4:g}" class="halo"/>')
-        out.append(f'<polyline points="{pts}" {join} stroke="{CASING}" stroke-width="{diameter:g}" class="casing"/>')
-        dash = ' stroke-dasharray="3 1.6"' if "squeezed" in st else ""
-        out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-width="{max(diameter - 0.9, 0.8):g}"{dash} '
-                   f'class="cable" data-id="{c["id"]}"/>')
+        parts = c.get("stretches") if any(x["layer"] == "under" for x in c.get("stretches") or []) else None
+        for stretch in parts or [{"layer": "top", "points": path}]:
+            pts = points(stretch["points"])
+            if stretch["layer"] == "under":   # under the board: lighter, dashed, no casing
+                out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-opacity="0.55" '
+                           f'stroke-width="{max(diameter - 0.9, 0.8):g}" stroke-dasharray="4 2.4" class="cable-under" data-id="{c["id"]}"/>')
+                continue
+            if "over the" in st:
+                out.append(f'<polyline points="{pts}" {join} stroke="#ff1744" stroke-opacity="0.55" stroke-width="{diameter + 2.4:g}" class="halo"/>')
+            out.append(f'<polyline points="{pts}" {join} stroke="{CASING}" stroke-width="{diameter:g}" class="casing"/>')
+            dash = ' stroke-dasharray="3 1.6"' if "squeezed" in st else ""
+            out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-width="{max(diameter - 0.9, 0.8):g}"{dash} '
+                       f'class="cable" data-id="{c["id"]}"/>')
+        for x, y in c.get("hole_points") or []:   # where the cable passes through the deck
+            out.append(f'<circle cx="{f1(x)}" cy="{f1(y)}" r="{diameter * 0.9:.1f}" fill="#ffffff" fill-opacity="0.6" stroke="{CASING}" '
+                       f'stroke-width="0.6" class="hole-pass" data-id="{c["id"]}"/>')
         for run in c.get("stacked_runs") or ([] if not c.get("stacked_with") else [path]):   # only where it is stacked
             out.append(f'<polyline points="{points(run)}" {join} stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" '
                        f'class="stacked"/>')
@@ -321,6 +331,8 @@ def key_entries(ctx, cable_list, max_stack):
          ("box", "dashed: Pedal Playground box")]
     if layout_holes:
         e.append(("hole", "Board hole"))
+    if any(c.get("under_board") for c in signal_cables(cable_list)):
+        e += [("under", "dashed light: cable under the board"), ("pass", "ring: pass through a hole")]
     if any("squeezed" in s for s in st):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
     if any(c.get("stacked_with") for c in signal_cables(cable_list)):
@@ -367,6 +379,10 @@ def key_sample(kind, x, y):
     base = swatch(x, y, "#78909c", 8.0).replace('stroke-linecap="round"', 'stroke-linecap="butt"')
     if kind == "squeezed":
         return (f'<line {line} stroke="{CASING}" stroke-width="2.4"/><line {line} stroke="#78909c" stroke-width="1.6" stroke-dasharray="2 1.2"/>')
+    if kind == "under":
+        return f'<line {line} stroke="#78909c" stroke-opacity="0.55" stroke-width="1.6" stroke-dasharray="4 2.4"/>'
+    if kind == "pass":
+        return f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="2.2" fill="#ffffff" fill-opacity="0.6" stroke="{CASING}" stroke-width="0.6"/>'
     if kind == "stacked":
         return base + f'<line {line} stroke="#ffffff" stroke-width="0.6" stroke-dasharray="1.6 1.6"/>'
     if kind == "over":

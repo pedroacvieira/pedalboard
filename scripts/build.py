@@ -441,16 +441,34 @@ def mermaid_power(ctx):
     return lines
 
 
+def under_cell(c):
+    """'no', 'yes' (a power cable) or 'yes (2 holes, 180 mm)' (a signal cable: its passes through the deck, mm under the board)."""
+    if not c["under_board"]:
+        return "no"
+    if c["kind"] != "signal" or not c.get("holes_used"):
+        return "yes"
+    n = c["holes_used"]
+    return f"yes ({n} hole{'s' if n != 1 else ''}, {c['under_mm']:.0f} mm)"
+
+
 def routing_section(ctx):
     """README section: routed signal cables (picture + table) and the power cable list."""
     cables = ctx.get("cable_list") or []
     if not cables:
         return []
     cfg = ctx["routing"]["settings"]
+    under = ctx["routing"].get("under") is not None and ctx["routing"].get("hole_cells")
+    where = ("" if under else "never under the board, ")
     md = ["", "## Cable routing", "",
-          f"Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, "
+          f"Signal cables are routed on the board surface between the pedals: {where}never in front of the lowest pedals, "
           f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
+          + (f"A cable may also pass under the board through the board's holes when that is shorter or less crowded: it goes down "
+             f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers), runs under the board (only the "
+             f"under-board supplies are obstacles there, at most {cfg['max_stack_under']} cables stacked) and comes up in another one. "
+             f"A pass through the deck adds {cfg['hole_transit_mm']:g} mm of cable and costs {cfg['hole_penalty']:g} mm more in the "
+             f"search, a mm under the board counts {cfg['under_cost']:g} in the search (these numbers are unverified estimates; "
+             f"`cables.under_board: false` keeps every cable on top). " if under else "")
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
              f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
              f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
@@ -467,7 +485,7 @@ def routing_section(ctx):
                "The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, "
                "every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) "
                "with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where "
-               "they are stacked), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
+               "they are stacked; under the board: lighter and dashed, a ring at each hole pass), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
                "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
@@ -478,7 +496,7 @@ def routing_section(ctx):
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
         md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
-                  f"{'yes' if c['under_board'] else 'no'} | {length} | {c['status']} |")
+                  f"{under_cell(c)} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
         md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
@@ -590,7 +608,7 @@ def proposals_section(ctx, cat_pedals):
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
         md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, outlines, "
-               "cables, specs) changed since these proposals were made; rerun the command above.", ""]
+               "cables, specs) or the board's holes (catalog/boards.json, board.json) changed since these proposals were made; rerun the command above.", ""]
     props = meta.get("proposals") or []
     if not props:
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
