@@ -270,8 +270,8 @@ def test_gig_layout_has_the_board_holes_inside_the_board():
     holes = ctx["layout"]["holes"]
     x0, y0, x1, y1 = design.footprint(ctx["layout"]["board"])
     assert holes and all(x0 <= r[0] < r[2] <= x1 and y0 <= r[1] < r[3] <= y1 for r in holes)
-    none = build.validate(gig, pedals, supplies, route=False, board_data={})
-    assert none["layout"]["holes"] == []
+    none = build.validate(gig, pedals, supplies, route=False, board_data={})   # no derived holes: only the project's edits
+    assert none["layout"]["holes"] == design.board_holes(none["layout"]["board"], [], boards.load_edits(gig))
 
 
 def test_holes_are_drawn_after_the_board_with_a_key_entry():
