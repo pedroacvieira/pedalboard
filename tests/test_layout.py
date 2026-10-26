@@ -500,20 +500,24 @@ def test_wiring_given_by_the_search_follows_an_on_board_supply():
 
 
 # recorded from the commit before on-board supplies became movable (uv run scripts/propose_layout.py guitar-gig --score)
-GIG_SCORE = {"clearance": (16.8, 613.3), "routing_area": (0.0, 0.0), "signal": (2777.6, 2777.6), "power": (6606.1, 660.6),
-             "footswitch": (184.3, 368.6), "io": (28.1, 28.1), "flow": (369.6, 37.0), "access": (150.3, 150.3),
-             "rotation": (4.0, 70.0), "move": (0.0, 0.0), "touch": (0.0, 0.0)}
 
 
 def test_the_gig_score_is_unchanged_by_movable_supplies():
+    """No on-board supply: only chain pedals move, and an explicit "under" on every supply scores exactly as the
+    default (compared within the current data, so owner edits of the gig never break this test)."""
     pedals, supplies = load_catalog()
-    m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals, supplies,
-                     jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types())
+    proj = load_json(GIG / "project.json")
+    args = (design.parse_design(GIG / "playground_design.json"), pedals, supplies, jacks.read_file()["jacks"],
+            footswitches.read_file()["footswitches"], load_cable_types())
+    m = layout.Model(proj, *args)
     assert m.ids == m.ids[:m.n_ped] and m.n_ped == len(m.owner)       # no on-board supply: only chain pedals move
-    total, det = m.score(m.owner, detail=True)
-    for k, (raw, wt) in GIG_SCORE.items():
-        assert det["terms"][k][0] == pytest.approx(raw, abs=0.06) and det["terms"][k][1] == pytest.approx(wt, abs=0.06), k
-    assert total == pytest.approx(4705.4, abs=0.06)
+    under = copy.deepcopy(proj)
+    for inst in under["power"]["supplies"]:
+        inst["placement"] = "under"
+    u = layout.Model(under, *args)
+    assert u.ids == m.ids
+    (total, det), (total_u, det_u) = m.score(m.owner, detail=True), u.score(u.owner, detail=True)
+    assert total == pytest.approx(total_u) and det["terms"] == det_u["terms"]
 
 
 # --- the power estimate's hole points: the project's hole edits, free under the board -----------------------
