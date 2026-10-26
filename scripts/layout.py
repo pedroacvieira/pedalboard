@@ -178,6 +178,7 @@ class Model:
                                                                          for o in i.get("outputs", [])]}
                  for i in (project.get("power") or {}).get("supplies", []) if i["supply"] in cat_supplies]
         jset = project.get("jacks", {})
+        self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
         lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
@@ -189,8 +190,7 @@ class Model:
         moving = {self.placed[p]["id"] for p in self.ids}
         self.fixed = [o for o in lay["obstacles"] if o["id"] not in moving]
         self.fixed_feet = [(o["title"], design.footprint(o)) for o in self.fixed]
-        self.fixed_shapes = [lay["shapes"].get(o["id"]) or [design.footprint(o)] for o in self.fixed]   # outlines (clearance only)
-        self.outlines = outlines_mod.load() if outlines is None else outlines
+        self.fixed_shapes = [design.item_shapes(lay["shapes"], o) for o in self.fixed]   # outlines (clearance only)
         self.jacks_data = jacks.usable(jacks_data)
         self.fs_data = footswitches.usable(fs_data or {})
         self.cable_types = cable_types
@@ -364,20 +364,27 @@ class Model:
                 for n in range(len(state)) if not self.feasible_one(state, n, tol=design.TOL_MM)]
 
     # --- score ----------------------------------------------------------------------------------
-    def _clearance(self, end, st, n, feet, margin, state):
+    def _clearance(self, end, st, n, obs, margin):
         """(cost, option index, hits, intrusion) of one plug end: the option with the lowest clearance cost."""
         best = None
         for k, o in enumerate(end["opts"]):
-            cost, hits, intr = self._opt_clearance(end, o, st, n, feet, margin, state)
+            cost, hits, intr = self._opt_clearance(end, o, st, n, obs, margin)
             if best is None or cost < best[0]:
                 best = (cost, k, hits, intr)
         return best
 
-    def _opt_clearance(self, end, o, st, n, feet, margin, state):
+    def _obstacles(self, state, feet):
+        """[(pedal index or None for a fixed item, title, footprint, outline rects at the candidate position)], once per
+        candidate (`score`), for the clearance of every plug option."""
+        return [(k, self.titles[k], f, [_shift(q, state[k][0], state[k][1]) for q in self._geom[(k, state[k][2])]["shapes"]])
+                for k, f in enumerate(feet)] + \
+               [(None, t, f, shp) for (t, f), shp in zip(self.fixed_feet, self.fixed_shapes)]
+
+    def _opt_clearance(self, end, o, st, n, obs, margin):
         """(cost, hits, intrusion mm) of one plug option. Intrusion per obstacle = the penetration (smaller overlap
         side) of the plug parts grown by `margin`: how far the obstacle must move to clear, smooth for the search.
         A hit = a real overlap without the margin (as the build reports it: deepest part, design.part_depth).
-        Obstacles are their outlines (`state`: the candidate; a cheap footprint test comes first), as the build."""
+        Obstacles are their outlines (`obs` from `_obstacles`; a cheap footprint test comes first), as the build."""
         if not o["rects"]:
             return 0.0, [], 0.0
         bb = o["bbox"]
@@ -385,21 +392,17 @@ class Model:
         bx0, by0, bx1, by1 = bb[0] + x - margin, bb[1] + y - margin, bb[2] + x + margin, bb[3] + y + margin
         tol = design.TOL_MM
         hits, intrusion, cost = [], 0.0, 0.0
-        obstacles = [(self.titles[k], f, self._geom[(k, state[k][2])]["shapes"], state[k][0], state[k][1])
-                     for k, f in enumerate(feet) if k != n] + \
-                    [(t, f, shp, 0.0, 0.0) for (t, f), shp in zip(self.fixed_feet, self.fixed_shapes)]
-        for title, f, shp, sx, sy in obstacles:
-            if min(bx1, f[2]) - max(bx0, f[0]) <= tol or min(by1, f[3]) - max(by0, f[1]) <= tol:
+        for k, title, f, shp in obs:
+            if k == n or min(bx1, f[2]) - max(bx0, f[0]) <= tol or min(by1, f[3]) - max(by0, f[1]) <= tol:
                 continue
-            shp = [_shift(q, sx, sy) for q in shp] if sx or sy else shp
             pen, pen_real, deepest = 0.0, 0.0, None
             for part, r in o["rects"]:
                 rr = (r[0] + x, r[1] + y, r[2] + x, r[3] + y)
-                ov = design.best_overlap((rr[0] - margin, rr[1] - margin, rr[2] + margin, rr[3] + margin), shp)
+                ov = design.shape_overlap((rr[0] - margin, rr[1] - margin, rr[2] + margin, rr[3] + margin), shp)
                 if not ov:
                     continue
                 pen = max(pen, min(ov))
-                real = design.best_overlap(rr, shp) if margin else ov
+                real = design.shape_overlap(rr, shp) if margin else ov
                 if real:
                     pen_real = max(pen_real, min(real))
                     d = design.part_depth(part, end["facing"], o["side"], real)
@@ -421,7 +424,9 @@ class Model:
         geo = [self._geom[(n, st[2])] for n, st in enumerate(state)]
         b = self.board
         em = self.rcfg["edge_margin_mm"]
-        front_y = min(b[3], max(f[3] for f in feet)) if feet else b[3]
+        obs = self._obstacles(state, feet)
+        # as the build: nothing in front of the lowest pedal OUTLINE (detour estimate: boxes, an approximation)
+        front_y = min(b[3], max(q[3] for k, _, _, shp in obs if k is not None for q in shp)) if feet else b[3]
         area = (b[0] - em, b[1] - em, b[2] + em, front_y)
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
@@ -448,8 +453,8 @@ class Model:
             if not ea or not eb:
                 continue
             sa, sb = state[ia], state[ib]
-            ca = [self._opt_clearance(ea, o, sa, ia, feet, margin, state) for o in ea["opts"]]
-            cb = [self._opt_clearance(eb, o, sb, ib, feet, margin, state) for o in eb["opts"]]
+            ca = [self._opt_clearance(ea, o, sa, ia, obs, margin) for o in ea["opts"]]
+            cb = [self._opt_clearance(eb, o, sb, ib, obs, margin) for o in eb["opts"]]
             best = None
             for ka, oa in enumerate(ea["opts"]):
                 pa = (oa["exit"][0] + sa[0], oa["exit"][1] + sa[1])
@@ -476,7 +481,7 @@ class Model:
         # power plugs and extra jacks: clearance only
         for n, g in enumerate(geo):
             for end in ([g["power"]] if g["power"] else []) + g["extra"]:
-                cost, k, hits, intr = self._clearance(end, state[n], n, feet, margin, state)
+                cost, k, hits, intr = self._clearance(end, state[n], n, obs, margin)
                 terms["clearance"] += cost
                 raw["clearance"] += intr
                 note_hits(end["jack"], n, end["opts"][k]["side"], hits)

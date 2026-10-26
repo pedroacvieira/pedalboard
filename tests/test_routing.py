@@ -184,8 +184,11 @@ def test_plug_parts_are_blocked_by_the_outline_not_the_box():
     ((_, _, ov),) = routing.blocked_parts(opt, "i-a", [box], {"i-c": [(85, 0, 100, 200), (140, 0, 175, 200)]})
     assert ov == (5.0, 16.0)                                   # the outline: only 5 mm in
     assert routing.blocked_parts(opt, "i-a", [box], {"i-c": [(120, 0, 175, 200)]}) == []   # a plug over the box but not the outline
-    best = routing.blocked_parts(opt, "i-a", [box], {"i-c": [(88, 0, 99, 200), (80, 0, 99, 70)]})   # one hit: the larger overlap
-    assert [ov for _, _, ov in best] == [(10.0, 10.0)]
+    # one hit per obstacle, measured against the whole outline: the extent of the head's overlaps with all its rects
+    best = routing.blocked_parts(opt, "i-a", [box], {"i-c": [(88, 0, 99, 200), (80, 0, 99, 70)]})   # x 80..90, y 60..76
+    assert [ov for _, _, ov in best] == [(10.0, 16.0)]
+    bands = [(80, y, 99, y + 1) for y in range(60, 76)]          # 1 mm bands (rounded corner): the full 16 mm, not 1
+    assert [ov for _, _, ov in routing.blocked_parts(opt, "i-a", [box], {"i-c": bands})] == [(10.0, 16.0)]
     ctx = plug_ctx({"type": "ra"}, extra_obstacles=[box])
     ctx["layout"]["shapes"] = {"i-c": [(120, 0, 175, 200)]}
     routing.route_project(ctx, {}, cable_types=TYPES)

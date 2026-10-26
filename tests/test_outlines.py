@@ -190,3 +190,9 @@ def test_committed_file_is_well_formed():
     data = outlines.read_file()
     assert set(outlines.usable(data["outlines"])) == set(data["outlines"])
     assert outlines.dumps(data) == (ROOT / "catalog" / "outlines.json").read_text()
+
+
+def test_usable_drops_entries_outside_the_image_fractions():
+    good = [[0.0, 0.0, 1.0, 1.0]]
+    data = {"ok.png": good, "pct.png": [[0, 0, 100, 100]], "neg.png": [[-0.1, 0, 0.5, 1]], "bool.png": [[False, 0, True, 1]]}
+    assert outlines.usable(data) == {"ok.png": good}

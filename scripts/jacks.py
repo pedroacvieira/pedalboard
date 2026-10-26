@@ -339,8 +339,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
-            ov = design.best_overlap(zone, lay["shapes"].get(ob["id"]) or [design.footprint(ob)],
-                                     key=lambda v: design.overlap_depth(facing, v))
+            ov = design.shape_overlap(zone, design.item_shapes(lay["shapes"], ob))
             if ov:
                 depth = design.overlap_depth(facing, ov)
                 ctx["fixed_box"].append((f"{cid}.{jk['id']}",

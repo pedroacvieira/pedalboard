@@ -195,3 +195,11 @@ def test_a_pedal_outline_is_one_path_without_seams():
     d = re.search(r' d="([^"]+)"', svg).group(1)
     assert d.count("M") == 1 and d.count("L") == 7                    # 8 corners of a two-rectangle plus shape
     assert 'class="pedal-box"' in svg                                 # Pedal Playground's box stays as a dashed hint
+
+
+@pytest.mark.parametrize("rects", [[(0, 0, 10, 10), (10, 10, 20, 20)], [(10, 10, 20, 20), (0, 0, 10, 10)],
+                                   [(10, 0, 20, 10), (0, 10, 10, 20)], [(0, 10, 10, 20), (10, 0, 20, 10)]])
+def test_union_outline_splits_rectangles_touching_only_at_a_corner(rects):
+    loops = svgdraw.union_outline(rects)
+    assert sorted(sorted(loop) for loop in loops) == sorted(sorted([(r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3])])
+                                                           for r in rects)

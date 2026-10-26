@@ -26,7 +26,7 @@
   "flight_delay",
   "tumnus_deluxe"
  ],
- "runtime_s": 16.3,
+ "runtime_s": 15.3,
  "finalists": 5,
  "owner": {
   "errors": 0,
@@ -178,59 +178,51 @@
     "overflow": 0,
     "fs_close": 0,
     "fs_closest_mm": 46.6,
-    "fs_crowding": 155.9,
+    "fs_crowding": 167.0,
     "fs_known": true,
-    "signal_mm": 2375.1,
+    "signal_mm": 2373.1,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2482.5,
-    "io_mm": 20.7,
-    "surrogate": 3580.7,
+    "power_mm": 2474.2,
+    "io_mm": 28.1,
+    "surrogate": 3597.4,
     "terms": {
-     "clearance": 34.5,
+     "clearance": 47.0,
      "routing_area": 0.0,
-     "signal": 2593.1,
-     "power": 248.3,
-     "footswitch": 311.8,
-     "io": 20.7,
+     "signal": 2596.9,
+     "power": 247.4,
+     "footswitch": 333.9,
+     "io": 28.1,
      "flow": 37.4,
-     "access": 152.5,
+     "access": 151.7,
      "rotation": 70.0,
-     "move": 112.4,
-     "touch": -0.0
+     "move": 85.8,
+     "touch": -0.7
     },
-    "score": 3362.7
+    "score": 3373.6
    },
    "moved": [
     {
      "pedal": "red_muck",
      "dx_mm": 2.3,
-     "dy_mm": 9.0,
-     "distance_mm": 9.3,
+     "dy_mm": 17.5,
+     "distance_mm": 17.6,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
-     "dx_mm": -1.1,
-     "dy_mm": -40.1,
-     "distance_mm": 40.1,
+     "dx_mm": 0.6,
+     "dy_mm": -32.2,
+     "distance_mm": 32.2,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 2.8,
-     "distance_mm": 4.9,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "tumnus_deluxe",
-     "dx_mm": -7.3,
-     "dy_mm": 2.8,
-     "distance_mm": 7.9,
+     "dy_mm": 0.6,
+     "distance_mm": 4.0,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -329,7 +321,7 @@
       ]
      }
     ],
-    "length_mm": 2482.5,
+    "length_mm": 2474.2,
     "warnings": [],
     "error": null
    }
@@ -349,28 +341,28 @@
     "overflow": 0,
     "fs_close": 0,
     "fs_closest_mm": 46.6,
-    "fs_crowding": 157.5,
+    "fs_crowding": 156.0,
     "fs_known": true,
-    "signal_mm": 2374.8,
+    "signal_mm": 2378.5,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2483.6,
+    "power_mm": 2486.5,
     "io_mm": 28.1,
-    "surrogate": 3582.7,
+    "surrogate": 3602.1,
     "terms": {
-     "clearance": 28.5,
+     "clearance": 41.4,
      "routing_area": 0.0,
-     "signal": 2590.3,
-     "power": 248.4,
-     "footswitch": 315.0,
+     "signal": 2599.1,
+     "power": 248.6,
+     "footswitch": 311.9,
      "io": 28.1,
      "flow": 37.4,
      "access": 153.4,
      "rotation": 70.0,
-     "move": 111.6,
+     "move": 112.1,
      "touch": -0.0
     },
-    "score": 3367.2
+    "score": 3381.5
    },
    "moved": [
     {
@@ -384,14 +376,14 @@
     {
      "pedal": "analog_chorus",
      "dx_mm": 0.6,
-     "dy_mm": -4.5,
-     "distance_mm": 4.6,
+     "dy_mm": -7.3,
+     "distance_mm": 7.4,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
-     "dx_mm": -0.6,
+     "dx_mm": 0.6,
      "dy_mm": -40.1,
      "distance_mm": 40.1,
      "rot_from": 0,
@@ -400,8 +392,8 @@
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 1.7,
-     "distance_mm": 4.3,
+     "dy_mm": 0.6,
+     "distance_mm": 4.0,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -500,7 +492,7 @@
       ]
      }
     ],
-    "length_mm": 2483.6,
+    "length_mm": 2486.5,
     "warnings": [],
     "error": null
    }
@@ -520,51 +512,67 @@
     "overflow": 0,
     "fs_close": 0,
     "fs_closest_mm": 46.6,
-    "fs_crowding": 162.5,
+    "fs_crowding": 153.1,
     "fs_known": true,
-    "signal_mm": 2371.7,
+    "signal_mm": 2380.0,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2482.6,
+    "power_mm": 2509.0,
     "io_mm": 28.1,
-    "surrogate": 3577.6,
+    "surrogate": 3604.0,
     "terms": {
-     "clearance": 51.0,
+     "clearance": 41.4,
      "routing_area": 0.0,
-     "signal": 2578.7,
-     "power": 248.3,
-     "footswitch": 325.0,
+     "signal": 2578.2,
+     "power": 250.9,
+     "footswitch": 306.2,
      "io": 28.1,
      "flow": 37.4,
-     "access": 152.5,
+     "access": 151.0,
      "rotation": 70.0,
-     "move": 87.4,
-     "touch": -0.7
+     "move": 141.7,
+     "touch": -0.8
     },
-    "score": 3370.6
+    "score": 3405.7
    },
    "moved": [
     {
      "pedal": "red_muck",
      "dx_mm": 2.3,
-     "dy_mm": 17.5,
-     "distance_mm": 17.6,
+     "dy_mm": 24.3,
+     "distance_mm": 24.4,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "ratsbane",
+     "dx_mm": -3.4,
+     "dy_mm": 7.9,
+     "distance_mm": 8.6,
+     "rot_from": 90,
+     "rot_to": 90
+    },
+    {
+     "pedal": "analog_chorus",
+     "dx_mm": 0.6,
+     "dy_mm": -6.8,
+     "distance_mm": 6.8,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
-     "dx_mm": -1.1,
-     "dy_mm": -40.1,
-     "distance_mm": 40.1,
+     "dx_mm": 0.6,
+     "dy_mm": -39.5,
+     "distance_mm": 39.5,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 1.7,
-     "distance_mm": 4.3,
+     "dy_mm": 0.6,
+     "distance_mm": 4.0,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -622,25 +630,25 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "red_muck"
-        ]
-       },
-       {
-        "port": "F2",
-        "voltage_v": 9,
-        "pedals": [
+         "red_muck",
          "ratsbane",
          "protein",
          "tumnus_deluxe"
         ]
        },
        {
+        "port": "F2",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_3"
+        ]
+       },
+       {
         "port": "F3",
         "voltage_v": 9,
         "pedals": [
-         "phase_95",
-         "beano",
          "retrovibe",
+         "beano",
          "danelectro_3699",
          "sun_face"
         ]
@@ -657,13 +665,13 @@
         "port": "SW_B",
         "voltage_v": 9,
         "pedals": [
-         "polytune_3"
+         "phase_95"
         ]
        }
       ]
      }
     ],
-    "length_mm": 2482.6,
+    "length_mm": 2509.0,
     "warnings": [],
     "error": null
    }

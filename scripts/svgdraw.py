@@ -112,8 +112,17 @@ def union_outline(rects, eps=1e-6):
     while edges:
         start = min(edges)
         pts, cur = [start], start
+        heading = None
         while True:
-            nxt = edges[cur].pop()
+            # at a vertex where two cells only touch by a corner (two ways out) take the right turn (screen, y down),
+            # i.e. stay on the cell just walked along: corner-touching cells give separate loops
+            outs = edges[cur]
+            if heading and len(outs) > 1:
+                turn = lambda q: (0 if (q[0] - cur[0], q[1] - cur[1]) == (-heading[1], heading[0]) else
+                                  1 if (q[0] - cur[0], q[1] - cur[1]) == heading else 2)
+                outs.sort(key=turn, reverse=True)
+            nxt = outs.pop()
+            heading = (nxt[0] - cur[0], nxt[1] - cur[1])
             if not edges[cur]:
                 del edges[cur]
             if nxt == start:

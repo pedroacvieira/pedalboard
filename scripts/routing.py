@@ -612,15 +612,14 @@ def end_options(item, jack, ctype, exit_fixed, cfg, outward):
 
 
 def blocked_parts(opt, own_id, obstacles, shapes=None):
-    """[(part, obstacle item, overlap)] for one plug option against every other pedal: against each rectangle of
-    its outline (`shapes` {item id: [canvas rects]}, else its footprint), one hit per (part, obstacle) with the
-    largest overlap."""
+    """[(part, obstacle item, overlap)] for one plug option against every other pedal's outline (`shapes` {item id:
+    [canvas rects]}, else its footprint; `design.shape_overlap`), one hit per (part, obstacle)."""
     hits = []
     for part, r in opt["rects"]:
         for ob in obstacles:
             if ob["id"] == own_id:
                 continue
-            ov = design.best_overlap(r, (shapes or {}).get(ob["id"]) or [design.footprint(ob)])
+            ov = design.shape_overlap(r, design.item_shapes(shapes, ob))
             if ov:
                 hits.append((part, ob, ov))
     return hits
@@ -695,8 +694,8 @@ def route_project(ctx, cat_pedals, cable_types=None):
     placed, outward, obstacles = layout["placed"], layout["outward_mm"], layout["obstacles"]
     shapes = layout.get("shapes") or {}
 
-    def shapes_of(it):   # the outline rectangles of a layout item (its footprint without an outline)
-        return shapes.get(it["id"]) or [design.footprint(it)]
+    def shapes_of(it):
+        return design.item_shapes(shapes, it)
     grid = None   # without a pedalboard item nothing is routed, but every plug is still checked
     if layout.get("board"):
         board = design.footprint(layout["board"])

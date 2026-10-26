@@ -174,8 +174,9 @@ def usable(outlines):
     if isinstance(outlines, dict) and isinstance(outlines.get("outlines"), dict):
         outlines = outlines["outlines"]
 
-    def ok(r):
-        return (isinstance(r, (list, tuple)) and len(r) == 4 and all(isinstance(v, (int, float)) for v in r)
+    def ok(r):   # fractions of the image: 0 <= x0 < x1 <= 1 (bools are not numbers here)
+        return (isinstance(r, (list, tuple)) and len(r) == 4
+                and all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1 for v in r)
                 and r[2] > r[0] and r[3] > r[1])
     return {n: [list(r) for r in rs] for n, rs in (outlines or {}).items() if isinstance(rs, list) and rs and all(ok(r) for r in rs)}
 
@@ -242,7 +243,7 @@ def main():
     from PIL import Image
     have = read_file()["outlines"]
     every = wanted(args.projects, args.image, database("pedals.json"))
-    todo = {n: s for n, s in every.items() if args.refresh or n not in have}
+    todo = {n: s for n, s in every.items() if args.refresh or n not in usable(have)}   # malformed entries: recomputed
     new, failed = {}, []
     for name, (w, h) in sorted(todo.items()):
         try:

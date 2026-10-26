@@ -152,11 +152,22 @@ def overlap(a, b, tol_mm=TOL_MM):
     return (dx, dy) if dx > tol_mm and dy > tol_mm else None
 
 
-def best_overlap(rect, rects, key=None):
-    """The overlap (dx, dy) of `rect` with whichever of `rects` it overlaps most (`key` of the overlap, default
-    min(dx, dy)); None when it overlaps none (see `overlap`)."""
-    hits = [ov for ov in (overlap(rect, r) for r in rects) if ov]
-    return max(hits, key=key or min) if hits else None
+def shape_overlap(rect, rects, tol_mm=TOL_MM):
+    """The overlap (dx, dy) of `rect` with a shape made of several rects (an outline): the bounding box of its
+    intersections with all of them, so a plug reaching across several thin bands of an outline gets its full depth;
+    None unless both exceed `tol_mm` (see `overlap`)."""
+    parts = [(max(rect[0], r[0]), max(rect[1], r[1]), min(rect[2], r[2]), min(rect[3], r[3])) for r in rects]
+    parts = [p for p in parts if p[2] > p[0] and p[3] > p[1]]
+    if not parts:
+        return None
+    dx = max(p[2] for p in parts) - min(p[0] for p in parts)
+    dy = max(p[3] for p in parts) - min(p[1] for p in parts)
+    return (dx, dy) if dx > tol_mm and dy > tol_mm else None
+
+
+def item_shapes(shapes, item):
+    """The outline rects of a layout item (`shapes` = layout["shapes"]), its footprint when it has none."""
+    return (shapes or {}).get(item["id"]) or [footprint(item)]
 
 
 def overlap_depth(zone_facing, ov):

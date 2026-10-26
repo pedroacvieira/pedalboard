@@ -88,10 +88,12 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
 - Acceptance: same corridors as before; paths straighter and never overlapping (lengths can only get shorter);
   README embeds it.
 
-### 1b. `feat/pedal-outlines`: route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
+### 1b. `feat/pedal-outlines` (merged into main 2026-10-26): route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
 Plan `docs/plans/pedal-outlines.md`; phases 1-2 done (2026-10-23, handovers `pedal-outlines-1/2.md`): gig signal
 total 2512 -> 2400 mm, S11/S13 no longer stacked (S14/S15 still), red_muck.power no longer blocked (it only touched
-the box); proposals rerun (all three clear monk.out / monk.power). Next: code review, merge.
+the box); proposals rerun (all three clear monk.out / monk.power). Code review (2026-10-26): 10 findings fixed (overlap
+measured against the whole outline, one rule for build / fixed box / surrogate, surrogate routing area from the
+outlines, corner-touching outline loops, faster surrogate, outlines read once, range-checked data); merged into main.
 - [ ] `harley_benton_iso5_pro` has no `playground_title`, so no outline (box); practice/bass layouts still missing.
 Finding (2026-10-23, `.cache/images`): the Pedal Playground images are tightly cropped RGBA, 80-98 % opaque. The
 side strips are mostly the protruding jacks and the corners are rounded: the enclosure itself is narrower than the
