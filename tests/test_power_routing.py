@@ -216,6 +216,17 @@ def test_the_svg_draws_power_cables_thin_with_under_stretches_dashed_and_marks_t
     assert {"power", "power_under", "power_edge"} <= set(kinds) and "power_hole" not in kinds
 
 
+def test_power_svg_shows_only_power_with_the_supplies_in_translucent_red():
+    ctx = pw_ctx()
+    route(ctx)
+    out = svgdraw.render_power(ctx, {"a": "Pedal A"})
+    assert out.startswith("<svg") and 'class="power-cable"' in out and 'class="cable"' not in out   # no signal cables
+    assert out.count('class="supply"') == len(ctx["layout"]["inst_item"]) >= 1
+    assert f'fill="{svgdraw.SUPPLY_COLOUR}" fill-opacity="0.22"' in out and 'stroke-dasharray="3 1.5"' in out   # under: dashed
+    assert 'data-id="P1"' in out and "Pedal A power" in out                     # the table row names the pedal
+    assert svgdraw.render_power({**ctx, "cable_list": [c for c in ctx["cable_list"] if c["kind"] != "power"]}, {}) is None
+
+
 # --- the estimate --------------------------------------------------------------------------------------
 CFG = {"top_cost": 3.0, "transit_mm": 15.0}
 

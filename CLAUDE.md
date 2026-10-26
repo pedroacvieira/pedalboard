@@ -56,7 +56,8 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   board image}] applied in order on the derived holes (filled closes, hole opens, later wins; `design.board_holes`).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
-  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `playground.json` (and the
+  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `power.svg` (power wiring only,
+  supplies as translucent red silhouettes; `svgdraw.render_power`), `playground.json` (and the
   git-ignored `routing.local.svg` with pedal images, `build.py --images`);
   `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,

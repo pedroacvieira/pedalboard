@@ -352,7 +352,7 @@ def legend_table(rows, x, y, width):
                    + text(cx + 9, cy + FONT * 0.35, r["id"], FONT, fill=r["colour"], font_weight="bold")
                    + text(cx + 9 + w_id, cy + FONT * 0.35, r["route"])
                    + text(cx + 9 + w_id + w_route + w_len, cy + FONT * 0.35, r["length"], anchor="end", class_="length")
-                   + text(cx + 9 + w_id + w_route + w_len + 2, cy + FONT * 0.35, r["status"], fill="#b71c1c")
+                   + text(cx + 9 + w_id + w_route + w_len + 2, cy + FONT * 0.35, r["status"], fill=r.get("status_fill", "#b71c1c"))
                    + "</g>")
     return out, per * ROW
 
@@ -412,6 +412,9 @@ def key_sample(kind, x, y):
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke="#455a64", stroke_width=0.3, stroke_dasharray="2 1.5", opacity=0.45)
     if kind == "hole":
         return rect(x, y - 2, x + 8, y + 2, fill="#90a4ae", opacity=0.3)
+    if kind == "supply":
+        return rect(x, y - 2, x + 8, y + 2, fill=SUPPLY_COLOUR, fill_opacity=0.22, stroke=SUPPLY_COLOUR, stroke_width=0.6,
+                    stroke_dasharray="3 1.5")
     if kind == "overflow":
         return rect(x, y - 2, x + 8, y + 2, fill="#ff1744", opacity=0.35)
     if kind.startswith("fs:"):
@@ -555,6 +558,91 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     body += table
     height = y + th + PAD - top
     return document((left, top, width, height), body)
+
+
+SUPPLY_COLOUR = "#e53935"   # power.svg: supply silhouettes, translucent so the board, holes and cables show through
+
+
+def supply(item, label, shapes=None, on_board=False):
+    """A power supply's silhouette (its outline, default the box) in translucent red, its label centred: under the
+    board it is drawn dashed (it hangs below the deck), on the board solid."""
+    cx, cy = design.centre(item)
+    x0, y0, x1, y1 = design.footprint(item)
+    d = " ".join("M" + " L".join(f"{f1(x)} {f1(y)}" for x, y in loop) + " Z"
+                 for loop in union_outline(shapes or [design.footprint(item)]))
+    dash = "" if on_board else ' stroke-dasharray="3 1.5"'
+    fs, lines = fit_label(label, x1 - x0 - 4, y1 - y0 - 4)
+    y = cy - (len(lines) - 1) * fs * 1.2 / 2 + fs * 0.35
+    return "\n".join([f'<g class="supply" data-id="{esc(item.get("id", ""))}">',
+                      f'<path d="{d}" fill="{SUPPLY_COLOUR}" fill-opacity="0.22" stroke="{SUPPLY_COLOUR}" stroke-width="0.6"{dash} '
+                      f'stroke-linejoin="round" class="supply-outline"/>']
+                     + [text(cx, y + n * fs * 1.2, ln, fs, "middle", "#b71c1c", True, class_="supply-name") for n, ln in enumerate(lines)]
+                     + ["</g>"])
+
+
+def render_power(ctx, names):
+    """power.svg: the power wiring alone. The board and its holes, the pedals as faint outlines, every power supply as a
+    translucent red silhouette (dashed when it hangs under the board), the power jacks and supply ports, the DC plug
+    heads, the routed power cables (under the board dashed, hole / edge passes marked) and a table of the power cables.
+    None without a routing grid / layout or without routed power cables."""
+    r = ctx.get("routing") or {}
+    grid, layout = r.get("grid"), ctx.get("layout")
+    cable_list = ctx.get("cable_list") or []
+    power = power_cable_list(cable_list)
+    if not grid or not layout or not power:
+        return None
+    bx = design.footprint(layout["board"])
+    ax0, ay0, ax1 = grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell
+    left, right, top = min(bx[0], ax0) - PAD, max(bx[2], ax1) + PAD, ay0 - PAD
+    shapes = layout.get("shapes") or {}
+    placed, inst_item = layout["placed"], layout.get("inst_item") or {}
+    supply_ids = {it["id"] for it in inst_item.values()}
+    cid_of = {it["id"]: cid for cid, it in placed.items()}
+    labels = {s["inst"]["id"]: s["inst"].get("label") or s["inst"]["id"] for s in ctx.get("supplies") or []}
+    placement = layout.get("inst_placement") or {}
+
+    body = [board(bx)] + holes(layout.get("holes"))
+    body.append('<g class="pedals-faint" opacity="0.45">')
+    for o in layout["obstacles"]:
+        if o["id"] not in supply_ids:
+            cid = cid_of.get(o["id"])
+            body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), None, shapes.get(o["id"])))
+    body.append("</g>")
+    for iid, it in inst_item.items():
+        body.append(supply(it, labels.get(iid, iid), shapes.get(it["id"]), placement.get(iid) == "on_board"))
+    power_ids = {c["id"] for c in power}
+    body += plug_heads([h for h in r.get("heads") or [] if h.get("cable") in power_ids])
+    body += power_cables(cable_list)
+    jd = layout.get("jacks") or {}
+    for cid, it in placed.items():
+        body += jacks(it, [j for j in jd.get(cid) or [] if j.get("function") == "power"], used_jacks(ctx, cid))
+    for s in ctx.get("supplies") or []:
+        it = inst_item.get(s["inst"]["id"])
+        if it:
+            used = {row["port"] for row in s["rows"] if row["pedals"]}
+            body += jacks(it, [j for j in jd.get(s["sup"]["id"]) or [] if j.get("function") == "power_out"], used)
+    body += power_labels(cable_list)
+
+    width, y = right - left, bx[3] + 8
+    entries = [("supply", "power supply (dashed: under the board)"), ("jack_used", "used power jack / supply port"),
+               ("head", "DC plug head")] + ([("hole", "Board hole")] if layout.get("holes") else [])
+    entries += [e for e in key_entries(ctx, cable_list, 2) if e[0].startswith("power")]
+    key, kh = key_block(entries, left + PAD, y, width - 2 * PAD)
+    body += key
+    y += kh + 3
+
+    def route(c):
+        parts = [f"{c['holes_used']} hole{'s' if c['holes_used'] != 1 else ''}"] if c.get("holes_used") else []
+        parts += [f"{n} edge" for n in [c.get("edges_used")] if n]
+        return ", ".join(parts) or "on top"
+    rows = [{"id": c["id"], "colour": POWER_COLOUR, "length": "-" if c.get("min_mm") is None else f"{c['min_mm']:.0f} mm",
+             "route": " -> ".join(_end_name(c[k], {**names, **labels}) for k in ("from", "to")),
+             **({"status": route(c), "status_fill": INK} if (c.get("status") or "").startswith("routed")
+                else {"status": short_status(c.get("status"))})}
+            for c in power]
+    table, th = legend_table(rows, left + PAD, y, width - 2 * PAD)
+    body += table
+    return document((left, top, width, y + th + PAD - top), body)
 
 
 def _end_name(key, names):

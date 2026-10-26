@@ -504,6 +504,11 @@ def routing_section(ctx):
              f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
           + power_text(ctx, cfg), ""]
+    if any(c["kind"] == "power" and c.get("stretches") for c in ctx.get("cable_list") or []):
+        md += ["![Power routing](power.svg)", "",
+               "`power.svg` shows the power wiring alone: the supplies as translucent red silhouettes (dashed when they hang "
+               "under the board), the pedals faint, the power jacks and supply ports, the DC cables (dashed under the board, a "
+               "ring at each hole, a square at each board edge) and a table of the power cables.", ""]
     missing = (ctx.get("layout") or {}).get("no_outline")
     if missing:
         md += [f"Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. "
@@ -959,6 +964,11 @@ def main():
             (pdir / "routing.svg").write_text(picture)
         else:
             (pdir / "routing.svg").unlink(missing_ok=True)
+        power_picture = svgdraw.render_power(ctx, names)
+        if power_picture:
+            (pdir / "power.svg").write_text(power_picture)
+        else:
+            (pdir / "power.svg").unlink(missing_ok=True)
         if args.images:
             local = svgdraw.render(ctx, names, images=pedal_images(ctx)) if picture else None
             if local:
