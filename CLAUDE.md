@@ -26,6 +26,10 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
 - `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/pedal_editor.py` (Tkinter).
   x,y = fractions (0..1) of the Pedal Playground image (unrotated), at the OUTER EDGE of the physical jack;
   facing = side the plug enters from (left/right/top/down); function input|output|power|power_out|other.
+- `catalog/outlines.json`: each pedal's real top-view shape per Pedal Playground IMAGE file name: up to 16 rects in
+  fractions of the unrotated image that cover every opaque pixel (alpha > 128; protruding jacks and rounded corners
+  included). Derived data written ONLY by `scripts/outlines.py` from the cached images (no images in the repo);
+  missing = the Pedal Playground box. Pedal Playground's Width/Height include the jacks (images are not squeezed).
 - `catalog/footswitches.json`: footswitches per pedal id, written ONLY by `scripts/pedal_editor.py`. x,y = fractions of
   the image (unrotated) at the CENTRE of the switch cap; `type` bypass|tap|boost|function (bypass = turns the pedal or
   one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
@@ -50,13 +54,13 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
   saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
-  `footswitches.py` (footswitch data, spacing check), `routing.py` (cable model, plug
+  `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `routing.py` (cable model, plug
   heads, side choice, grid router, smoothing, lanes, plug-head clearance), `svgdraw.py` (shared SVG drawing: board,
   pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~247 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~283 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
@@ -68,6 +72,7 @@ uv run pytest tests -q                     # all tests
 uv run scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / footswitches (needs a display; J/F keys)
 uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
 uv run scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
+uv run scripts/outlines.py [project...] [--image NAME] [--refresh]   # pedal outlines from the images
 uv run scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
@@ -153,6 +158,9 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   project's catalog entries incl. jacks and footswitches) or the chain changed.
 - Pictures (`svgdraw.render`): sized in mm (prints 1:1 from a browser); committed SVGs have outlines only, pedal
   images only in git-ignored `routing.local.svg` (data URIs from `.cache/images`, `common.fetch_image`).
+- Pedal outlines (`design.outline_rects`, `layout["shapes"]` {item id: [rects]}): the router (grid, smoothing, lanes),
+  plug clearance (`routing.blocked_parts`, `jacks.check` fixed box) and the layout surrogate's clearance use the
+  outline; pedal-pedal overlap, layout feasibility, moves and swaps keep the Pedal Playground box (owner, 2026-10-23).
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner

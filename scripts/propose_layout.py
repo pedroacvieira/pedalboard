@@ -31,6 +31,7 @@ import design
 import footswitches
 import jacks
 import layout
+import outlines
 import power
 import routing
 import svgdraw
@@ -98,10 +99,10 @@ def moved_list(model, state):
 
 def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
     """(metrics, ctx, wiring) of a candidate: its own power wiring, then build.validate with the injected layout."""
-    cat_pedals, cat_supplies, jacks_data, fs_data = cat
+    cat_pedals, cat_supplies, jacks_data, fs_data, outl = cat
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
-                                  project.get("jacks", {}), [], [])
+                                  project.get("jacks", {}), [], [], outlines=outl)
     insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"]}
              for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
@@ -116,7 +117,8 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
         cab["overrides"] = power.remap_overrides(cab.get("overrides") or {}, old, wiring["supplies"])
     except ValueError as e:   # keep the owner's wiring
         wiring, proj = {"supplies": project.get("power", {}).get("supplies", []), "error": str(e)}, project
-    ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj)
+    ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj,
+                         outline_data=outl)
     keep = model.wiring
     model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"]) for s in wiring["supplies"] for o in s["outputs"]])
     m = metrics(ctx, model, state, move_factor)
@@ -190,16 +192,18 @@ def main(argv=None):
     t0 = time.monotonic()
     cat_pedals, cat_supplies = load_catalog()
     jacks_data, fs_data = jacks.read_file()["jacks"], footswitches.read_file()["footswitches"]
-    cat = (cat_pedals, cat_supplies, jacks_data, fs_data)
+    outl = outlines.load()   # read once: the owner's layout, the model and every finalist use it
+    cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
     project = load_json(pdir / "project.json")
     if args.pin:
         project.setdefault("layout", {})["pins"] = sorted(set(project.get("layout", {}).get("pins", [])) | set(args.pin))
     design_doc = load_json(pdir / "playground_design.json")
     items = design.parse_canvas(design_doc["canvas"])
     cable_types = load_cable_types()
-    owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project)
+    owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project,
+                               outline_data=outl)
     try:
-        model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types)
+        model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl)
     except ValueError as e:
         sys.exit(f"{pdir.name}: {e}")
     if args.score:

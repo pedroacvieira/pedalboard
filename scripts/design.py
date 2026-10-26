@@ -107,6 +107,20 @@ def jack_point(item, fx, fy):
     return cx + u2, cy + v2
 
 
+def outline_rects(item, outlines):
+    """Canvas rectangles (x0, y0, x1, y1) of the item's outline (catalog/outlines.json, `outlines` = {image name:
+    [[x0, y0, x1, y1] fractions of the unrotated image]}). Two opposite corners of each rectangle go through
+    `jack_point`, so 0/90/180/270 are all right. Without an image or an outline: [footprint(item)]."""
+    rects = (outlines or {}).get(item.get("image") or "")
+    if not rects:
+        return [footprint(item)]
+    out = []
+    for fx0, fy0, fx1, fy1 in rects:
+        (xa, ya), (xb, yb) = jack_point(item, fx0, fy0), jack_point(item, fx1, fy1)
+        out.append((min(xa, xb), min(ya, yb), max(xa, xb), max(ya, yb)))
+    return out
+
+
 def jack_facing(item, facing):
     """The jack's facing ('left'/'right'/'top'/'down') after the item's rotation."""
     dx, dy = FACING[facing]
@@ -136,6 +150,24 @@ def overlap(a, b, tol_mm=TOL_MM):
     dx = min(a[2], b[2]) - max(a[0], b[0])
     dy = min(a[3], b[3]) - max(a[1], b[1])
     return (dx, dy) if dx > tol_mm and dy > tol_mm else None
+
+
+def shape_overlap(rect, rects, tol_mm=TOL_MM):
+    """The overlap (dx, dy) of `rect` with a shape made of several rects (an outline): the bounding box of its
+    intersections with all of them, so a plug reaching across several thin bands of an outline gets its full depth;
+    None unless both exceed `tol_mm` (see `overlap`)."""
+    parts = [(max(rect[0], r[0]), max(rect[1], r[1]), min(rect[2], r[2]), min(rect[3], r[3])) for r in rects]
+    parts = [p for p in parts if p[2] > p[0] and p[3] > p[1]]
+    if not parts:
+        return None
+    dx = max(p[2] for p in parts) - min(p[0] for p in parts)
+    dy = max(p[3] for p in parts) - min(p[1] for p in parts)
+    return (dx, dy) if dx > tol_mm and dy > tol_mm else None
+
+
+def item_shapes(shapes, item):
+    """The outline rects of a layout item (`shapes` = layout["shapes"]), its footprint when it has none."""
+    return (shapes or {}).get(item["id"]) or [footprint(item)]
 
 
 def overlap_depth(zone_facing, ov):

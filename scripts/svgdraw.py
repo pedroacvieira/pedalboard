@@ -82,17 +82,76 @@ def fit_label(s, w, h, fs_max=4.5, fs_min=2.5):
     return fs_min, [x if len(x) <= cols else x[:max(cols - 1, 1)] + "…" for x in lines]
 
 
-def pedal(item, name, image=None):
-    """A pedal: its (rotated) box, the image under the outline when given (a data URI), the name centred in it."""
+def union_outline(rects, eps=1e-6):
+    """Closed boundary loops [[(x, y), ...]] of the union of axis-aligned rectangles (x0, y0, x1, y1), collinear
+    points merged. Outer loops run clockwise on screen (y down), holes the other way. Coordinates closer than `eps`
+    count as equal; rectangles that only touch at a corner give separate loops."""
+    rects = [r for r in rects if r[2] - r[0] > eps and r[3] - r[1] > eps]
+
+    def axis(vals):   # sorted distinct values, near-equal ones snapped together
+        out = []
+        for v in sorted(vals):
+            if not out or v - out[-1] > eps:
+                out.append(v)
+        return out
+
+    xs, ys = axis(v for r in rects for v in (r[0], r[2])), axis(v for r in rects for v in (r[1], r[3]))
+
+    def idx(vs, v):
+        return min(range(len(vs)), key=lambda k: abs(vs[k] - v))
+    covered = set()
+    for r in rects:
+        covered |= {(i, j) for i in range(idx(xs, r[0]), idx(xs, r[2])) for j in range(idx(ys, r[1]), idx(ys, r[3]))}
+    edges = {}   # start point (grid indices) -> [end points]: clockwise around every covered cell, kept where the neighbour is empty
+    for i, j in covered:
+        for (di, dj), a, b in (((0, -1), (i, j), (i + 1, j)), ((1, 0), (i + 1, j), (i + 1, j + 1)),
+                               ((0, 1), (i + 1, j + 1), (i, j + 1)), ((-1, 0), (i, j + 1), (i, j))):
+            if (i + di, j + dj) not in covered:
+                edges.setdefault(a, []).append(b)
+    loops = []
+    while edges:
+        start = min(edges)
+        pts, cur = [start], start
+        heading = None
+        while True:
+            # at a vertex where two cells only touch by a corner (two ways out) take the right turn (screen, y down),
+            # i.e. stay on the cell just walked along: corner-touching cells give separate loops
+            outs = edges[cur]
+            if heading and len(outs) > 1:
+                turn = lambda q: (0 if (q[0] - cur[0], q[1] - cur[1]) == (-heading[1], heading[0]) else
+                                  1 if (q[0] - cur[0], q[1] - cur[1]) == heading else 2)
+                outs.sort(key=turn, reverse=True)
+            nxt = outs.pop()
+            heading = (nxt[0] - cur[0], nxt[1] - cur[1])
+            if not edges[cur]:
+                del edges[cur]
+            if nxt == start:
+                break
+            pts.append(nxt)
+            cur = nxt
+        keep = [p for k, p in enumerate(pts)
+                if not ((pts[k - 1][0] == p[0] == pts[(k + 1) % len(pts)][0]) or (pts[k - 1][1] == p[1] == pts[(k + 1) % len(pts)][1]))]
+        loops.append([(xs[i], ys[j]) for i, j in keep])
+    return loops
+
+
+def pedal(item, name, image=None, shapes=None):
+    """A pedal: its outline (`shapes`: canvas rectangles, default the box) as one path, Pedal Playground's box as a
+    faint dashed rectangle, the image over the outline when given (a data URI), the name centred in it."""
     cx, cy = design.centre(item)
     x0, y0, x1, y1 = design.footprint(item)
     rot = f"rotate({item['rot']:g} {cx:.2f} {cy:.2f})"
-    out = [f'<g class="pedal" data-id="{esc(item.get("id", ""))}">']
+    shapes = shapes or [design.footprint(item)]
+    out = [f'<g class="pedal" data-id="{esc(item.get("id", ""))}">',
+           f'<rect x="{f1(item["left_mm"])}" y="{f1(item["top_mm"])}" width="{f1(item["w_mm"])}" height="{f1(item["h_mm"])}" '
+           f'transform="{rot}" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>']
+    # the outline: ONE path along the union boundary of its rectangles (no seams between touching ones)
+    d = " ".join("M" + " L".join(f"{f1(x)} {f1(y)}" for x, y in loop) + " Z" for loop in union_outline(shapes))
+    out.append(f'<path d="{d}" fill="{"none" if image else "#cfd8dc"}" stroke="#455a64" stroke-width="0.6" '
+               f'stroke-linejoin="round" class="pedal-outline"/>')
     if image:
         out.append(f'<image x="{f1(item["left_mm"])}" y="{f1(item["top_mm"])}" width="{f1(item["w_mm"])}" '
                    f'height="{f1(item["h_mm"])}" preserveAspectRatio="none" transform="{rot}" href="{image}" xlink:href="{image}"/>')
-    out.append(f'<rect x="{f1(item["left_mm"])}" y="{f1(item["top_mm"])}" width="{f1(item["w_mm"])}" height="{f1(item["h_mm"])}" '
-               f'transform="{rot}" rx="2" fill="{"none" if image else "#cfd8dc"}" stroke="#455a64" stroke-width="0.6"/>')
     fs, lines = fit_label(name, x1 - x0 - 4, y1 - y0 - 4, fs_max=min(4.5, max(2.5, min(x1 - x0, y1 - y0) / 12)))
     y = cy - (len(lines) - 1) * fs * 1.2 / 2 + fs * 0.35
     out += [text(cx, y + n * fs * 1.2, ln, fs, "middle", halo=bool(image), class_="pedal-name") for n, ln in enumerate(lines)]
@@ -249,7 +308,8 @@ def key_entries(ctx, cable_list, max_stack):
     st = [c.get("status") or "" for c in signal_cables(cable_list)]
     e = [("jack_used", "used jack (colour: input blue, output green, power orange, other purple)"),
          ("jack_free", "unused jack (the tick points to the side the plug enters from)"),
-         ("head", "plug head and its cable exit"), ("area", "routing area")]
+         ("head", "plug head and its cable exit"), ("area", "routing area"),
+         ("box", "dashed: Pedal Playground box")]
     if any("squeezed" in s for s in st):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
     if any(c.get("stacked_with") for c in signal_cables(cable_list)):
@@ -279,6 +339,8 @@ def key_sample(kind, x, y):
         return rect(x, y - 2, x + 8, y + 2, fill="#90a4ae", opacity=0.45, stroke="#37474f", stroke_width=0.3)
     if kind == "area":
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke=GREY, stroke_dasharray="4 3", stroke_width=0.8)
+    if kind == "box":
+        return rect(x, y - 2, x + 8, y + 2, fill="none", stroke="#455a64", stroke_width=0.3, stroke_dasharray="2 1.5", opacity=0.45)
     if kind == "overflow":
         return rect(x, y - 2, x + 8, y + 2, fill="#ff1744", opacity=0.35)
     if kind.startswith("fs:"):
@@ -386,7 +448,7 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     body = [board(bx), routing_area(ax0, ay0, ax1, r.get("front_y") or bx[3])]
     for o in layout["obstacles"]:
         cid = cid_of.get(o["id"])
-        body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), uris.get(cid)))
+        body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), uris.get(cid), (layout.get("shapes") or {}).get(o["id"])))
     body += overflow_cells(grid, r.get("overflow"))
     body += plug_heads(r.get("heads"))
     body += cables(cable_list, colours, diameter, ends)

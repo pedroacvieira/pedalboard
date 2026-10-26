@@ -336,8 +336,9 @@ def smooth(points, obstacles, radius, plugs, own_plugs=()):
     # every segment between two path points lies in the points' bounding box: only plugs near it can be touched
     bx0, by0 = min(p[0] for p in points) - radius, min(p[1] for p in points) - radius
     bx1, by1 = max(p[0] for p in points) + radius, max(p[1] for p in points) + radius
-    plugs = {k: rs for k, rs in plugs.items() if k not in own_plugs and
-             any(r[0] <= bx1 and r[2] >= bx0 and r[1] <= by1 and r[3] >= by0 for r in rs)}
+    near = lambda r: r[0] <= bx1 and r[2] >= bx0 and r[1] <= by1 and r[3] >= by0
+    plugs = {k: rs for k, rs in plugs.items() if k not in own_plugs and any(near(r) for r in rs)}
+    obstacles = [o for o in obstacles if near(o)]   # farther than the radius from every segment: always clear
     touch = lambda p, q, key: any(seg_rect_distance(p, q, r) <= radius for r in plugs[key])
     # never closer than the grid path; a replaced point touching or inside a pedal (a plug exit inside a neighbour)
     # allows no shortcut through it: the segment must then stay clear of that pedal
@@ -484,7 +485,10 @@ def lanes(routes, pedal_rects, plug_rects, area, width):
             a, b = pts[j], pts[j + 1]
             if (p, q) == (a, b) or p == q:
                 continue
-            if any(not clear(seg_rect_distance(p, q, r), seg_rect_distance(a, b, r)) for r in pedal_rects):
+            x0, y0 = min(p[0], q[0], a[0], b[0]) - radius, min(p[1], q[1], a[1], b[1]) - radius
+            x1, y1 = max(p[0], q[0], a[0], b[0]) + radius, max(p[1], q[1], a[1], b[1]) + radius
+            near = [r for r in pedal_rects if r[0] <= x1 and r[2] >= x0 and r[1] <= y1 and r[3] >= y0]   # others: clear
+            if any(not clear(seg_rect_distance(p, q, r), seg_rect_distance(a, b, r)) for r in near):
                 return False
             if any(k not in own and touch(p, q, rs) and not touch(a, b, rs) for k, rs in plug_rects.items()):
                 return False
@@ -607,14 +611,15 @@ def end_options(item, jack, ctype, exit_fixed, cfg, outward):
     return facing, opts
 
 
-def blocked_parts(opt, own_id, obstacles):
-    """[(part, obstacle item, overlap)] for one plug option against every other pedal footprint."""
+def blocked_parts(opt, own_id, obstacles, shapes=None):
+    """[(part, obstacle item, overlap)] for one plug option against every other pedal's outline (`shapes` {item id:
+    [canvas rects]}, else its footprint; `design.shape_overlap`), one hit per (part, obstacle)."""
     hits = []
     for part, r in opt["rects"]:
         for ob in obstacles:
             if ob["id"] == own_id:
                 continue
-            ov = design.overlap(r, design.footprint(ob))
+            ov = design.shape_overlap(r, design.item_shapes(shapes, ob))
             if ov:
                 hits.append((part, ob, ov))
     return hits
@@ -687,12 +692,16 @@ def route_project(ctx, cat_pedals, cable_types=None):
         return
 
     placed, outward, obstacles = layout["placed"], layout["outward_mm"], layout["obstacles"]
+    shapes = layout.get("shapes") or {}
+
+    def shapes_of(it):
+        return design.item_shapes(shapes, it)
     grid = None   # without a pedalboard item nothing is routed, but every plug is still checked
     if layout.get("board"):
         board = design.footprint(layout["board"])
-        feet = {cid: design.footprint(it) for cid, it in placed.items()}
-        front_y = min(board[3], max((f[3] for f in feet.values()), default=board[3]))   # nothing in front of the lowest pedals
-        grid = build_grid(board, [design.footprint(o) for o in obstacles], front_y, cfg)
+        feet = [r for it in placed.values() for r in shapes_of(it)]
+        front_y = min(board[3], max((f[3] for f in feet), default=board[3]))   # nothing in front of the lowest pedals
+        grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg)
         ctx["routing"].update(grid=grid, front_y=front_y)
     run_given = "exit_run_mm" in (project.get("cables") or {})
 
@@ -708,7 +717,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             run = cfg if run_given or not ctype else {**cfg, "exit_run_mm": float(ctype["diameter_mm"])}   # one own diameter
             facing, opts = end_options(placed[cid], jk, ctype, c.get(f"exit_{end}"), run, outward)
             for o in opts:
-                o["hits"] = blocked_parts(o, placed[cid]["id"], obstacles)
+                o["hits"] = blocked_parts(o, placed[cid]["id"], obstacles, shapes)
                 o["cell"] = grid.cell_of(*o["exit"]) if grid else None
             ends.append({"cid": cid, "jack": jk, "facing": facing, "opts": opts})
         c["_sides"] = ends
@@ -769,7 +778,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
                                                    int(cfg["max_over_plug"])) if grid else ({}, {}, set(), {}))
     ctx["routing"]["overflow"] = overflow
     ctx["routing"]["plug_over"] = plug_over
-    pedal_rects = [design.footprint(o) for o in obstacles]
+    pedal_rects = [r for o in obstacles for r in shapes_of(o)]
     for c in cables:
         if c["id"] not in paths:
             continue
@@ -867,7 +876,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
         pc = by_jack.get(f"{cid}.{jk['id']}")
         facing, opts = end_options(it, jk, ptype, (pc or {}).get("exit_b"), run, layout.get("outward_mm", 0))
         for o in opts:
-            o["hits"] = blocked_parts(o, it["id"], obstacles)
+            o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
         o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
         if pc is not None:
             pc["exit_b"] = o["side"]

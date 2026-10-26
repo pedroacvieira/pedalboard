@@ -127,7 +127,7 @@ def test_no_better_layout_writes_no_proposal(tmp_path, monkeypatch):
 def test_score_prints_the_breakdown(capsys):
     assert pl.main(["guitar-gig", "--score"]) == 0
     out = capsys.readouterr().out
-    assert "Blocked plugs (no margin, as the build): 3" in out and "footswitch" in out and "clearance" in out
+    assert "Blocked plugs (no margin, as the build): 2" in out and "footswitch" in out and "clearance" in out
 
 
 # --- README section (build.proposals_section) ------------------------------------------------------
@@ -138,7 +138,7 @@ def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeyp
     assert "None yet" in "\n".join(build.proposals_section(ctx, pedals))
     assert pl.main(["guitar-gig", "--iterations", "300", "--restarts", "1"]) == 0
     md = "\n".join(build.proposals_section(ctx, pedals))
-    assert "## Layout proposals" in md and "| Blocked plugs | 3 (24.7 mm) |" in md and "Stale" not in md
+    assert "## Layout proposals" in md and "| Blocked plugs | 2 (21.7 mm) |" in md and "Stale" not in md
     assert "![Proposal 1](proposals/1.svg)" in md and "Daisy chain" in md and "--iterations 300 --restarts 1" in md
     design_path = pdir / "playground_design.json"
     original = design_path.read_bytes()
@@ -151,6 +151,19 @@ def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeyp
     proj = json.loads(proj_path.read_text())
     proj_path.write_text(json.dumps({**proj, "jacks": {**proj.get("jacks", {}), "clearance": {"outward_mm": 9, "side_mm": 7}}}))
     assert "**Stale:**" in "\n".join(build.proposals_section(ctx, pedals))   # a setting the metrics depend on
+
+
+def test_inputs_hash_follows_the_outlines_of_the_design_images(tmp_path, monkeypatch):
+    import outlines
+    pdir = gig_copy(tmp_path, monkeypatch)
+    real = outlines.load()
+    used = sorted({i["image"] for i in design.parse_design(pdir / "playground_design.json") if i.get("image")})
+    assert used and used[0] in real
+    base = proposal_inputs_sha1(pdir)
+    monkeypatch.setattr(outlines, "load", lambda: {**real, used[0]: [[0, 0, 0.5, 1]]})
+    assert proposal_inputs_sha1(pdir) != base                           # an outline of a used image changed
+    monkeypatch.setattr(outlines, "load", lambda: {**real, "unused-image.png": [[0, 0, 1, 1]]})
+    assert proposal_inputs_sha1(pdir) == base                           # an image the layout does not use
 
 
 def test_readme_section_without_a_better_layout(tmp_path, monkeypatch):

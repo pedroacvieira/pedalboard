@@ -162,3 +162,44 @@ def test_names_are_escaped():
     svg = svgdraw.render(routed(), {"a": "A & <B>"})
     parse(svg)
     assert "A &amp; &lt;B&gt;" in svg
+
+
+# --- the outline path ------------------------------------------------------------------------------
+def test_union_outline_of_touching_overlapping_and_separate_rectangles():
+    assert svgdraw.union_outline([]) == []
+    assert svgdraw.union_outline([(0, 0, 10, 20)]) == [[(0, 0), (10, 0), (10, 20), (0, 20)]]
+    # two touching rectangles of the same height: one loop of 4 points (the seam disappears, collinear points merge)
+    assert svgdraw.union_outline([(0, 0, 10, 10), (10, 0, 20, 10)]) == [[(0, 0), (20, 0), (20, 10), (0, 10)]]
+    # touching with different heights: one loop of 6 points
+    (loop,) = svgdraw.union_outline([(0, 0, 10, 10), (10, 0, 20, 5)])
+    assert sorted(loop) == sorted([(0, 0), (20, 0), (20, 5), (10, 5), (10, 10), (0, 10)]) and len(loop) == 6
+    # an L (overlapping rectangles): 6 points
+    (loop,) = svgdraw.union_outline([(0, 0, 30, 10), (0, 5, 10, 30)])
+    assert sorted(loop) == sorted([(0, 0), (30, 0), (30, 10), (10, 10), (10, 30), (0, 30)])
+    # a gap: two loops; float noise at a seam still joins
+    assert len(svgdraw.union_outline([(0, 0, 10, 10), (20, 0, 30, 10)])) == 2
+    assert len(svgdraw.union_outline([(0, 0, 10.0000000001, 10), (10, 0, 20, 10)])) == 1
+    # a hole is a second loop, the other way round
+    ring = svgdraw.union_outline([(0, 0, 30, 10), (0, 10, 10, 30), (20, 10, 30, 30), (0, 30, 30, 40)])
+    assert len(ring) == 2
+
+    def area(loop):   # shoelace, signed
+        return sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(loop, loop[1:] + loop[:1])) / 2
+    assert sorted(area(l) for l in ring) == pytest.approx([-200, 1200])   # outer 30 x 40 clockwise, hole 10 x 20 reversed
+
+
+def test_a_pedal_outline_is_one_path_without_seams():
+    item = {"id": "i", "title": "P", "rot": 0, "w_mm": 20, "h_mm": 20, "left_mm": 0, "top_mm": 0}
+    svg = svgdraw.pedal(item, "P", shapes=[(0, 0, 10, 20), (10, 5, 20, 15)])
+    assert svg.count('class="pedal-outline"') == 1 and svg.count("<path") == 1
+    d = re.search(r' d="([^"]+)"', svg).group(1)
+    assert d.count("M") == 1 and d.count("L") == 7                    # 8 corners of a two-rectangle plus shape
+    assert 'class="pedal-box"' in svg                                 # Pedal Playground's box stays as a dashed hint
+
+
+@pytest.mark.parametrize("rects", [[(0, 0, 10, 10), (10, 10, 20, 20)], [(10, 10, 20, 20), (0, 0, 10, 10)],
+                                   [(10, 0, 20, 10), (0, 10, 10, 20)], [(0, 10, 10, 20), (10, 0, 20, 10)]])
+def test_union_outline_splits_rectangles_touching_only_at_a_corner(rects):
+    loops = svgdraw.union_outline(rects)
+    assert sorted(sorted(loop) for loop in loops) == sorted(sorted([(r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3])])
+                                                           for r in rects)

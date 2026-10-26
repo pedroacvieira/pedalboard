@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 import design
+import outlines as outlines_mod
 from common import JACKS_FILE, dumps_per_line, pedal_name
 
 FUNCTIONS = ("input", "output", "power", "power_out", "other")
@@ -177,11 +178,14 @@ def place_chain(items, chain, cat_pedals, by_title=None):
     return placed, count
 
 
-def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink):
+def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None):
     """Which layout item is which chain pedal / supply instance, the board and the obstacles.
 
-    Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item}};
-    placement problems go to `warnings` / `clear_sink` (missing chain pedal)."""
+    Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
+    "shapes" {item id: [canvas rects]}, "no_outline" [titles]} (the outline of every obstacle and placed item, its box
+    without an outline; `no_outline` lists those items;
+    `outlines`: catalog/outlines.json, read if None); placement problems go to `warnings` / `clear_sink` (missing
+    chain pedal)."""
     supplies_layer = jset.get("supplies_layer", "under")
     by_title = items_by_title(items)
     placed, count = place_chain(items, chain, cat_pedals, by_title)
@@ -210,10 +214,15 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     pedal_items = [i for i in items if i["kind"] == "pedal"]
     obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
     boards = [i for i in items if i["kind"] == "pedalboard"]
-    return {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles, "inst_item": inst_item}
+    outlines = outlines_mod.load() if outlines is None else outlines
+    shown = list(obstacles) + list(placed.values())
+    shapes = {i["id"]: design.outline_rects(i, outlines) for i in shown}
+    no_outline = sorted({i["title"] for i in shown if not outlines.get(i.get("image") or "")})
+    return {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
+            "shapes": shapes, "no_outline": no_outline}
 
 
-def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None):
+def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None):
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
@@ -225,6 +234,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
     if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_canvas) to
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
+    `outlines`: catalog/outlines.json (read if None), for the layout's "shapes".
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
@@ -295,7 +305,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     if items is None:
         ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
         return
-    lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink)
+    lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines)
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
     ctx["layout"] = {**lay, "jacks": jacks_data, "outward_mm": outward}
@@ -329,7 +339,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
-            ov = design.overlap(zone, design.footprint(ob))
+            ov = design.shape_overlap(zone, design.item_shapes(lay["shapes"], ob))
             if ov:
                 depth = design.overlap_depth(facing, ov)
                 ctx["fixed_box"].append((f"{cid}.{jk['id']}",

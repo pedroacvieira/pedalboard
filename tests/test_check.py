@@ -237,3 +237,20 @@ def test_power_jacks_use_the_smaller_power_box_or_the_dc_plug_type(tmp_path):
     routing.route_project(ctx, PEDALS)
     v = next(v for v in ctx["violations"] if v["jack"] == "b.power")
     assert v["cable_type"] == "dc_ra_2_1_low_profile" and "zone" not in v       # the DC plug, not the power box
+
+
+def test_fixed_box_is_blocked_by_the_outline_not_the_box(tmp_path):
+    # touching pedals (A 0..50.8, B 50.8..101.6): every pedal image x.png is drawn as its outline [0, 0.9] of the width
+    ctx = project(tmp_path, [A(0), B(90)])
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA)
+    assert {v["jack"]: v["depth_mm"] for v in ctx["violations"]} == pytest.approx({"a.out": 6.3, "b.in": 6.3})
+    ctx = project(tmp_path, [A(0), B(90)])
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA, outlines={"x.png": [[0, 0, 0.9, 1]]})
+    # A's outline ends 5.08 mm short of its box: b.in (zone 44.5..50.8) reaches 1.22 mm into it; a.out still touches B's box edge
+    assert {v["jack"]: v["depth_mm"] for v in ctx["violations"]} == pytest.approx({"a.out": 6.3, "b.in": 1.22}, abs=0.01)
+    ctx = project(tmp_path, [A(0), B(90)])
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA, outlines={"x.png": [[0.2, 0, 0.8, 1]]})
+    assert ctx["violations"] == [] and ctx["layout"]["no_outline"] == []
+    ctx = project(tmp_path, [A(0), B(90)])
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA, outlines={})
+    assert ctx["layout"]["no_outline"] == ["T A", "T B"]
