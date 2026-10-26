@@ -132,6 +132,11 @@ Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs
 ### 3. `feat/supply-placement`: supplies on or under the board, board holes
 Goal: per supply instance `placement` on_board | under (today one global `jacks.supplies_layer`), and the board's
 crossings (holes, slots, rail gaps, open edges) where power cables go from under to over the board.
+Plan: `docs/plans/supply-placement.md` (owner decisions 2026-10-26: holes derived from the board image + a board
+editor with hole/filled boxes per project; no under-board fit check; whole holes usable; signal cables may go under
+the board through holes; power cables stay under; on-board supplies are obstacles). Finding:
+Pedal Playground's board images have the holes as transparent areas (Fender Pro Medium 15 slots + handle cutout,
+RockBoard Duo 2.1 17 slots), so holes can be derived like the pedal outlines (verify against maker pictures).
 - [ ] Data: `catalog/boards.json` (new): per board model the frame, rails/slots and access holes in mm (or image
       fractions, placed with a board mode in the pedal editor); research Fender Professional Medium and RockBoard
       Duo 2.1 (maker drawings first; "unverified" otherwise).
@@ -186,7 +191,7 @@ Goal: a topper (larger, higher cap) on a switch makes it easier to hit and its n
 - [ ] Layout search: ignores toppers entirely (the layout is optimised first, toppers finish it).
 
 ### Later: patch cables under the board and more plug orientations (owner, 2026-10-23; after 3, needs board holes)
-- [ ] Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
+- [ ] (Moved into feature 3, `docs/plans/supply-placement.md`, 2026-10-26.) Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
       under pedals. Add this routing option once the boards have their holes set; same crossing model as power (2).
 - [ ] Plug orientation, today: a right-angle plug's cable leaves left or right of the facing and the plug occupies
       more space on that side (modelled: `design.plug_geometry`, side chosen by the router). New case, U-turn: when
