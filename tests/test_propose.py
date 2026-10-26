@@ -17,7 +17,7 @@ import design  # noqa: E402
 import layout  # noqa: E402
 import propose_layout as pl  # noqa: E402
 from common import load_catalog, proposal_inputs_sha1  # noqa: E402
-from test_layout import at, model, ped, sw  # noqa: E402
+from test_layout import JACKS, PEDALS, SUP_JACKS, SUPPLIES, TYPES, at, canvas, model, ped, sup, sw, BOARD  # noqa: E402
 
 GIG = ROOT / "projects" / "guitar-gig"
 QUIET = {"layout": {"weights": {"io": 0, "flow": 0, "access": 0}}}   # isolate the terms a test looks at
@@ -208,3 +208,36 @@ def test_gig_fix_level_removes_todays_findings(tmp_path, monkeypatch):
     best = meta["proposals"][0]
     assert best["metrics"]["blocked"] == 0 and all(mv["distance_mm"] <= 40.5 for mv in best["moved"])
     assert best["metrics"]["fs_crowding"] <= meta["owner"]["fs_crowding"]   # switches not more crowded
+
+
+def test_an_on_board_supply_is_proposed_moved_and_reported(tmp_path):
+    """A supply on the board whose F1 port is blocked by a fixed pedal: the search moves the supply, the finalist is checked
+    by the real pipeline (its own wiring), and the moved list / overlay name the supply."""
+    peds = {k: {**v, "digital": False, "clocked_noise": False,
+                "power_consumption": {"current_ma": 50, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": False,
+                                      "polarity": "center_negative"}} for k, v in PEDALS.items()}
+    sups = {"s1": {**SUPPLIES["s1"], "outputs": [{"port": "F1", "options": [{"voltage_v": 9, "max_ma": 500}], "polarity": "center_negative"},
+                                                  {"port": "F2", "options": [{"voltage_v": 9, "max_ma": 500}]}]}}
+    specs = [ped("T A", 0), sup(200), ped("T B", 295)]
+    (tmp_path / "playground_design.json").write_text(json.dumps({"source": "pedalplayground.com", "version": "1.0",
+                                                                 "canvas": canvas(BOARD, *specs)}))
+    proj = {"signal_chain": ["a"], "cables": {"type": "t"}, "jacks": {}, "layout": QUIET["layout"],
+            "power": {"supplies": [{"id": "psu1", "supply": "s1", "placement": "on_board",
+                                    "outputs": [{"port": "F1", "pedals": ["a"], "voltage_v": 9}]}]}}
+    jd = {**JACKS, "s1": SUP_JACKS}
+    ctx = build.validate(tmp_path, peds, sups, jd, project=proj, outline_data={})
+    m = layout.Model(proj, design.parse_canvas(canvas(BOARD, *specs)), peds, sups, jd, {}, TYPES, outlines={})
+    assert m.ids == ["a", "psu1"] and [v["jack"] for v in ctx["violations"]] == ["psu1.F1"]
+    best = layout.search(m, "fix", seed=1, iterations=300, restarts=1)[0][1]
+    moved = pl.moved_list(m, best)
+    assert [mv["pedal"] for mv in moved] == ["psu1"] and moved[0]["name"] == "S One" and m.feasible(best)
+    keep = m.wiring
+    owner_m, _, _ = pl.evaluate(tmp_path, proj, m, m.owner, ctx, (peds, sups, jd, {}, {}), 1.0)
+    new_m, _, wiring = pl.evaluate(tmp_path, proj, m, best, ctx, (peds, sups, jd, {}, {}), 1.0)
+    assert m.wiring == keep and owner_m["blocked"] == 1 and new_m["blocked"] == 0
+    assert wiring["supplies"][0]["outputs"][0]["pedals"] == ["a"] and new_m["score"] < owner_m["score"]
+    svg = "".join(pl.overlay(m, best, moved))
+    assert "S One:" in svg and "<rect" in svg
+    # the moved supply's item is what the proposal file changes
+    moved_ids = {m.mitem[mv["pedal"]]["id"] for mv in moved}
+    assert moved_ids == {m.inst_item["psu1"]["id"]}

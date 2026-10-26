@@ -93,7 +93,7 @@ def moved_list(model, state):
     for n, (st, own) in enumerate(zip(state, model.owner)):
         dx, dy = st[0] - own[0], st[1] - own[1]
         if abs(dx) > 0.01 or abs(dy) > 0.01 or st[2] != own[2]:
-            out.append({"pedal": model.ids[n], "dx_mm": round(dx, 1), "dy_mm": round(dy, 1),
+            out.append({"pedal": model.ids[n], **({"name": model.names[model.ids[n]]} if n >= model.n_ped else {}), "dx_mm": round(dx, 1), "dy_mm": round(dy, 1),
                         "distance_mm": round((dx * dx + dy * dy) ** 0.5, 1), "rot_from": own[2], "rot_to": st[2]})
     return out
 
@@ -118,7 +118,9 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
                               run_v=owner_ctx["run_v"], start=start, holes=holes, cfg=cfg)
         proj = copy.deepcopy(project)
         old = project.get("power", {}).get("supplies", [])
-        proj["power"] = {**proj.get("power", {}), "supplies": wiring["supplies"]}
+        place = {x["id"]: x["placement"] for x in old if "placement" in x}   # assign drops it: an on-board supply stays one
+        proj["power"] = {**proj.get("power", {}), "supplies": [{**x, **({"placement": place[x["id"]]} if x["id"] in place else {})}
+                                                               for x in wiring["supplies"]]}
         cab = proj.setdefault("cables", {})
         cab["overrides"] = power.remap_overrides(cab.get("overrides") or {}, old, wiring["supplies"])
     except ValueError as e:   # keep the owner's wiring
@@ -127,7 +129,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
                          outline_data=outl)
     keep = model.wiring
     under = {i["id"]: i["under"] for i in insts}
-    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True))
+    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True), (s["id"], o["port"]))
                       for s in wiring["supplies"] for o in s["outputs"]])
     m = metrics(ctx, model, state, move_factor)
     model.wiring = keep
@@ -151,7 +153,7 @@ def overlay(model, state, moved):
                        f'marker-end="url(#arr)"/>')
         rot = f", {mv['rot_from']}->{mv['rot_to']} deg" if mv["rot_from"] != mv["rot_to"] else ""
         out.append(f'<text x="{nx:.1f}" y="{ny + 9:.1f}" font-size="6" text-anchor="middle" fill="#e65100">'
-                   f'{mv["distance_mm"]:.0f} mm{rot}</text>')
+                   f'{mv["name"] + ": " if mv.get("name") else ""}{mv["distance_mm"]:.0f} mm{rot}</text>')
     return out
 
 
@@ -274,7 +276,7 @@ def main(argv=None):
     names = {pid: cat_pedals[pid]["name"] for pid in owner_ctx["chain"]}
     for f, pm in zip(chosen, meta["proposals"]):
         items_new = model.items_for(f["state"])
-        moved_ids = {model.placed[mv["pedal"]]["id"] for mv in f["moved"]}
+        moved_ids = {model.mitem[mv["pedal"]]["id"] for mv in f["moved"]}
         canvas = design.write_canvas(design_doc["canvas"], [i for i in items_new if i["id"] in moved_ids])
         (out / pm["file"]).write_text(json.dumps({**design_doc, "canvas": canvas}))
         picture = svgdraw.render(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),

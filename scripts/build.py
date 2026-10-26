@@ -668,7 +668,7 @@ def proposals_section(ctx, cat_pedals):
                "| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |", "|---|--:|--:|--:|---|"]
         for mv in p["moved"]:
             rot = f"{mv['rot_from']} -> {mv['rot_to']} deg" if mv["rot_from"] != mv["rot_to"] else f"{mv['rot_to']} deg"
-            md.append(f"| {nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
+            md.append(f"| {mv.get('name') or nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
         pw = p.get("power") or {}
         md += ["", f"Power wiring for this layout (computed under the power policy; the build keeps using project.json"
                + (f"; {pw['error']}, so the owner's wiring is shown" if pw.get("error") else "") + "):", "",
