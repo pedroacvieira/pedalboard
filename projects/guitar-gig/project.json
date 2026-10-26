@@ -29,7 +29,7 @@
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} },
   "power_routing": { "edges": { "front": "forbidden", "left": "forbidden", "right": "forbidden", "back": "allowed" } },
-  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "reticon", "analog_chorus", "monk", "belle_epoch", "flight_delay", "tumnus_deluxe"],
+  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "flight_delay", "tumnus_deluxe"],
   "sections": {
     "priority": -10,
     "order": [
@@ -37,7 +37,7 @@
       { "name": "drive before the phasers", "pedals": ["fulldrive_2"] },
       { "name": "phase-type (phaser, vibe; any order)", "pedals": ["phase_95", "retrovibe"] },
       { "name": "fuzz / distortion after the phasers (Protein still follows Ratsbane)", "pedals": ["red_muck", "ratsbane", "protein"] },
-      { "name": "modulation", "pedals": ["reticon", "analog_chorus"] },
+      { "name": "modulation", "pedals": ["analog_chorus", "reticon"] },
       { "name": "tremolo", "pedals": ["monk"] },
       { "name": "delays", "pedals": ["belle_epoch", "flight_delay"] },
       { "name": "eq / boost", "pedals": ["tumnus_deluxe"] }

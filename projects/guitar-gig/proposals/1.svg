@@ -19,7 +19,7 @@
 <rect x="346.8" y="270.1" width="151.7" height="17.7" fill="#90a4ae" class="hole"/>
 <rect x="555.2" y="270.1" width="48.9" height="17.0" fill="#90a4ae" class="hole"/>
 </g>
-<rect x="12.3" y="18.5" width="618.0" height="326.5" fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8" class="routing-area"/>
+<rect x="12.3" y="18.5" width="618.0" height="334.8" fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8" class="routing-area"/>
 <g class="pedal" data-id="item-4000000004">
 <rect x="551.5" y="229.2" width="70.9" height="114.3" transform="rotate(0 586.90 286.31)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
 <path d="M551.5 285.3 L553.5 285.3 L553.5 282.3 L555.5 282.3 L555.5 231.2 L557.5 231.2 L557.5 229.2 L616.3 229.2 L616.3 231.2 L618.3 231.2 L618.3 282.3 L620.3 282.3 L620.3 285.3 L622.3 285.3 L622.3 296.3 L620.3 296.3 L620.3 299.4 L619.3 299.4 L619.3 339.5 L617.3 339.5 L617.3 342.5 L615.3 342.5 L615.3 343.5 L558.4 343.5 L558.4 342.5 L556.5 342.5 L556.5 339.5 L555.5 339.5 L555.5 299.4 L553.5 299.4 L553.5 296.3 L551.5 296.3 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
@@ -81,24 +81,24 @@
 <text x="258.6" y="81.3" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Analog Chorus</text>
 </g>
 <g class="pedal" data-id="item-4000000017">
-<rect x="149.0" y="73.9" width="75.7" height="123.7" transform="rotate(0 186.86 135.79)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
-<path d="M149.0 136.8 L153.0 136.8 L153.0 75.9 L154.0 75.9 L154.0 73.9 L219.7 73.9 L219.7 75.9 L220.7 75.9 L220.7 153.7 L222.7 153.7 L222.7 154.7 L224.7 154.7 L224.7 168.7 L220.7 168.7 L220.7 196.7 L218.7 196.7 L218.7 197.6 L155.0 197.6 L155.0 196.7 L153.0 196.7 L153.0 169.7 L151.0 169.7 L151.0 168.7 L149.0 168.7 L149.0 154.7 L153.0 154.7 L153.0 147.8 L149.0 147.8 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
-<text x="186.9" y="137.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Harmonious Monk Mk2</text>
+<rect x="149.0" y="75.6" width="75.7" height="123.7" transform="rotate(0 186.86 137.48)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M149.0 138.5 L153.0 138.5 L153.0 77.6 L154.0 77.6 L154.0 75.6 L219.7 75.6 L219.7 77.6 L220.7 77.6 L220.7 155.4 L222.7 155.4 L222.7 156.4 L224.7 156.4 L224.7 170.4 L220.7 170.4 L220.7 198.3 L218.7 198.3 L218.7 199.3 L155.0 199.3 L155.0 198.3 L153.0 198.3 L153.0 171.4 L151.0 171.4 L151.0 170.4 L149.0 170.4 L149.0 156.4 L153.0 156.4 L153.0 149.5 L149.0 149.5 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="186.9" y="139.1" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Harmonious Monk Mk2</text>
 </g>
 <g class="pedal" data-id="item-4000000018">
-<rect x="15.8" y="110.6" width="119.4" height="97.0" transform="rotate(0 75.49 159.15)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
-<path d="M15.8 115.6 L16.8 115.6 L16.8 114.6 L17.8 114.6 L17.8 113.6 L18.8 113.6 L18.8 112.6 L58.9 112.6 L58.9 110.6 L71.0 110.6 L71.0 112.6 L80.0 112.6 L80.0 111.6 L81.0 111.6 L81.0 110.6 L92.1 110.6 L92.1 111.6 L93.1 111.6 L93.1 112.6 L102.1 112.6 L102.1 111.6 L103.1 111.6 L103.1 110.6 L114.1 110.6 L114.1 111.6 L115.1 111.6 L115.1 112.6 L132.2 112.6 L132.2 113.6 L133.2 113.6 L133.2 114.6 L134.2 114.6 L134.2 115.6 L135.2 115.6 L135.2 205.7 L134.2 205.7 L134.2 206.7 L133.2 206.7 L133.2 207.7 L17.8 207.7 L17.8 206.7 L16.8 206.7 L16.8 205.7 L15.8 205.7 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
-<text x="75.5" y="160.7" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Belle Epoch Deluxe</text>
+<rect x="15.8" y="120.2" width="119.4" height="97.0" transform="rotate(0 75.49 168.74)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M15.8 125.2 L16.8 125.2 L16.8 124.2 L17.8 124.2 L17.8 123.2 L18.8 123.2 L18.8 122.2 L58.9 122.2 L58.9 120.2 L71.0 120.2 L71.0 122.2 L80.0 122.2 L80.0 121.2 L81.0 121.2 L81.0 120.2 L92.1 120.2 L92.1 121.2 L93.1 121.2 L93.1 122.2 L102.1 122.2 L102.1 121.2 L103.1 121.2 L103.1 120.2 L114.1 120.2 L114.1 121.2 L115.1 121.2 L115.1 122.2 L132.2 122.2 L132.2 123.2 L133.2 123.2 L133.2 124.2 L134.2 124.2 L134.2 125.2 L135.2 125.2 L135.2 215.3 L134.2 215.3 L134.2 216.3 L133.2 216.3 L133.2 217.3 L17.8 217.3 L17.8 216.3 L16.8 216.3 L16.8 215.3 L15.8 215.3 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="75.5" y="170.3" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Belle Epoch Deluxe</text>
 </g>
 <g class="pedal" data-id="item-4000000019">
-<rect x="98.2" y="217.3" width="94.0" height="125.7" transform="rotate(0 145.20 280.18)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
-<path d="M98.2 223.3 L100.2 223.3 L100.2 221.3 L108.2 221.3 L108.2 220.3 L111.2 220.3 L111.2 217.3 L121.2 217.3 L121.2 220.3 L124.2 220.3 L124.2 221.3 L132.2 221.3 L132.2 220.3 L135.2 220.3 L135.2 217.3 L145.2 217.3 L145.2 220.3 L148.2 220.3 L148.2 221.3 L168.2 221.3 L168.2 220.3 L171.2 220.3 L171.2 217.3 L181.2 217.3 L181.2 220.3 L184.2 220.3 L184.2 221.3 L190.2 221.3 L190.2 223.3 L192.2 223.3 L192.2 342.0 L190.2 342.0 L190.2 343.0 L100.2 343.0 L100.2 342.0 L98.2 342.0 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
-<text x="145.2" y="281.8" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Flight Delay</text>
+<rect x="87.5" y="225.2" width="94.0" height="125.7" transform="rotate(0 134.48 288.08)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M87.5 231.2 L89.5 231.2 L89.5 229.2 L97.5 229.2 L97.5 228.2 L100.5 228.2 L100.5 225.2 L110.5 225.2 L110.5 228.2 L113.5 228.2 L113.5 229.2 L121.5 229.2 L121.5 228.2 L124.5 228.2 L124.5 225.2 L134.5 225.2 L134.5 228.2 L137.5 228.2 L137.5 229.2 L157.5 229.2 L157.5 228.2 L160.5 228.2 L160.5 225.2 L170.5 225.2 L170.5 228.2 L173.5 228.2 L173.5 229.2 L179.5 229.2 L179.5 231.2 L181.5 231.2 L181.5 350.0 L179.5 350.0 L179.5 350.9 L89.5 350.9 L89.5 350.0 L87.5 350.0 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="134.5" y="289.7" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Flight Delay</text>
 </g>
 <g class="pedal" data-id="item-4000000020">
-<rect x="23.1" y="216.2" width="71.1" height="127.0" transform="rotate(0 58.70 279.68)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
-<path d="M23.1 220.2 L24.1 220.2 L24.1 219.2 L33.2 219.2 L33.2 218.2 L34.2 218.2 L34.2 216.2 L47.2 216.2 L47.2 218.2 L48.2 218.2 L48.2 219.2 L62.2 219.2 L62.2 218.2 L64.2 218.2 L64.2 216.2 L76.2 216.2 L76.2 218.2 L78.2 218.2 L78.2 219.2 L88.3 219.2 L88.3 220.2 L89.3 220.2 L89.3 222.2 L90.3 222.2 L90.3 291.2 L94.3 291.2 L94.3 298.2 L90.3 298.2 L90.3 341.2 L89.3 341.2 L89.3 342.2 L88.3 342.2 L88.3 343.2 L24.1 343.2 L24.1 342.2 L23.1 342.2 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
-<text x="58.7" y="281.3" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Tumnus Deluxe</text>
+<rect x="15.8" y="226.3" width="71.1" height="127.0" transform="rotate(0 51.36 289.84)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M15.8 230.3 L16.8 230.3 L16.8 229.3 L25.8 229.3 L25.8 228.3 L26.8 228.3 L26.8 226.3 L39.9 226.3 L39.9 228.3 L40.9 228.3 L40.9 229.3 L54.9 229.3 L54.9 228.3 L56.9 228.3 L56.9 226.3 L68.9 226.3 L68.9 228.3 L70.9 228.3 L70.9 229.3 L80.9 229.3 L80.9 230.3 L81.9 230.3 L81.9 232.3 L82.9 232.3 L82.9 301.3 L86.9 301.3 L86.9 308.3 L82.9 308.3 L82.9 351.3 L81.9 351.3 L81.9 352.4 L80.9 352.4 L80.9 353.3 L16.8 353.3 L16.8 352.4 L15.8 352.4 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="51.4" y="291.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Tumnus Deluxe</text>
 </g>
 <g class="pedal" data-id="item-2502068471">
 <rect x="567.8" y="108.9" width="48.3" height="95.5" transform="rotate(0 591.96 156.69)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
@@ -166,41 +166,41 @@
 <rect x="275.1" y="241.0" width="12.6" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="271.6" y="242.4" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="222.8" y="241.0" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="210.1" y="241.0" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="206.6" y="242.4" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="235.5" y="241.0" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="248.1" y="242.4" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="292.1" y="59.6" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="292.1" y="72.3" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="293.5" y="84.9" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="218.8" y="59.8" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="218.8" y="47.1" width="6.4" height="12.6" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="220.2" y="43.6" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="94.4" y="27.6" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="107.1" y="27.6" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="119.7" y="29.0" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="94.7" y="100.5" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="107.4" y="100.5" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="120.1" y="102.0" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="292.1" y="59.6" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="292.1" y="46.9" width="6.4" height="12.6" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="293.5" y="43.4" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="218.8" y="59.8" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="218.8" y="47.1" width="6.4" height="12.6" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="220.2" y="43.6" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="224.7" y="155.3" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="224.7" y="142.6" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="226.2" y="139.1" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="142.6" y="155.5" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="142.6" y="142.8" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="144.1" y="139.3" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="101.9" y="104.7" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="114.6" y="104.7" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="127.3" y="106.1" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="80.4" y="104.8" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="93.1" y="104.8" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="105.7" y="106.3" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="169.3" y="211.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="156.7" y="211.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="153.2" y="212.7" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="110.0" y="211.1" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="97.3" y="211.1" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="93.8" y="212.5" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="63.9" y="210.2" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="76.6" y="210.2" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="89.2" y="211.6" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="224.7" y="157.0" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="224.7" y="144.3" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="226.2" y="140.8" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="142.6" y="157.1" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="142.6" y="144.5" width="6.4" height="12.7" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="144.1" y="141.0" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="101.9" y="114.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="114.6" y="114.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="127.3" y="115.7" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="80.4" y="114.4" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="93.1" y="114.4" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="105.7" y="115.8" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="158.6" y="219.2" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="146.0" y="219.2" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="142.5" y="220.6" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="99.3" y="219.0" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="86.6" y="219.0" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="83.1" y="220.5" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="56.5" y="220.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="69.2" y="220.3" width="12.7" height="6.4" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="81.9" y="221.8" width="3.5" height="3.5" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="619.0" y="304.9" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="621.5" y="295.9" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="622.9" y="292.7" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
@@ -234,24 +234,24 @@
 <rect x="256.2" y="239.3" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="247.2" y="241.8" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="244.0" y="243.2" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="113.4" y="97.9" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="124.4" y="100.4" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="133.4" y="101.8" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="289.0" y="82.5" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="291.5" y="73.5" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="292.9" y="70.3" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="138.6" y="136.5" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="141.1" y="147.5" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="142.5" y="156.5" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="37.0" y="103.8" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="28.0" y="106.3" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="24.8" y="107.7" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="152.4" y="210.9" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="143.4" y="213.4" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="140.2" y="214.8" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="50.0" y="208.9" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="41.0" y="211.4" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="37.8" y="212.8" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="113.4" y="97.9" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="124.4" y="100.4" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="133.4" y="101.8" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="138.6" y="138.2" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="141.1" y="149.2" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="142.5" y="158.2" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="37.0" y="113.4" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="28.0" y="115.9" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="24.8" y="117.3" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="141.7" y="218.8" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="132.7" y="221.3" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="129.5" y="222.7" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="42.6" y="219.1" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="33.6" y="221.6" width="9.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="30.4" y="223.0" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <polyline points="551.6,290.9 548.4,290.9 548.4,268.4 549.2,218.6 526.7,218.6 526.7,221.8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
 <polyline points="551.6,290.9 548.4,290.9 548.4,268.4 549.2,218.6 526.7,218.6 526.7,221.8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#c62828" stroke-width="2.6" class="cable" data-id="S1"/>
 <polyline points="494.8,221.8 494.8,218.6 517.3,218.6 613.3,205.5 618.8,195.5 618.8,173.0 615.6,173.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
@@ -272,26 +272,33 @@
 <polyline points="300.8,130.9 297.6,130.9 297.6,153.4 275.6,189.1 275.6,229.8 277.3,231.5 287.8,235.5 310.3,235.5 310.3,232.3" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#827717" stroke-width="2.6" class="cable" data-id="S9"/>
 <polyline points="329.5,186.6 329.5,183.4 307.0,183.4 277.3,187.5 273.7,191.1 270.1,244.1 271.6,244.2 294.1,244.2 294.1,247.4" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
 <polyline points="329.5,186.6 329.5,183.4 307.0,183.4 277.3,187.5 273.7,191.1 270.1,244.1 271.6,244.2 294.1,244.2 294.1,247.4" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#283593" stroke-width="2.6" class="cable" data-id="S10"/>
-<polyline points="229.1,247.4 229.1,244.2 206.6,244.2 193.3,221.5 177.3,207.5 153.3,199.5 151.3,197.5 147.3,169.5 137.3,35.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="229.1,247.4 229.1,244.2 206.6,244.2 193.3,221.5 177.3,207.5 153.3,199.5 151.3,197.5 147.3,169.5 137.3,35.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#558b2f" stroke-width="2.6" class="cable" data-id="S11"/>
-<polyline points="101.1,100.5 101.1,103.7 123.6,103.7 137.3,99.5 153.3,71.5 225.3,21.5 291.3,21.5 295.3,43.4 295.3,65.9 292.1,65.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="101.1,100.5 101.1,103.7 123.6,103.7 137.3,99.5 153.3,71.5 225.3,21.5 291.3,21.5 295.3,43.4 295.3,65.9 292.1,65.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#b71c1c" stroke-width="2.6" class="cable" data-id="S12"/>
-<polyline points="225.2,66.1 222.0,66.1 222.0,43.6 221.3,71.5 223.3,77.5 223.3,133.5 227.3,139.5 227.9,139.1 227.9,161.6 224.7,161.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="225.2,66.1 222.0,66.1 222.0,43.6 221.3,71.5 223.3,77.5 223.3,133.5 227.3,139.5 227.9,139.1 227.9,161.6 224.7,161.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#0277bd" stroke-width="2.6" class="cable" data-id="S13"/>
-<polyline points="149.0,161.8 145.8,161.8 145.8,139.3 137.3,113.5 130.8,107.9 108.3,107.9 108.3,111.1" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="149.0,161.8 145.8,161.8 145.8,139.3 137.3,113.5 130.8,107.9 108.3,107.9 108.3,111.1" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#e65100" stroke-width="2.6" class="cable" data-id="S14"/>
-<polyline points="86.7,111.2 86.7,108.0 109.2,108.0 117.3,109.5 135.3,111.5 137.3,115.5 141.3,191.5 153.2,214.5 175.7,214.5 175.7,217.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="86.7,111.2 86.7,108.0 109.2,108.0 117.3,109.5 135.3,111.5 137.3,115.5 141.3,191.5 153.2,214.5 175.7,214.5 175.7,217.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#4a148c" stroke-width="2.6" class="cable" data-id="S15"/>
-<polyline points="116.3,217.5 116.3,214.3 93.8,214.3 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
-<polyline points="116.3,217.5 116.3,214.3 93.8,214.3 92.7,213.4 70.2,213.4 70.2,216.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#00695c" stroke-width="2.6" class="cable" data-id="S16"/>
-<polyline points="194.2,122.1 139.3,215.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P1"/>
-<polyline points="139.3,215.5 140.2,216.4 157.9,216.4 157.9,221.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P1"/>
-<circle cx="139.3" cy="215.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P1"/>
+<polyline points="229.1,247.4 229.1,244.2 251.6,244.2 291.3,137.5 295.3,88.4 295.3,65.9 292.1,65.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="229.1,247.4 229.1,244.2 251.6,244.2 291.3,137.5 295.3,88.4 295.3,65.9 292.1,65.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#558b2f" stroke-width="2.6" class="cable" data-id="S11"/>
+<polyline points="225.2,66.1 222.0,66.1 222.0,43.6 135.3,35.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="225.2,66.1 222.0,66.1 222.0,43.6 135.3,35.5 123.2,30.8 100.7,30.8 100.7,34.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#b71c1c" stroke-width="2.6" class="cable" data-id="S12"/>
+<polyline points="101.1,100.5 101.1,103.7 123.6,103.7 151.3,135.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="101.1,100.5 101.1,103.7 123.6,103.7 151.3,135.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#0277bd" stroke-width="2.6" class="cable" data-id="S13"/>
+<polyline points="151.3,135.5 227.3,141.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#0277bd" stroke-opacity="0.55" stroke-width="2.6" stroke-dasharray="4 2.4" class="cable-under" data-id="S13"/>
+<polyline points="227.3,141.5 227.9,140.8 227.9,163.3 224.7,163.3" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="227.3,141.5 227.9,140.8 227.9,163.3 224.7,163.3" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#0277bd" stroke-width="2.6" class="cable" data-id="S13"/>
+<circle cx="151.3" cy="135.5" r="3.1" fill="#ffffff" fill-opacity="0.6" stroke="#1c2428" stroke-width="0.6" class="hole-pass" data-id="S13"/>
+<circle cx="227.3" cy="141.5" r="3.1" fill="#ffffff" fill-opacity="0.6" stroke="#1c2428" stroke-width="0.6" class="hole-pass" data-id="S13"/>
+<polyline points="123.6,103.7 151.3,135.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" class="stacked"/>
+<polyline points="149.0,163.5 145.8,163.5 145.8,141.0 135.3,121.5 130.8,117.5 108.3,117.5 108.3,120.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="149.0,163.5 145.8,163.5 145.8,141.0 135.3,121.5 130.8,117.5 108.3,117.5 108.3,120.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#e65100" stroke-width="2.6" class="cable" data-id="S14"/>
+<polyline points="86.7,120.8 86.7,117.6 109.2,117.6 115.3,117.5 133.3,119.5 137.3,123.5 142.5,222.4 165.0,222.4 165.0,225.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="86.7,120.8 86.7,117.6 109.2,117.6 115.3,117.5 133.3,119.5 137.3,123.5 142.5,222.4 165.0,222.4 165.0,225.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#4a148c" stroke-width="2.6" class="cable" data-id="S15"/>
+<polyline points="133.3,119.5 137.3,123.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" class="stacked"/>
+<polyline points="105.6,225.4 105.6,222.2 83.1,222.2 85.4,223.5 62.9,223.5 62.9,226.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#1c2428" stroke-width="3.5" class="casing"/>
+<polyline points="105.6,225.4 105.6,222.2 83.1,222.2 85.4,223.5 62.9,223.5 62.9,226.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#00695c" stroke-width="2.6" class="cable" data-id="S16"/>
+<polyline points="194.2,122.1 129.3,219.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P1"/>
+<polyline points="129.3,219.5 129.5,224.3 147.2,224.3 147.2,229.8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P1"/>
+<circle cx="129.3" cy="219.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P1"/>
 <polyline points="206.0,122.1 145.3,135.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P2"/>
-<polyline points="145.3,135.5 135.3,111.5 115.3,109.5 24.8,109.3 42.5,109.3 42.5,114.8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P2"/>
+<polyline points="145.3,135.5 135.3,121.5 115.3,119.5 24.8,118.9 42.5,118.9 42.5,124.4" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P2"/>
 <circle cx="145.3" cy="135.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P2"/>
 <polyline points="217.9,122.1 145.3,149.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P3"/>
-<polyline points="145.3,149.5 144.1,159.7 144.1,142.0 149.6,142.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P3"/>
+<polyline points="145.3,149.5 144.1,161.4 144.1,143.7 149.6,143.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P3"/>
 <circle cx="145.3" cy="149.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P3"/>
 <polyline points="229.8,122.1 145.3,135.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P4"/>
 <polyline points="145.3,135.5 136.6,103.4 118.9,103.4 118.9,97.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P4"/>
@@ -308,10 +315,10 @@
 <circle cx="293.3" cy="135.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P7"/>
 <circle cx="247.3" cy="217.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P7"/>
 <polyline points="261.7,250.3 261.7,244.8 244.0,244.8 247.3,217.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P8"/>
-<polyline points="247.3,217.5 39.3,213.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P8"/>
-<polyline points="39.3,213.5 37.8,214.4 55.5,214.4 55.5,219.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P8"/>
+<polyline points="247.3,217.5 39.3,219.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P8"/>
+<polyline points="39.3,219.5 30.4,224.6 48.1,224.6 48.1,230.1" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P8"/>
 <circle cx="247.3" cy="217.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P8"/>
-<circle cx="39.3" cy="213.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P8"/>
+<circle cx="39.3" cy="219.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P8"/>
 <polyline points="344.9,122.6 385.3,133.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P9"/>
 <polyline points="385.3,133.5 385.3,89.5 388.4,81.6 388.4,63.9 393.9,63.9" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P9"/>
 <circle cx="385.3" cy="133.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P9"/>
@@ -379,28 +386,28 @@
 <g class="jack" data-jack="in" data-used="1"><line x1="294.1" y1="247.4" x2="294.1" y2="244.0" stroke="#1565c0" stroke-width="0.7"/><circle cx="294.1" cy="247.4" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
 <g class="jack" data-jack="out" data-used="1"><line x1="229.1" y1="247.4" x2="229.1" y2="244.0" stroke="#2e7d32" stroke-width="0.7"/><circle cx="229.1" cy="247.4" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
 <g class="jack" data-jack="power" data-used="1"><line x1="261.7" y1="250.3" x2="261.7" y2="246.9" stroke="#ef6c00" stroke-width="0.7"/><circle cx="261.7" cy="250.3" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="in" data-used="1"><line x1="100.7" y1="34.0" x2="100.7" y2="30.6" stroke="#1565c0" stroke-width="0.7"/><circle cx="100.7" cy="34.0" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
-<g class="jack" data-jack="out" data-used="1"><line x1="101.1" y1="100.5" x2="101.1" y2="103.9" stroke="#2e7d32" stroke-width="0.7"/><circle cx="101.1" cy="100.5" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="118.9" y1="97.9" x2="118.9" y2="101.3" stroke="#ef6c00" stroke-width="0.7"/><circle cx="118.9" cy="97.9" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="jack_4" data-used="0"><line x1="80.1" y1="100.7" x2="80.1" y2="104.1" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="80.1" cy="100.7" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
 <g class="jack" data-jack="in" data-used="1"><line x1="292.1" y1="65.9" x2="295.5" y2="65.9" stroke="#1565c0" stroke-width="0.7"/><circle cx="292.1" cy="65.9" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
 <g class="jack" data-jack="out" data-used="1"><line x1="225.2" y1="66.1" x2="221.8" y2="66.1" stroke="#2e7d32" stroke-width="0.7"/><circle cx="225.2" cy="66.1" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
 <g class="jack" data-jack="power" data-used="1"><line x1="289.0" y1="88.0" x2="292.4" y2="88.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="289.0" cy="88.0" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="jack_4" data-used="0"><line x1="224.8" y1="87.3" x2="221.4" y2="87.3" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="224.8" cy="87.3" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
-<g class="jack" data-jack="in" data-used="1"><line x1="224.7" y1="161.6" x2="228.1" y2="161.6" stroke="#1565c0" stroke-width="0.7"/><circle cx="224.7" cy="161.6" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
-<g class="jack" data-jack="out" data-used="1"><line x1="149.0" y1="161.8" x2="145.6" y2="161.8" stroke="#2e7d32" stroke-width="0.7"/><circle cx="149.0" cy="161.8" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="149.6" y1="142.0" x2="146.2" y2="142.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="149.6" cy="142.0" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="in" data-used="1"><line x1="108.3" y1="111.1" x2="108.3" y2="107.7" stroke="#1565c0" stroke-width="0.7"/><circle cx="108.3" cy="111.1" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
-<g class="jack" data-jack="out" data-used="1"><line x1="86.7" y1="111.2" x2="86.7" y2="107.8" stroke="#2e7d32" stroke-width="0.7"/><circle cx="86.7" cy="111.2" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="42.5" y1="114.8" x2="42.5" y2="111.4" stroke="#ef6c00" stroke-width="0.7"/><circle cx="42.5" cy="114.8" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="jack_4" data-used="0"><line x1="65.0" y1="111.3" x2="65.0" y2="107.9" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="65.0" cy="111.3" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
-<g class="jack" data-jack="in" data-used="1"><line x1="175.7" y1="217.7" x2="175.7" y2="214.3" stroke="#1565c0" stroke-width="0.7"/><circle cx="175.7" cy="217.7" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
-<g class="jack" data-jack="out" data-used="1"><line x1="116.3" y1="217.5" x2="116.3" y2="214.1" stroke="#2e7d32" stroke-width="0.7"/><circle cx="116.3" cy="217.5" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="157.9" y1="221.9" x2="157.9" y2="218.5" stroke="#ef6c00" stroke-width="0.7"/><circle cx="157.9" cy="221.9" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="jack_4" data-used="0"><line x1="140.2" y1="217.9" x2="140.2" y2="214.5" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="140.2" cy="217.9" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
-<g class="jack" data-jack="in" data-used="1"><line x1="70.2" y1="216.6" x2="70.2" y2="213.2" stroke="#1565c0" stroke-width="0.7"/><circle cx="70.2" cy="216.6" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
-<g class="jack" data-jack="out" data-used="1"><line x1="40.5" y1="216.6" x2="40.5" y2="213.2" stroke="#2e7d32" stroke-width="0.7"/><circle cx="40.5" cy="216.6" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="55.5" y1="219.9" x2="55.5" y2="216.5" stroke="#ef6c00" stroke-width="0.7"/><circle cx="55.5" cy="219.9" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="in" data-used="1"><line x1="100.7" y1="34.0" x2="100.7" y2="30.6" stroke="#1565c0" stroke-width="0.7"/><circle cx="100.7" cy="34.0" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
+<g class="jack" data-jack="out" data-used="1"><line x1="101.1" y1="100.5" x2="101.1" y2="103.9" stroke="#2e7d32" stroke-width="0.7"/><circle cx="101.1" cy="100.5" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="118.9" y1="97.9" x2="118.9" y2="101.3" stroke="#ef6c00" stroke-width="0.7"/><circle cx="118.9" cy="97.9" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="jack_4" data-used="0"><line x1="80.1" y1="100.7" x2="80.1" y2="104.1" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="80.1" cy="100.7" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
+<g class="jack" data-jack="in" data-used="1"><line x1="224.7" y1="163.3" x2="228.1" y2="163.3" stroke="#1565c0" stroke-width="0.7"/><circle cx="224.7" cy="163.3" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
+<g class="jack" data-jack="out" data-used="1"><line x1="149.0" y1="163.5" x2="145.6" y2="163.5" stroke="#2e7d32" stroke-width="0.7"/><circle cx="149.0" cy="163.5" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="149.6" y1="143.7" x2="146.2" y2="143.7" stroke="#ef6c00" stroke-width="0.7"/><circle cx="149.6" cy="143.7" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="in" data-used="1"><line x1="108.3" y1="120.7" x2="108.3" y2="117.3" stroke="#1565c0" stroke-width="0.7"/><circle cx="108.3" cy="120.7" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
+<g class="jack" data-jack="out" data-used="1"><line x1="86.7" y1="120.8" x2="86.7" y2="117.4" stroke="#2e7d32" stroke-width="0.7"/><circle cx="86.7" cy="120.8" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="42.5" y1="124.4" x2="42.5" y2="121.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="42.5" cy="124.4" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="jack_4" data-used="0"><line x1="65.0" y1="120.9" x2="65.0" y2="117.5" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="65.0" cy="120.9" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
+<g class="jack" data-jack="in" data-used="1"><line x1="165.0" y1="225.6" x2="165.0" y2="222.2" stroke="#1565c0" stroke-width="0.7"/><circle cx="165.0" cy="225.6" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
+<g class="jack" data-jack="out" data-used="1"><line x1="105.6" y1="225.4" x2="105.6" y2="222.0" stroke="#2e7d32" stroke-width="0.7"/><circle cx="105.6" cy="225.4" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="147.2" y1="229.8" x2="147.2" y2="226.4" stroke="#ef6c00" stroke-width="0.7"/><circle cx="147.2" cy="229.8" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="jack_4" data-used="0"><line x1="129.5" y1="225.8" x2="129.5" y2="222.4" stroke="#6a1b9a" stroke-width="0.7"/><circle cx="129.5" cy="225.8" r="1.4" fill="#ffffff" stroke="#6a1b9a" stroke-width="0.6"/></g>
+<g class="jack" data-jack="in" data-used="1"><line x1="62.9" y1="226.7" x2="62.9" y2="223.3" stroke="#1565c0" stroke-width="0.7"/><circle cx="62.9" cy="226.7" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/></g>
+<g class="jack" data-jack="out" data-used="1"><line x1="33.2" y1="226.7" x2="33.2" y2="223.3" stroke="#2e7d32" stroke-width="0.7"/><circle cx="33.2" cy="226.7" r="1.4" fill="#2e7d32" stroke="#2e7d32" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="48.1" y1="230.1" x2="48.1" y2="226.7" stroke="#ef6c00" stroke-width="0.7"/><circle cx="48.1" cy="230.1" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <circle cx="586.4" cy="308.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="491.5" cy="329.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="528.3" cy="329.1" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="function"/>
@@ -416,15 +423,15 @@
 <circle cx="288.7" cy="209.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="296.6" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="228.5" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
-<circle cx="119.1" cy="67.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="257.9" cy="104.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
-<circle cx="166.8" cy="182.2" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
-<circle cx="205.9" cy="182.2" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
-<circle cx="112.8" cy="193.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
-<circle cx="37.6" cy="193.1" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="function"/>
-<circle cx="110.4" cy="327.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
-<circle cx="179.8" cy="327.5" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
-<circle cx="56.2" cy="313.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="119.1" cy="67.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="166.8" cy="183.9" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="205.9" cy="183.9" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
+<circle cx="112.8" cy="202.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="37.6" cy="202.7" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="function"/>
+<circle cx="99.7" cy="335.4" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="169.0" cy="335.4" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
+<circle cx="48.9" cy="323.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <defs><marker id="arr" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#e65100"/></marker></defs>
 <rect x="245.8" y="183.7" width="94.0" height="46.0" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
 <rect x="277.4" y="186.6" width="94.0" height="46.0" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
@@ -435,17 +442,21 @@
 <line x1="259.7" y1="99.5" x2="258.6" y2="79.7" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
 <text x="258.6" y="88.7" font-size="6" text-anchor="middle" fill="#e65100">20 mm</text>
 <rect x="144.5" y="82.4" width="75.7" height="123.7" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="149.0" y="73.9" width="75.7" height="123.7" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
-<line x1="182.3" y1="144.3" x2="186.9" y2="135.8" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
-<text x="186.9" y="144.8" font-size="6" text-anchor="middle" fill="#e65100">10 mm</text>
+<rect x="149.0" y="75.6" width="75.7" height="123.7" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
+<line x1="182.3" y1="144.3" x2="186.9" y2="137.5" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
+<text x="186.9" y="146.5" font-size="6" text-anchor="middle" fill="#e65100">8 mm</text>
 <rect x="19.8" y="110.1" width="119.4" height="97.0" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="15.8" y="110.6" width="119.4" height="97.0" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
-<line x1="79.4" y1="158.6" x2="75.5" y2="159.1" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
-<text x="75.5" y="168.1" font-size="6" text-anchor="middle" fill="#e65100">4 mm</text>
+<rect x="15.8" y="120.2" width="119.4" height="97.0" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
+<line x1="79.4" y1="158.6" x2="75.5" y2="168.7" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
+<text x="75.5" y="177.7" font-size="6" text-anchor="middle" fill="#e65100">11 mm</text>
 <rect x="100.5" y="217.9" width="94.0" height="125.7" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="98.2" y="217.3" width="94.0" height="125.7" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
-<line x1="147.5" y1="280.7" x2="145.2" y2="280.2" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
-<text x="145.2" y="289.2" font-size="6" text-anchor="middle" fill="#e65100">2 mm</text>
+<rect x="87.5" y="225.2" width="94.0" height="125.7" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
+<line x1="147.5" y1="280.7" x2="134.5" y2="288.1" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
+<text x="134.5" y="297.1" font-size="6" text-anchor="middle" fill="#e65100">15 mm</text>
+<rect x="23.1" y="216.2" width="71.1" height="127.0" fill="none" stroke="#757575" stroke-width="0.8" stroke-dasharray="3 2"/>
+<rect x="15.8" y="226.3" width="71.1" height="127.0" fill="#ffe0b2" opacity="0.35" stroke="#e65100" stroke-width="1.2"/>
+<line x1="58.7" y1="279.7" x2="51.4" y2="289.8" stroke="#e65100" stroke-width="1" marker-end="url(#arr)"/>
+<text x="51.4" y="298.8" font-size="6" text-anchor="middle" fill="#e65100">12 mm</text>
 <text x="548.8" y="244.5" font-size="3" text-anchor="middle" fill="#c62828" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S1</text>
 <text x="565.3" y="213.1" font-size="3" text-anchor="middle" fill="#1565c0" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S2</text>
 <text x="609.3" y="66.6" font-size="3" text-anchor="middle" fill="#2e7d32" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S3</text>
@@ -456,20 +467,20 @@
 <text x="377.2" y="165.1" font-size="3" text-anchor="middle" fill="#4e342e" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S8</text>
 <text x="286.6" y="172.3" font-size="3" text-anchor="middle" fill="#827717" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S9</text>
 <text x="271.9" y="218.6" font-size="3" text-anchor="middle" fill="#283593" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S10</text>
-<text x="142.3" y="103.6" font-size="3" text-anchor="middle" fill="#558b2f" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S11</text>
-<text x="189.3" y="47.6" font-size="3" text-anchor="middle" fill="#b71c1c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S12</text>
-<text x="223.3" y="106.6" font-size="3" text-anchor="middle" fill="#0277bd" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S13</text>
-<text x="141.6" y="127.5" font-size="3" text-anchor="middle" fill="#e65100" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S14</text>
-<text x="139.3" y="154.6" font-size="3" text-anchor="middle" fill="#4a148c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S15</text>
-<text x="105.1" y="215.3" font-size="3" text-anchor="middle" fill="#00695c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S16</text>
-<text x="141.7" y="214.9" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P1</text>
-<text x="26.3" y="107.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P2</text>
-<text x="145.6" y="158.2" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P3</text>
+<text x="271.5" y="191.9" font-size="3" text-anchor="middle" fill="#558b2f" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S11</text>
+<text x="178.6" y="40.6" font-size="3" text-anchor="middle" fill="#b71c1c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S12</text>
+<text x="189.3" y="139.6" font-size="3" text-anchor="middle" fill="#0277bd" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S13</text>
+<text x="145.8" y="153.3" font-size="3" text-anchor="middle" fill="#e65100" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S14</text>
+<text x="139.9" y="174.0" font-size="3" text-anchor="middle" fill="#4a148c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S15</text>
+<text x="74.1" y="224.6" font-size="3" text-anchor="middle" fill="#00695c" stroke="#ffffff" stroke-width="1.05" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="cable-label">S16</text>
+<text x="131.0" y="222.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P1</text>
+<text x="26.3" y="117.4" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P2</text>
+<text x="145.6" y="159.9" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P3</text>
 <text x="138.1" y="101.9" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P4</text>
 <text x="296.0" y="68.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P5</text>
 <text x="297.6" y="127.3" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P6</text>
 <text x="245.5" y="243.3" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P7</text>
-<text x="39.3" y="212.9" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P8</text>
+<text x="31.9" y="223.1" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P8</text>
 <text x="389.9" y="80.1" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P9</text>
 <text x="378.1" y="189.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P10</text>
 <text x="494.5" y="218.6" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P11</text>
@@ -485,14 +496,17 @@
 <rect x="314.3" y="362.0" width="8.0" height="4.0" fill="none" stroke="#78909c" stroke-dasharray="4 3" stroke-width="0.8"/><text x="324.3" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">routing area</text>
 <rect x="349.1" y="362.0" width="8.0" height="4.0" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45"/><text x="359.1" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">dashed: Pedal Playground box</text>
 <rect x="409.0" y="362.0" width="8.0" height="4.0" fill="#90a4ae" opacity="0.3"/><text x="419.0" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">Board hole</text>
-<line x1="440.7" y1="364.0" x2="448.7" y2="364.0" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2"/><text x="450.7" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">brown: DC power cable (P#), thinner than the patch cables</text>
-<line x1="12.3" y1="368.6" x2="20.3" y2="368.6" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2"/><text x="22.3" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">dashed light brown: power cable under the board</text>
-<circle cx="106.0" cy="368.6" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5"/><text x="112.0" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">ring: power cable through a hole</text>
-<rect x="170.4" y="366.8" width="3.6" height="3.6" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5"/><text x="178.2" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">square: power cable over the board edge</text>
-<circle cx="249.3" cy="368.6" r="2.2" fill="#263238" stroke="#263238" stroke-width="0.6"/><text x="255.3" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">bypass footswitch</text>
-<circle cx="292.0" cy="368.6" r="2.2" fill="#e53935" stroke="#263238" stroke-width="0.6"/><text x="298.0" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">boost footswitch</text>
-<circle cx="333.1" cy="368.6" r="2.2" fill="#1e88e5" stroke="#263238" stroke-width="0.6"/><text x="339.1" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">tap footswitch</text>
-<circle cx="371.0" cy="368.6" r="2.2" fill="#ffffff" stroke="#263238" stroke-width="0.6"/><text x="377.0" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">function footswitch</text>
+<line x1="440.7" y1="364.0" x2="448.7" y2="364.0" stroke-linecap="round" stroke="#78909c" stroke-opacity="0.55" stroke-width="1.6" stroke-dasharray="4 2.4"/><text x="450.7" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">dashed light: cable under the board</text>
+<circle cx="515.6" cy="364.0" r="2.2" fill="#ffffff" fill-opacity="0.6" stroke="#1c2428" stroke-width="0.6"/><text x="521.6" y="365.0" font-size="2.8" text-anchor="start" fill="#263238">ring: pass through a hole</text>
+<line x1="12.3" y1="368.6" x2="20.3" y2="368.6" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2"/><text x="22.3" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">brown: DC power cable (P#), thinner than the patch cables</text>
+<line x1="117.7" y1="368.6" x2="125.7" y2="368.6" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2"/><text x="127.7" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">dashed light brown: power cable under the board</text>
+<circle cx="211.4" cy="368.6" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5"/><text x="217.4" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">ring: power cable through a hole</text>
+<rect x="275.8" y="366.8" width="3.6" height="3.6" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5"/><text x="283.6" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">square: power cable over the board edge</text>
+<line x1="350.7" y1="368.6" x2="358.7" y2="368.6" stroke="#1c2428" stroke-width="2.4" stroke-linecap="butt"/><line x1="350.7" y1="368.6" x2="358.7" y2="368.6" stroke="#78909c" stroke-width="1.6" stroke-linecap="butt"/><line x1="350.7" y1="368.6" x2="358.7" y2="368.6" stroke-linecap="round" stroke="#ffffff" stroke-width="0.6" stroke-dasharray="1.6 1.6"/><text x="360.7" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">white dashes: cables stacked on top of each other</text>
+<circle cx="447.5" cy="368.6" r="2.2" fill="#263238" stroke="#263238" stroke-width="0.6"/><text x="453.5" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">bypass footswitch</text>
+<circle cx="490.2" cy="368.6" r="2.2" fill="#e53935" stroke="#263238" stroke-width="0.6"/><text x="496.2" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">boost footswitch</text>
+<circle cx="531.3" cy="368.6" r="2.2" fill="#1e88e5" stroke="#263238" stroke-width="0.6"/><text x="537.3" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">tap footswitch</text>
+<circle cx="569.2" cy="368.6" r="2.2" fill="#ffffff" stroke="#263238" stroke-width="0.6"/><text x="575.2" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">function footswitch</text>
 <text x="12.3" y="374.2" font-size="2.8" text-anchor="start" fill="#263238">orange: moved pedals (dashed grey: the owner's position, arrow: the move)</text>
 <g class="legend-row" data-id="S1"><line x1="12.3" y1="383.1" x2="19.3" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="12.3" y1="383.1" x2="19.3" y2="383.1" stroke="#c62828" stroke-width="1.6" stroke-linecap="round"/><text x="21.3" y="384.1" font-size="2.8" text-anchor="start" fill="#c62828" font-weight="bold">S1</text><text x="29.3" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">Sun Face BC183 out -&gt; 3699 Fuzz in</text><text x="121.5" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">95 mm</text><text x="123.5" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S2"><line x1="12.3" y1="387.7" x2="19.3" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="12.3" y1="387.7" x2="19.3" y2="387.7" stroke="#1565c0" stroke-width="1.6" stroke-linecap="round"/><text x="21.3" y="388.7" font-size="2.8" text-anchor="start" fill="#1565c0" font-weight="bold">S2</text><text x="29.3" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">3699 Fuzz out -&gt; Beano Boost in</text><text x="121.5" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">153 mm</text><text x="123.5" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
@@ -504,10 +518,10 @@
 <g class="legend-row" data-id="S8"><line x1="129.5" y1="396.9" x2="136.5" y2="396.9" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="129.5" y1="396.9" x2="136.5" y2="396.9" stroke="#4e342e" stroke-width="1.6" stroke-linecap="round"/><text x="138.5" y="397.9" font-size="2.8" text-anchor="start" fill="#4e342e" font-weight="bold">S8</text><text x="146.5" y="397.9" font-size="2.8" text-anchor="start" fill="#263238">Retrovibe out -&gt; Red Muck Mk2 in</text><text x="238.8" y="397.9" font-size="2.8" text-anchor="end" fill="#263238" class="length">68 mm</text><text x="240.8" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S9"><line x1="246.8" y1="383.1" x2="253.8" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="383.1" x2="253.8" y2="383.1" stroke="#827717" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="384.1" font-size="2.8" text-anchor="start" fill="#827717" font-weight="bold">S9</text><text x="263.8" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">Red Muck Mk2 out -&gt; Ratsbane in</text><text x="356.0" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">141 mm</text><text x="358.0" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S10"><line x1="246.8" y1="387.7" x2="253.8" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="387.7" x2="253.8" y2="387.7" stroke="#283593" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="388.7" font-size="2.8" text-anchor="start" fill="#283593" font-weight="bold">S10</text><text x="263.8" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Ratsbane out -&gt; Protein V3 in</text><text x="356.0" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">133 mm</text><text x="358.0" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S11"><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#558b2f" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="393.3" font-size="2.8" text-anchor="start" fill="#558b2f" font-weight="bold">S11</text><text x="263.8" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Protein V3 out -&gt; Reticon Flanger in</text><text x="356.0" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">298 mm</text><text x="358.0" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S12"><line x1="246.8" y1="396.9" x2="253.8" y2="396.9" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="396.9" x2="253.8" y2="396.9" stroke="#b71c1c" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c" font-weight="bold">S12</text><text x="263.8" y="397.9" font-size="2.8" text-anchor="start" fill="#263238">Reticon Flanger out -&gt; Analog Chorus in</text><text x="356.0" y="397.9" font-size="2.8" text-anchor="end" fill="#263238" class="length">268 mm</text><text x="358.0" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S13"><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#0277bd" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="384.1" font-size="2.8" text-anchor="start" fill="#0277bd" font-weight="bold">S13</text><text x="381.0" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">Analog Chorus out -&gt; Harmonious Monk Mk2 in</text><text x="473.3" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">143 mm</text><text x="475.3" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S14"><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#e65100" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="388.7" font-size="2.8" text-anchor="start" fill="#e65100" font-weight="bold">S14</text><text x="381.0" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Harmonious Monk Mk2 out -&gt; Belle Epoch Deluxe in</text><text x="473.3" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">81 mm</text><text x="475.3" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S15"><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#4a148c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="393.3" font-size="2.8" text-anchor="start" fill="#4a148c" font-weight="bold">S15</text><text x="381.0" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Belle Epoch Deluxe out -&gt; Flight Delay in</text><text x="473.3" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">178 mm</text><text x="475.3" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
-<g class="legend-row" data-id="S16"><line x1="364.0" y1="396.9" x2="371.0" y2="396.9" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="396.9" x2="371.0" y2="396.9" stroke="#00695c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="397.9" font-size="2.8" text-anchor="start" fill="#00695c" font-weight="bold">S16</text><text x="381.0" y="397.9" font-size="2.8" text-anchor="start" fill="#263238">Flight Delay out -&gt; Tumnus Deluxe in</text><text x="473.3" y="397.9" font-size="2.8" text-anchor="end" fill="#263238" class="length">46 mm</text><text x="475.3" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S11"><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="392.3" x2="253.8" y2="392.3" stroke="#558b2f" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="393.3" font-size="2.8" text-anchor="start" fill="#558b2f" font-weight="bold">S11</text><text x="263.8" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Protein V3 out -&gt; Analog Chorus in</text><text x="356.0" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">208 mm</text><text x="358.0" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S12"><line x1="246.8" y1="396.9" x2="253.8" y2="396.9" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="246.8" y1="396.9" x2="253.8" y2="396.9" stroke="#b71c1c" stroke-width="1.6" stroke-linecap="round"/><text x="255.8" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c" font-weight="bold">S12</text><text x="263.8" y="397.9" font-size="2.8" text-anchor="start" fill="#263238">Analog Chorus out -&gt; Reticon Flanger in</text><text x="356.0" y="397.9" font-size="2.8" text-anchor="end" fill="#263238" class="length">145 mm</text><text x="358.0" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S13"><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="383.1" x2="371.0" y2="383.1" stroke="#0277bd" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="384.1" font-size="2.8" text-anchor="start" fill="#0277bd" font-weight="bold">S13</text><text x="381.0" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">Reticon Flanger out -&gt; Harmonious Monk Mk2 in</text><text x="473.3" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">194 mm</text><text x="475.3" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S14"><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="387.7" x2="371.0" y2="387.7" stroke="#e65100" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="388.7" font-size="2.8" text-anchor="start" fill="#e65100" font-weight="bold">S14</text><text x="381.0" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Harmonious Monk Mk2 out -&gt; Belle Epoch Deluxe in</text><text x="473.3" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">73 mm</text><text x="475.3" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S15"><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="392.3" x2="371.0" y2="392.3" stroke="#4a148c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="393.3" font-size="2.8" text-anchor="start" fill="#4a148c" font-weight="bold">S15</text><text x="381.0" y="393.3" font-size="2.8" text-anchor="start" fill="#263238">Belle Epoch Deluxe out -&gt; Flight Delay in</text><text x="473.3" y="393.3" font-size="2.8" text-anchor="end" fill="#263238" class="length">174 mm</text><text x="475.3" y="393.3" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
+<g class="legend-row" data-id="S16"><line x1="364.0" y1="396.9" x2="371.0" y2="396.9" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="364.0" y1="396.9" x2="371.0" y2="396.9" stroke="#00695c" stroke-width="1.6" stroke-linecap="round"/><text x="373.0" y="397.9" font-size="2.8" text-anchor="start" fill="#00695c" font-weight="bold">S16</text><text x="381.0" y="397.9" font-size="2.8" text-anchor="start" fill="#263238">Flight Delay out -&gt; Tumnus Deluxe in</text><text x="473.3" y="397.9" font-size="2.8" text-anchor="end" fill="#263238" class="length">48 mm</text><text x="475.3" y="397.9" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 </svg>
