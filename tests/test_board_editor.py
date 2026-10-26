@@ -169,9 +169,9 @@ def test_project_rows_count_holes_and_edits(tmp_path, monkeypatch):
     monkeypatch.setattr(be, "project_dirs", lambda names: [p])
     db = {"Rock Duo": {"Image": "rock-duo.png", "Width": 1, "Height": 1}}
     (row,) = be.project_rows(None, db, {"rock-duo.png": {"holes": [[0, 0, 1, 1]] * 3}})
-    assert "demo" in row and "rock-duo.png" in row and "derived holes  3" in row and "edit boxes 1" in row
+    assert "demo" in row and "rock-duo.png" in row and "hole rects  3" in row and "edit boxes 1" in row
     (row,) = be.project_rows(None, db, {})
-    assert "derived holes  ?" in row
+    assert "hole rects  ?" in row
 
 
 # --- the window ----------------------------------------------------------------------------------

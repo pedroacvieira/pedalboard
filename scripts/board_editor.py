@@ -3,7 +3,7 @@
 
     uv run scripts/board_editor.py <project>                open the editor on the project's board
     uv run scripts/board_editor.py <project> --image FILE   use a local PNG instead of the cached / downloaded one
-    uv run scripts/board_editor.py --list                   every project: board image, derived holes, edit boxes
+    uv run scripts/board_editor.py --list                   every project: board image, derived hole rects, edit boxes
 
 The holes derived from the image (catalog/boards.json, `uv run scripts/boards.py <project>`) are drawn as blue
 outlines. The project's boxes are saved to projects/<name>/board.json (fractions 0..1 of the image, one box per line)
@@ -174,7 +174,7 @@ def project_rows(names, db, boards_data):
             continue
         entry = boards_data.get(image)
         holes = "?" if entry is None else str(len(entry["holes"]))
-        rows.append(f"{pdir.name:<16} {image:<28} derived holes {holes:>2}   edit boxes {len(boards.load_edits(pdir))}")
+        rows.append(f"{pdir.name:<16} {image:<28} hole rects {holes:>2}   edit boxes {len(boards.load_edits(pdir))}")
     return rows
 
 
