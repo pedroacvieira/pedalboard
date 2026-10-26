@@ -53,6 +53,14 @@ def board(box):
     return rect(*box, fill="#eceff1", stroke="#90a4ae", stroke_width=1, class_="board")
 
 
+def holes(rects):
+    """The board's holes (slots / cutouts in the deck), a darker fill so the board outline stays readable; one group, so
+    rectangles that touch do not show seams. Nothing without holes."""
+    if not rects:
+        return []
+    return ['<g class="holes" opacity="0.3">'] + [rect(*r, fill="#90a4ae", class_="hole") for r in rects] + ["</g>"]
+
+
 def routing_area(x0, y0, x1, y1):
     return rect(x0, y0, x1, y1, fill="none", stroke=GREY, stroke_dasharray="4 3", stroke_width=0.8, class_="routing-area")
 
@@ -305,11 +313,14 @@ def legend_table(rows, x, y, width):
 def key_entries(ctx, cable_list, max_stack):
     """(sample kind, text) for the key line: the symbols this picture uses."""
     r = ctx.get("routing") or {}
+    layout_holes = (ctx.get("layout") or {}).get("holes")
     st = [c.get("status") or "" for c in signal_cables(cable_list)]
     e = [("jack_used", "used jack (colour: input blue, output green, power orange, other purple)"),
          ("jack_free", "unused jack (the tick points to the side the plug enters from)"),
          ("head", "plug head and its cable exit"), ("area", "routing area"),
          ("box", "dashed: Pedal Playground box")]
+    if layout_holes:
+        e.append(("hole", "Board hole"))
     if any("squeezed" in s for s in st):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
     if any(c.get("stacked_with") for c in signal_cables(cable_list)):
@@ -341,6 +352,8 @@ def key_sample(kind, x, y):
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke=GREY, stroke_dasharray="4 3", stroke_width=0.8)
     if kind == "box":
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke="#455a64", stroke_width=0.3, stroke_dasharray="2 1.5", opacity=0.45)
+    if kind == "hole":
+        return rect(x, y - 2, x + 8, y + 2, fill="#90a4ae", opacity=0.3)
     if kind == "overflow":
         return rect(x, y - 2, x + 8, y + 2, fill="#ff1744", opacity=0.35)
     if kind.startswith("fs:"):
@@ -445,7 +458,7 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     cable_list = ctx.get("cable_list") or []
     colours, ends = cable_colours(cable_list), jack_ends(layout, cable_list)
 
-    body = [board(bx), routing_area(ax0, ay0, ax1, r.get("front_y") or bx[3])]
+    body = [board(bx)] + holes(layout.get("holes")) + [routing_area(ax0, ay0, ax1, r.get("front_y") or bx[3])]
     for o in layout["obstacles"]:
         cid = cid_of.get(o["id"])
         body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), uris.get(cid), (layout.get("shapes") or {}).get(o["id"])))

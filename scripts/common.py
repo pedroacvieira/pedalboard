@@ -14,6 +14,7 @@ FOOTSWITCHES_FILE = CATALOG / "footswitches.json"
 CABLES_FILE = CATALOG / "cables.json"
 SITE = "https://pedalplayground.com/public/data/"
 IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
+BOARD_IMAGE_URLS = ("https://pedalplayground.com/public/images/pedalboards/{}", "https://pedalplayground.com/app/images/pedalboards/{}")
 IMAGE_DIR = CACHE / "images"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
@@ -129,15 +130,15 @@ def dumps_per_line(doc, key, mapping, key_order):
     return "\n".join(lines) + "\n"
 
 
-def fetch_image(image_name, refresh=False):
-    """Download a Pedal Playground pedal PNG into .cache/images/ (larger version first); returns the cached path.
-    Raises RuntimeError with every failure when none of the URLs works."""
+def fetch_image(image_name, refresh=False, kind="pedals"):
+    """Download a Pedal Playground pedal PNG (`kind="pedalboards"`: a board PNG) into .cache/images/ (larger version
+    first); returns the cached path. Raises RuntimeError with every failure when none of the URLs works."""
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     path = IMAGE_DIR / image_name
     if path.exists() and not refresh:
         return path
     errors = []
-    for url in IMAGE_URLS:
+    for url in (BOARD_IMAGE_URLS if kind == "pedalboards" else IMAGE_URLS):
         url = url.format(image_name)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})

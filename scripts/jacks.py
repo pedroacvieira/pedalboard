@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 import design
+import boards as boards_mod
 import outlines as outlines_mod
 from common import JACKS_FILE, dumps_per_line, pedal_name
 
@@ -178,13 +179,15 @@ def place_chain(items, chain, cat_pedals, by_title=None):
     return placed, count
 
 
-def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None):
+def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None, board_data=None,
+                      board_edits=None):
     """Which layout item is which chain pedal / supply instance, the board and the obstacles.
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
-    "shapes" {item id: [canvas rects]}, "no_outline" [titles]} (the outline of every obstacle and placed item, its box
-    without an outline; `no_outline` lists those items;
-    `outlines`: catalog/outlines.json, read if None); placement problems go to `warnings` / `clear_sink` (missing
+    "shapes" {item id: [canvas rects]}, "no_outline" [titles], "holes" [canvas rects]} (the outline of every obstacle and
+    placed item, its box without an outline; `no_outline` lists those items; the board's holes, nothing uses them yet;
+    `outlines`: catalog/outlines.json, read if None; `board_data`: usable catalog/boards.json entries, read if None;
+    `board_edits`: the project's board.json boxes, none if None); placement problems go to `warnings` / `clear_sink` (missing
     chain pedal)."""
     supplies_layer = jset.get("supplies_layer", "under")
     by_title = items_by_title(items)
@@ -218,11 +221,14 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     shown = list(obstacles) + list(placed.values())
     shapes = {i["id"]: design.outline_rects(i, outlines) for i in shown}
     no_outline = sorted({i["title"] for i in shown if not outlines.get(i.get("image") or "")})
-    return {"board": boards[0] if boards else None, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
-            "shapes": shapes, "no_outline": no_outline}
+    board = boards[0] if boards else None
+    board_data = boards_mod.load() if board_data is None else board_data
+    holes = design.board_holes(board, (board_data.get((board or {}).get("image") or "") or {}).get("holes"), board_edits)
+    return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
+            "shapes": shapes, "no_outline": no_outline, "holes": holes}
 
 
-def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None):
+def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
@@ -234,7 +240,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
     if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_canvas) to
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
-    `outlines`: catalog/outlines.json (read if None), for the layout's "shapes".
+    `outlines`: catalog/outlines.json (read if None), for the layout's "shapes"; `board_data`: usable
+    catalog/boards.json (read if None), for the layout's "holes" (with the project's board.json edits).
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
@@ -305,7 +312,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     if items is None:
         ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
         return
-    lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines)
+    lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
+                            board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
     ctx["layout"] = {**lay, "jacks": jacks_data, "outward_mm": outward}

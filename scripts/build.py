@@ -10,6 +10,7 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
+import boards
 import footswitches
 import jacks
 import outlines
@@ -42,14 +43,15 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None, board_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
     candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
     project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
     signal and power jacks falls back to the fixed boxes): for callers that only need the data findings.
-    `outline_data`: usable catalog/outlines.json entries (read if None)."""
+    `outline_data`: usable catalog/outlines.json entries (read if None). `board_data`: usable catalog/boards.json
+    entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
@@ -276,7 +278,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True, items=items, outlines=outline_data)
+                cable_types=cable_types, defer=True, items=items, outlines=outline_data, board_data=board_data)
     if route:
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
@@ -884,9 +886,10 @@ def main():
     jacks_file = jacks.read_file()
     fs_file = footswitches.read_file()
     outl = outlines.usable(outlines.read_file()["outlines"])
+    board_data = boards.load()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl)
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -906,7 +909,7 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl)
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
                 for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)
