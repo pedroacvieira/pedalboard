@@ -179,12 +179,25 @@ def place_chain(items, chain, cat_pedals, by_title=None):
     return placed, count
 
 
+PLACEMENTS = ("under", "on_board")
+
+
+def placement(inst, project):
+    """Where one supply instance sits: its own `placement` ("under" | "on_board"), else the project's
+    `jacks.supplies_layer`, else "under". An unknown value is returned as is (build.validate reports it; every
+    check treats anything but "on_board" as under the board)."""
+    return inst.get("placement") or (project.get("jacks") or {}).get("supplies_layer") or "under"
+
+
 def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None, board_data=None,
                       board_edits=None):
     """Which layout item is which chain pedal / supply instance, the board and the obstacles.
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
-    "shapes" {item id: [canvas rects]}, "no_outline" [titles], "holes" [canvas rects]} (the outline of every obstacle and
+    "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
+    "holes" [canvas rects]} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
+    instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
+    "on_board"; the outline of every obstacle and
     placed item, its box without an outline; `no_outline` lists those items; the board's holes, nothing uses them yet;
     `outlines`: catalog/outlines.json, read if None; `board_data`: usable catalog/boards.json entries, read if None;
     `board_edits`: the project's board.json boxes, none if None); placement problems go to `warnings` / `clear_sink` (missing
@@ -215,7 +228,11 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
             else:
                 inst_item[s["inst"]["id"]] = match
     pedal_items = [i for i in items if i["kind"] == "pedal"]
-    obstacles = [i for i in pedal_items if (i["title"] not in supply_titles or supplies_layer == "on_board")]
+    inst_placement = {s["inst"]["id"]: placement(s["inst"], {"jacks": jset}) for s in insts}
+    matched = {item["id"]: iid for iid, item in inst_item.items()}
+    obstacles = [i for i in pedal_items
+                 if (inst_placement[matched[i["id"]]] == "on_board" if i["id"] in matched
+                     else (i["title"] not in supply_titles or supplies_layer == "on_board"))]
     boards = [i for i in items if i["kind"] == "pedalboard"]
     outlines = outlines_mod.load() if outlines is None else outlines
     shown = list(obstacles) + list(placed.values())
@@ -225,7 +242,7 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     board_data = boards_mod.load() if board_data is None else board_data
     holes = design.board_holes(board, (board_data.get((board or {}).get("image") or "") or {}).get("holes"), board_edits)
     return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
-            "shapes": shapes, "no_outline": no_outline, "holes": holes}
+            "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes}
 
 
 def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):
@@ -253,7 +270,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     p_side = float(jset.get("power_clearance", {}).get("side_mm", POWER_CLEARANCE_DEFAULT["side_mm"]))
     power_modelled = bool((project.get("cables") or {}).get("power_type"))
     extra_used = jset.get("extra_used", {})
-    supplies_layer = jset.get("supplies_layer", "under")
+    supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
     ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[],
@@ -331,8 +348,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
             jk = _jack_by_id(have, jid)
             if jk:
                 owners.append((cid, it, jk))
-    if supplies_layer == "on_board":
-        for s in insts:
+    for s in insts:
+        if placement(s["inst"], project) == "on_board":
             it = inst_item.get(s["inst"]["id"])
             for port in sorted({r["port"] for r in s["rows"] if r["pedals"]}):
                 jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], port)
@@ -399,6 +416,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     p_depth = depth("power")
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
+        under = placement(s["inst"], project) != "on_board"
         for row in s["rows"]:
             if not row["pedals"]:
                 continue
@@ -408,7 +426,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
             for pid in row["pedals"]:
                 here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
-                power.append({"output": row["id"], "from": prev_name, "to": to_name, **cable(prev, here)})
+                power.append({"output": row["id"], "from": prev_name, "to": to_name, "under_board": under, **cable(prev, here)})
                 prev, prev_name = here, to_name
     ctx["cables"] = {"signal": signal, "power": power}
 

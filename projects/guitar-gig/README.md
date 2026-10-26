@@ -219,6 +219,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ### Ojai R30 (left)
 
+Placement: under the board. Layout item: Strymon Ojai R30 (item-4000000002).
+
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
 | **F1** (fixed) | 9V | JHS Flight Delay | 85 | 85 / 500 mA |
@@ -229,6 +231,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 | | | **Ojai R30 total** | | **493 mA** |
 
 ### Ojai R30 (right)
+
+Placement: under the board. Layout item: Strymon Ojai R30 (item-4000000003).
 
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|

@@ -222,6 +222,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
             errors.append(f"power: {inst['id']}: unknown supply '{inst['supply']}'")
             continue
         instances[inst["supply"]] = instances.get(inst["supply"], 0) + 1
+        if jacks.placement(inst, project) not in jacks.PLACEMENTS:
+            errors.append(f"power.supplies: {inst['id']} has unknown placement '{jacks.placement(inst, project)}' "
+                          f"({', '.join(jacks.PLACEMENTS)})")
         for key in ("brand", "model", "quantity"):
             need(f"supply {sup['id']}.{key}", sup.get(key))
         outputs_def = sup.get("outputs")
@@ -329,6 +332,15 @@ def sup_name(sup):
 
 def inst_label(s):
     return s["inst"].get("label") or f"{sup_name(s['sup'])} #{s['inst']['id']}"
+
+
+def placement_line(ctx, s):
+    """'Placement: under the board. Layout item: Strymon Ojai R30 (item-3).' for one supply instance."""
+    on_board = jacks.placement(s["inst"], ctx["project"]) == "on_board"
+    lay = ctx.get("layout")
+    item = ((lay or {}).get("inst_item") or {}).get(s["inst"]["id"])
+    where = "no layout" if lay is None else (f"{item['title']} ({item['id']})" if item else "not in the layout")
+    return f"Placement: {'on the board' if on_board else 'under the board'}. Layout item: {where}."
 
 
 CATEGORY_STYLE = {  # category: (fill, stroke); light fills with dark text read well in light and dark themes
@@ -678,7 +690,7 @@ def project_readme(ctx, cat_pedals):
     for s in ctx["supplies"]:
         total = sum(r["load"] for r in s["rows"])
         grand += total
-        md += [f"### {inst_label(s)}", "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
+        md += [f"### {inst_label(s)}", "", placement_line(ctx, s), "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
         for row in s["rows"]:
             odef = row["def"]
             kind = "switchable" if odef and len(odef.get("options", [])) > 1 else "fixed"

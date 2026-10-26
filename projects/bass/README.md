@@ -103,6 +103,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ### Harley Benton PowerPlant ISO-5 Pro
 
+Placement: under the board. Layout item: no layout.
+
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
 | **OUT1** (fixed) | 9V | TC Electronic PolyTune 2 Mini | 40 | 40 / 300 mA |

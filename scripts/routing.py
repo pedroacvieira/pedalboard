@@ -666,8 +666,13 @@ def route_project(ctx, cat_pedals, cable_types=None):
              "min_mm": None, "path": None, "status": "not routed", "_ends": (a, ja, b, jb)}
         cables.append(c)
     # power cables: model and estimate only (they run under the board)
-    under = (project.get("jacks", {}).get("supplies_layer", "under") == "under")
+    from jacks import placement
+    inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
     for n, hop in enumerate((ctx.get("cables") or {}).get("power", []), 1):
+        under = hop.get("under_board")   # jacks.check sets it per hop; else the placement of the instance the cable starts at
+        if under is None:
+            inst = inst_by_id.get(hop["from"].split(".")[0])
+            under = placement(inst if inst is not None else {}, project) != "on_board"
         cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
                        "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
@@ -860,7 +865,9 @@ def deepest_hits(opt, facing):
 def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
     """The DC plug of every placed pedal's power jack (`cables.power_type`) with the exit side that has the fewest
     blocked parts (then the least overlap; a power cable override `exit_b` fixes it): [(pedal id, jack, power cable
-    or None, facing, plug option)]. Sets the power cable's `exit_b`. Empty without a power type."""
+    or None, facing, plug option)]. Sets the power cable's `exit_b`. Also every used port of an on-board supply
+    ("<instance id>" instead of the pedal id; the cable starting at the port, its side is `exit_a`). Empty without a
+    power type."""
     ptype = cable_types.get(cfg.get("power_type") or "")
     layout = ctx.get("layout") or {}
     if not ptype or not layout.get("placed"):
@@ -881,6 +888,26 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
         if pc is not None:
             pc["exit_b"] = o["side"]
         out.append((cid, jk, pc, facing, o))
+    # the used ports of on-board supplies: the same DC plug at a power_out jack (the cable's supply end, `exit_a`)
+    from jacks import _jack_by_id, placement
+    by_port = {c["from"]: c for c in cables if c["kind"] == "power"}
+    for s in ctx.get("supplies") or []:
+        iid = s["inst"]["id"]
+        it = (layout.get("inst_item") or {}).get(iid)
+        if it is None or placement(s["inst"], ctx["project"]) != "on_board":
+            continue
+        for port in sorted({r["port"] for r in s["rows"] if r["pedals"]}):
+            jk = _jack_by_id((layout.get("jacks") or {}).get(s["sup"]["id"]) or [], port)
+            if not jk:
+                continue
+            pc = by_port.get(f"{iid}.{port}")
+            facing, opts = end_options(it, jk, ptype, (pc or {}).get("exit_a"), run, layout.get("outward_mm", 0))
+            for o in opts:
+                o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
+            o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
+            if pc is not None:
+                pc["exit_a"] = o["side"]
+            out.append((iid, jk, pc, facing, o))
     return out
 
 

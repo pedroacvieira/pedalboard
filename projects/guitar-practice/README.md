@@ -107,6 +107,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ### Ojai R30 (to buy)
 
+Placement: under the board. Layout item: no layout.
+
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
 | **F1** (fixed) | 9V | Beetronics Octahive | 50 | 134 / 500 mA |

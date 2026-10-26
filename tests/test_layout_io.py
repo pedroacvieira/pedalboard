@@ -77,6 +77,30 @@ def test_layout_from_items_maps_pedals_board_and_obstacles():
     assert clear == ["layout: c is in the signal chain but not in playground_design.json"] and warnings == []
 
 
+def test_real_projects_keep_every_supply_under_the_board():
+    """Placement phase 3: no real project sets a placement, so the default (jacks.supplies_layer, "under") applies: no
+    supply is an obstacle, every power cable is under the board, and an explicit "under" changes nothing."""
+    pedals, supplies = load_catalog()
+    for name in ("guitar-gig", "guitar-practice", "bass"):
+        pdir = ROOT / "projects" / name
+        base = build.validate(pdir, pedals, supplies)
+        titles = {t for t in (supplies[s["sup"]["id"]].get("playground_title") for s in base["supplies"]) if t}
+        assert all("placement" not in s["inst"] for s in base["supplies"])
+        if base["layout"]:
+            assert set(base["layout"]["inst_placement"].values()) <= {"under"}
+            assert not [o for o in base["layout"]["obstacles"] if o["title"] in titles]
+        assert base["cable_list"] and all(c["under_board"] for c in base["cable_list"] if c["kind"] == "power")
+        assert all(c["status"] == "not routed (under the board)" for c in base["cable_list"] if c["kind"] == "power")
+        proj = load_json(pdir / "project.json")
+        for inst in proj["power"]["supplies"]:
+            inst["placement"] = "under"
+        explicit = build.validate(pdir, pedals, supplies, project=proj)
+        a, b = strip(base), strip(explicit)
+        for k in ("project", "supplies"):
+            a.pop(k), b.pop(k)
+        assert a == b
+
+
 # --- design.move ---------------------------------------------------------------------------------
 def test_move_sets_the_unrotated_box_around_the_new_centre():
     (_, a, _) = design.parse_canvas(CANVAS)          # 2 x 4 in = 50.8 x 101.6 mm, left 45 px = 25.4 mm
