@@ -42,6 +42,19 @@ TODO item "Later: patch cables under the board" and part of feature 2 (power cab
 12. **Execution**: one Sonnet agent per phase (handover each), commit per phase on `feat/supply-placement`, code
     review at the end, merge after the owner's OK.
 
+## Owner decisions, round 3 (2026-10-26)
+13. **No edge modes**: `power_routing.edges` (front/left/right/back) and `avoid_penalty` are removed. Power cables go
+    from under to over the board ONLY through the holes and through **edge boxes** the owner draws in the board editor
+    (type `edge` in board.json, may lie outside the board image): a cable may come round the board edge only where the
+    border is inside an edge box. No edge boxes = holes only. Neither holes nor edge boxes = an under-board supply is an
+    error (no power cable could come up). Handover `docs/handovers/supply-placement-edges.md`.
+    Edge crossings are LINES, not boxes (owner): board.json `{"type": "edge", "side": left|right|back|front, "from", "to"}`
+    (fractions along that side); the editor projects a hand-drawn line onto the nearest board side.
+    Signal cables may use edge boxes too (round the edge under the board and back up), not only power cables.
+    Front of the board: project toggle `cables.route_in_front` (default false: nothing in front of the lowest pedals;
+    true: the routing area reaches the board front and front edge boxes work). guitar-gig: false.
+14. The Reticon and the MXR Analog Chorus swapped in the gig chain (chorus first): signal 2401 -> 2322 mm.
+
 ## Starting point (code, 2026-10-26)
 - `jacks.layout_from_items(...)` maps supply instances (`project.power.supplies[]`, ids `psu1`, ...) to Pedal
   Playground items by `playground_title` (`inst_item` {instance id: item}; `jacks.supply_items` can pin one). The

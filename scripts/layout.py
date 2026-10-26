@@ -490,7 +490,7 @@ class Model:
         em = self.rcfg["edge_margin_mm"]
         obs = self._obstacles(state, feet)
         # as the build: nothing in front of the lowest pedal OUTLINE (detour estimate: boxes, an approximation)
-        front_y = min(b[3], max(q[3] for k, _, _, shp in obs if k is not None for q in shp)) if feet else b[3]
+        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg)
         area = (b[0] - em, b[1] - em, b[2] + em, front_y)
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
@@ -555,7 +555,7 @@ class Model:
         if self.power_setup:
             pr = self.power_setup["radius"]
             pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
-            holes, memo = self.power_setup["index"], {}   # (its points are already free under the board)
+            holes, memo = self.power_setup["crossings"], {}   # (its points are already free under the board)
 
             def pw_near(p):
                 if p not in memo:

@@ -15,8 +15,13 @@ fetches the board images of the projects (their layout's board, else the board n
 holes: `hole_transit_mm` and `notes` stay).
 
 A project may correct the derived holes in projects/<name>/board.json (written later by a board editor):
-{"boxes": [{"type": "hole" | "filled", "x0": .., "y0": .., "x1": .., "y1": ..}]} in fractions of the board image.
-`load_edits` reads it; `design.board_holes` applies it.
+{"boxes": [{"type": "hole" | "filled", "x0": .., "y0": .., "x1": .., "y1": ..},
+{"type": "edge", "side": "left" | "right" | "back" | "front", "from": .., "to": ..}]}.
+hole / filled boxes are fractions of the board image and correct the holes. An "edge" entry is a line segment along one
+side of the (unrotated) image, `from` < `to` fractions 0..1 along that side (left / right: of the image height from the top;
+back = the image's top edge / front = its bottom edge: of the image width from the left): where cables may go round the
+board edge (under the board and back up). `load_edits` reads the file; `design.board_holes` applies the hole / filled
+boxes, `design.board_edges` maps the edge segments.
 """
 import argparse
 import json
@@ -41,6 +46,7 @@ ALPHA_MAX = 128          # a pixel is transparent (hole or outside) when its alp
 MIN_HOLE_MM2 = 10.0      # smaller transparent regions are image noise, not holes
 TARGET_COVER = 0.9       # a hole gets the fewest bands that cover at least this share of it ...
 MAX_BANDS = 6            # ... at most this many (per hole)
+EDGE_SIDES = ("left", "right", "back", "front")   # of the unrotated image: back = its top edge, front = its bottom edge
 
 
 # --- decomposition (pure) ------------------------------------------------------------------------
@@ -233,6 +239,23 @@ def _rect_ok(r):   # fractions of the image: 0 <= x0 < x1 <= 1 (bools are not nu
             and r[2] > r[0] and r[3] > r[1])
 
 
+def _edge_ok(b):   # an edge segment: a side and 0 <= from < to <= 1 (fractions along that side)
+    f, t = b.get("from"), b.get("to")
+    return (b.get("side") in EDGE_SIDES
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1 for v in (f, t)) and t > f)
+
+
+def box_ok(box):
+    """Whether `box` is well-formed: hole / filled {"type", "x0".."y1"} inside the image (0..1), edge {"type", "side", "from",
+    "to"} (see the module docstring)."""
+    if not isinstance(box, dict):
+        return False
+    t = box.get("type")
+    if t in ("hole", "filled"):
+        return _rect_ok([box.get("x0"), box.get("y0"), box.get("x1"), box.get("y1")])
+    return t == "edge" and _edge_ok(box)
+
+
 def usable(boards):
     """Only well-formed board entries {image name: {"holes": [[x0, y0, x1, y1], ...], "hole_transit_mm": n, ...}}:
     every hole a fraction rectangle (0 <= x0 < x1 <= 1, same for y); `holes` may be empty (a board without holes);
@@ -260,7 +283,8 @@ def load():
 
 
 def load_edits(project_dir, warnings=None):
-    """The valid edit boxes {"type": "hole" | "filled", "x0", "y0", "x1", "y1"} (fractions of the board image) of
+    """The valid edit boxes {"type": "hole" | "filled", "x0", "y0", "x1", "y1"} (fractions of the board image) and edge segments
+    {"type": "edge", "side", "from", "to"} of
     projects/<name>/board.json, in file order; [] if the file is missing (or there is no project folder). Invalid boxes (or an unreadable file) are
     ignored and described in `warnings` (a list, if given) instead of crashing the build."""
     if project_dir is None:
@@ -282,11 +306,12 @@ def load_edits(project_dir, warnings=None):
         return []
     boxes = []
     for i, b in enumerate(raw):
-        if (isinstance(b, dict) and b.get("type") in ("hole", "filled")
-                and _rect_ok([b.get("x0"), b.get("y0"), b.get("x1"), b.get("y1")])):
-            boxes.append({"type": b["type"], "x0": b["x0"], "y0": b["y0"], "x1": b["x1"], "y1": b["y1"]})
+        if box_ok(b):
+            boxes.append({"type": "edge", "side": b["side"], "from": b["from"], "to": b["to"]} if b["type"] == "edge" else
+                         {"type": b["type"], "x0": b["x0"], "y0": b["y0"], "x1": b["x1"], "y1": b["y1"]})
         else:
-            warn(f"box {i} ignored (needs type hole|filled and fractions 0 <= x0 < x1 <= 1, 0 <= y0 < y1 <= 1)")
+            warn(f"box {i} ignored (needs type hole|filled with fractions 0 <= x0 < x1 <= 1, 0 <= y0 < y1 <= 1, or type edge with "
+                 f"side left|right|back|front and 0 <= from < to <= 1)")
     return boxes
 
 

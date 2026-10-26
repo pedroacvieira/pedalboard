@@ -29,14 +29,20 @@ HOLE_A = (28.5, 38.5, 40.5, 48.5)        # above A's power plug
 HOLE_FAR = (98.5, 38.5, 110.5, 48.5)
 
 
-def pw_ctx(holes=(HOLE_A,), hops=(("psu1.F1", "a.power"),), cables=None, power_routing=None, extra=(), d_pedal=False):
+BACK = ((0.0, 0.0), (300.0, 0.0), "back")          # edge segments of the board 0..300 x 0..200 (canvas mm)
+LEFT = ((0.0, 0.0), (0.0, 200.0), "left")
+RIGHT = ((300.0, 0.0), (300.0, 200.0), "right")
+FRONT = ((0.0, 200.0), (300.0, 200.0), "front")
+
+
+def pw_ctx(holes=(HOLE_A,), hops=(("psu1.F1", "a.power"),), cables=None, power_routing=None, extra=(), d_pedal=False, edges=()):
     ctx = power_ctx(list(extra))
     lay, project = ctx["layout"], ctx["project"]
     project["cables"].update(cables or {})
     if power_routing is not None:
         project["power_routing"] = power_routing
     psu = mm_item("i-psu", "PSU", 100, 150, 60, 30)
-    lay.update(holes=list(holes), inst_item={"psu1": psu}, inst_placement={"psu1": "under"})
+    lay.update(holes=list(holes), edge_segments=list(edges), inst_item={"psu1": psu}, inst_placement={"psu1": "under"})
     lay["jacks"]["sup1"] = [{"id": "F1", "label": "F1", "function": "power_out", "x": 0.2, "y": 0.0, "facing": "top"},
                             {"id": "F2", "label": "F2", "function": "power_out", "x": 0.8, "y": 0.0, "facing": "top"}]
     if d_pedal:   # a second pedal with its power jack at (105, 60)
@@ -97,40 +103,66 @@ def test_a_hole_a_pedal_covers_is_skipped_for_the_next_one():
     assert inside(f["hole_points"][0], HOLE_A) and f["min_mm"] < c["min_mm"]
 
 
-def test_no_hole_uses_the_allowed_back_edge_not_the_nearer_avoided_left_edge():
-    ctx = pw_ctx(holes=())
+def test_an_edge_segment_on_the_back_lets_a_cable_come_up_there_without_holes():
+    ctx = pw_ctx(holes=(), edges=(BACK,))
     (c,) = route(ctx).values()
     et = ctx["routing"]["power"]["edge_transit_mm"]
     assert et == 30.0 and ctx["routing"]["power"]["edge_transit_source"] == "twice the hole transit"
-    # the left edge is the shorter way under (about 143 against 160 mm) but "avoid" costs 100 mm more in the search
     assert c["status"] == "routed" and c["edge_sides"] == ["back"] and c["holes_used"] == 0 and c["edges_used"] == 1
     assert c["under_board"] and len(c["edge_points"]) == 1 and c["edge_points"][0][1] < 3
     assert c["min_mm"] == pytest.approx(MEASURE + c["under_mm"] + c["top_mm"] + 30.0)
     assert 50 < c["top_mm"] < 62                         # from the back margin down to the plug exit (y 55)
 
 
-def test_an_edge_mode_allowed_avoided_or_forbidden_decides():
-    left = pw_ctx(holes=(), power_routing={"edges": {"left": "allowed"}})
-    (c,) = route(left).values()
-    assert c["edge_sides"] == ["left"]                   # now the shorter way wins
-    avoided = pw_ctx(holes=(), power_routing={"edges": {"back": "forbidden"}})
-    (c,) = route(avoided).values()
-    assert c["status"] == "routed" and c["edge_sides"] == ["left"]    # an avoided edge is used when nothing better exists
-    none = pw_ctx(holes=(), power_routing={"edges": {"back": "forbidden", "left": "forbidden", "right": "forbidden"}})
-    (c,) = route(none).values()
-    assert c["status"].startswith("unroutable") and c["min_mm"] is None    # the front is forbidden by default: never used
-    assert any("P1" in w and "no free path" in w for w in none["warnings"])
+def test_a_cable_crosses_the_left_edge_only_inside_the_segment():
+    # the left side is the shorter way under (about 143 mm against 160 for the back), a segment along the whole side: next to the plug
+    (c,) = route(pw_ctx(holes=(), edges=(LEFT,))).values()
+    assert c["edge_sides"] == ["left"] and 40 < c["edge_points"][0][1] < 150
+    # a segment only at y 150..200 (below the jack): the cable still crosses on the left, but only inside that stretch
+    low = ((0.0, 150.0), (0.0, 200.0), "left")
+    (c,) = route(pw_ctx(holes=(), edges=(low,))).values()
+    assert c["status"] == "routed" and c["edge_sides"] == ["left"] and 150 <= c["edge_points"][0][1] <= 200
+    assert c["top_mm"] > 100                             # the long way up on top, back to the plug at y 55
+    # the same segment on the back side at x 0..40 is no use to the right-hand part, and the left stretch there is not a crossing
+    both = pw_ctx(holes=(), edges=(low, ((0.0, 0.0), (40.0, 0.0), "back")))
+    (c,) = route(both).values()
+    assert c["edge_sides"] == ["back"] and c["edge_points"][0][0] <= 40 and c["edge_points"][0][1] < 3
+
+
+def test_no_hole_and_no_edge_segment_leaves_a_cable_without_a_way_up():
+    ctx = pw_ctx(holes=())
+    (c,) = route(ctx).values()
+    assert c["status"].startswith("unroutable") and c["min_mm"] is None
+    assert any("P1" in w and "no free path" in w for w in ctx["warnings"])
+
+
+def test_a_front_segment_is_only_usable_with_route_in_front():
+    front = pw_ctx(holes=(), edges=(FRONT,))
+    (c,) = route(front).values()
+    assert c["status"].startswith("unroutable")          # nothing in front of the lowest pedals: no top cells there
+    assert any("edge segment 1 is at the front" in w and "route_in_front" in w for w in front["warnings"])
+    open_ = pw_ctx(holes=(), edges=(FRONT,), cables={"route_in_front": True})
+    (c,) = route(open_).values()
+    assert c["status"] == "routed" and c["edge_sides"] == ["front"] and c["edge_points"][0][1] > 195
+    assert not any("edge segment" in w for w in open_["warnings"])
+
+
+def test_an_edge_segment_with_every_border_cell_blocked_warns():
+    wall = mm_item("i-w", "W", -10, -10, 330, 8)         # lies over the whole back margin: no top cell to come up on
+    ctx = pw_ctx(holes=(HOLE_A,), edges=(BACK,), extra=[wall])
+    route(ctx)
+    assert any("edge segment 1 (back) has no usable crossing" in w for w in ctx["warnings"])
 
 
 def test_edge_transit_comes_from_the_project_then_the_board_data_then_twice_the_hole_transit():
-    base = pw_ctx(holes=())
+    base = pw_ctx(holes=(), edges=(BACK,))
     (b,) = route(base).values()
-    board = pw_ctx(holes=())
+    board = pw_ctx(holes=(), edges=(BACK,))
     board["layout"]["edge_transit_mm"] = 20.0
     (c,) = route(board).values()
     assert board["routing"]["power"]["edge_transit_source"] == "the board data"
     assert c["min_mm"] == pytest.approx(b["min_mm"] - 10.0)
-    both = pw_ctx(holes=(), power_routing={"edge_transit_mm": 45.0})
+    both = pw_ctx(holes=(), edges=(BACK,), power_routing={"edge_transit_mm": 45.0})
     both["layout"]["edge_transit_mm"] = 20.0
     (d,) = route(both).values()
     assert both["routing"]["power"]["edge_transit_source"] == "power_routing.edge_transit_mm"
@@ -158,7 +190,7 @@ def test_a_hop_goes_under_when_the_top_way_is_dearer_than_two_passes():
         2 * MEASURE + c["top_mm"] + c["under_mm"] + 2 * 15.0)
 
 
-NO_EDGES = {"edges": {"back": "forbidden", "left": "forbidden", "right": "forbidden"}}
+NO_EDGES = {}
 
 
 def test_power_stacking_is_its_own_limit_per_layer():
@@ -192,21 +224,22 @@ def test_a_long_top_run_is_reported_and_unrouted_without_a_power_type():
 
 
 def test_power_routing_settings_and_validation():
-    s = routing.power_settings({"cables": {"max_stack": 3}, "power_routing": {"edges": {"front": "allowed"}, "top_cost": 2}})
-    assert s["edges"] == {"front": "allowed", "left": "avoid", "right": "avoid", "back": "allowed"}
-    assert s["top_cost"] == 2 and s["avoid_penalty"] == 100.0 and s["max_stack"] == 3 and s["edge_transit_mm"] is None
-    assert routing.power_settings({})["edges"]["front"] == "forbidden"
+    s = routing.power_settings({"cables": {"max_stack": 3}, "power_routing": {"top_cost": 2}})
+    assert "edges" not in s and "avoid_penalty" not in s
+    assert s["top_cost"] == 2 and s["max_stack"] == 3 and s["edge_transit_mm"] is None
     assert routing.validate_power_routing({}) == []
-    bad = routing.validate_power_routing({"power_routing": {"edges": {"front": "sometimes", "top": "allowed"}, "top_cost": 0,
-                                                           "max_stack": 0, "colour": 1}})
-    assert len(bad) == 5 and any("unknown mode 'sometimes'" in e for e in bad) and any("unknown side 'top'" in e for e in bad)
-    ctx = pw_ctx(power_routing={"edges": {"back": "never"}})
+    bad = routing.validate_power_routing({"power_routing": {"top_cost": 0, "max_stack": 0, "colour": 1}})
+    assert len(bad) == 3 and any("unknown setting 'colour'" in e for e in bad)
+    # the old per-side edge modes are gone: an error that points to the edge segments of the board editor
+    old = routing.validate_power_routing({"power_routing": {"edges": {"back": "allowed"}, "avoid_penalty": 10}})
+    assert len(old) == 2 and all("was removed" in e and "board_editor" in e for e in old)
+    ctx = pw_ctx(power_routing={"edges": {"back": "allowed"}})
     route(ctx)
-    assert any("unknown mode 'never'" in e for e in ctx["errors"])
+    assert any("power_routing.edges was removed" in e for e in ctx["errors"])
 
 
 def test_the_svg_draws_power_cables_thin_with_under_stretches_dashed_and_marks_the_passes():
-    ctx = pw_ctx(holes=())
+    ctx = pw_ctx(holes=(), edges=(BACK,))
     (c,) = route(ctx).values()
     out = "\n".join(svgdraw.power_cables(ctx["cable_list"]))
     assert out.count('class="power-under"') == 1 and out.count('class="power-cable"') == 1 and out.count('class="power-edge"') == 1
@@ -309,7 +342,8 @@ def test_assign_orders_the_daisy_chain_for_the_estimate_with_holes():
 def test_the_surrogate_power_term_skips_hole_points_a_candidate_pedal_covers():
     m = layout_model([ped("T A", 0), ped("T B", 135)])          # a: 50.8 x 101.6, b the same
     sample = [(30.0, 10.0), (120.0, 10.0)]
-    m.power_setup = {"index": power.HoleIndex(sample), "cfg": CFG, "radius": 1.6}
+    index = power.HoleIndex(sample)
+    m.power_setup = {"index": index, "edges": power.HoleIndex([]), "cfg": CFG, "radius": 1.6, "crossings": power.Crossings(index, None, CFG)}
     port = (100.0, 100.0)
     m.set_wiring([(port, ["a"], True)])
 

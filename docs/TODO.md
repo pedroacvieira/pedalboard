@@ -145,8 +145,12 @@ Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers
 - [x] Phase 6: the layout search moves on-board supplies (tested on synthetic projects only).
 - [ ] Owner: measure the Fender deck thickness (+ bend) for `hole_transit_mm` (15, estimate) and the board height at
       the back edge for `edge_transit_mm` (default 2 x hole transit = 30, estimate); put them in catalog/boards.json.
-- [ ] Owner: power search weights: on-top mm cost 3 x (`power_routing.top_cost`) vs `avoid_penalty` 100 per avoided
-      edge; P2 / P12 / P17 still run 111-140 mm on top of the gig board. Tune if the routes look wrong in routing.svg.
+- [ ] Owner: power search weight: on-top mm cost 3 x (`power_routing.top_cost`); P2 / P12 / P17 still run 111-140 mm on top of the gig board. Tune if the routes look wrong in routing.svg.
+- [x] Edge crossings (owner, 2026-10-26): no per-side edge modes; cables (signal and power) cross only through holes
+      and owner-drawn edge segments (board editor, type edge); neither = an under-board supply is an error;
+      `cables.route_in_front` toggle (gig: false). Handover `supply-placement-edges.md`.
+- [ ] Owner: draw the gig's edge crossings (if any) with `uv run scripts/board_editor.py guitar-gig` (T until "edge",
+      drag a line along the edge), then `uv run scripts/build.py guitar-gig` and check power.svg.
 - [ ] Owner: verify the Duo 2.1 holes (practice / bass have no layout yet) with `uv run scripts/board_editor.py bass`.
 - [ ] Speed: gig build ~3 s (two-layer A*, power routing), one proposal search ~35 s, test suite ~90 s. Options: reuse
       the side-choice A* paths in `route_all`, a cheaper side-choice estimate, caching per layout.

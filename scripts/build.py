@@ -452,9 +452,12 @@ def under_cell(c):
         return f"{', '.join(passes)}; {c['under_mm']:.0f} mm under, {c['top_mm']:.0f} mm on top"
     if not c["under_board"]:
         return "no"
-    if c["kind"] != "signal" or not c.get("holes_used"):
+    if c["kind"] != "signal" or not (c.get("holes_used") or c.get("edges_used")):
         return "yes"
     n = c["holes_used"]
+    if c.get("edges_used"):
+        passes = ([f"{n} hole{'s' if n != 1 else ''}"] if n else []) + [f"{side} edge" for side in c.get("edge_sides") or []]
+        return f"yes ({', '.join(passes)}, {c['under_mm']:.0f} mm)"
     return f"yes ({n} hole{'s' if n != 1 else ''}, {c['under_mm']:.0f} mm)"
 
 
@@ -467,16 +470,14 @@ def power_text(ctx, cfg):
                 + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
                    if cfg.get("power_type") else "."))
     ps = pw["settings"]
-    modes = {m: [s for s, v in ps["edges"].items() if v == m] for m in ("allowed", "avoid", "forbidden")}
-    edges = "; ".join(f"{m}: {', '.join(sides)}" for m, sides in modes.items() if sides)
     return (f"Power cables are routed with the same router on their own grid ({pw['diameter_mm']:g} mm wide; plug `{cfg['power_type']}`, "
             f"exit side in the Exits column) and count against each other only: at most {ps['max_stack']} stacked per cell and layer, "
             f"at most {cfg['max_over_plug']} across a power plug. They stay under the board as much as they can: a cable from an "
             f"under-board supply port starts under the board and comes up through the usable hole nearest its pedal's power jack "
-            f"(a hole cell no pedal covers) or over a board edge `power_routing.edges` allows ({edges}), then runs the short way on top "
-            f"to the jack; a hop from a pedal's power jack (daisy chain) or from an on-board supply starts on top. In the search a mm "
-            f"on top counts {ps['top_cost']:g} (under the board 1), coming up over an avoided edge costs {ps['avoid_penalty']:g} mm "
-            f"more, a forbidden edge is never used. A pass through a hole adds {pw['hole_transit_mm']:g} mm of cable and a crossing of "
+            f"(a hole cell no pedal covers) or round the board edge along an edge segment the owner drew in the board editor (`board.json`, "
+            f"type `edge`; none drawn: holes only; with neither holes nor edge segments an under-board supply is an error), then runs the "
+            f"short way on top to the jack; a hop from a pedal's power jack (daisy chain) or from an on-board supply starts on top. In the search a mm "
+            f"on top counts {ps['top_cost']:g} (under the board 1). A pass through a hole adds {pw['hole_transit_mm']:g} mm of cable and a crossing of "
             f"the board edge {pw['edge_transit_mm']:g} mm (both unverified estimates; the edge value is {pw['edge_transit_source']}). "
             f"A power cable that runs more than {routing.POWER_TOP_WARN_MM:g} mm on top is reported.")
 
@@ -487,16 +488,23 @@ def routing_section(ctx):
     if not cables:
         return []
     cfg = ctx["routing"]["settings"]
-    under = ctx["routing"].get("under") is not None and ctx["routing"].get("hole_cells")
+    under = ctx["routing"].get("under") is not None and (ctx["routing"].get("hole_cells") or ctx["routing"].get("edge_links"))
+    edges = bool(ctx["routing"].get("edge_links"))
+    front = ("on the board and in front of the pedals up to " if cfg.get("route_in_front") else "never in front of the lowest pedals, at most ")
     where = ("" if under else "never under the board, ")
     md = ["", "## Cable routing", "",
-          f"Signal cables are routed on the board surface between the pedals: {where}never in front of the lowest pedals, "
-          f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
+          f"Signal cables are routed on the board surface between the pedals: {where}{front}"
+          f"{cfg['edge_margin_mm']:g} mm beyond the back and sides{' and the front' if cfg.get('route_in_front') else ''}, at most {cfg['max_stack']} cables stacked in one "
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
-          + (f"A cable may also pass under the board through the board's holes when that is shorter or less crowded: it goes down "
-             f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers), runs under the board (only the "
-             f"under-board supplies are obstacles there, at most {cfg['max_stack_under']} cables stacked) and comes up in another one. "
-             f"A pass through the deck adds {cfg['hole_transit_mm']:g} mm of cable and costs {cfg['hole_penalty']:g} mm more in the "
+          + (f"A cable may also pass under the board when that is shorter or less crowded: it goes down "
+             f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers)"
+             + (", or round the board edge along an edge segment the owner drew in the board editor (`board.json`, type `edge`)" if edges else "")
+             + f", runs under the board (only the "
+             f"under-board supplies are obstacles there, at most {cfg['max_stack_under']} cables stacked) and comes up in a hole"
+             + (" or round an edge segment" if edges else "") + ". "
+             f"A pass through the deck adds {cfg['hole_transit_mm']:g} mm of cable"
+             + (f" and a crossing of the board edge {ctx['routing']['edge_transit_mm']:g} mm ({ctx['routing']['edge_transit_source']})" if edges else "")
+             + f", each costs {cfg['hole_penalty']:g} mm more in the "
              f"search, a mm under the board counts {cfg['under_cost']:g} in the search (these numbers are unverified estimates; "
              f"`cables.under_board: false` keeps every cable on top). " if under else "")
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
@@ -518,7 +526,7 @@ def routing_section(ctx):
                "The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, "
                "every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) "
                "with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where "
-               "they are stacked; under the board: lighter and dashed, a ring at each hole pass), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
+               "they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
                "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "

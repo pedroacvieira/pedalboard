@@ -349,7 +349,9 @@ def test_an_on_board_supply_is_routed_around(tmp_path):
         jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
         routing.route_project(ctx, {}, cable_types={})
         (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
-        assert c["status"] == "routed" and ctx["errors"] == []
+        # (an under-board supply on a board without holes or edge segments is an error: no power cable could come up)
+        assert c["status"] == "routed" and [e for e in ctx["errors"] if "no power cable can come up" not in e] == []
+        assert bool(ctx["errors"]) == (pl == "under")
         lengths[pl] = c["min_mm"]
     assert lengths["under"] == pytest.approx(228.6 - 101.6 - 6.3, abs=0.01)     # straight, between the 3.15 mm points
     assert lengths["on_board"] > lengths["under"] + 10                           # down past y 101.6 and up again

@@ -3,7 +3,8 @@
 Signal cables (each pedal's output -> the next pedal's input) are routed on the board surface, and may run
 under the board through the board's holes (see the last paragraph):
   - the routing area is the pedalboard plus `edge_margin_mm` (default: one cable diameter) beyond its
-    back and sides; nothing may run in front of (below) the lowest row of pedals;
+    back and sides; nothing may run in front of (below) the lowest row of pedals, unless `cables.route_in_front` extends
+    the area to the board's front edge + the margin (`front_limit`);
   - pedal bodies and on-board supplies are obstacles (supplies under the board are not, on top);
   - the area is a grid of `grid_mm` cells (default 2 mm); pedals are grown by the cable radius minus half a
     cell, so any gap at least one cable diameter wide is a corridor; at most `max_stack` cables (default 2,
@@ -23,7 +24,11 @@ under the board through the board's holes (see the last paragraph):
   - the clearance of every signal jack with a modelled plug is checked here (head footprint + barrel +
     straight cable run on the chosen side against the other pedals); other jacks keep the fixed box (jacks.py).
 Under the board (`cables.under_board`, default true): a second layer over the board footprint (same cells as the
-top grid, `Under`). A cable changes layer only in a HOLE CELL: a cell whose centre lies inside an effective hole
+top grid, `Under`). A cable changes layer only in a HOLE CELL (below) or over an EDGE LINK: the owner draws edge
+segments along the board border in the board editor (board.json, type "edge"; `layout["edge_segments"]`); every free
+under cell on the border within a segment is joined to the top cell just outside it (`edge_links`), for
+`edge_transit_mm` of extra cable (+ `cables.hole_penalty` in the signal search, like a hole pass). Segments at the front
+count only with `cables.route_in_front`. A hole cell is: a cell whose centre lies inside an effective hole
 (`layout["holes"]`) that is free on the top layer (not a pedal or on-board supply grown by the cable radius, so the
 part of a hole a pedal covers is not usable) and free under the board (the under-board supplies' outlines, grown the
 same way, are the only obstacles known there). The search runs over (cell, layer) states: under steps cost
@@ -31,11 +36,12 @@ same way, are the only obstacles known there). The search runs over (cell, layer
 else the board data's, else 15 mm) + `hole_penalty` (15, search only). Cables start and end on top; the stacking
 limit is per (cell, layer) (`max_stack`, `max_stack_under`); plug crossings count on top only. Each stretch is smoothed
 on its own (the hole cells stay corners); `min_mm` = both plug measures + the top and under polylines + `hole_transit_mm`
-per pass. Lanes (drawing) only on top. The costs are unverified estimates.
+per hole pass + `edge_transit_mm` per edge crossing. Lanes (drawing) only on top. The costs are unverified estimates.
 Power cables (DC; `route_power`) get the same cable model (tips, centre polarity) and are routed on the same two
 layers by `route_all`, with their own grids (the power cable's width), stacking and plug limits: they stay UNDER the
 board (from an under-board supply port) and come up through the usable hole nearest their pedal's power jack, or over
-an allowed board edge (`power_routing.edges`), then run the short way on top; a mm on top costs `power_routing.top_cost`
+an edge crossing (the owner draws them in the board editor as line segments along the border, type "edge",
+`layout["edge_segments"]`: a cable may come round the board edge only along one), then run the short way on top; a mm on top costs `power_routing.top_cost`
 (3) times a mm under the board. A hop that starts at a pedal (daisy chain) or at an on-board supply starts on top.
 `min_mm` = both plug measures + the polylines + `hole_transit_mm` per hole pass + `edge_transit_mm` per edge crossing;
 `estimate_mm` keeps jacks.check's right-angle estimate. Their plugs are modelled for clearance: with
@@ -63,17 +69,15 @@ DEFAULTS = {
     "hole_penalty": 15.0,        # search-only cost (mm equivalent) of one pass through the deck
     "under_cost": 0.9,           # cost factor per mm of cable under the board (equal routes prefer under)
     "max_stack_under": None,     # cables allowed on top of each other in one cell under the board; None: max_stack
+    "route_in_front": False,     # true: the routing area reaches the board's front edge + margin (cables may run in front of the pedals)
 }
 HOLE_TRANSIT_FALLBACK = 15.0     # mm of extra cable per pass through the deck when neither the project nor the board data say
-BOARD_SIDES = ("front", "left", "right", "back")
-EDGE_MODES = ("forbidden", "avoid", "allowed")
 POWER_ROUTING = {                # project `power_routing` defaults (all optional)
-    "edges": {"front": "forbidden", "left": "avoid", "right": "avoid", "back": "allowed"},   # board edges a power cable may come up over
-    "avoid_penalty": 100.0,      # search-only cost (mm equivalent) of coming up over an "avoid" edge
     "top_cost": 3.0,             # cost factor per mm of power cable on top of the board (under the board: 1)
     "max_stack": None,           # power cables allowed on top of each other in one cell, per layer; None: cables.max_stack
     "edge_transit_mm": None,     # extra cable to go round the board edge; None: the board data's, else 2 x hole_transit_mm
 }
+REMOVED_POWER_KEYS = ("edges", "avoid_penalty")   # the old per-side edge modes (replaced by the board's edge segments)
 POWER_UNDER_COST = 1.0           # cost factor per mm of power cable under the board
 POWER_TOP_WARN_MM = 150.0        # a power cable running more than this on top of the board is reported
 TIPS = ("TS", "TRS", "XLR", "DC 2.1 mm", "DC 2.5 mm")
@@ -105,12 +109,11 @@ def settings(project, types=None):
 
 
 def power_settings(project, cfg=None):
-    """`power_routing` of a project with the defaults filled in: {edges {side: mode}, avoid_penalty, top_cost, max_stack,
+    """`power_routing` of a project with the defaults filled in: {top_cost, max_stack,
     edge_transit_mm (None: decided with the board data, see route_power)}. `cfg` = `settings(project)`: the default
     `max_stack` is `cables.max_stack`."""
     given = project.get("power_routing") or {}
-    out = {**POWER_ROUTING, **{k: v for k, v in given.items() if k != "edges" and v is not None}}
-    out["edges"] = {**POWER_ROUTING["edges"], **(given.get("edges") or {})}
+    out = {**POWER_ROUTING, **{k: v for k, v in given.items() if k in POWER_ROUTING and v is not None}}
     if out["max_stack"] is None:
         out["max_stack"] = (cfg or settings(project))["max_stack"]
     return out
@@ -123,19 +126,12 @@ def validate_power_routing(project):
         return []
     if not isinstance(given, dict):
         return ["power_routing must be an object"]
-    errs = [f"power_routing: unknown setting '{k}' (edges, avoid_penalty, top_cost, max_stack, edge_transit_mm)"
+    errs = [f"power_routing.{k} was removed: power cables come round a board edge only along an edge segment; draw them with "
+            f"uv run scripts/board_editor.py <project>" if k in REMOVED_POWER_KEYS else
+            f"power_routing: unknown setting '{k}' (top_cost, max_stack, edge_transit_mm)"
             for k in given if k not in POWER_ROUTING]
-    edges = given.get("edges") or {}
-    if not isinstance(edges, dict):
-        errs.append("power_routing.edges must be an object {front, left, right, back}")
-    else:
-        for side, mode in edges.items():
-            if side not in BOARD_SIDES:
-                errs.append(f"power_routing.edges: unknown side '{side}' ({', '.join(BOARD_SIDES)})")
-            elif mode not in EDGE_MODES:
-                errs.append(f"power_routing.edges.{side}: unknown mode '{mode}' ({', '.join(EDGE_MODES)})")
     num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
-    for k, good, need in (("avoid_penalty", lambda v: v >= 0, ">= 0"), ("top_cost", lambda v: v > 0, "> 0"),
+    for k, good, need in (("top_cost", lambda v: v > 0, "> 0"),
                           ("edge_transit_mm", lambda v: v >= 0, ">= 0"), ("max_stack", lambda v: v >= 1, ">= 1")):
         v = given.get(k)
         if v is not None and not (num(v) and good(v)):
@@ -233,8 +229,16 @@ def rect_cells(grid, r, grow=0.0):
     return out
 
 
+def front_limit(board_rect, foot_bottoms, cfg):
+    """Where the routing area ends at the front: the lowest pedal's outline (nothing in front of it, never beyond the board's
+    front edge), or with `cables.route_in_front` the board's front edge + `edge_margin_mm` (like the back and sides)."""
+    if cfg.get("route_in_front"):
+        return board_rect[3] + cfg["edge_margin_mm"]
+    return min(board_rect[3], max(foot_bottoms, default=board_rect[3]))
+
+
 def build_grid(board_rect, obstacle_rects, front_y, cfg):
-    """Routing area = board + margin at the back and sides, cut off at `front_y` (no cables in front)."""
+    """Routing area = board + margin at the back and sides, cut off at `front_y` (`front_limit`)."""
     m = cfg["edge_margin_mm"]
     x0, y0, x1 = board_rect[0] - m, board_rect[1] - m, board_rect[2] + m
     g = Grid(x0, y0, x1, front_y, cfg["grid_mm"])
@@ -256,8 +260,8 @@ class Under:
         self.transit_mm, self.penalty, self.cost, self.max_stack = transit_mm, penalty, cost, max_stack
         self.top_cost = top_cost                # factor per mm on top of the board (power cables: `power_routing.top_cost`)
         self.hole_cost = transit_mm + penalty   # what one pass costs the search
-        # board edges (power cables): `edges` = [(under cell, top cell, cost)]: an under cell at the board edge joined to
-        # the top cell just outside it, for `cost` (edge transit + the avoid penalty); `up` / `down` index both ways
+        # board edges (edge segments, see `edge_links`): `edges` = [(under cell, top cell, cost)]: an under cell at the board edge joined to
+        # the top cell just outside it, for `cost` (the edge transit); `up` / `down` index both ways
         self.edges = list(edges)
         self._landing = None
         self.tight = False   # tighter search heuristic that counts the layer changes (set for the power cables)
@@ -292,8 +296,8 @@ class Under:
         return self.max_stack if len(state) == 3 else max_top
 
     def components(self, top, squeeze=False):
-        """{state: component id} over the passable states of both layers (4-connected; layers joined at hole cells; edge
-        links are not followed: used for the signal layer only)."""
+        """{state: component id} over the passable states of both layers (4-connected; layers joined at hole cells and over
+        the edge links)."""
         if squeeze not in self._comps:
             walls, uwalls, ug = top.walls(squeeze), self.grid.blocked, self.grid
             comp, n = {}, 0
@@ -309,6 +313,9 @@ class Under:
                             nbrs = [(x[0] + dx, x[1] + dy) + x[2:] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
                             if (x[0], x[1]) in self.holes:   # the other layer, same cell
                                 nbrs.append((x[0], x[1], 1) if len(x) == 2 else (x[0], x[1]))
+                            if self.edges:   # the other layer over an edge link
+                                nbrs += [(u[0], u[1], 1) for u, _ in self.down.get((x[0], x[1]), ())] if len(x) == 2 else \
+                                    [t for t, _ in self.up.get((x[0], x[1]), ())]
                             for c in nbrs:
                                 gg, ww = (ug, uwalls) if len(c) == 3 else (top, walls)
                                 if gg.inside(c) and (c[0], c[1]) not in ww and c not in comp:
@@ -341,6 +348,22 @@ def hole_cells(top, under_grid, hole_rects):
     return out
 
 
+def edge_transit(pcfg, layout, hole_transit):
+    """(mm, source) of the extra cable round the board edge: `power_routing.edge_transit_mm`, else the board data's, else twice the
+    hole transit."""
+    if pcfg.get("edge_transit_mm") is not None:
+        return float(pcfg["edge_transit_mm"]), "power_routing.edge_transit_mm"
+    if layout.get("edge_transit_mm") is not None:
+        return float(layout["edge_transit_mm"]), "the board data"
+    return 2 * float(hole_transit), "twice the hole transit"
+
+
+def usable_edge_segments(layout, cfg):
+    """The layout's edge segments a cable can use: all, but without `cables.route_in_front` not the ones at the front (the routing
+    area ends at the lowest pedals there)."""
+    return [sg for sg in layout.get("edge_segments") or [] if sg[2] != "front" or cfg.get("route_in_front")]
+
+
 def under_grid(top, board_rect, obstacle_rects, cfg):
     """The under-board grid over the board footprint (`board_rect`; the whole board, also in front of the lowest pedals),
     same origin and cells as `top`: the cells outside the board and the under-board `obstacle_rects` grown like pedals
@@ -355,37 +378,42 @@ def under_grid(top, board_rect, obstacle_rects, cfg):
     return g
 
 
-def build_under(top, board_rect, obstacle_rects, hole_rects, cfg, transit_mm):
-    """The under-board layer (`under_grid`) with the hole cells; None for the layer without hole cells (nothing can
+def build_under(top, board_rect, obstacle_rects, hole_rects, cfg, transit_mm, edge_segments=(), edge_transit_mm=0.0):
+    """The under-board layer (`under_grid`) with the hole cells and the edge links (`edge_links` over `edge_segments`, each costing
+    `edge_transit_mm` + the deck penalty to the search, like a hole pass); None for the layer without either (nothing can
     change layer)."""
     g = under_grid(top, board_rect, obstacle_rects, cfg)
     holes = hole_cells(top, g, hole_rects)
-    if not holes:
+    links = edge_links(top, g, board_rect, edge_segments, edge_transit_mm, float(cfg["hole_penalty"]))
+    if not holes and not links:
         return g, None
-    return g, Under(g, holes, float(transit_mm), float(cfg["hole_penalty"]), float(cfg["under_cost"]), int(cfg["max_stack_under"]))
+    return g, Under(g, holes, float(transit_mm), float(cfg["hole_penalty"]), float(cfg["under_cost"]), int(cfg["max_stack_under"]),
+                    edges=links)
 
 
-def edge_links(top, ug, board_rect, modes, transit_mm, penalty):
-    """[(under cell, top cell, cost, side)]: every free under cell on a board edge whose mode is not "forbidden", joined to
-    the top cell just outside the board there (the margin of the routing area; none where that cell is not in the top
-    grid or is blocked, e.g. in front of the lowest pedals). cost = `transit_mm` (+ `penalty` for an "avoid" edge), at
-    least one cell (keeps the search heuristic consistent)."""
+def edge_links(top, ug, board_rect, edge_segments, transit_mm, penalty=0.0):
+    """[(under cell, top cell, cost, side)]: every free under cell on the board border whose projection on its side lies within an
+    edge segment of that side (`edge_segments` = `layout["edge_segments"]`: ((x0, y0), (x1, y1), side) in canvas mm), joined to
+    the top cell just outside the board (the margin of the routing area). None where that cell is not in the top grid or is
+    blocked (e.g. in front of the lowest pedals). cost = `transit_mm` + `penalty` (the search-only deck penalty of the signal
+    cables), at least one cell (keeps the search heuristic consistent). No segments, no links."""
     x0, y0, x1, y1 = board_rect
     cols = [i for i in range(ug.nx) if x0 <= ug.centre((i, 0))[0] <= x1]   # the cells inside the board footprint
     rows = [j for j in range(ug.ny) if y0 <= ug.centre((0, j))[1] <= y1]
-    if not cols or not rows:
+    if not edge_segments or not cols or not rows:
         return []
-    sides = {"left": ([(cols[0], j) for j in rows], (-1, 0)), "right": ([(cols[-1], j) for j in rows], (1, 0)),
-             "back": ([(i, rows[0]) for i in cols], (0, -1)), "front": ([(i, rows[-1]) for i in cols], (0, 1))}
+    sides = {"left": ([(cols[0], j) for j in rows], (-1, 0), 1), "right": ([(cols[-1], j) for j in rows], (1, 0), 1),
+             "back": ([(i, rows[0]) for i in cols], (0, -1), 0), "front": ([(i, rows[-1]) for i in cols], (0, 1), 0)}
+    cost = max(transit_mm + penalty, top.cell)
     out = []
-    for side, (cells, (dx, dy)) in sides.items():
-        mode = modes.get(side, "forbidden")
-        if mode == "forbidden":
-            continue
-        cost = max(transit_mm + (penalty if mode == "avoid" else 0.0), top.cell)
+    for side, (cells, (dx, dy), axis) in sides.items():
+        spans = [(min(a[axis], b[axis]), max(a[axis], b[axis])) for a, b, sd in edge_segments if sd == side]   # along the side
         for c in cells:
             n = (c[0] + dx, c[1] + dy)
-            if c not in ug.blocked and top.free(n):
+            if c in ug.blocked or not top.free(n):
+                continue
+            t = ug.centre(c)[axis]
+            if any(lo <= t <= hi for lo, hi in spans):
                 out.append((c, n, cost, side))
     return out
 
@@ -692,10 +720,34 @@ def _back_on_top(grid, nets, paths, under, limit, plugs, plug_at, max_over_plug)
     return paths
 
 
-def path_length(grid, path, transit_mm=0.0):
-    """Length of a grid path (octile steps); over states, a layer change at one cell adds `transit_mm`."""
-    return sum(transit_mm if a[0] == b[0] and a[1] == b[1] else
-               grid.cell * (math.sqrt(2) if a[0] != b[0] and a[1] != b[1] else 1.0) for a, b in zip(path, path[1:]))
+def path_length(grid, path, transit_mm=0.0, edge_transit_mm=0.0):
+    """Length of a grid path (octile steps); over states, a layer change at one cell adds `transit_mm`, a layer change over an
+    edge link (two cells) adds `edge_transit_mm`."""
+    total = 0.0
+    for a, b in zip(path, path[1:]):
+        if a[0] == b[0] and a[1] == b[1]:
+            total += transit_mm
+        elif len(a) != len(b):
+            total += edge_transit_mm
+        else:
+            total += grid.cell * (math.sqrt(2) if a[0] != b[0] and a[1] != b[1] else 1.0)
+    return total
+
+
+def layer_passes(grid, runs, links=()):
+    """The layer changes between the consecutive runs of `layer_stretches`: (hole points, edge points, edge sides): a hole pass at
+    the shared hole cell's centre, an edge pass at the centre of its under cell, `links` = `edge_links` (for the side)."""
+    side_of = {(u, t): side for u, t, _, side in links}
+    holes, edges, sides = [], [], []
+    for k in range(len(runs) - 1):
+        a, b = runs[k][1][-1], runs[k + 1][1][0]
+        if (a[0], a[1]) == (b[0], b[1]):
+            holes.append(grid.centre(a))
+        else:
+            u, t = ((a[0], a[1]), (b[0], b[1])) if len(a) == 3 else ((b[0], b[1]), (a[0], a[1]))
+            edges.append(grid.centre(u))
+            sides.append(side_of.get((u, t), "?"))
+    return holes, edges, sides
 
 
 def layer_stretches(path):
@@ -996,6 +1048,8 @@ def validate_project_types(project, types):
     (instrument and reference types only by explicit per-cable override), the power type a DC plug."""
     cfg = project.get("cables") or {}
     errs = []
+    if cfg.get("route_in_front") is not None and not isinstance(cfg["route_in_front"], bool):
+        errs.append("cables.route_in_front must be true or false")
 
     def role(tid):
         return (types.get(tid) or {}).get("role")
@@ -1132,7 +1186,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     if layout.get("board"):
         board = design.footprint(layout["board"])
         feet = [r for it in placed.values() for r in shapes_of(it)]
-        front_y = min(board[3], max((f[3] for f in feet), default=board[3]))   # nothing in front of the lowest pedals
+        front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
         grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg)
         ctx["routing"].update(grid=grid, front_y=front_y)
         if cfg["under_board"]:
@@ -1143,8 +1197,18 @@ def route_project(ctx, cat_pedals, cable_types=None):
             transit = given if given is not None else (layout.get("hole_transit_mm")
                                                        if layout.get("hole_transit_mm") is not None else HOLE_TRANSIT_FALLBACK)
             cfg["hole_transit_mm"] = float(transit)
-            ugrid, layers = build_under(grid, board, under_rects, layout.get("holes"), cfg, transit)
-            ctx["routing"].update(under=ugrid, hole_cells=set(layers.holes) if layers else set())
+            edge_t, edge_src = edge_transit(power_settings(project, cfg), layout, transit)
+            ctx["routing"].update(edge_transit_mm=edge_t, edge_transit_source=edge_src)
+            segments = usable_edge_segments(layout, cfg)
+            ugrid, layers = build_under(grid, board, under_rects, layout.get("holes"), cfg, transit, segments, edge_t)
+            ctx["routing"].update(under=ugrid, hole_cells=set(layers.holes) if layers else set(), edge_links=len(layers.edges) if layers else 0)
+            for n, seg in enumerate(layout.get("edge_segments") or [], 1):   # an edge segment no cable can use
+                if seg not in segments:
+                    sink.append(f"routing: board.json: edge segment {n} is at the front, where the cable area ends at the lowest pedals: "
+                                f"it cannot be used (set cables.route_in_front to true to route in front of the pedals)")
+                elif not edge_links(grid, ugrid, board, [seg], edge_t):
+                    sink.append(f"routing: board.json: edge segment {n} ({seg[2]}) has no usable crossing "
+                                f"(its border cells are blocked or outside the cable area)")
     run_given = "exit_run_mm" in (project.get("cables") or {})
 
     nets, chosen = [], {}   # chosen: cable id -> (end a option or None, end b option or None)
@@ -1181,7 +1245,8 @@ def route_project(ctx, cat_pedals, cable_types=None):
         best = None
         for key, oa, ob in (x for x in combos if x[0] == top):   # A* only for the best-ranked combinations
             path = astar(grid, oa["cell"], ob["cell"], lambda _: 1.0, squeeze=key[1] == 1, under=layers) if key[1] < 2 else None
-            length = (oa["measure_mm"] + ob["measure_mm"] + path_length(grid, path, cfg.get("hole_transit_mm", 0.0))) if path else \
+            length = (oa["measure_mm"] + ob["measure_mm"] + path_length(grid, path, cfg.get("hole_transit_mm", 0.0),
+                                                                        ctx["routing"].get("edge_transit_mm", 0.0))) if path else \
                 math.hypot(oa["exit"][0] - ob["exit"][0], oa["exit"][1] - ob["exit"][1])
             if best is None or length < best[0][3]:
                 best = ((*key, length), oa, ob)
@@ -1238,10 +1303,11 @@ def route_project(ctx, cat_pedals, cable_types=None):
         # one smoothed polyline per layer stretch; the hole cells where the cable changes layer are fixed corners
         g = path_geometry(grid, path, oa, ob, None, pedal_rects, under_rects, radius, plug_rects, own)
         runs, stretches, top_mm, under_mm, lead_a, lead_b = g["runs"], g["stretches"], g["top_mm"], g["under_mm"], g["lead_a"], g["lead_b"]
-        passes = len(runs) - 1
-        c.update(min_mm=oa["measure_mm"] + ob["measure_mm"] + top_mm + under_mm + passes * transit, status="routed",
-                 under_board=bool(passes), under_mm=under_mm, holes_used=passes,
-                 hole_points=[st["points"][-1] for st in stretches[:-1]], path=g["path"])
+        hole_pts, edge_pts, sides = layer_passes(grid, runs, layers.edges if layers else ())
+        edge_t = ctx["routing"].get("edge_transit_mm", 0.0)
+        c.update(min_mm=oa["measure_mm"] + ob["measure_mm"] + top_mm + under_mm + len(hole_pts) * transit + len(edge_pts) * edge_t,
+                 status="routed", under_board=len(runs) > 1, under_mm=under_mm, holes_used=len(hole_pts), edges_used=len(edge_pts),
+                 edge_sides=sides, hole_points=hole_pts, edge_points=edge_pts, path=g["path"])
         c["_stretches"], c["_own"] = stretches, own
         c["_leads"] = (lead_a, lead_b)   # fixed geometry round the routed corners
         if c.get("_squeeze") and squeezed:
@@ -1344,21 +1410,15 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     pd = float(ptype["diameter_mm"])
     pc_cfg = {**cfg, "diameter_mm": pd}
     transit = cfg["hole_transit_mm"]
-    edge_t, source = pcfg["edge_transit_mm"], "power_routing.edge_transit_mm"
-    if edge_t is None:
-        edge_t, source = layout.get("edge_transit_mm"), "the board data"
-    if edge_t is None:
-        edge_t, source = 2 * transit, "twice the hole transit"
-    edge_t = float(edge_t)
+    edge_t, source = edge_transit(pcfg, layout, transit)
     pw.update(edge_transit_mm=edge_t, edge_transit_source=source, hole_transit_mm=float(transit), diameter_mm=pd)
     pgrid = build_grid(board, pedal_rects, front_y, pc_cfg)
     ug = under_grid(pgrid, board, under_rects, pc_cfg)
     holes = hole_cells(pgrid, ug, layout.get("holes"))
-    links = edge_links(pgrid, ug, board, pcfg["edges"], edge_t, float(pcfg["avoid_penalty"]))
+    links = edge_links(pgrid, ug, board, usable_edge_segments(layout, cfg), edge_t)
     layers = Under(ug, holes, float(transit), float(cfg["hole_penalty"]), POWER_UNDER_COST, int(pcfg["max_stack"]),
                    top_cost=float(pcfg["top_cost"]), edges=links)
     layers.tight = True
-    side_of = {(u, t): side for u, t, _, side in links}
     pw.update(hole_cells=set(holes), edge_cells=len(links))
     by_key = {f"{cid}.{jk['id']}": (cid, jk, pc, facing, o) for cid, jk, pc, facing, o in choices}
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
@@ -1421,15 +1481,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
         oa, ob, start_pt, a_key, b_key = ends[name]
         g = path_geometry(pgrid, path, oa, ob, start_pt, pedal_rects, under_rects, radius, plug_rects, {a_key, b_key})
         runs, stretches, top_mm, under_mm, lead_a, lead_b = g["runs"], g["stretches"], g["top_mm"], g["under_mm"], g["lead_a"], g["lead_b"]
-        hole_pts, edge_pts, sides = [], [], []
-        for k in range(len(runs) - 1):
-            a, b = runs[k][1][-1], runs[k + 1][1][0]
-            if (a[0], a[1]) == (b[0], b[1]):
-                hole_pts.append(pgrid.centre(a))
-            else:
-                u, t = ((a[0], a[1]), (b[0], b[1])) if len(a) == 3 else ((b[0], b[1]), (a[0], a[1]))
-                edge_pts.append(pgrid.centre(u))
-                sides.append(side_of.get((u, t), "?"))
+        hole_pts, edge_pts, sides = layer_passes(pgrid, runs, links)
         draw = [{"layer": st["layer"], "points": (lead_a if k == 0 else []) + st["points"] + (lead_b if k == len(stretches) - 1 else [])}
                 for k, st in enumerate(stretches)]
         c.update(min_mm=(oa["measure_mm"] if oa else 0.0) + ob["measure_mm"] + top_mm + under_mm + len(hole_pts) * transit + len(edge_pts) * edge_t,

@@ -195,7 +195,7 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
     "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
-    "holes" [canvas rects], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
+    "holes" [canvas rects], "edge_segments" [((x0, y0), (x1, y1), side) canvas segments], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
     instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
     "on_board"; the outline of every obstacle,
     placed item and under-board supply item, its box without an outline; `no_outline` lists the obstacles / placed items without one; the board's
@@ -246,9 +246,63 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     board_data = boards_mod.load() if board_data is None else board_data
     entry = board_data.get((board or {}).get("image") or "") or {}
     holes = design.board_holes(board, entry.get("holes"), board_edits)
+    edge_segments = design.board_edges(board, board_edits)
     return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
             "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes,
-            "hole_transit_mm": entry.get("hole_transit_mm"), "edge_transit_mm": entry.get("edge_transit_mm")}
+            "edge_segments": edge_segments, "hole_transit_mm": entry.get("hole_transit_mm"), "edge_transit_mm": entry.get("edge_transit_mm")}
+
+
+def _project_name(ctx):
+    return Path(ctx["dir"]).name if ctx.get("dir") else "<project>"
+
+
+def crossing_errors(project, insts, usable_holes, edge_usable, name):
+    """One error per under-board supply instance when no power cable can come up: `usable_holes` (any hole a cable could use)
+    and `edge_usable` (any edge segment a cable can use) are both false. A supply `placement` "on_board" is never reported."""
+    if usable_holes or edge_usable:
+        return []
+    why = "the board has no holes and no edge segments" if usable_holes is None else \
+          "every hole of the board is covered by a pedal or a supply and there is no edge segment"
+    return [f"power.supplies: {s['inst']['id']} is under the board, but {why}, so no power cable can come up; draw them with "
+            f"uv run scripts/board_editor.py {name} or set placement on_board"
+            for s in insts if placement(s["inst"], project) != "on_board"]
+
+
+def layout_crossing_errors(ctx, lay, radius):
+    """`crossing_errors` for a known layout: the holes count when a 6 mm sample of them has a point that no pedal / obstacle
+    and no under-board supply covers (grown by the power cable's `radius`), the edge segments when one is usable
+    (`routing.usable_edge_segments`: not at the front unless `cables.route_in_front`)."""
+    import power
+    import routing
+    project = ctx["project"]
+    rects = [r for it in [*lay["placed"].values(), *lay["obstacles"]] for r in design.item_shapes(lay["shapes"], it)]
+    rects += [r for iid, it in lay["inst_item"].items() if lay["inst_placement"].get(iid) != "on_board" for r in design.item_shapes(lay["shapes"], it)]
+    grown = [(a - radius, b - radius, c + radius, d + radius) for a, b, c, d in rects]
+    sample = power.hole_sample(lay.get("holes"))
+    holes = None if not sample else any(not power.covered(h, grown) for h in sample)
+    edge = bool(routing.usable_edge_segments(lay, project.get("cables") or {}))
+    return crossing_errors(project, ctx.get("supplies", []), holes, edge, _project_name(ctx))
+
+
+def data_crossing_errors(ctx, board_data, edits):
+    """`crossing_errors` without a layout, from the data: the project's board image (found in Pedal Playground's pedalboards
+    database as "Brand Model"), its derived holes (`board_data`) with the project's board.json boxes, and the edge segments
+    (not the front ones unless `cables.route_in_front`). Nothing is reported when the image or its entry in catalog/boards.json
+    is unknown."""
+    import common
+    cables = ctx["project"].get("cables") or {}
+    b = ctx["project"].get("board") or {}
+    try:
+        image = (common.database("pedalboards.json").get(f"{b.get('brand')} {b.get('model')}") or {}).get("Image")
+    except (OSError, ValueError):   # no database cache and no network: unknown, not an error
+        return []
+    entry = (board_data or {}).get(image or "")
+    if entry is None:
+        return []
+    unit = {"left_mm": 0.0, "top_mm": 0.0, "w_mm": 1.0, "h_mm": 1.0, "rot": 0}
+    holes = True if design.board_holes(unit, entry.get("holes"), edits) else None
+    edge = any(e["type"] == "edge" and (e["side"] != "front" or cables.get("route_in_front")) for e in edits)
+    return crossing_errors(ctx["project"], ctx.get("supplies", []), holes, edge, ctx["dir"].name)
 
 
 def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):
@@ -334,9 +388,12 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         ctx["layout_source"] = "injected"
     if items is None:
         ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
+        errors.extend(data_crossing_errors(ctx, boards_mod.load() if board_data is None else board_data, boards_mod.load_edits(ctx["dir"], warnings)))
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
                             board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings))
+    ptype = ((cable_types or {}).get((project.get("cables") or {}).get("power_type") or "") or {})
+    errors.extend(layout_crossing_errors(ctx, lay, float(ptype.get("diameter_mm") or 0.0) / 2))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
     ctx["layout"] = {**lay, "jacks": jacks_data, "outward_mm": outward}
