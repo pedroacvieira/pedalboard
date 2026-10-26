@@ -9,11 +9,11 @@
   (as `jacks.check`), from the supply port through the daisy chain. Used for layout proposals; the build keeps
   using the owner's hand wiring in project.json.
 """
-import heapq
 import itertools
 import math
 import re
 
+import design
 from routing import POLARITIES
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
 
@@ -142,20 +142,13 @@ def covered(point, rects):
     return any(r[0] <= point[0] <= r[2] and r[1] <= point[1] <= r[3] for r in rects)
 
 
-def nearest_usable(point, sample, blocked=()):
-    """The sample point nearest to `point` that lies in none of the `blocked` rectangles (pedal outlines grown by the
-    cable radius: a pedal over part of a hole blocks that part), or None."""
-    d2 = lambda h: (h[0] - point[0]) ** 2 + (h[1] - point[1]) ** 2
-    for h in heapq.nsmallest(8, sample, key=d2):
-        if not covered(h, blocked):
-            return h
-    return next((h for h in sorted(sample, key=d2) if not covered(h, blocked)), None)
-
-
 def estimate_setup(project, lay, cable_types):
-    """What the layout-level power estimate needs, or None (then Manhattan is used): {"sample": the hole points of the
-    board, "cfg": {"top_cost", "transit_mm"}, "radius": the power cable's radius}. `lay`: jacks.layout_from_items's result.
-    None without a power cable type, without holes or with `cables.under_board: false`."""
+    """What the layout-level power estimate needs, or None (then Manhattan is used): {"index": a `HoleIndex` of the hole
+    points of the board that are free under the board (not inside an under-board supply's outline grown by the power
+    cable's radius, as the router's hole cells), "cfg": {"top_cost", "transit_mm"}, "radius": the power cable's radius}. `lay`:
+    jacks.layout_from_items's result (its holes, under-board supply items and outline shapes). Under-board supplies do not
+    move in the layout search, so this is done once per model. None without a power cable type, without holes or with
+    `cables.under_board: false`."""
     import routing
     cfg = routing.settings(project, cable_types)
     ptype = cable_types.get(cfg.get("power_type") or "")
@@ -164,17 +157,23 @@ def estimate_setup(project, lay, cable_types):
     transit = cfg.get("hole_transit_mm")
     if transit is None:
         transit = lay["hole_transit_mm"] if lay.get("hole_transit_mm") is not None else routing.HOLE_TRANSIT_FALLBACK
-    sample = hole_sample(lay["holes"])
-    return {"sample": sample, "index": HoleIndex(sample),
+    radius = float(ptype["diameter_mm"]) / 2
+    under = [r for iid, it in (lay.get("inst_item") or {}).items() if (lay.get("inst_placement") or {}).get(iid) != "on_board"
+             for r in design.item_shapes(lay.get("shapes") or {}, it)]
+    grown = [(a - radius, b - radius, c + radius, d + radius) for a, b, c, d in under]
+    sample = [h for h in hole_sample(lay["holes"]) if not covered(h, grown)]
+    return {"index": HoleIndex(sample),
             "cfg": {"top_cost": float(routing.power_settings(project, cfg)["top_cost"]), "transit_mm": float(transit)},
-            "radius": float(ptype["diameter_mm"]) / 2}
+            "radius": radius}
 
 
-def usable_points(setup, rects):
-    """The setup's hole points that lie in none of `rects` (pedal outlines) grown by the power cable's radius."""
+def usable_holes(setup, rects):
+    """A `HoleIndex` of the setup's hole points that lie in none of `rects` (pedal outlines) grown by the power cable's
+    radius, or None when no point is left."""
     r = setup["radius"]
     grown = [(a - r, b - r, c + r, d + r) for a, b, c, d in rects]
-    return [h for h in setup["sample"] if not covered(h, grown)]
+    index = setup["index"].without(grown)
+    return index or None
 
 
 class HoleIndex:
@@ -182,21 +181,29 @@ class HoleIndex:
     (the layout search asks for the nearest usable hole point of every power jack of every candidate)."""
 
     def __init__(self, sample, cell=12.0):
-        self.cell, self.buckets = cell, {}
-        for h in sample:
+        self.cell, self.buckets, self.points = cell, {}, list(sample)
+        for h in self.points:
             self.buckets.setdefault((int(h[0] // cell), int(h[1] // cell)), []).append(h)
         keys = list(self.buckets)
         self.span = max([abs(i) for i, _ in keys] + [abs(j) for _, j in keys] + [0]) + 1   # rings never need to go beyond
 
+    def __len__(self):
+        return len(self.points)
+
+    def without(self, rects):
+        """A new index of the points that lie in none of `rects`."""
+        return HoleIndex([h for h in self.points if not covered(h, rects)], self.cell)
+
     def nearest(self, point, blocked=(), reach=100.0):
-        """The sample point nearest to `point` outside every `blocked` rectangle, or None (as `nearest_usable`). The
-        rectangles farther than `reach` mm from the point are left out of the first search (they cannot cover a point
-        that close); an answer farther than that is searched again with all of them."""
+        """The sample point nearest to `point` outside every `blocked` rectangle, or None. The rectangles farther than `reach`
+        mm from the point are left out of the first search (they cannot cover a point that close); when that finds nothing
+        within `reach`, the search is repeated over every ring with all of them."""
         x, y = point
         near = [r for r in blocked if r[0] <= x + reach and r[2] >= x - reach and r[1] <= y + reach and r[3] >= y - reach]
         h = self._nearest(point, near, reach)
-        return h if h is not None and (h[0] - x) ** 2 + (h[1] - y) ** 2 <= reach * reach or len(near) == len(blocked) \
-            else self._nearest(point, blocked, math.inf)
+        if h is not None and (h[0] - x) ** 2 + (h[1] - y) ** 2 <= reach * reach:
+            return h
+        return self._nearest(point, blocked, math.inf)
 
     def _nearest(self, point, blocked, reach):
         c, (ci, cj) = self.cell, (int(point[0] // self.cell), int(point[1] // self.cell))
@@ -216,17 +223,18 @@ class HoleIndex:
         return best
 
 
-def hop_estimate(src, dst, src_under, hole_points, cfg, near=None):
+def hop_estimate(src, dst, src_under, holes, cfg, near=None):
     """Cheap estimate of one routed power hop from `src` to `dst` (measure points, mm), in the router's costs (`cfg`:
     `top_cost` per mm on top, `transit_mm` per hole pass; the under part costs 1 per mm):
       source under:  Manhattan under to the usable hole point nearest the target, the pass, the straight distance on top;
       source on top: the cheaper of Manhattan on top (x top_cost) and down through the hole nearest the source, Manhattan
                      under, up through the hole nearest the target.
-    `hole_points`: usable hole points (None / empty: today's plain Manhattan); `near(point)` finds the nearest one
-    (default: the closest of `hole_points`). Also returns plain Manhattan when no hole is usable near either end."""
-    if not hole_points:
+    `holes`: a `HoleIndex` of the usable hole points (None / empty: today's plain Manhattan); `near(point)` finds the
+    nearest usable one (default: `holes.nearest`, a caller may memoise it). Also returns plain Manhattan when no hole is
+    usable near the target."""
+    if not holes:
         return manhattan(src, dst)
-    near = near or (lambda p: nearest_usable(p, hole_points))
+    near = near or holes.nearest
     tc, tr = cfg.get("top_cost", 3.0), cfg.get("transit_mm", 15.0)
     ht = near(dst)
     if ht is None:
@@ -286,7 +294,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     points: {pedal id: measure point (mm) of its power plug}; port_points: {(instance id, port): point}.
     run_v: {pedal id: operating voltage} to keep (the owner's choice); others get `default_voltage`.
     start: a project-style wiring ({inst id: [{"port", "voltage_v", "pedals"}]}) to improve from (else greedy).
-    holes: usable hole points (`hole_sample` minus the pedals) and cfg {"top_cost", "transit_mm"}: the daisy chains are then
+    holes: a `HoleIndex` of the usable hole points (`hole_sample` minus the pedals, see `usable_holes`) and cfg {"top_cost", "transit_mm"}: the daisy chains are then
     measured with `hop_estimate` (power cables run under the board and come up through the hole nearest each pedal; an
     instance with `"under": False` starts its chain on top); without holes: Manhattan between the measure points.
     Returns {"supplies": [project.json power.supplies entries], "length_mm", "warnings": [build warnings of the
@@ -301,7 +309,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
 
     def near(p):
         if p not in hop_cache:
-            hop_cache[p] = nearest_usable(p, holes)
+            hop_cache[p] = holes.nearest(p)
         return hop_cache[p]
     hop = (lambda a, b, under: hop_estimate(a, b, under, holes, cfg, near)) if holes else None
     slots = []   # (inst id, port, {voltage: max_ma}, polarity, isolated)
@@ -470,7 +478,6 @@ def measure_points(placed, inst_item, insts, jacks_data, depth_mm):
     """({pedal id: point}, {(instance id, port): point}): where DC cable lengths are measured (mm), half the plug
     depth in front of each power jack, as jacks.check does. placed: {pedal id: layout item}; inst_item: {supply
     instance id: layout item}; insts: [{"id", "supply"}]."""
-    import design
     from jacks import default_jack   # late: jacks imports routing lazily
     pts, ports = {}, {}
     for cid, it in placed.items():

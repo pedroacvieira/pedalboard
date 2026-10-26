@@ -355,6 +355,13 @@ def test_an_on_board_supply_is_routed_around(tmp_path):
     assert lengths["on_board"] > lengths["under"] + 10                           # down past y 101.6 and up again
 
 
+def test_only_the_first_hop_of_a_daisy_chain_starts_under_the_board(tmp_path):
+    specs = [A(0), ("T B", 100, 0, 2.0, 4.0, 0, "pedal"), S(300, 0)]
+    ctx = project(tmp_path, specs, chain=("a", "b"), supplies=insts(("psu1", "under", ["a", "b"])))
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    assert [(h["from"], h["under_board"]) for h in ctx["cables"]["power"]] == [("psu1.F1", True), ("a.power", False)]
+
+
 def test_power_cables_are_under_the_board_per_supply(tmp_path):
     specs = [A(0), ("T B", 100, 0, 2.0, 4.0, 0, "pedal"), S(300, 0), S(500, 0)]
     ctx = project(tmp_path, specs, chain=("a", "b"), supplies=insts(("psu1", "under", ["a"]), ("psu2", "on_board", ["b"])))

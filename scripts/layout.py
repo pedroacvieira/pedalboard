@@ -25,8 +25,8 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
   power          0.1 / mm DC cable along each daisy chain between half-depth measure points for a fixed wiring (the search
                  keeps it; finalists get their own wiring from power.assign): the nearest-hole estimate of the power router
                  (power.hop_estimate: under the board, up through the usable hole nearest the pedal's power jack, a mm on top
-                 counts `power_routing.top_cost`, a pass the hole transit; the points a candidate's pedals cover are not
-                 usable); plain Manhattan without holes or a power cable type
+                 counts `power_routing.top_cost`, a pass the hole transit; the points a candidate's pedals cover, or an under-board
+                 supply covers, are not usable); plain Manhattan without holes or a power cable type
   footswitch     2 x crowding: per pair of switches on different pedals priority x max(0, comfort - d)^2 / comfort
                  (footswitches.crowding; comfort `footswitches.comfort_mm`, default 100; priority per switch type:
                  bypass 1.0, boost 0.8, tap 0.8, function 0.5, a pair weighs the larger of its two): spacing is
@@ -173,7 +173,7 @@ class Model:
     [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None):
+                 fs_limit=None, outlines=None, board_data=None, board_edits=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -184,7 +184,8 @@ class Model:
                  for i in (project.get("power") or {}).get("supplies", []) if i["supply"] in cat_supplies]
         jset = project.get("jacks", {})
         self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
-        lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines)
+        lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines,
+                                      board_data=board_data, board_edits=board_edits)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
         self.board = design.footprint(lay["board"])
@@ -550,15 +551,15 @@ class Model:
                 note_hits(end["jack"], n, end["opts"][k]["side"], hits)
         # power cable length for the fixed wiring: Manhattan, or (holes known) the nearest-hole estimate with the hole points the
         # candidate's pedal footprints leave free
-        pw_near = pw_cfg = sample = None
+        pw_near = pw_cfg = holes = None
         if self.power_setup:
             pr = self.power_setup["radius"]
             pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
-            sample, index, memo = self.power_setup["sample"], self.power_setup["index"], {}
+            holes, memo = self.power_setup["index"], {}   # (its points are already free under the board)
 
             def pw_near(p):
                 if p not in memo:
-                    memo[p] = index.nearest(p, pw_blocked)
+                    memo[p] = holes.nearest(p, pw_blocked)
                 return memo[p]
             pw_cfg = self.power_setup["cfg"]
         for port, members, under in self.wiring:
@@ -570,7 +571,7 @@ class Model:
                 m = geo[n]["power"]["measure"] if geo[n]["power"] else None
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
-                    raw["power"] += power.hop_estimate(prev, here, under, sample, pw_cfg, pw_near)
+                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near)
                 if here is not None:
                     prev, under = here, False
         terms["power"] = w["power"] * raw["power"]

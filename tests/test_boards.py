@@ -163,6 +163,15 @@ def test_usable_drops_a_bad_transit_but_keeps_the_holes():
     assert got == {"a.png": {"holes": [[0, 0, 1, 1]]}, "b.png": {"holes": []}}
 
 
+def test_usable_drops_a_bad_edge_transit():
+    h = [[0, 0, 1, 1]]
+    got = boards.usable({"a.png": {"holes": h, "edge_transit_mm": "x"}, "b.png": {"holes": h, "edge_transit_mm": True},
+                         "c.png": {"holes": h, "edge_transit_mm": -1}, "d.png": {"holes": h, "edge_transit_mm": 0},
+                         "e.png": {"holes": h, "edge_transit_mm": 7.5}})
+    assert got == {"a.png": {"holes": h}, "b.png": {"holes": h}, "c.png": {"holes": h},
+                   "d.png": {"holes": h, "edge_transit_mm": 0}, "e.png": {"holes": h, "edge_transit_mm": 7.5}}
+
+
 def test_committed_file_is_well_formed():
     data = boards.read_file()
     assert {"fender-pro-medium.png", "rockboard-duo-21.png"} <= set(data["boards"])

@@ -26,6 +26,7 @@ import json
 import sys
 import time
 
+import boards
 import build
 import design
 import footswitches
@@ -43,6 +44,7 @@ META = "meta.json"
 def metrics(ctx, model, state, move_factor):
     """Real-pipeline figures of one checked layout + its surrogate score."""
     sig = [c for c in ctx.get("cable_list") or [] if c["kind"] == "signal"]
+    pw = [c for c in ctx.get("cable_list") or [] if c["kind"] == "power"]
     status = [c["status"] for c in sig]
     prs = ctx.get("footswitch_pairs") or []
     total, det = model.score(state, detail=True, move_factor=move_factor)
@@ -58,8 +60,8 @@ def metrics(ctx, model, state, move_factor):
         "fs_known": det["fs_known"],
         "signal_mm": round(sum(c["min_mm"] for c in sig if c["min_mm"] is not None), 1),
         "signal_routed": sum(1 for c in sig if c["min_mm"] is not None), "signal_cables": len(sig),
-        "power_mm": round(sum((c["min_mm"] if c["min_mm"] is not None else c.get("estimate_mm")) or 0
-                              for c in ctx.get("cable_list") or [] if c["kind"] == "power"), 1),
+        "power_mm": round(sum(c["min_mm"] for c in pw if c["min_mm"] is not None), 1),   # routed power cables only
+        "power_unrouted": sum(1 for c in pw if c["min_mm"] is None),                      # (their length is not in power_mm)
         "io_mm": round(det["terms"]["io"][0], 1),
         "surrogate": round(total, 1),
         "terms": {k: round(v[1], 1) for k, v in det["terms"].items()},
@@ -98,20 +100,23 @@ def moved_list(model, state):
     return out
 
 
-def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
-    """(metrics, ctx, wiring) of a candidate: its own power wiring, then build.validate with the injected layout."""
+def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_data=None, board_edits=None):
+    """(metrics, ctx, wiring) of a candidate: its own power wiring, then build.validate with the injected layout.
+    `board_data` / `board_edits`: catalog/boards.json and the project's board.json, read once by the caller."""
     cat_pedals, cat_supplies, jacks_data, fs_data, outl = cat
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
-                                  project.get("jacks", {}), [], [], outlines=outl)
+                                  project.get("jacks", {}), [], [], outlines=outl, board_data=board_data, board_edits=board_edits)
     insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"],
               "under": lay["inst_placement"].get(s["inst"]["id"]) != "on_board"} for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
-    setup = power.estimate_setup(project, lay, model.cable_types)   # power cables run under the board: nearest-hole estimate
+    # power cables run under the board: the model's nearest-hole setup (the holes free under the board; the under-board supplies
+    # do not move), minus the hole points this candidate's pedals cover
+    setup = model.power_setup
     holes = cfg = None
     if setup:
         rects = [r for it in [*lay["placed"].values(), *lay["obstacles"]] for r in design.item_shapes(lay["shapes"], it)]
-        holes, cfg = power.usable_points(setup, rects) or None, setup["cfg"]
+        holes, cfg = power.usable_holes(setup, rects), setup["cfg"]
     start = {s["inst"]["id"]: s["inst"].get("outputs", []) for s in owner_ctx["supplies"]}
     try:
         wiring = power.assign(owner_ctx["chain"], owner_ctx["pedals"], insts, project, pts, ports,
@@ -126,7 +131,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
     except ValueError as e:   # keep the owner's wiring
         wiring, proj = {"supplies": project.get("power", {}).get("supplies", []), "error": str(e)}, project
     ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj,
-                         outline_data=outl)
+                         outline_data=outl, board_data=board_data)
     keep = model.wiring
     under = {i["id"]: i["under"] for i in insts}
     model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True), (s["id"], o["port"]))
@@ -203,6 +208,7 @@ def main(argv=None):
     cat_pedals, cat_supplies = load_catalog()
     jacks_data, fs_data = jacks.read_file()["jacks"], footswitches.read_file()["footswitches"]
     outl = outlines.load()   # read once: the owner's layout, the model and every finalist use it
+    board_data, board_edits = boards.load(), boards.load_edits(pdir)   # likewise (catalog/boards.json, the project's board.json)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
     project = load_json(pdir / "project.json")
     if args.pin:
@@ -211,9 +217,10 @@ def main(argv=None):
     items = design.parse_canvas(design_doc["canvas"])
     cable_types = load_cable_types()
     owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project,
-                               outline_data=outl)
+                               outline_data=outl, board_data=board_data)
     try:
-        model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl)
+        model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl,
+                             board_data=board_data, board_edits=board_edits)
     except ValueError as e:
         sys.exit(f"{pdir.name}: {e}")
     if args.score:
@@ -234,13 +241,13 @@ def main(argv=None):
                           time_limit_s=cfg["search"].get("time_limit_s"), log=print)
     mf = lv["move_factor"]
     # the owner's layout is compared with its own computed wiring, as every finalist: a proposal must win on positions
-    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf)
+    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf, board_data, board_edits)
     finals = []
     for _, state in found:
         moved = moved_list(model, state)
         if not moved:
             continue
-        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf)
+        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf, board_data, board_edits)
         finals.append({"state": state, "metrics": m, "ctx": ctx, "wiring": wiring, "moved": moved, "ok": acceptable(m, owner_m)})
     finals.sort(key=lambda f: rank_key(f["metrics"]))
     chosen = [f for f in finals if f["ok"]][:top]
@@ -288,13 +295,18 @@ def main(argv=None):
     return 0
 
 
+def unrouted(m):
+    """' (+2 not routed)': the power cables whose length is not in `power_mm`."""
+    return f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else ""
+
+
 def report(pdir, meta, owner):
     def line(label, m):
         fs = ("no footswitch data" if not m["fs_known"] else
               f"crowding {m['fs_crowding']:.0f}, closest {m['fs_closest_mm']} mm, {m['fs_close']} below the minimum")
         return (f"  {label:9} blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; routing problems "
                 f"{routing_problems(m)}; signal {m['signal_mm']:.0f} mm ({m['signal_routed']}/{m['signal_cables']} routed); "
-                f"power ~{m['power_mm']:.0f} mm; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
+                f"power {m['power_mm']:.0f} mm routed{unrouted(m)}; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
     print(line("owner", owner))
     if not meta["proposals"]:
         print(f"  no better layout found ({meta['finalists']} finalist(s) checked)")

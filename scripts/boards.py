@@ -236,7 +236,7 @@ def _rect_ok(r):   # fractions of the image: 0 <= x0 < x1 <= 1 (bools are not nu
 def usable(boards):
     """Only well-formed board entries {image name: {"holes": [[x0, y0, x1, y1], ...], "hole_transit_mm": n, ...}}:
     every hole a fraction rectangle (0 <= x0 < x1 <= 1, same for y); `holes` may be empty (a board without holes);
-    `hole_transit_mm` is dropped when it is not a number >= 0. A malformed entry is dropped as a whole, so a
+    `hole_transit_mm` and `edge_transit_mm` are dropped when not a number >= 0. A malformed entry is dropped as a whole, so a
     hand-edited file cannot crash a build. Accepts the whole file dict or just its "boards" part."""
     if isinstance(boards, dict) and isinstance(boards.get("boards"), dict):
         boards = boards["boards"]
@@ -246,9 +246,10 @@ def usable(boards):
         if not isinstance(holes, list) or not all(_rect_ok(r) for r in holes):
             continue
         e = {**entry, "holes": [list(r) for r in holes]}
-        t = e.get("hole_transit_mm")
-        if "hole_transit_mm" in e and (not isinstance(t, (int, float)) or isinstance(t, bool) or t < 0):
-            del e["hole_transit_mm"]
+        for key in ("hole_transit_mm", "edge_transit_mm"):
+            t = e.get(key)
+            if key in e and (not isinstance(t, (int, float)) or isinstance(t, bool) or t < 0):
+                del e[key]
         out[name] = e
     return out
 

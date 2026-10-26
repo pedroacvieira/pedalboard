@@ -74,6 +74,16 @@ def test_an_under_board_supply_goes_under_to_the_hole_by_the_jack_and_up_for_a_s
     assert c["estimate_mm"] is None and ctx["routing"]["power"]["hole_transit_mm"] == 15.0
 
 
+def test_a_supply_port_in_the_margin_off_the_board_is_unroutable_with_the_footprint_message():
+    ctx = pw_ctx()
+    ctx["layout"]["inst_item"]["psu1"] = mm_item("i-psu", "PSU", -15, 150, 60, 30)   # F1 at x -3, 3 mm off the board's left edge
+    (c,) = route(ctx).values()
+    assert c["status"] == "unroutable: the supply port is outside the board footprint" and c["min_mm"] is None
+    assert any("P1" in w and "outside the board footprint" in w for w in ctx["warnings"] + ctx["errors"])
+    (ok,) = route(pw_ctx()).values()
+    assert ok["status"] == "routed"                      # the same port on the board routes
+
+
 def test_a_hole_a_pedal_covers_is_skipped_for_the_next_one():
     cover = mm_item("i-c", "C", 26, 30, 28, 17)          # over the whole usable part of HOLE_A (y 30..47), clear of the plug
     ctx = pw_ctx(holes=(HOLE_A, HOLE_FAR), extra=[cover])
@@ -211,34 +221,44 @@ CFG = {"top_cost": 3.0, "transit_mm": 15.0}
 
 
 def test_hop_estimate_cases():
-    assert power.hop_estimate((0, 0), (30, 40), True, [], CFG) == 70 and power.hop_estimate((0, 0), (30, 40), False, None, CFG) == 70
+    H = power.HoleIndex
+    assert power.hop_estimate((0, 0), (30, 40), True, H([]), CFG) == 70 and power.hop_estimate((0, 0), (30, 40), False, None, CFG) == 70
     # source under: Manhattan to the hole by the target (80) + the pass (15) + 3 x the 10 mm straight leg
-    assert power.hop_estimate((0, 0), (50, 40), True, [(40, 40)], CFG) == pytest.approx(80 + 15 + 30)
+    assert power.hop_estimate((0, 0), (50, 40), True, H([(40, 40)]), CFG) == pytest.approx(80 + 15 + 30)
     # on top, close together: the top way (3 x 10) beats going down and up
-    assert power.hop_estimate((0, 0), (10, 0), False, [(500, 500)], CFG) == pytest.approx(30)
+    assert power.hop_estimate((0, 0), (10, 0), False, H([(500, 500)]), CFG) == pytest.approx(30)
     # on top, far apart with a hole by each end: 3 x 5 + 15 + 190 under + 15 + 3 x 5 = 250 against 3 x 200 on top
-    holes = [(5, 0), (195, 0)]
+    holes = H([(5, 0), (195, 0)])
     assert power.hop_estimate((0, 0), (200, 0), False, holes, CFG) == pytest.approx(250)
     # no usable hole near the target: Manhattan
     assert power.hop_estimate((0, 0), (200, 0), True, holes, CFG, near=lambda p: None) == 200
 
 
-def test_nearest_usable_skips_the_points_a_pedal_covers_and_the_index_agrees():
-    sample = [(10.0, 0.0), (20.0, 0.0), (90.0, 0.0)]
-    assert power.nearest_usable((12, 0), sample) == (10.0, 0.0)
-    assert power.nearest_usable((12, 0), sample, [(5, -5, 15, 5)]) == (20.0, 0.0)
-    assert power.nearest_usable((12, 0), sample, [(5, -5, 25, 5)]) == (90.0, 0.0)
-    assert power.nearest_usable((12, 0), sample, [(0, -5, 100, 5)]) is None
+def test_hole_index_nearest_skips_the_points_a_pedal_covers():
+    index = power.HoleIndex([(10.0, 0.0), (20.0, 0.0), (90.0, 0.0)])
+    assert index.nearest((12, 0)) == (10.0, 0.0)
+    assert index.nearest((12, 0), [(5, -5, 15, 5)]) == (20.0, 0.0)
+    assert index.nearest((12, 0), [(5, -5, 25, 5)]) == (90.0, 0.0)
+    assert index.nearest((12, 0), [(0, -5, 100, 5)]) is None
+    assert power.HoleIndex([]).nearest((0, 0)) is None and len(index) == 3 and len(power.HoleIndex([])) == 0
+    # a point far beyond the first search radius is still found, and a rectangle far from the query is still respected
+    far = power.HoleIndex([(500.0, 0.0), (700.0, 0.0)])
+    assert far.nearest((0, 0)) == (500.0, 0.0)
+    assert far.nearest((0, 0), [(480, -10, 520, 10)]) == (700.0, 0.0)
+    # without(): the points no rectangle covers
+    assert power.HoleIndex([(1.0, 1.0), (50.0, 1.0)]).without([(0, 0, 10, 10)]).points == [(50.0, 1.0)]
+    # random cases against a brute-force scan
     rnd = random.Random(3)
     big = power.hole_sample([(0, 0, 80, 40), (120, 10, 200, 60)])
-    index = power.HoleIndex(big)
+    big_index = power.HoleIndex(big)
     for _ in range(60):
         blocked = [(a, b, a + rnd.uniform(5, 50), b + rnd.uniform(5, 50)) for a, b in ((rnd.uniform(0, 200), rnd.uniform(0, 60)) for _ in range(4))]
         pt = (rnd.uniform(-20, 220), rnd.uniform(-20, 80))
-        want, got = power.nearest_usable(pt, big, blocked), index.nearest(pt, blocked)
-        assert (got is None) == (want is None)
-        if want:
-            assert math.hypot(got[0] - pt[0], got[1] - pt[1]) == pytest.approx(math.hypot(want[0] - pt[0], want[1] - pt[1]))
+        free = [h for h in big if not power.covered(h, blocked)]
+        got = big_index.nearest(pt, blocked)
+        assert (got is None) == (not free)
+        if free:
+            assert math.hypot(got[0] - pt[0], got[1] - pt[1]) == pytest.approx(min(math.hypot(h[0] - pt[0], h[1] - pt[1]) for h in free))
 
 
 def test_hole_sample_is_a_centred_grid_in_each_rectangle():
@@ -249,7 +269,7 @@ def test_hole_sample_is_a_centred_grid_in_each_rectangle():
 
 def test_chain_order_with_holes_goes_to_the_pedal_by_the_hole_first():
     pts = {"x": (10, 0), "y": (20, 0), "z": (95, 0)}
-    holes = [(100, 0)]
+    holes = power.HoleIndex([(100, 0)])
     hop = lambda a, b, under: power.hop_estimate(a, b, under, holes, CFG)
     # plain Manhattan: x, y, z (95). From an under-board port at the origin the one hole is at x = 100: z first
     # (100 + 15 + 3 x 5 = 130), then z -> y on top (3 x 75 = 225), y -> x (3 x 10 = 30)
@@ -269,16 +289,16 @@ def test_assign_orders_the_daisy_chain_for_the_estimate_with_holes():
     pts, ports = {"x": (10, 0), "y": (20, 0), "z": (95, 0)}, {("s", "O"): (0, 0)}
     plain = power.assign(["x", "y", "z"], pedals, insts, {}, pts, ports)
     assert plain["supplies"][0]["outputs"][0]["pedals"] == ["x", "y", "z"] and plain["length_mm"] == 95
-    holed = power.assign(["x", "y", "z"], pedals, insts, {}, pts, ports, holes=[(100, 0)], cfg=CFG)
+    holed = power.assign(["x", "y", "z"], pedals, insts, {}, pts, ports, holes=power.HoleIndex([(100, 0)]), cfg=CFG)
     assert holed["supplies"][0]["outputs"][0]["pedals"] == ["z", "y", "x"] and holed["length_mm"] == pytest.approx(385)
-    on_top = power.assign(["x", "y", "z"], pedals, [{**insts[0], "under": False}], {}, pts, ports, holes=[(100, 0)], cfg=CFG)
+    on_top = power.assign(["x", "y", "z"], pedals, [{**insts[0], "under": False}], {}, pts, ports, holes=power.HoleIndex([(100, 0)]), cfg=CFG)
     assert on_top["supplies"][0]["outputs"][0]["pedals"] == ["x", "y", "z"] and on_top["length_mm"] == pytest.approx(285)
 
 
 def test_the_surrogate_power_term_skips_hole_points_a_candidate_pedal_covers():
     m = layout_model([ped("T A", 0), ped("T B", 135)])          # a: 50.8 x 101.6, b the same
     sample = [(30.0, 10.0), (120.0, 10.0)]
-    m.power_setup = {"sample": sample, "index": power.HoleIndex(sample), "cfg": CFG, "radius": 1.6}
+    m.power_setup = {"index": power.HoleIndex(sample), "cfg": CFG, "radius": 1.6}
     port = (100.0, 100.0)
     m.set_wiring([(port, ["a"], True)])
 
@@ -297,3 +317,24 @@ def test_the_surrogate_power_term_skips_hole_points_a_candidate_pedal_covers():
     m.power_setup = None                                          # no holes known: Manhattan between the measure points
     ms = m._geom[(0, 0)]["power"]["measure"]
     assert raw(clear) == pytest.approx(abs(port[0] - ms[0] - 60.0) + abs(port[1] - ms[1] - 50.8))
+
+
+def test_the_tight_power_heuristic_never_overestimates_across_an_edge_link():
+    # 2 mm cells; under cell (5, 5) is joined to the top cell (5, 4) beyond the edge for 2 mm (one cell, the least a link costs),
+    # no hole. The goal is that top cell: the true cost from (5, 5, 1) is exactly the link's 2 mm. The link also moves the cable a
+    # cell, which the distance bound counts as under travel: it must not be charged on top of the pass (old bound: 4 > 2).
+    ug = routing.Grid(0, 0, 40, 40, 2.0)
+    layers = routing.Under(ug, [], 15.0, 0.0, 1.0, 2, top_cost=3.0, edges=[((5, 5), (5, 4), 2.0, "back")])
+    layers.tight = True
+    h = routing.tight_heuristic(layers, (5, 4), 2.0)
+    assert h((5, 5, 1)) <= 2.0 + 1e-9
+    # every state: no more than the cost of one real route (under to the link, up, top to the goal)
+    for i in range(0, 20, 3):
+        for j in range(0, 20, 3):
+            true_under = math.hypot(i - 5, j - 5) * 2.0 + 2.0          # at best a straight line under (cost 1 per mm) + the link
+            assert h((i, j, 1)) <= true_under + 1e-9
+    # holes only: the pass costs its full hole cost (15) in the bound, plus 1 x 2 mm under and 3 x 2 mm for the top leg: 21
+    holes = routing.Under(ug, [(5, 5)], 15.0, 0.0, 1.0, 2, top_cost=3.0)
+    holes.tight = True
+    assert routing.tight_heuristic(holes, (5, 4), 2.0)((5, 5, 1)) == pytest.approx(21.0)
+    assert routing.tight_heuristic(routing.Under(ug, [], 15.0, 0.0, 1.0, 2), (5, 4), 2.0) is None   # nothing to change layer at

@@ -429,11 +429,12 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
             jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], row["port"])
             prev = endpoint(it, jk, p_depth) if it and jk else None
             prev_name = f"{s['inst']['id']}.{row['port']}"
+            hop_under = under   # only the first hop (supply port -> first pedal) starts under the board; the daisy hops start on top
             for pid in row["pedals"]:
                 here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
-                power.append({"output": row["id"], "from": prev_name, "to": to_name, "under_board": under, **cable(prev, here)})
-                prev, prev_name = here, to_name
+                power.append({"output": row["id"], "from": prev_name, "to": to_name, "under_board": hop_under, **cable(prev, here)})
+                prev, prev_name, hop_under = here, to_name, False
     ctx["cables"] = {"signal": signal, "power": power}
 
 

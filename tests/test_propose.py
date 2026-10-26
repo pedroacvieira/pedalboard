@@ -11,6 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import boards  # noqa: E402
 import build  # noqa: E402
 import common  # noqa: E402
 import design  # noqa: E402
@@ -130,6 +131,16 @@ def test_score_prints_the_breakdown(capsys):
     assert "Blocked plugs (no margin, as the build): 2" in out and "footswitch" in out and "clearance" in out
 
 
+def test_the_board_data_and_the_projects_edits_are_read_once(monkeypatch, capsys):
+    reads = []
+    real_read, real_edits = boards.read_file, boards.load_edits
+    monkeypatch.setattr(boards, "read_file", lambda *a, **k: reads.append("boards.json") or real_read(*a, **k))
+    monkeypatch.setattr(boards, "load_edits", lambda *a, **k: reads.append("board.json") or real_edits(*a, **k))
+    assert pl.main(["guitar-gig", "--score"]) == 0
+    # main reads catalog/boards.json once and hands it to the owner's build and the model (build.validate takes it as board_data)
+    assert reads.count("boards.json") == 1
+
+
 # --- README section (build.proposals_section) ------------------------------------------------------
 def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeypatch):
     pdir = gig_copy(tmp_path, monkeypatch)
@@ -210,7 +221,7 @@ def test_gig_fix_level_removes_todays_findings(tmp_path, monkeypatch):
     assert best["metrics"]["fs_crowding"] <= meta["owner"]["fs_crowding"]   # switches not more crowded
 
 
-def test_an_on_board_supply_is_proposed_moved_and_reported(tmp_path):
+def test_an_on_board_supply_is_proposed_moved_and_reported(tmp_path, monkeypatch):
     """A supply on the board whose F1 port is blocked by a fixed pedal: the search moves the supply, the finalist is checked
     by the real pipeline (its own wiring), and the moved list / overlay name the supply."""
     peds = {k: {**v, "digital": False, "clocked_noise": False,
@@ -232,8 +243,9 @@ def test_an_on_board_supply_is_proposed_moved_and_reported(tmp_path):
     moved = pl.moved_list(m, best)
     assert [mv["pedal"] for mv in moved] == ["psu1"] and moved[0]["name"] == "S One" and m.feasible(best)
     keep = m.wiring
-    owner_m, _, _ = pl.evaluate(tmp_path, proj, m, m.owner, ctx, (peds, sups, jd, {}, {}), 1.0)
-    new_m, _, wiring = pl.evaluate(tmp_path, proj, m, best, ctx, (peds, sups, jd, {}, {}), 1.0)
+    monkeypatch.setattr(boards, "load", lambda *a, **k: pytest.fail("evaluate must use the board data its caller read once"))
+    owner_m, _, _ = pl.evaluate(tmp_path, proj, m, m.owner, ctx, (peds, sups, jd, {}, {}), 1.0, board_data={}, board_edits=[])
+    new_m, _, wiring = pl.evaluate(tmp_path, proj, m, best, ctx, (peds, sups, jd, {}, {}), 1.0, board_data={}, board_edits=[])
     assert m.wiring == keep and owner_m["blocked"] == 1 and new_m["blocked"] == 0
     assert wiring["supplies"][0]["outputs"][0]["pedals"] == ["a"] and new_m["score"] < owner_m["score"]
     svg = "".join(pl.overlay(m, best, moved))
@@ -241,3 +253,14 @@ def test_an_on_board_supply_is_proposed_moved_and_reported(tmp_path):
     # the moved supply's item is what the proposal file changes
     moved_ids = {m.mitem[mv["pedal"]]["id"] for mv in moved}
     assert moved_ids == {m.inst_item["psu1"]["id"]}
+
+
+def test_power_metrics_sum_the_routed_cables_only_and_count_the_unrouted():
+    m = model([ped("T A", 0), ped("T B", 135)])
+    ctx = {"errors": [], "warnings": [], "violations": [], "footswitch_pairs": [], "footswitch_settings": {},
+           "cable_list": [{"kind": "power", "min_mm": 100.0, "status": "routed", "estimate_mm": 80.0},
+                          {"kind": "power", "min_mm": None, "status": "not routed", "estimate_mm": 70.0},
+                          {"kind": "power", "min_mm": 25.5, "status": "routed", "estimate_mm": 10.0}]}
+    out = pl.metrics(ctx, m, m.owner, 1.0)
+    assert out["power_mm"] == 125.5 and out["power_unrouted"] == 1        # the 70 mm estimate is not added to the routed length
+    assert " (+1 not routed)" in pl.unrouted(out) and pl.unrouted({"power_unrouted": 0}) == ""

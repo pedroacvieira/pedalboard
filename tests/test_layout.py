@@ -514,3 +514,40 @@ def test_the_gig_score_is_unchanged_by_movable_supplies():
     for k, (raw, wt) in GIG_SCORE.items():
         assert det["terms"][k][0] == pytest.approx(raw, abs=0.06) and det["terms"][k][1] == pytest.approx(wt, abs=0.06), k
     assert total == pytest.approx(4705.4, abs=0.06)
+
+
+# --- the power estimate's hole points: the project's hole edits, free under the board -----------------------
+DC_TYPES = {**TYPES, "dc": {"role": "power", "diameter_mm": 3.5, "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 10.0}}}
+HOLE_BOARD = {"x.png": {"holes": [[0.4, 0.4, 0.6, 0.6]]}}         # x 101.6..152.4, y 50.8..76.2 on the 254 x 127 mm board
+
+
+def hole_model(specs, board_data, board_edits=None, placement="under"):
+    inst = {"id": "psu1", "supply": "s1", "placement": placement, "outputs": [{"port": "F1", "pedals": ["a"]}]}
+    proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc"}, "jacks": {}, "power": {"supplies": [inst]}}
+    items = design.parse_canvas(canvas(BOARD, *specs))
+    return layout.Model(proj, items, PEDALS, SUPPLIES, {**JACKS, "s1": SUP_JACKS}, {}, DC_TYPES, outlines={},
+                        board_data=board_data, board_edits=board_edits)
+
+
+def test_the_model_uses_the_projects_hole_edits_for_the_power_estimate():
+    specs = [ped("T A", 0)]
+    assert hole_model(specs, {}).power_setup is None                                    # no holes known
+    edit = {"type": "hole", "x0": 0.4, "y0": 0.4, "x1": 0.6, "y1": 0.6}
+    opened = hole_model(specs, {}, [edit]).power_setup                                  # the project's box opens a hole
+    assert opened is not None and len(opened["index"]) > 0
+    assert all(101.6 <= x <= 152.4 and 50.8 <= y <= 76.2 for x, y in opened["index"].points)
+    closed = hole_model(specs, HOLE_BOARD, [{"type": "filled", "x0": 0, "y0": 0, "x1": 1, "y1": 1}])
+    assert closed.power_setup is None                                                   # the board data's hole filled by an edit
+    assert len(hole_model(specs, HOLE_BOARD).power_setup["index"]) == len(opened["index"])
+
+
+def test_hole_points_under_an_under_board_supply_are_not_usable_for_the_estimate():
+    free = hole_model([ped("T A", 0)], HOLE_BOARD).power_setup["index"]
+    # the supply item (x 112.9..163.7, y 50.8..76.2) hangs under the board over the hole's right part; grown by the cable radius 1.75
+    under = hole_model([ped("T A", 0), sup(200, 90)], HOLE_BOARD).power_setup["index"]
+    assert 0 < len(under) < len(free)
+    assert all(not (112.9 - 1.75 <= x <= 163.7 + 1.75 and 50.8 - 1.75 <= y <= 76.2 + 1.75) for x, y in under.points)
+    assert set(under.points) < set(free.points)
+    # an on-board supply is a pedal on top, not an under-board obstacle: the model moves it instead and keeps all the points
+    on = hole_model([ped("T A", 0), sup(200, 90)], HOLE_BOARD, placement="on_board").power_setup["index"]
+    assert len(on) == len(free)

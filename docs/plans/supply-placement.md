@@ -1,6 +1,6 @@
 # Plan: `feat/supply-placement`: supplies on or under the board, board holes, cables through the holes
 
-Status: in progress (2026-10-26); owner decisions in two rounds, the "Open" items are answered (round 2). Branch
+Status: implemented (2026-10-26, phases 1-6 + code review); owner decisions in two rounds. Branch
 `feat/supply-placement` from `main` (routing-view and pedal-outlines are merged and pushed). It also absorbs the
 TODO item "Later: patch cables under the board" and part of feature 2 (power cables stay under the board).
 

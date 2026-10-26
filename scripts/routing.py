@@ -277,6 +277,11 @@ class Under:
         """The cheapest layer change the search can pay (a hole pass or an edge link); inf without any."""
         return min([self.hole_cost] * bool(self.holes) + [e for _, _, e, *_ in self.edges], default=math.inf)
 
+    def pass_floor(self, slack):
+        """A lower bound of the cost of one layer change for the search heuristic: the hole pass, or an edge link's cost minus
+        `slack` (what the sideways cell of the link is worth at the cheapest layer factor); never below 0, inf without any."""
+        return max(0.0, min([self.hole_cost] * bool(self.holes) + [e - slack for _, _, e, *_ in self.edges], default=math.inf))
+
     def edge_cost(self, a, b):
         """What the search pays for the edge crossing between consecutive states a, b (one of them under the board)."""
         if len(a) == 3:
@@ -390,6 +395,29 @@ SQUEEZE_COST = 25.0   # cost factor of a cell narrower than the cable when squee
 CLOSED_COST = 1e6     # cost of an over-limit cell in route_all's clean-up pass (never taken while a free path exists)
 
 
+def tight_heuristic(under, goal, cell):
+    """The power cables' search heuristic (cost to reach the top cell `goal`) or None without a layer change to count
+    (then the plain distance bound is used). It counts the layer changes the cable must pay: from under the board one
+    pass up plus the last top leg, at least the goal's distance to the nearest landing cell; from the top either straight
+    (top cost) or two passes plus that last leg. Admissible: a pass costs at least `Under.pass_floor` (an edge link also
+    moves the cable one cell sideways, which the distance bounds do not see, so its cost is reduced by that cell's
+    cost at the cheaper layer factor)."""
+    land = under.landing()
+    lo = min(under.cost, under.top_cost)
+    pas = under.pass_floor(cell * lo)
+    if not land or pas == math.inf:
+        return None
+    tc = under.top_cost
+    dhg = min(math.hypot(q[0] - goal[0], q[1] - goal[1]) for q in land) * cell
+
+    def h(c):
+        d = math.hypot(c[0] - goal[0], c[1] - goal[1]) * cell
+        if len(c) == 3:
+            return pas + lo * d + (tc - lo) * dhg
+        return min(tc * d, 2 * pas + tc * dhg + lo * max(0.0, d - dhg))
+    return h
+
+
 def astar_layers(grid, start, goal, cell_cost, squeeze, under):
     """`astar` over (cell, layer) states (`Under`): within a layer as there; under steps cost `under.cost` x their length
     (and the cell cost of the under state), top steps `under.top_cost` x, the other layer is entered only at a hole cell
@@ -410,19 +438,9 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under):
     if squeeze:
         cell_cost = lambda c: base(c) * (SQUEEZE_COST if c in grid.blocked else 1.0)
     hs = cell * min(1.0, uc, tc)
-    h = lambda c: math.hypot(c[0] - goal[0], c[1] - goal[1]) * hs
-    land = under.landing() if under.tight else None
-    if land and under.pass_cost() < math.inf:
-        # tighter bound (a power cable must change layer to come up: the passes are paid, and the last top leg is at
-        # least as long as the goal's distance to the nearest landing cell); admissible, so the result is as cheap
-        lo, pas = min(uc, tc), under.pass_cost()
-        dhg = min(math.hypot(q[0] - goal[0], q[1] - goal[1]) for q in land) * cell
-
-        def h(c):
-            d = math.hypot(c[0] - goal[0], c[1] - goal[1]) * cell
-            if len(c) == 3:
-                return pas + lo * d + (tc - lo) * dhg
-            return min(tc * d, 2 * pas + tc * dhg + lo * max(0.0, d - dhg))
+    h = tight_heuristic(under, goal, cell) if under.tight else None
+    if h is None:
+        h = lambda c: math.hypot(c[0] - goal[0], c[1] - goal[1]) * hs
     openq, best, came = [(h(start), 0.0, start)], {start: 0.0}, {}
     while openq:
         _, g, c = heapq.heappop(openq)
@@ -1218,42 +1236,20 @@ def route_project(ctx, cat_pedals, cable_types=None):
         squeezed = sum(1 for p in path if p in grid.blocked) * grid.cell
         own = {f"{e['cid']}.{e['jack']['id']}" for e in c["_sides"]}
         # one smoothed polyline per layer stretch; the hole cells where the cable changes layer are fixed corners
-        runs = layer_stretches(path)
-        stretches = []
-        for n, (layer, states) in enumerate(runs):
-            pts = [grid.centre(p) for p in states]
-            if layer == "top":
-                pts = ([oa["exit"]] if n == 0 else []) + pts + ([ob["exit"]] if n == len(runs) - 1 else [])
-                stretches.append({"layer": "top", "points": smooth(pts, pedal_rects, radius, plug_rects, own)})
-            else:
-                stretches.append({"layer": "under", "points": smooth(pts, under_rects, radius, {}, ())})
-        corners = [p for st in stretches for p in st["points"]]
-        under_mm = sum(polyline_length(st["points"]) for st in stretches if st["layer"] == "under")
+        g = path_geometry(grid, path, oa, ob, None, pedal_rects, under_rects, radius, plug_rects, own)
+        runs, stretches, top_mm, under_mm, lead_a, lead_b = g["runs"], g["stretches"], g["top_mm"], g["under_mm"], g["lead_a"], g["lead_b"]
         passes = len(runs) - 1
-        top_mm = sum(polyline_length(st["points"]) for st in stretches if st["layer"] == "top")
-        lead_a, lead_b = list(oa["lead"][:-1]), list(reversed(ob["lead"]))[1:]
         c.update(min_mm=oa["measure_mm"] + ob["measure_mm"] + top_mm + under_mm + passes * transit, status="routed",
                  under_board=bool(passes), under_mm=under_mm, holes_used=passes,
-                 hole_points=[st["points"][-1] for st in stretches[:-1]],
-                 path=lead_a + [p for k, p in enumerate(corners) if k == 0 or p != corners[k - 1]] + lead_b)
+                 hole_points=[st["points"][-1] for st in stretches[:-1]], path=g["path"])
         c["_stretches"], c["_own"] = stretches, own
         c["_leads"] = (lead_a, lead_b)   # fixed geometry round the routed corners
         if c.get("_squeeze") and squeezed:
             c["status"] = "routed, squeezed (gap narrower than the cable)"
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) only fits by squeezing about {squeezed:.0f} mm of cable "
                         f"through gaps narrower than the {cfg['diameter_mm']:g} mm cable (move the pedals apart)")
-        for where, limit_n, tail in (("top", cfg["max_stack"], ""), ("under", cfg["max_stack_under"], " under the board")):
-            crowded = sorted({x for p in path if p in overflow and (len(p) == 3) == (where == "under") for x in users[p]} - {c["id"]})
-            if crowded:
-                if "over the stacking limit" not in c["status"]:
-                    c["status"] += ", over the stacking limit"
-                sink.append(f"routing: {c['id']} shares cells with {', '.join(crowded)} beyond the limit of {limit_n} stacked cables{tail}")
-    by_id = {c["id"]: c for c in cables}
-    for key, names in sorted(plug_over.items()):
-        who = ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
-        sink.append(f"routing: {who} {'cross' if len(names) > 1 else 'crosses'} the plug at {key} (limit {cfg['max_over_plug']} other cables)")
-        for n in names:
-            by_id[n]["status"] += ", over the plug limit"   # appended: a cable keeps every problem it has
+        stacking_findings(c, path, overflow, users, cfg["max_stack"], cfg["max_stack_under"], "cables", sink)
+    plug_limit_findings(plug_over, {c["id"]: c for c in cables}, "the plug", cfg["max_over_plug"], sink)
 
     # lanes: cables along the same corridor are drawn side by side (drawing only: path and min_mm stay on the centrelines);
     # only top stretches take part, each as its own entry when a cable has several
@@ -1387,7 +1383,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
             start_pt = design.stub(pt, design.jack_facing(it, jk["facing"]), depth / 2)
             cell = pgrid.cell_of(*start_pt)
             start, oa = (cell[0], cell[1], 1), None
-            if not ug.inside(cell):
+            if not (board[0] <= start_pt[0] <= board[2] and board[1] <= start_pt[1] <= board[3] and ug.inside(cell)):   # the under layer = the board footprint
                 c["status"] = "unroutable: the supply port is outside the board footprint"
                 sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) is unroutable: {c['status'][len('unroutable: '):]}")
                 continue
@@ -1423,15 +1419,8 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) has no free path (power cable)")
             continue
         oa, ob, start_pt, a_key, b_key = ends[name]
-        runs = layer_stretches(path)
-        stretches = []
-        for n, (layer, states) in enumerate(runs):
-            pts = [pgrid.centre(q) for q in states]
-            if layer == "top":
-                pts = ([oa["exit"]] if n == 0 and oa else []) + pts + ([ob["exit"]] if n == len(runs) - 1 else [])
-                stretches.append({"layer": "top", "points": smooth(pts, pedal_rects, radius, plug_rects, {a_key, b_key})})
-            else:
-                stretches.append({"layer": "under", "points": smooth(([start_pt] if n == 0 else []) + pts, under_rects, radius, {}, ())})
+        g = path_geometry(pgrid, path, oa, ob, start_pt, pedal_rects, under_rects, radius, plug_rects, {a_key, b_key})
+        runs, stretches, top_mm, under_mm, lead_a, lead_b = g["runs"], g["stretches"], g["top_mm"], g["under_mm"], g["lead_a"], g["lead_b"]
         hole_pts, edge_pts, sides = [], [], []
         for k in range(len(runs) - 1):
             a, b = runs[k][1][-1], runs[k + 1][1][0]
@@ -1441,18 +1430,12 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
                 u, t = ((a[0], a[1]), (b[0], b[1])) if len(a) == 3 else ((b[0], b[1]), (a[0], a[1]))
                 edge_pts.append(pgrid.centre(u))
                 sides.append(side_of.get((u, t), "?"))
-        mm = lambda layer: sum(polyline_length(st["points"]) for st in stretches if st["layer"] == layer)
-        under_mm, top_mm = mm("under"), mm("top")
-        lead_a = list(oa["lead"][:-1]) if oa else []
-        lead_b = list(reversed(ob["lead"]))[1:]
-        corners = [q for st in stretches for q in st["points"]]
         draw = [{"layer": st["layer"], "points": (lead_a if k == 0 else []) + st["points"] + (lead_b if k == len(stretches) - 1 else [])}
                 for k, st in enumerate(stretches)]
         c.update(min_mm=(oa["measure_mm"] if oa else 0.0) + ob["measure_mm"] + top_mm + under_mm + len(hole_pts) * transit + len(edge_pts) * edge_t,
                  status="routed", under_board=under_mm > 0, under_mm=under_mm, top_mm=top_mm, holes_used=len(hole_pts),
                  edges_used=len(edge_pts), edge_sides=sides, hole_points=hole_pts, edge_points=edge_pts,
-                 path=lead_a + [q for k, q in enumerate(corners) if k == 0 or q != corners[k - 1]] + lead_b,
-                 stretches=draw, draw_path=[q for st in draw for q in st["points"]], end_point=ob["exit"])
+                 path=g["path"], stretches=draw, draw_path=[q for st in draw for q in st["points"]], end_point=ob["exit"])
         if any(q in pgrid.blocked for q in path if len(q) == 2) and name in stuck:
             squeezed = sum(1 for q in path if len(q) == 2 and q in pgrid.blocked) * pgrid.cell
             if squeezed:
@@ -1462,19 +1445,54 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
         if top_mm > POWER_TOP_WARN_MM:
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) runs {top_mm:.0f} mm on top of the board "
                         f"(power cables should stay under it: no usable hole or edge near the pedal's power jack)")
-        for where, tail in (("top", ""), ("under", " under the board")):
-            crowded = sorted({x for q in path if q in overflow and (len(q) == 3) == (where == "under") for x in users[q]} - {name})
-            if crowded:
-                if "over the stacking limit" not in c["status"]:
-                    c["status"] += ", over the stacking limit"
-                sink.append(f"routing: {c['id']} shares cells with {', '.join(crowded)} beyond the limit of {pcfg['max_stack']} stacked "
-                            f"power cables{tail}")
+        stacking_findings(c, path, overflow, users, pcfg["max_stack"], pcfg["max_stack"], "power cables", sink)
+    plug_limit_findings(plug_over, by_id, "the power plug", cfg["max_over_plug"], sink)
+    pw["time_s"] = time.perf_counter() - t0
+
+
+def path_geometry(grid, path, oa, ob, start_pt, pedal_rects, under_rects, radius, plug_rects, own):
+    """What the signal and the power cables share after the grid search: the state `path` cut into per-layer runs (a
+    hole cell or an edge link is a layer change), each run smoothed (`smooth`: top runs against the pedals and the other
+    plugs, `own` = this cable's plug keys, under runs against the under-board `under_rects`) with the plug exits as
+    fixed ends. `oa` / `ob`: the plug options of the two ends (`oa` None: the cable starts under the board at
+    `start_pt`). Returns {"runs", "stretches" [{"layer", "points"}], "top_mm", "under_mm" (the smoothed polylines only), "lead_a",
+    "lead_b" (the fixed geometry round the plugs), "path" (lead_a + the corners + lead_b)}."""
+    runs = layer_stretches(path)
+    stretches = []
+    for n, (layer, states) in enumerate(runs):
+        pts = [grid.centre(q) for q in states]
+        if layer == "top":
+            pts = ([oa["exit"]] if n == 0 and oa else []) + pts + ([ob["exit"]] if n == len(runs) - 1 else [])
+            stretches.append({"layer": "top", "points": smooth(pts, pedal_rects, radius, plug_rects, own)})
+        else:
+            stretches.append({"layer": "under", "points": smooth(([start_pt] if n == 0 and start_pt else []) + pts, under_rects, radius, {}, ())})
+    mm = lambda layer: sum(polyline_length(st["points"]) for st in stretches if st["layer"] == layer)
+    lead_a = list(oa["lead"][:-1]) if oa else []
+    lead_b = list(reversed(ob["lead"]))[1:]
+    corners = [q for st in stretches for q in st["points"]]
+    return {"runs": runs, "stretches": stretches, "top_mm": mm("top"), "under_mm": mm("under"), "lead_a": lead_a, "lead_b": lead_b,
+            "path": lead_a + [q for k, q in enumerate(corners) if k == 0 or q != corners[k - 1]] + lead_b}
+
+
+def stacking_findings(c, path, overflow, users, limit_top, limit_under, noun, sink):
+    """Per layer the other cables sharing cells of `path` beyond the stacking limit: the cable's status gets
+    ", over the stacking limit" and `sink` one message per layer (`noun`: "cables" | "power cables")."""
+    for where, limit_n, tail in (("top", limit_top, ""), ("under", limit_under, " under the board")):
+        crowded = sorted({x for q in path if q in overflow and (len(q) == 3) == (where == "under") for x in users[q]} - {c["id"]})
+        if crowded:
+            if "over the stacking limit" not in c["status"]:
+                c["status"] += ", over the stacking limit"
+            sink.append(f"routing: {c['id']} shares cells with {', '.join(crowded)} beyond the limit of {limit_n} stacked {noun}{tail}")
+
+
+def plug_limit_findings(plug_over, by_id, what, limit, sink):
+    """One message per plug crossed by more than `limit` other cables; every cable involved gets ", over the plug limit"
+    appended to its status (a cable keeps every problem it has). `what`: "the plug" | "the power plug"."""
     for key, names in sorted(plug_over.items()):
         who = ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
-        sink.append(f"routing: {who} {'cross' if len(names) > 1 else 'crosses'} the power plug at {key} (limit {cfg['max_over_plug']} other cables)")
+        sink.append(f"routing: {who} {'cross' if len(names) > 1 else 'crosses'} {what} at {key} (limit {limit} other cables)")
         for n in names:
             by_id[n]["status"] += ", over the plug limit"
-    pw["time_s"] = time.perf_counter() - t0
 
 
 def deepest_hits(opt, facing):
