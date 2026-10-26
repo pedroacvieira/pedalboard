@@ -158,6 +158,45 @@ def test_router_picks_the_shorter_exit_sides():
     assert f["exit_a"] == "left" and f["min_mm"] > c["min_mm"]
 
 
+def test_a_corridor_that_only_exists_in_the_outline_is_routed():
+    # a wall between A and B over the whole routing height: its box closes the way, its outline has a 40 mm notch
+    wall = mm_item("i-c", "C", 120, -10, 40, 170)
+    closed = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    routing.route_project(closed, {}, cable_types=TYPES)
+    (c,) = [x for x in closed["cable_list"] if x["kind"] == "signal"]
+    assert c["status"].startswith("unroutable")
+    notched = plug_ctx({"type": "ra"}, extra_obstacles=[wall])
+    notched["layout"]["shapes"] = {"i-c": [(120, -10, 160, 40), (120, 80, 160, 160)]}
+    routing.route_project(notched, {}, cable_types=TYPES)
+    (c,) = [x for x in notched["cable_list"] if x["kind"] == "signal"]
+    assert c["status"] == "routed"
+    (ys,) = [[p[1] + (q[1] - p[1]) * (140 - p[0]) / (q[0] - p[0]) for p, q in zip(c["path"], c["path"][1:])
+              if p[0] < 140 <= q[0]]]                              # where the path crosses x = 140: inside the notch
+    assert len(ys) == 1 and 40 < ys[0] < 80
+
+
+def test_plug_parts_are_blocked_by_the_outline_not_the_box():
+    box = mm_item("i-c", "C", 75, 0, 100, 200)                 # 5 mm in front of A's output
+    head = ("head", (70, 60, 90, 76))                          # A's plug head: 20 deep, in front of the jack
+    opt = {"rects": [head]}
+    ((part, ob, ov),) = routing.blocked_parts(opt, "i-a", [box])
+    assert (part, ob["id"], ov) == ("head", "i-c", (15.0, 16.0))    # the box: 15 mm in
+    ((_, _, ov),) = routing.blocked_parts(opt, "i-a", [box], {"i-c": [(85, 0, 100, 200), (140, 0, 175, 200)]})
+    assert ov == (5.0, 16.0)                                   # the outline: only 5 mm in
+    assert routing.blocked_parts(opt, "i-a", [box], {"i-c": [(120, 0, 175, 200)]}) == []   # a plug over the box but not the outline
+    best = routing.blocked_parts(opt, "i-a", [box], {"i-c": [(88, 0, 99, 200), (80, 0, 99, 70)]})   # one hit: the larger overlap
+    assert [ov for _, _, ov in best] == [(10.0, 10.0)]
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[box])
+    ctx["layout"]["shapes"] = {"i-c": [(120, 0, 175, 200)]}
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert ctx["violations"] == [] and ctx["errors"] == []
+    ctx = plug_ctx({"type": "ra"}, extra_obstacles=[box])
+    ctx["layout"]["shapes"] = {"i-c": [(85, 0, 175, 200)]}
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    v = next(v for v in ctx["violations"] if v["jack"] == "a.out")
+    assert v["obstacle"] == "C" and v["part"] == "head" and v["depth_mm"] == pytest.approx(5.0)
+
+
 def test_straight_plug_type_per_cable_and_its_diameter():
     ctx = plug_ctx({"type": "ra", "overrides": {"S1": {"type": "st"}}})
     routing.route_project(ctx, {}, cable_types=TYPES)

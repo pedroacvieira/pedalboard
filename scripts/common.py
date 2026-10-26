@@ -31,8 +31,8 @@ def load_catalog():
 
 def proposal_inputs_sha1(pdir):
     """SHA-1 of everything a project's layout proposals depend on: playground_design.json, project.json,
-    catalog/cables.json and the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
-    supplies. Stored by propose_layout.py in proposals/meta.json; build.py marks the proposals stale on a change."""
+    catalog/cables.json, the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
+    supplies and the outline entries (catalog/outlines.json) of the images in the design file. Stored by propose_layout.py in proposals/meta.json; build.py marks the proposals stale on a change."""
     import hashlib
     pdir = Path(pdir)
     project = load_json(pdir / "project.json")
@@ -47,6 +47,11 @@ def proposal_inputs_sha1(pdir):
     design = pdir / "playground_design.json"
     if design.exists():
         h.update(design.read_bytes())
+        import design as design_mod   # late: design imports common
+        import outlines
+        have = outlines.load()
+        images = sorted({i["image"] for i in design_mod.parse_design(design) if i.get("image")})
+        h.update(json.dumps({n: have.get(n) for n in images}, sort_keys=True).encode())
     return h.hexdigest()
 
 

@@ -36,10 +36,10 @@ def ped(title, left_px, top_px=0, rot=0, w=2.0, h=4.0):
     return (title, left_px, top_px, w, h, rot, "pedal")
 
 
-def model(specs, chain=("a", "b"), fs=None, project_extra=None, types=TYPES):
+def model(specs, chain=("a", "b"), fs=None, project_extra=None, types=TYPES, outlines=None):
     proj = {"signal_chain": list(chain), "cables": {"type": "t"}, "jacks": {}, **(project_extra or {})}
     items = design.parse_canvas(canvas(BOARD, *specs))
-    return layout.Model(proj, items, PEDALS, {}, JACKS, fs or {}, types)
+    return layout.Model(proj, items, PEDALS, {}, JACKS, fs or {}, types, outlines=outlines)
 
 
 def at(*centres):
@@ -79,6 +79,27 @@ def test_clearance_of_two_facing_straight_plugs():
     assert det2["terms"]["clearance"] == pytest.approx((2 * 8.0, 2 * (50 * 4.4 + 10 * 3.6 + 100)))
 
 
+def test_clearance_is_measured_against_the_outline():
+    """The facing-plugs case with a shape: a.out reaches 4.4 mm into b's box, b.in 4.4 mm into a's box."""
+    state = at((25.4, 50.8, 0), (25.4 + 50.8 + 5.6, 50.8, 0))
+
+    def hits(outline):
+        m = model([ped("T A", 0), ped("T B", 135)], outlines={"x.png": [outline]})
+        _, det = m.score(state, margin=0, detail=True)
+        return {(b["jack"], b["obstacle"], b["part"]): b["depth_mm"] for b in det["blocked"]}
+    assert hits([0, 0, 1, 1]) == pytest.approx({("a.out", "T B", "head"): 4.4, ("b.in", "T A", "head"): 4.4})
+    assert hits([0.2, 0, 1, 1]) == pytest.approx({("b.in", "T A", "head"): 4.4})    # b starts 10 mm further in
+    assert hits([0, 0, 0.8, 1]) == pytest.approx({("a.out", "T B", "head"): 4.4})   # a ends 10 mm earlier
+    assert hits([0.2, 0, 0.8, 1]) == {}
+    # the cost follows: no hit, no penetration
+    m = model([ped("T A", 0), ped("T B", 135)], outlines={"x.png": [[0.2, 0, 0.8, 1]]})
+    assert m.score(state, margin=0, detail=True)[1]["terms"]["clearance"] == (0.0, 0.0)
+    # a rotated pedal: its outline turns with it (a band across the middle of the 50.8 x 101.6 box)
+    rot = model([ped("T A", 0), ped("T B", 135)], outlines={"x.png": [[0, 0.4, 1, 0.6]]})
+    assert rot._geom[(0, 0)]["shapes"] == [pytest.approx((-25.4, -10.16, 25.4, 10.16))]
+    assert rot._geom[(0, 90)]["shapes"] == [pytest.approx((-10.16, -25.4, 10.16, 25.4))]
+
+
 def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     pedals, supplies = load_catalog()
     ctx = build.validate(GIG, pedals, supplies)
@@ -87,7 +108,7 @@ def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]}
     want = {(v["jack"], v["obstacle"], v["part"], round(v["depth_mm"], 1)) for v in ctx["violations"]}
-    assert got == want and len(got) == 3
+    assert got == want and len(got) == 2   # red_muck.power was blocked by the Analog Chorus box, not its outline
 
 
 # --- cable lengths --------------------------------------------------------------------------------

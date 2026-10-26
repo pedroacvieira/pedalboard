@@ -89,18 +89,23 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
   README embeds it.
 
 ### 1b. `feat/pedal-outlines`: route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
+Plan `docs/plans/pedal-outlines.md`; phases 1-2 done (2026-10-23, handovers `pedal-outlines-1/2.md`): gig signal
+total 2512 -> 2400 mm, S11/S13 no longer stacked (S14/S15 still), red_muck.power no longer blocked (it only touched
+the box); proposals rerun (all three clear monk.out / monk.power). Next: code review, merge.
+- [ ] `harley_benton_iso5_pro` has no `playground_title`, so no outline (box); practice/bass layouts still missing.
 Finding (2026-10-23, `.cache/images`): the Pedal Playground images are tightly cropped RGBA, 80-98 % opaque. The
 side strips are mostly the protruding jacks and the corners are rounded: the enclosure itself is narrower than the
 box by about 5-10 % of the width per side (TC minis / Mini Ego / MXR / Jam / Reticon), i.e. a few mm per pedal.
 That matters: the gig's stacked spots (S11/S13, S14/S15) sit in 5.4-5.6 mm box gaps.
-- [ ] Outline per catalog id from the image alpha: a few axis-aligned rects (run-length rows merged at ~1 mm, or a
+- [x] Outline per image (keyed by image file name, not catalog id) from the image alpha: a few axis-aligned rects (run-length rows merged at ~1 mm, or a
       simplified polygon), in image fractions like jacks.json; rotated with the item (`design.jack_point`).
-- [ ] Router and smoothing: block the outline rects instead of the footprint (grid + `smooth` / `lanes` distances).
-- [ ] Verify first: does Pedal Playground's data-width/height cover the image incl. jacks (then the outline is
-      right), or only the enclosure (then the image is squeezed)? Check 2-3 pedals against maker dimensions.
-- [ ] Owner decisions: commit the outlines (small derived data, build works offline; no images) or keep them in
+- [x] Router and smoothing: block the outline rects instead of the footprint (grid + `smooth` / `lanes` distances).
+- [x] Verify first: does Pedal Playground's data-width/height cover the image incl. jacks (then the outline is
+      right), or only the enclosure (then the image is squeezed)? Check 2-3 pedals against maker dimensions. Done: Width/Height include the jacks (bodies match Hammond sizes).
+- [x] Owner decisions: commit the outlines (small derived data, build works offline; no images) or keep them in
       `.cache`; use them for plug clearance too (fewer findings at rounded corners) or only for routing; keep the
       bounding box for pedal-pedal overlap in the layout search (jacks of neighbours cannot interleave freely).
+      Decided: committed; routing and clearance; box for overlaps.
 
 ### 2. `feat/power-routing`: power cables routed and drawn (power.svg)
 Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs 3 for where cables cross the board.

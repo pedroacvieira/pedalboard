@@ -6,7 +6,7 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "a0f5238be5417c14770ccb66896ec7977e8cf744",
+ "inputs_sha1": "92bad7d5db5a4496aba2398916600f68919024a6",
  "chain": [
   "sun_face",
   "danelectro_3699",
@@ -26,17 +26,16 @@
   "flight_delay",
   "tumnus_deluxe"
  ],
- "runtime_s": 10.2,
- "finalists": 6,
+ "runtime_s": 16.3,
+ "finalists": 5,
  "owner": {
   "errors": 0,
-  "warnings": 3,
-  "blocked": 3,
-  "blocked_mm": 24.7,
+  "warnings": 2,
+  "blocked": 2,
+  "blocked_mm": 21.7,
   "blocked_jacks": [
    "monk.out",
-   "monk.power",
-   "red_muck.power"
+   "monk.power"
   ],
   "unroutable": 0,
   "squeezed": 0,
@@ -45,16 +44,16 @@
   "fs_closest_mm": 45.6,
   "fs_crowding": 184.3,
   "fs_known": true,
-  "signal_mm": 2576.1,
+  "signal_mm": 2400.2,
   "signal_routed": 16,
   "signal_cables": 16,
   "power_mm": 2503.7,
   "io_mm": 28.1,
-  "surrogate": 4643.9,
+  "surrogate": 4295.2,
   "terms": {
-   "clearance": 917.0,
+   "clearance": 613.3,
    "routing_area": 0.0,
-   "signal": 2822.6,
+   "signal": 2777.6,
    "power": 250.4,
    "footswitch": 368.6,
    "io": 28.1,
@@ -64,7 +63,7 @@
    "move": 0.0,
    "touch": -0.0
   },
-  "score": 4397.3
+  "score": 3917.7
  },
  "owner_power": {
   "supplies": [
@@ -178,76 +177,60 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 48.5,
-    "fs_crowding": 149.7,
+    "fs_closest_mm": 46.6,
+    "fs_crowding": 155.9,
     "fs_known": true,
-    "signal_mm": 2442.2,
+    "signal_mm": 2375.1,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2472.4,
+    "power_mm": 2482.5,
     "io_mm": 20.7,
-    "surrogate": 3624.1,
+    "surrogate": 3580.7,
     "terms": {
-     "clearance": 46.3,
+     "clearance": 34.5,
      "routing_area": 0.0,
-     "signal": 2586.4,
-     "power": 247.2,
-     "footswitch": 299.3,
+     "signal": 2593.1,
+     "power": 248.3,
+     "footswitch": 311.8,
      "io": 20.7,
-     "flow": 36.3,
-     "access": 149.1,
+     "flow": 37.4,
+     "access": 152.5,
      "rotation": 70.0,
-     "move": 168.6,
+     "move": 112.4,
      "touch": -0.0
     },
-    "score": 3479.9
+    "score": 3362.7
    },
    "moved": [
     {
-     "pedal": "retrovibe",
-     "dx_mm": 5.6,
-     "dy_mm": -3.4,
-     "distance_mm": 6.6,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
      "pedal": "red_muck",
-     "dx_mm": 4.5,
+     "dx_mm": 2.3,
      "dy_mm": 9.0,
-     "distance_mm": 10.1,
+     "distance_mm": 9.3,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
      "dx_mm": -1.1,
-     "dy_mm": -39.5,
-     "distance_mm": 39.5,
+     "dy_mm": -40.1,
+     "distance_mm": 40.1,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 10.2,
-     "distance_mm": 10.9,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "flight_delay",
-     "dx_mm": -10.7,
-     "dy_mm": 7.9,
-     "distance_mm": 13.3,
+     "dy_mm": 2.8,
+     "distance_mm": 4.9,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "tumnus_deluxe",
      "dx_mm": -7.3,
-     "dy_mm": 10.2,
-     "distance_mm": 12.5,
+     "dy_mm": 2.8,
+     "distance_mm": 7.9,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -346,7 +329,7 @@
       ]
      }
     ],
-    "length_mm": 2472.4,
+    "length_mm": 2482.5,
     "warnings": [],
     "error": null
    }
@@ -365,68 +348,60 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 48.5,
-    "fs_crowding": 153.9,
+    "fs_closest_mm": 46.6,
+    "fs_crowding": 157.5,
     "fs_known": true,
-    "signal_mm": 2735.5,
+    "signal_mm": 2374.8,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2520.7,
-    "io_mm": 20.7,
-    "surrogate": 3833.6,
+    "power_mm": 2483.6,
+    "io_mm": 28.1,
+    "surrogate": 3582.7,
     "terms": {
-     "clearance": 46.7,
+     "clearance": 28.5,
      "routing_area": 0.0,
-     "signal": 2818.9,
-     "power": 252.1,
-     "footswitch": 307.7,
-     "io": 20.7,
-     "flow": 35.6,
-     "access": 147.4,
+     "signal": 2590.3,
+     "power": 248.4,
+     "footswitch": 315.0,
+     "io": 28.1,
+     "flow": 37.4,
+     "access": 153.4,
      "rotation": 70.0,
-     "move": 138.3,
-     "touch": -3.7
+     "move": 111.6,
+     "touch": -0.0
     },
-    "score": 3750.3
+    "score": 3367.2
    },
    "moved": [
     {
+     "pedal": "red_muck",
+     "dx_mm": 2.3,
+     "dy_mm": 9.0,
+     "distance_mm": 9.3,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
      "pedal": "analog_chorus",
-     "dx_mm": -4.5,
-     "dy_mm": -19.8,
-     "distance_mm": 20.3,
+     "dx_mm": 0.6,
+     "dy_mm": -4.5,
+     "distance_mm": 4.6,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
-     "dx_mm": 1.1,
-     "dy_mm": -8.5,
-     "distance_mm": 8.5,
+     "dx_mm": -0.6,
+     "dy_mm": -40.1,
+     "distance_mm": 40.1,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 9.6,
-     "distance_mm": 10.4,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "flight_delay",
-     "dx_mm": -13.0,
-     "dy_mm": 6.8,
-     "distance_mm": 14.6,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "tumnus_deluxe",
-     "dx_mm": -7.3,
-     "dy_mm": 10.2,
-     "distance_mm": 12.5,
+     "dy_mm": 1.7,
+     "distance_mm": 4.3,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -525,7 +500,7 @@
       ]
      }
     ],
-    "length_mm": 2520.7,
+    "length_mm": 2483.6,
     "warnings": [],
     "error": null
    }
@@ -544,68 +519,52 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 48.5,
-    "fs_crowding": 160.9,
+    "fs_closest_mm": 46.6,
+    "fs_crowding": 162.5,
     "fs_known": true,
-    "signal_mm": 2736.3,
+    "signal_mm": 2371.7,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 2520.7,
-    "io_mm": 20.7,
-    "surrogate": 3837.4,
+    "power_mm": 2482.6,
+    "io_mm": 28.1,
+    "surrogate": 3577.6,
     "terms": {
-     "clearance": 52.4,
+     "clearance": 51.0,
      "routing_area": 0.0,
-     "signal": 2806.7,
-     "power": 252.1,
-     "footswitch": 321.9,
-     "io": 20.7,
-     "flow": 35.6,
-     "access": 146.6,
+     "signal": 2578.7,
+     "power": 248.3,
+     "footswitch": 325.0,
+     "io": 28.1,
+     "flow": 37.4,
+     "access": 152.5,
      "rotation": 70.0,
-     "move": 135.2,
-     "touch": -3.7
+     "move": 87.4,
+     "touch": -0.7
     },
-    "score": 3767.0
+    "score": 3370.6
    },
    "moved": [
     {
-     "pedal": "analog_chorus",
-     "dx_mm": -5.1,
-     "dy_mm": -11.9,
-     "distance_mm": 12.9,
+     "pedal": "red_muck",
+     "dx_mm": 2.3,
+     "dy_mm": 17.5,
+     "distance_mm": 17.6,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "monk",
-     "dx_mm": 0.6,
-     "dy_mm": -0.6,
-     "distance_mm": 0.8,
+     "dx_mm": -1.1,
+     "dy_mm": -40.1,
+     "distance_mm": 40.1,
      "rot_from": 0,
      "rot_to": 0
     },
     {
      "pedal": "belle_epoch",
      "dx_mm": -4.0,
-     "dy_mm": 9.6,
-     "distance_mm": 10.4,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "flight_delay",
-     "dx_mm": -13.0,
-     "dy_mm": 6.8,
-     "distance_mm": 14.6,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "tumnus_deluxe",
-     "dx_mm": -7.3,
-     "dy_mm": 10.2,
-     "distance_mm": 12.5,
+     "dy_mm": 1.7,
+     "distance_mm": 4.3,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -704,7 +663,7 @@
       ]
      }
     ],
-    "length_mm": 2520.7,
+    "length_mm": 2482.6,
     "warnings": [],
     "error": null
    }

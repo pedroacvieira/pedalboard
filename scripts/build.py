@@ -12,6 +12,7 @@ import sys
 
 import footswitches
 import jacks
+import outlines
 import power
 import routing
 import svgdraw
@@ -41,13 +42,14 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outlines=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
     candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
     project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
-    signal and power jacks falls back to the fixed boxes): for callers that only need the data findings."""
+    signal and power jacks falls back to the fixed boxes): for callers that only need the data findings.
+    `outlines`: catalog/outlines.json (read if None)."""
     project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
@@ -274,7 +276,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True, items=items)
+                cable_types=cable_types, defer=True, items=items, outlines=outlines)
     if route:
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
@@ -442,6 +444,10 @@ def routing_section(ctx):
           + "Power cables run under the board and are listed, not routed yet"
           + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
              if cfg.get("power_type") else "."), ""]
+    missing = (ctx.get("layout") or {}).get("no_outline")
+    if missing:
+        md += [f"Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. "
+               f"No outline: {', '.join(missing)}.", ""]
     if ctx["routing"].get("grid"):
         md += ["![Signal routing](routing.svg)", "",
                "The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, "
@@ -569,7 +575,7 @@ def proposals_section(ctx, cat_pedals):
            "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
-        md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, "
+        md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, outlines, "
                "cables, specs) changed since these proposals were made; rerun the command above.", ""]
     props = meta.get("proposals") or []
     if not props:
@@ -694,7 +700,7 @@ def project_readme(ctx, cat_pedals):
 
 KNOWN_LIMITS = [
     "Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).",
-    "Pedal footprints are the image bounding boxes, so rounded corners count as occupied. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
+    "Pedals are their outlines from the images (`catalog/outlines.json`; `uv run scripts/outlines.py` adds or refreshes them), so jack bumps and rounded corners are not obstacles; Pedal Playground's box is used only where an outline is missing and for overlaps in the layout. Signal and power plugs are modelled from catalog/cables.json (Ernie Ball flat patch plugs and right-angle DC plugs; several head dimensions are estimates, see the `verified` lists there); extra and guitar/amp jacks keep a fixed clearance zone (6.3 mm outward, 7 mm to each side by default), power jacks without `cables.power_type` the smaller `jacks.power_clearance` zone.",
     "Extra jacks (Exp, Tap, Thru, Stereo, XLR ...) are in the catalog for a complete description only; add one to a project's `jacks.extra_used` when it is actually plugged in, so its cable space is checked.",
     "Jack points were placed by hand: re-check any pedal whose zone shows more than a few percent on the pedal body in the pedal editor (the PolyTune 3 was marked before the edge-of-jack guidance).",
 ]
@@ -877,9 +883,10 @@ def main():
     cat_pedals, cat_supplies = load_catalog()
     jacks_file = jacks.read_file()
     fs_file = footswitches.read_file()
+    outl = outlines.usable(outlines.read_file()["outlines"])
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outlines=outl)
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -899,7 +906,7 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"])
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outlines=outl)
                 for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)

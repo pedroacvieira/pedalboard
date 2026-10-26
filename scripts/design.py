@@ -107,6 +107,20 @@ def jack_point(item, fx, fy):
     return cx + u2, cy + v2
 
 
+def outline_rects(item, outlines):
+    """Canvas rectangles (x0, y0, x1, y1) of the item's outline (catalog/outlines.json, `outlines` = {image name:
+    [[x0, y0, x1, y1] fractions of the unrotated image]}). Two opposite corners of each rectangle go through
+    `jack_point`, so 0/90/180/270 are all right. Without an image or an outline: [footprint(item)]."""
+    rects = (outlines or {}).get(item.get("image") or "")
+    if not rects:
+        return [footprint(item)]
+    out = []
+    for fx0, fy0, fx1, fy1 in rects:
+        (xa, ya), (xb, yb) = jack_point(item, fx0, fy0), jack_point(item, fx1, fy1)
+        out.append((min(xa, xb), min(ya, yb), max(xa, xb), max(ya, yb)))
+    return out
+
+
 def jack_facing(item, facing):
     """The jack's facing ('left'/'right'/'top'/'down') after the item's rotation."""
     dx, dy = FACING[facing]
@@ -136,6 +150,13 @@ def overlap(a, b, tol_mm=TOL_MM):
     dx = min(a[2], b[2]) - max(a[0], b[0])
     dy = min(a[3], b[3]) - max(a[1], b[1])
     return (dx, dy) if dx > tol_mm and dy > tol_mm else None
+
+
+def best_overlap(rect, rects, key=None):
+    """The overlap (dx, dy) of `rect` with whichever of `rects` it overlaps most (`key` of the overlap, default
+    min(dx, dy)); None when it overlaps none (see `overlap`)."""
+    hits = [ov for ov in (overlap(rect, r) for r in rects) if ov]
+    return max(hits, key=key or min) if hits else None
 
 
 def overlap_depth(zone_facing, ov):
