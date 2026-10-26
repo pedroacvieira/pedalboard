@@ -28,6 +28,7 @@
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} },
+  "power_routing": { "edges": { "front": "forbidden", "left": "forbidden", "right": "forbidden", "back": "allowed" } },
   "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "reticon", "analog_chorus", "monk", "belle_epoch", "flight_delay", "tumnus_deluxe"],
   "sections": {
     "priority": -10,
