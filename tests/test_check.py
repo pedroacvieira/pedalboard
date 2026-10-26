@@ -362,8 +362,8 @@ def test_power_cables_are_under_the_board_per_supply(tmp_path):
     assert [(h["from"], h["under_board"]) for h in ctx["cables"]["power"]] == [("psu1.F1", True), ("psu2.F1", False)]
     routing.route_project(ctx, {}, cable_types={})
     p = [c for c in ctx["cable_list"] if c["kind"] == "power"]
-    assert [(c["under_board"], c["status"]) for c in p] == [(True, "not routed (under the board)"),
-                                                            (False, "not routed (power routing not implemented)")]
+    assert [(c["under_board"], c["status"]) for c in p] == [(True, "not routed (no pedalboard in the layout)"),
+                                                            (False, "not routed (no pedalboard in the layout)")]
 
 
 def blocked_port_ctx(tmp_path, power_type):

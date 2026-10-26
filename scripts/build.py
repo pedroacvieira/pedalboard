@@ -442,13 +442,43 @@ def mermaid_power(ctx):
 
 
 def under_cell(c):
-    """'no', 'yes' (a power cable) or 'yes (2 holes, 180 mm)' (a signal cable: its passes through the deck, mm under the board)."""
+    """'no', 'yes' (a power cable not routed) or 'yes (2 holes, 180 mm)': the passes through the deck (holes, board
+    edges: 'back edge'), mm under the board; a routed power cable also gives the mm on top ('1 hole, 76 mm under, 27 mm on top')."""
+    if c["kind"] == "power" and c["status"].startswith("routed"):
+        if not c.get("under_mm"):
+            return f"no ({c['top_mm']:.0f} mm on top)"
+        n = c.get("holes_used") or 0
+        passes = ([f"{n} hole{'s' if n != 1 else ''}"] if n else []) + [f"{side} edge" for side in c.get("edge_sides") or []]
+        return f"{', '.join(passes)}; {c['under_mm']:.0f} mm under, {c['top_mm']:.0f} mm on top"
     if not c["under_board"]:
         return "no"
     if c["kind"] != "signal" or not c.get("holes_used"):
         return "yes"
     n = c["holes_used"]
     return f"yes ({n} hole{'s' if n != 1 else ''}, {c['under_mm']:.0f} mm)"
+
+
+def power_text(ctx, cfg):
+    """The README paragraph on the power cables: the routing model when they are routed, else why not."""
+    pw = ctx["routing"].get("power") or {}
+    power = [c for c in ctx.get("cable_list") or [] if c["kind"] == "power"]
+    if not any(c["status"].startswith("routed") for c in power):
+        return ("Power cables are listed, not routed" + (f" ({power[0]['status']})" if power and power[0]["status"].startswith("not routed (") else "")
+                + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
+                   if cfg.get("power_type") else "."))
+    ps = pw["settings"]
+    modes = {m: [s for s, v in ps["edges"].items() if v == m] for m in ("allowed", "avoid", "forbidden")}
+    edges = "; ".join(f"{m}: {', '.join(sides)}" for m, sides in modes.items() if sides)
+    return (f"Power cables are routed with the same router on their own grid ({pw['diameter_mm']:g} mm wide; plug `{cfg['power_type']}`, "
+            f"exit side in the Exits column) and count against each other only: at most {ps['max_stack']} stacked per cell and layer, "
+            f"at most {cfg['max_over_plug']} across a power plug. They stay under the board as much as they can: a cable from an "
+            f"under-board supply port starts under the board and comes up through the usable hole nearest its pedal's power jack "
+            f"(a hole cell no pedal covers) or over a board edge `power_routing.edges` allows ({edges}), then runs the short way on top "
+            f"to the jack; a hop from a pedal's power jack (daisy chain) or from an on-board supply starts on top. In the search a mm "
+            f"on top counts {ps['top_cost']:g} (under the board 1), coming up over an avoided edge costs {ps['avoid_penalty']:g} mm "
+            f"more, a forbidden edge is never used. A pass through a hole adds {pw['hole_transit_mm']:g} mm of cable and a crossing of "
+            f"the board edge {pw['edge_transit_mm']:g} mm (both unverified estimates; the edge value is {pw['edge_transit_source']}). "
+            f"A power cable that runs more than {routing.POWER_TOP_WARN_MM:g} mm on top is reported.")
 
 
 def routing_section(ctx):
@@ -473,9 +503,7 @@ def routing_section(ctx):
              f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
              f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
-          + "Power cables run under the board and are listed, not routed yet"
-          + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
-             if cfg.get("power_type") else "."), ""]
+          + power_text(ctx, cfg), ""]
     missing = (ctx.get("layout") or {}).get("no_outline")
     if missing:
         md += [f"Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. "
@@ -489,7 +517,8 @@ def routing_section(ctx):
                "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
-           "'~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).", "",
+           "'~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board "
+           "column gives its passes (holes, edges), the mm under the board and the mm on top.", "",
            "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
            "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
@@ -618,7 +647,7 @@ def proposals_section(ctx, cat_pedals):
             ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
-            ("Power cables, estimate (mm)", lambda m: f"{m['power_mm']:.0f}"),
+            ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}"),
             ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),
             ("Build errors / warnings", lambda m: f"{m['errors']} / {m['warnings']}"),
             ("Score (lower is better)", lambda m: f"{m['score']:.0f}")]

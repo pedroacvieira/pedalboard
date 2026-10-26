@@ -30,6 +30,7 @@ def strip(ctx):
     """The comparable part of a build context (drops the folder and the router's grid objects)."""
     out = {k: v for k, v in ctx.items() if k not in ("dir", "routing")}
     out["routing"] = {k: v for k, v in ctx["routing"].items() if k not in ("grid", "under")}
+    out["routing"]["power"] = {k: v for k, v in ctx["routing"]["power"].items() if k != "time_s"}   # wall-clock time
     out.pop("layout_source")
     return json.loads(json.dumps(out, default=repr, sort_keys=True))
 
@@ -89,8 +90,9 @@ def test_real_projects_keep_every_supply_under_the_board():
         if base["layout"]:
             assert set(base["layout"]["inst_placement"].values()) <= {"under"}
             assert not [o for o in base["layout"]["obstacles"] if o["title"] in titles]
-        assert base["cable_list"] and all(c["under_board"] for c in base["cable_list"] if c["kind"] == "power")
-        assert all(c["status"] == "not routed (under the board)" for c in base["cable_list"] if c["kind"] == "power")
+        power = [c for c in base["cable_list"] if c["kind"] == "power"]
+        assert base["cable_list"] and all(c["status"] == "not routed" for c in power if not base["layout"])      # no layout, no route
+        assert all(c["status"].startswith("routed") and (c["under_board"] or c["top_mm"] > 0) for c in power if base["layout"])
         proj = load_json(pdir / "project.json")
         for inst in proj["power"]["supplies"]:
             inst["placement"] = "under"

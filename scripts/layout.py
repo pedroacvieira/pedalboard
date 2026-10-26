@@ -21,8 +21,11 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  router's 8-connected path length) + detour 0.6 x an estimate of the way around the pedals (grown
                  by the cable radius, so a gap narrower than the cable is closed) the straight line between the
                  exits crosses (layout.detour; 0.6 because the estimate is rough, calibrated on guitar-gig)
-  power          0.1 / mm DC cable: Manhattan between half-depth measure points along each daisy chain (jacks.check)
-                 for a fixed wiring (the search keeps it; finalists get their own wiring from power.assign)
+  power          0.1 / mm DC cable along each daisy chain between half-depth measure points for a fixed wiring (the search
+                 keeps it; finalists get their own wiring from power.assign): the nearest-hole estimate of the power router
+                 (power.hop_estimate: under the board, up through the usable hole nearest the pedal's power jack, a mm on top
+                 counts `power_routing.top_cost`, a pass the hole transit; the points a candidate's pedals cover are not
+                 usable); plain Manhattan without holes or a power cable type
   footswitch     2 x crowding: per pair of switches on different pedals priority x max(0, comfort - d)^2 / comfort
                  (footswitches.crowding; comfort `footswitches.comfort_mm`, default 100; priority per switch type:
                  bypass 1.0, boost 0.8, tap 0.8, function 0.5, a pair weighs the larger of its two): spacing is
@@ -48,6 +51,7 @@ import time
 import design
 import footswitches
 import outlines as outlines_mod
+import power
 import routing
 from common import px_to_mm
 
@@ -203,7 +207,11 @@ class Model:
         ptype_id = (project.get("cables") or {}).get("power_type")
         self.ptype = cable_types.get(ptype_id) if ptype_id else None
         self.p_depth = float(self.ptype["plug"]["head_depth_mm"]) if self.ptype else self.p_out
-        import power   # a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal (owner's wiring)
+        # (a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal: the owner's wiring)
+        # power cables run under the board and come up through the nearest usable hole: sample the holes once; per candidate
+        # only the pedals' coverage of the points near each jack is tested (None: Manhattan between the measure points)
+        self.power_setup = power.estimate_setup(project, lay, cable_types)
+        self.inst_under = {iid: pl != "on_board" for iid, pl in lay["inst_placement"].items()}
         over = self.rcfg["overrides"]
         self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
                        for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", [])).items()}
@@ -308,14 +316,15 @@ class Model:
                 "exit": o["exit"], "measure_mm": o.get("measure_mm", 0.0)}
 
     def set_wiring(self, wiring):
-        """Daisy chains for the power term: [(port point or None, [pedal ids])]; None = the project's own wiring."""
+        """Daisy chains for the power term: [(port point or None, [pedal ids][, starts under the board])]; None = the
+        project's own wiring (the flag defaults to True: under-board supplies)."""
         if wiring is None:
             import power
             insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"]} for s in self.insts]
             _, ports = power.measure_points({}, self.inst_item, insts, self.jacks_data, self.p_depth)
-            wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])))
+            wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])), self.inst_under.get(s["inst"]["id"], True))
                       for s in self.insts for o in s["inst"].get("outputs", [])]
-        self.wiring = [(pt, [self.index[p] for p in pids if p in self.index]) for pt, pids in wiring]
+        self.wiring = [(w[0], [self.index[p] for p in w[1] if p in self.index], w[2] if len(w) > 2 else True) for w in wiring]
 
     # --- candidates --------------------------------------------------------------------------------
     def footprint(self, st, n):
@@ -485,15 +494,28 @@ class Model:
                 terms["clearance"] += cost
                 raw["clearance"] += intr
                 note_hits(end["jack"], n, end["opts"][k]["side"], hits)
-        # power cable length for the fixed wiring
-        for port, members in self.wiring:
+        # power cable length for the fixed wiring: Manhattan, or (holes known) the nearest-hole estimate with the hole points the
+        # candidate's pedal footprints leave free
+        pw_near = pw_cfg = sample = None
+        if self.power_setup:
+            pr = self.power_setup["radius"]
+            pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
+            sample, index, memo = self.power_setup["sample"], self.power_setup["index"], {}
+
+            def pw_near(p):
+                if p not in memo:
+                    memo[p] = index.nearest(p, pw_blocked)
+                return memo[p]
+            pw_cfg = self.power_setup["cfg"]
+        for port, members, under in self.wiring:
             prev = port
             for n in members:
                 m = geo[n]["power"]["measure"] if geo[n]["power"] else None
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
-                    raw["power"] += abs(prev[0] - here[0]) + abs(prev[1] - here[1])
-                prev = here if here is not None else prev
+                    raw["power"] += power.hop_estimate(prev, here, under, sample, pw_cfg, pw_near)
+                if here is not None:
+                    prev, under = here, False
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
         if self.fs_known:

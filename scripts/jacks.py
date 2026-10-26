@@ -195,7 +195,7 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
     "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
-    "holes" [canvas rects], "hole_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
+    "holes" [canvas rects], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
     instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
     "on_board"; the outline of every obstacle,
     placed item and under-board supply item, its box without an outline; `no_outline` lists the obstacles / placed items without one; the board's
@@ -248,7 +248,7 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     holes = design.board_holes(board, entry.get("holes"), board_edits)
     return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
             "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes,
-            "hole_transit_mm": entry.get("hole_transit_mm")}
+            "hole_transit_mm": entry.get("hole_transit_mm"), "edge_transit_mm": entry.get("edge_transit_mm")}
 
 
 def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):

@@ -58,7 +58,8 @@ def metrics(ctx, model, state, move_factor):
         "fs_known": det["fs_known"],
         "signal_mm": round(sum(c["min_mm"] for c in sig if c["min_mm"] is not None), 1),
         "signal_routed": sum(1 for c in sig if c["min_mm"] is not None), "signal_cables": len(sig),
-        "power_mm": round(sum(h["min_mm"] or 0 for h in (ctx.get("cables") or {}).get("power", [])), 1),
+        "power_mm": round(sum((c["min_mm"] if c["min_mm"] is not None else c.get("estimate_mm")) or 0
+                              for c in ctx.get("cable_list") or [] if c["kind"] == "power"), 1),
         "io_mm": round(det["terms"]["io"][0], 1),
         "surrogate": round(total, 1),
         "terms": {k: round(v[1], 1) for k, v in det["terms"].items()},
@@ -103,13 +104,18 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
                                   project.get("jacks", {}), [], [], outlines=outl)
-    insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"]}
-             for s in owner_ctx["supplies"]]
+    insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"],
+              "under": lay["inst_placement"].get(s["inst"]["id"]) != "on_board"} for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
+    setup = power.estimate_setup(project, lay, model.cable_types)   # power cables run under the board: nearest-hole estimate
+    holes = cfg = None
+    if setup:
+        rects = [r for it in [*lay["placed"].values(), *lay["obstacles"]] for r in design.item_shapes(lay["shapes"], it)]
+        holes, cfg = power.usable_points(setup, rects) or None, setup["cfg"]
     start = {s["inst"]["id"]: s["inst"].get("outputs", []) for s in owner_ctx["supplies"]}
     try:
         wiring = power.assign(owner_ctx["chain"], owner_ctx["pedals"], insts, project, pts, ports,
-                              run_v=owner_ctx["run_v"], start=start)
+                              run_v=owner_ctx["run_v"], start=start, holes=holes, cfg=cfg)
         proj = copy.deepcopy(project)
         old = project.get("power", {}).get("supplies", [])
         proj["power"] = {**proj.get("power", {}), "supplies": wiring["supplies"]}
@@ -120,7 +126,9 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor):
     ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj,
                          outline_data=outl)
     keep = model.wiring
-    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"]) for s in wiring["supplies"] for o in s["outputs"]])
+    under = {i["id"]: i["under"] for i in insts}
+    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True))
+                      for s in wiring["supplies"] for o in s["outputs"]])
     m = metrics(ctx, model, state, move_factor)
     model.wiring = keep
     return m, ctx, wiring
