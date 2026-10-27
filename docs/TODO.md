@@ -26,8 +26,9 @@ ideas · 5 data · 6 done.
 - [ ] Toppers: is 10 mm of effective distance per topper realistic (`footswitches.topper_bonus_mm`)? The 5 % minimum
       gain per suggestion and no cap per board: right, or set `footswitches.max_toppers` (2-4)? Then list the toppers you
       fit in `footswitches.toppers`.
-- [ ] Next feature (3.1, daisy chains): where the style is set (per output in project.json, or a default per supply)
-      and whether a serial cable may run on top between pedals or must dip under where a hole is near.
+- [ ] Daisy chains: every gig output is serial (default; 10 DC cables, 3231 mm). Switch any output to forked
+      (`power.supplies[].outputs[].style: "forked"`: one cable per pedal from the port)? A serial cable's legs may run
+      on top or dip under the board, whichever is cheaper: OK?
 - [ ] Power plug side: when neither side is blocked the tool reports "left". Does the side matter?
 - [ ] Power routes on top: P2 / P12 / P17 run 111-140 mm on top of the gig board (on-top mm cost 3 x,
       `power_routing.top_cost`). Acceptable, or tune it?
@@ -56,19 +57,9 @@ ideas · 5 data · 6 done.
   cables through holes (P12 / P17 stay on top); one owner-drawn edge crossing at the back (handle area), unused.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
-Order (owner, 2026-10-23, updated): daisy chains -> pedal preferences -> web UI.
+Order (owner, 2026-10-23, updated): pedal preferences -> web UI.
 
-### 3.1 `feat/power-routing`: forked vs serial daisy chains (the rest of the power-routing feature)
-Routing, `power.svg`, holes / edge segments and the nearest-crossing estimate are done (feature supply-placement).
-- Owner (2026-10-23): daisy chains are either FORKED (several cables from one source, each its own cable) or SERIAL
-  (one long cable through every pedal, counted as one cable).
-- [ ] Style per output (`forked` | `serial`); today every hop is its own routed cable (supply -> first pedal, pedal
-      -> next).
-- [ ] Serial: one cable that surfaces at each pedal (and goes back under where a crossing is near, else stays on top),
-      one length and one shopping-list line. Forked: each branch from the source routed separately.
-- [ ] README / power.svg / shopping list follow the style (cable count, lengths).
-
-### 3.2 `feat/pedal-preferences`: one preference profile per pedal in a project
+### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
 Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
 - [ ] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
       order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
@@ -79,7 +70,7 @@ Every per-pedal wish in one place, editable with values, drop-downs and toggles 
       each proposal); the layout search and `power.assign` read it.
 - [ ] Until the web UI: edit project.json by hand (documented schema).
 
-### 3.3 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
+### 3.2 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
 Replaces the Tkinter editors and the README-only views with a local browser app.
 - Owner (2026-10-23): new dependencies are fine with a reason each; Python ones via uv, anything else (npm, system
   packages) only after asking.
@@ -134,6 +125,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
   edge crossings as owner-drawn segments, `cables.route_in_front`, on-board supplies movable in the search.
 - `feat/routing-speed` (2026-10-27, results identical): gig check 1.2 -> 0.7 s, layout search ~47 -> 15 s, tests
   73 -> 30 s; side-choice searches reused by `route_all`.
+- `feat/daisy-chains` (2026-10-27): serial / forked per output, physical DC cables (C#) and "DC cables to buy";
+  gig unchanged (all serial).
 - `feat/footswitch-toppers` (2026-10-27): `footswitches.toppers`, effective distance (+10 mm per topper), post-layout
   suggestions in the README (gig: ratsbane, belle_epoch, fulldrive_2 boost, protein blue: crowding 184 -> 140).
 - Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;

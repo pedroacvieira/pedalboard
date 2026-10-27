@@ -175,6 +175,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
   errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
   aggregated warning per project. `routing.svg` draws the switches (colour per type) and too-close lines.
+- Power daisy chains (2026-10-27): per output `power.supplies[].outputs[].style` serial | forked (project default
+  `power_routing.daisy_style`, default serial = one cable through every pedal, routed leg by leg); forked = one cable
+  per pedal from the port (fork starts share the port cell without a stacking limit; every leg owns the port plug).
+  Legs keep their P# ids (overrides); each leg has `cable` (C#) and `style`; `ctx["power_cable_summary"]` = physical
+  cables (plugs, min_mm = sum of legs, None if a leg is unrouted); README "DC cables to buy"; `power.assign` and the
+  surrogate: forked = sum of port -> pedal estimates, serial = chain order. Constants `routing.SERIAL` / `FORKED`.
 - Footswitch toppers (owner, 2026-10-27): per project `footswitches.toppers` ["<pedal>.<switch>"], set by hand;
   a pair's effective distance = d + `topper_bonus_mm` (10, unverified) per topper on it; the build's crowding and
   `min_distance_mm` use the effective distance, the README also shows it without toppers. Post-layout suggestions
