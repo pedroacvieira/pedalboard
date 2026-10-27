@@ -58,6 +58,10 @@ from common import px_to_mm
 
 TOUCH_GAP_MM = 1.0
 CROWD_STEP_MM = 8.0   # largest repair step for a crowded footswitch pair
+# the power estimate's memos in `Model.score` are dropped whole when they reach these sizes (a default gig search makes ~34k / ~6.6k
+# entries and answers 86 % of the nearest-crossing questions from the memo; 5000 entries still hit 85 %): a few MB at most
+NEAR_MEMO_MAX = 20000
+RECT_BITS_MAX = 10000
 SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
@@ -577,14 +581,14 @@ class Model:
                     for i, h in enumerate(pts):
                         if r[0] <= h[0] <= r[2] and r[1] <= h[1] <= r[3]:
                             bits |= 1 << i
-                    if len(rect_bits) > 50000:
+                    if len(rect_bits) > RECT_BITS_MAX:
                         rect_bits.clear()
                     rect_bits[r] = bits
                 if bits:
                     mask |= bits
                     over.append(r)
             memo = self._near_memo
-            if len(memo) > 400000:
+            if len(memo) > NEAR_MEMO_MAX:
                 memo.clear()
 
             def pw_near(p):

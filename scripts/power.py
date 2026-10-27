@@ -199,6 +199,7 @@ def usable_holes(setup, rects):
 SCAN_POINTS = 100   # a `HoleIndex` of at most this many points is scanned whole by `nearest`, a bigger one is walked square by square
 
 _RINGS = {}
+_RING_POS = {}
 
 
 def _ring_offsets(r):
@@ -208,6 +209,13 @@ def _ring_offsets(r):
         _RINGS[r] = [(0, 0)] if r == 0 else (
             [(dx, s) for dx in range(-r, r + 1) for s in (-r, r)] + [(s, dy) for dy in range(-r + 1, r) for s in (-r, r)])
     return _RINGS[r]
+
+
+def _ring_position(r):
+    """{(dx, dy): position in the walk order of ring r} (`_ring_offsets`), cached: the order's one definition."""
+    if r not in _RING_POS:
+        _RING_POS[r] = {off: k for k, off in enumerate(_ring_offsets(r))}
+    return _RING_POS[r]
 
 
 class HoleIndex:
@@ -290,16 +298,12 @@ class HoleIndex:
         return best if best is not None and bd <= reach * reach else None
 
     def _walk_key(self, h, point):
-        """(ring, position in the ring) of the square of `h` in the walk round the square of `point`: first the rows dy = -r, r for
-        every dx, then the columns dx = -r, r for the dy between."""
+        """(ring, position in the ring) of the square of `h` in the walk round the square of `point` (`_nearest_rings` order,
+        `_ring_offsets`)."""
         c = self.cell
         dx, dy = int(h[0] // c) - int(point[0] // c), int(h[1] // c) - int(point[1] // c)
         r = max(abs(dx), abs(dy))
-        if r == 0:
-            return (0, 0)
-        if abs(dy) == r:
-            return (r, (dx + r) * 2 + (dy > 0))
-        return (r, (2 * r + 1) * 2 + (dy + r - 1) * 2 + (dx > 0))
+        return (r, _ring_position(r)[(dx, dy)])
 
 
 class Crossings:

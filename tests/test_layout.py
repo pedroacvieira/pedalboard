@@ -102,10 +102,15 @@ def test_clearance_is_measured_against_the_outline():
 
 
 @functools.lru_cache(maxsize=1)
-def gig_build():
-    """(pedals, supplies, ctx): the build of the real guitar-gig, made once for the tests that only read it."""
+def _gig_build():
     pedals, supplies = load_catalog()
     return pedals, supplies, build.validate(GIG, pedals, supplies)
+
+
+def gig_build():
+    """(pedals, supplies, ctx): the build of the real guitar-gig, made once; every caller gets its own deep copy, so a test may
+    change what it gets without touching the others."""
+    return copy.deepcopy(_gig_build())
 
 
 def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():

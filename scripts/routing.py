@@ -146,11 +146,43 @@ class Grid:
     def __init__(self, x0, y0, x1, y1, cell):
         self.x0, self.y0, self.cell = x0, y0, cell
         self.nx, self.ny = max(1, math.ceil((x1 - x0) / cell)), max(1, math.ceil((y1 - y0) / cell))
-        self.blocked = set()   # no cable centre here (pedal grown by the cable radius minus half a cell)
-        self.body = set()      # cell centre inside a pedal body: never passable, even when squeezing
+        self._blocked = set()  # no cable centre here (pedal grown by the cable radius minus half a cell)
+        self._body = set()     # cell centre inside a pedal body: never passable, even when squeezing
+        self.version = 0       # bumped by every change of the walls: what the derived caches (here and `Under`) are valid for
         self._comps = {}
         self._open = {}
         self._open3 = None
+
+    def _changed(self):
+        """The walls changed (assigned or extended): drop the caches derived from them and bump `version`."""
+        self.version += 1
+        self._comps = {}
+        self._open = {}
+        self._open3 = None
+
+    @property
+    def blocked(self):
+        return self._blocked
+
+    @blocked.setter
+    def blocked(self, cells):
+        self._blocked = cells
+        self._changed()
+
+    @property
+    def body(self):
+        return self._body
+
+    @body.setter
+    def body(self, cells):
+        self._body = cells
+        self._changed()
+
+    @property
+    def stamp(self):
+        """What the walls' derived caches are valid for: the version plus the two sets' sizes (an in-place add or discard behind
+        the grid's back changes a size; `blocked` / `body` assignments and `block_rect` bump the version)."""
+        return (self.version, len(self._blocked), len(self._body))
 
     def inside(self, c):
         return 0 <= c[0] < self.nx and 0 <= c[1] < self.ny
@@ -172,18 +204,17 @@ class Grid:
         """Block every cell whose centre lies inside rectangle r grown by `grow` (use the cable radius: a cable
         centred there would overlap the obstacle). Gaps at least one cable diameter wide stay open."""
         cells = rect_cells(self, r, grow)
-        self.blocked |= cells
+        self.blocked |= cells    # (the setter runs `_changed` after the in-place union)
         self.body |= {c for c in cells if r[0] <= self.centre(c)[0] <= r[2] and r[1] <= self.centre(c)[1] <= r[3]}
-        self._comps = {}
-        self._open = {}
-        self._open3 = None
 
     def walls(self, squeeze=False):
         return self.body if squeeze else self.blocked
 
     def open_cells(self, squeeze=False):
         """The passable cells (inside the grid and not a wall) as a set, cached per mode (the search's one-lookup passability
-        test); rebuilt when the wall set was replaced or changed size."""
+        test). The caches are dropped whenever `blocked` / `body` are assigned (`_changed`; `block_rect` does it); the identity
+        and size check also catches a set that was changed in place behind the grid's back (an add or discard that changes the
+        size)."""
         walls = self.walls(squeeze)
         hit = self._open.get(squeeze)
         if hit is None or hit[0] is not walls or hit[1] != len(walls):
@@ -203,7 +234,8 @@ class Grid:
     def components(self, squeeze=False):
         """{cell: component id} over passable cells (4-connected: a legal diagonal move implies a 4-connected
         detour, so reachability is the same), computed once per mode."""
-        if squeeze not in self._comps:
+        key = (squeeze, self.stamp)
+        if key not in self._comps:
             walls, comp, n = self.walls(squeeze), {}, 0
             for i in range(self.nx):
                 for j in range(self.ny):
@@ -217,8 +249,8 @@ class Grid:
                                 comp[c] = n
                                 todo.append(c)
                     n += 1
-            self._comps[squeeze] = comp
-        return self._comps[squeeze]
+            self._comps[key] = comp
+        return self._comps[key]
 
     def connected(self, a, b, squeeze=False):
         """Whether a path can exist from cell a to cell b (both always enterable, like plug ends)."""
@@ -320,8 +352,11 @@ class Under:
 
     def components(self, top, squeeze=False):
         """{state: component id} over the passable states of both layers (4-connected; layers joined at hole cells and over
-        the edge links)."""
-        if squeeze not in self._comps:
+        the edge links); cached per (top grid, squeeze) while neither grid's walls change (`Grid.stamp`)."""
+        key = (squeeze, top.stamp, self.grid.stamp)
+        if self._comps.get("ref") is not top:
+            self._comps = {"ref": top}   # the cache belongs to one top grid (held here, so its id cannot be reused)
+        if key not in self._comps:
             live = set(top.open_cells(squeeze))
             live.update((i, j, 1) for i, j in self.grid.open_cells(False))   # the passable states of both layers
             holes, up, down = self.holes, self.up, self.down
@@ -350,8 +385,8 @@ class Under:
                             comp[c] = n
                             todo.append(c)
                 n += 1
-            self._comps[squeeze] = comp
-        return self._comps[squeeze]
+            self._comps[key] = comp
+        return self._comps[key]
 
     def connected(self, top, a, b, squeeze=False):
         """Whether a path can exist between top cells a and b on the two-layer graph (as `Grid.connected`)."""
@@ -483,11 +518,11 @@ def _step_tables(cell, top_mult, under_mult):
 
 
 def _search_cells(grid, walls_squeeze, extra):
-    """The passable cell set of one search: `Grid.open_cells` plus the `extra` cells (plug ends: always enterable) that lie
-    inside the grid; the cached set itself when nothing has to be added."""
+    """(cells, add): the passable cell set of one search is `Grid.open_cells` (the cached set itself, never copied or changed)
+    plus `add`, the `extra` cells (plug ends: always enterable) that lie inside the grid but are not in it (usually empty);
+    a search tests `c in cells or c in add`."""
     cells = grid.open_cells(walls_squeeze)
-    add = [c for c in extra if grid.inside(c) and c not in cells]
-    return cells | set(add) if add else cells
+    return cells, frozenset(c for c in extra if grid.inside(c) and c not in cells)
 
 
 def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
@@ -501,10 +536,9 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
     ug = under.grid
     uc, tc, hc, cell = under.cost, under.top_cost, under.hole_cost, grid.cell
     start_under = len(start) == 3
-    top_open = _search_cells(grid, squeeze, [c for c in (start, goal) if len(c) == 2])
+    top_open, top_add = _search_cells(grid, squeeze, [c for c in (start, goal) if len(c) == 2])
     under_open = ug.open_states()   # (i, j, 1)
-    if start_under and start not in under_open:
-        under_open = under_open | {start}   # the start is always enterable
+    under_add = frozenset((start,)) if start_under and start not in under_open else frozenset()   # the start is always enterable
     blocked, holes, edges = grid.blocked, under.holes, under.edges
     t_orth, t_diag = cell * 1.0 * tc, cell * math.sqrt(2) * tc   # step lengths, multiplied in the order the search always did
     u_orth, u_diag = cell * 1.0 * uc, cell * math.sqrt(2) * uc
@@ -535,14 +569,14 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
             continue
         i, j = c[0], c[1]
         if len(c) == 3:
-            ok, orth, diag = under_open, u_orth, u_diag
+            ok, add, orth, diag = under_open, under_add, u_orth, u_diag
             e, w, d, u = (i + 1, j, 1), (i - 1, j, 1), (i, j + 1, 1), (i, j - 1, 1)   # east, west, down, up (NEIGHBOURS order)
             low = True
         else:
-            ok, orth, diag = top_open, t_orth, t_diag
+            ok, add, orth, diag = top_open, top_add, t_orth, t_diag
             e, w, d, u = (i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)
             low = False
-        e_ok, w_ok, d_ok, u_ok = e in ok, w in ok, d in ok, u in ok
+        e_ok, w_ok, d_ok, u_ok = e in ok or e in add, w in ok or w in add, d in ok or d in add, u in ok or u in add
         moves = []   # (next state, step length) in NEIGHBOURS order; a diagonal needs both orthogonal cells beside it
         if e_ok:
             moves.append((e, orth))
@@ -555,20 +589,20 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
         if e_ok:
             if d_ok:
                 n = (i + 1, j + 1, 1) if low else (i + 1, j + 1)
-                if n in ok:
+                if n in ok or n in add:
                     moves.append((n, diag))
             if u_ok:
                 n = (i + 1, j - 1, 1) if low else (i + 1, j - 1)
-                if n in ok:
+                if n in ok or n in add:
                     moves.append((n, diag))
         if w_ok:
             if d_ok:
                 n = (i - 1, j + 1, 1) if low else (i - 1, j + 1)
-                if n in ok:
+                if n in ok or n in add:
                     moves.append((n, diag))
             if u_ok:
                 n = (i - 1, j - 1, 1) if low else (i - 1, j - 1)
-                if n in ok:
+                if n in ok or n in add:
                     moves.append((n, diag))
         for n, step in moves:
             if unit:
@@ -589,9 +623,9 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
                 heappush(openq, (ng + (h(n) if h else hypot(i - gx, j - gy) * hs), ng, n))
         if edges:
             if low:
-                emoves = [(t, e) for t, e in under.up.get((i, j), ()) if t in top_open]
+                emoves = [(t, e) for t, e in under.up.get((i, j), ()) if t in top_open or t in top_add]
             else:
-                emoves = [((u[0], u[1], 1), e) for u, e in under.down.get((i, j), ()) if (u[0], u[1], 1) in under_open]
+                emoves = [((u[0], u[1], 1), e) for u, e in under.down.get((i, j), ()) if (u[0], u[1], 1) in under_open or (u[0], u[1], 1) in under_add]
             for n, e in emoves:
                 ng = g + e
                 if ng < best_get(n, inf):
@@ -610,7 +644,7 @@ def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None):
     costs: an optional dict that receives {state: cell cost} of every state whose cell cost the search asked for."""
     if under is not None:
         return astar_layers(grid, start, goal, cell_cost, squeeze, under, costs)
-    ok = _search_cells(grid, squeeze, (start, goal))
+    ok, add = _search_cells(grid, squeeze, (start, goal))
     blocked, cell = grid.blocked, grid.cell
     steps = _step_tables(cell, 1.0, 1.0)[0]
     gx, gy, hypot, inf = goal[0], goal[1], math.hypot, math.inf
@@ -633,7 +667,8 @@ def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None):
         i, j = c
         for dx, dy, diag, step in steps:
             x, y = i + dx, j + dy
-            if (x, y) not in ok or (diag and ((x, j) not in ok or (i, y) not in ok)):
+            if ((x, y) not in ok and (x, y) not in add) or (diag and (((x, j) not in ok and (x, j) not in add)
+                                                                       or ((i, y) not in ok and (i, y) not in add))):
                 continue
             n = (x, y)
             cc = costs_get(n)
@@ -654,11 +689,18 @@ def plain_search(memo, grid, start, goal, squeeze, under):
     return path
 
 
-def _search(memo, grid, start, goal, cell_cost, squeeze, under):
-    """`astar`, or the remembered plain search (`plain_search`) when `cell_cost` is 1.0 on every state that search asked for."""
-    hit = memo.get((start, goal, squeeze)) if memo else None
-    if hit is not None and all(c == start or cell_cost(c) == 1.0 for c in hit[1]):
-        return list(hit[0]) if hit[0] is not None else None
+def _search(memo, grid, start, goal, cell_cost, squeeze, under, dead=None, history=None):
+    """`astar`, or the remembered plain search (`plain_search`) when `cell_cost` is 1.0 on every state that search asked for.
+    `dead` (a set, with `history`: the negotiation's history costs, which only grow): a remembered search that missed on a state
+    with a history cost can never hit again (that cost is above 1.0 from then on), so its key goes into `dead` and later
+    rounds skip the check."""
+    key = (start, goal, squeeze)
+    hit = memo.get(key) if memo and not (dead and key in dead) else None
+    if hit is not None:
+        if all(c == start or cell_cost(c) == 1.0 for c in hit[1]):
+            return list(hit[0]) if hit[0] is not None else None
+        if dead is not None and any(c != start and history.get(c) for c in hit[1]):
+            dead.add(key)
     return astar(grid, start, goal, cell_cost, squeeze=squeeze, under=under)
 
 
@@ -688,9 +730,10 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
         for c in cells:
             plug_at.setdefault(c, []).append(key)
     history, plug_history, paths, present = {}, {}, {}, 0.5
+    dead = set()   # memo keys that can no longer hit in the rounds (see `_search`)
     first_clean = False
     limit = (lambda c: under.limit(c, max_stack)) if under is not None else (lambda c: max_stack)
-    lim_under = under.max_stack if under is not None else max_stack   # what `limit` gives a 3-tuple (under-board) state
+    lim_top, lim_under = limit((0, 0)), limit((0, 0, 1))   # `limit` per layer, for the cost's hot path (one source for both uses)
     cross = {key: set() for key in plugs}   # plug key -> cables other than its owner whose path enters it
 
     def crossed(name, path):
@@ -709,7 +752,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                 cross[k].discard(name)
 
             def cost(c):
-                over = usage.get(c, 0) + 1 - (lim_under if len(c) == 3 else max_stack)
+                over = usage.get(c, 0) + 1 - (lim_under if len(c) == 3 else lim_top)
                 hist = history.get(c, 0.0)
                 pk = plug_at.get(c)
                 if pk and c != s and c != t:
@@ -724,7 +767,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                     return 1.0   # (1.0 + 0.0) * (1.0 + present * 0 * 10)
                 return (1.0 + hist) * (1.0 + present * over * 10)
 
-            paths[name] = _search(memo, grid, s, t, cost, bool(sq and sq[0]), under)
+            paths[name] = _search(memo, grid, s, t, cost, bool(sq and sq[0]), under, dead, history)
             for c in paths[name] or []:
                 usage[c] = usage.get(c, 0) + 1
             for k in crossed(name, paths[name]):
