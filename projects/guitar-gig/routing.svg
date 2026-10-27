@@ -408,18 +408,22 @@
 <circle cx="526.9" cy="195.4" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="359.9" cy="331.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="443.0" cy="331.2" r="3.5" fill="#e53935" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="boost"/>
+<circle cx="443.0" cy="331.2" r="5.6" fill="none" stroke="#e65100" stroke-width="1" stroke-dasharray="2 1.5" class="topper-suggested"/>
 <circle cx="472.3" cy="64.0" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="434.2" cy="204.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="358.5" cy="150.2" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="318.9" cy="150.4" r="3.5" fill="#e53935" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="boost"/>
 <circle cx="257.1" cy="206.7" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="257.1" cy="206.7" r="5.6" fill="none" stroke="#e65100" stroke-width="1" stroke-dasharray="2 1.5" class="topper-suggested"/>
 <circle cx="296.6" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="228.5" cy="330.3" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="228.5" cy="330.3" r="5.6" fill="none" stroke="#e65100" stroke-width="1" stroke-dasharray="2 1.5" class="topper-suggested"/>
 <circle cx="259.1" cy="124.0" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="119.1" cy="67.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="162.3" cy="190.6" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="201.4" cy="190.6" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
 <circle cx="116.8" cy="192.5" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
+<circle cx="116.8" cy="192.5" r="5.6" fill="none" stroke="#e65100" stroke-width="1" stroke-dasharray="2 1.5" class="topper-suggested"/>
 <circle cx="41.6" cy="192.5" r="3.5" fill="#ffffff" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="function"/>
 <circle cx="112.7" cy="328.1" r="3.5" fill="#263238" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="bypass"/>
 <circle cx="182.0" cy="328.1" r="3.5" fill="#1e88e5" stroke="#263238" stroke-width="0.8" class="footswitch" data-type="tap"/>
@@ -472,6 +476,7 @@
 <circle cx="413.0" cy="368.6" r="2.2" fill="#e53935" stroke="#263238" stroke-width="0.6"/><text x="419.0" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">boost footswitch</text>
 <circle cx="454.1" cy="368.6" r="2.2" fill="#1e88e5" stroke="#263238" stroke-width="0.6"/><text x="460.1" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">tap footswitch</text>
 <circle cx="492.1" cy="368.6" r="2.2" fill="#ffffff" stroke="#263238" stroke-width="0.6"/><text x="498.1" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">function footswitch</text>
+<circle cx="537.9" cy="368.6" r="3.2" fill="none" stroke="#e65100" stroke-width="0.8" stroke-dasharray="1.6 1.2"/><text x="543.9" y="369.6" font-size="2.8" text-anchor="start" fill="#263238">dashed orange ring: suggested topper</text>
 <g class="legend-row" data-id="S1"><line x1="12.3" y1="378.5" x2="19.3" y2="378.5" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="12.3" y1="378.5" x2="19.3" y2="378.5" stroke="#c62828" stroke-width="1.6" stroke-linecap="round"/><text x="21.3" y="379.5" font-size="2.8" text-anchor="start" fill="#c62828" font-weight="bold">S1</text><text x="29.3" y="379.5" font-size="2.8" text-anchor="start" fill="#263238">Sun Face BC183 out -&gt; 3699 Fuzz in</text><text x="121.5" y="379.5" font-size="2.8" text-anchor="end" fill="#263238" class="length">95 mm</text><text x="123.5" y="379.5" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S2"><line x1="12.3" y1="383.1" x2="19.3" y2="383.1" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="12.3" y1="383.1" x2="19.3" y2="383.1" stroke="#1565c0" stroke-width="1.6" stroke-linecap="round"/><text x="21.3" y="384.1" font-size="2.8" text-anchor="start" fill="#1565c0" font-weight="bold">S2</text><text x="29.3" y="384.1" font-size="2.8" text-anchor="start" fill="#263238">3699 Fuzz out -&gt; Beano Boost in</text><text x="121.5" y="384.1" font-size="2.8" text-anchor="end" fill="#263238" class="length">153 mm</text><text x="123.5" y="384.1" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>
 <g class="legend-row" data-id="S3"><line x1="12.3" y1="387.7" x2="19.3" y2="387.7" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="12.3" y1="387.7" x2="19.3" y2="387.7" stroke="#2e7d32" stroke-width="1.6" stroke-linecap="round"/><text x="21.3" y="388.7" font-size="2.8" text-anchor="start" fill="#2e7d32" font-weight="bold">S3</text><text x="29.3" y="388.7" font-size="2.8" text-anchor="start" fill="#263238">Beano Boost out -&gt; PolyTune 3 in</text><text x="121.5" y="388.7" font-size="2.8" text-anchor="end" fill="#263238" class="length">180 mm</text><text x="123.5" y="388.7" font-size="2.8" text-anchor="start" fill="#b71c1c"></text></g>

@@ -16,6 +16,13 @@ apart as the other goals allow. Crowding of a pair = priority x max(0, comfort -
 centre, comfort = `footswitches.comfort_mm`, default COMFORT_MM; priority per switch type, PRIORITY): the closest
 pairs count most, pairs at least `comfort_mm` apart not at all. The layout search minimises the sum; the build
 reports it. Optional `footswitches.min_distance_mm` (mm, default none): pairs closer are warnings.
+
+Toppers (a larger, higher cap on a switch: easier to hit, the neighbour less likely to be hit too) are a finishing step
+after the layout, per project: `footswitches.toppers` lists "<pedal id>.<switch id>" keys. Spacing model: effective
+distance d_eff = d + `topper_bonus_mm` (default TOPPER_BONUS_MM, unverified) per topper on the pair (both switches:
+2x); crowding and `min_distance_mm` use d_eff. The layout search ignores toppers (layout.py uses `crowding` on the
+plain distances). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
+crowding (at most `max_toppers` in all, stopping when the next gain is below `topper_min_gain` x the crowding).
 """
 import json
 import math
@@ -38,6 +45,8 @@ DOC = ("Footswitch positions per pedal catalog id. Written ONLY by scripts/pedal
        "No image is stored.")
 TOP_PAIRS = 8   # closest pairs shown in the README
 COMFORT_MM = 100.0   # pairs at least this far apart are not crowded
+TOPPER_BONUS_MM = 10.0   # effective distance gained per topper on a pair (unverified default)
+TOPPER_MIN_GAIN = 0.05   # a suggested topper must remove at least this share of the board's crowding
 
 
 # --- file ---------------------------------------------------------------------------------------
@@ -156,6 +165,92 @@ def crowding(distance_mm, priority, comfort_mm):
     return priority * gap * gap / comfort_mm
 
 
+def topper_settings(project, switch_keys):
+    """(settings, problems, notes) of the project's toppers. settings = {toppers: [keys], bonus_mm, max_toppers (int or
+    None), min_gain}. `switch_keys` = every "<pedal id>.<switch id>" of the project's chain pedals. Problems are errors
+    (unknown switch, bad numbers), notes warnings (more toppers than `max_toppers`)."""
+    cfg = project.get("footswitches") or {}
+    problems, notes = [], []
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    toppers = cfg.get("toppers", [])
+    if not isinstance(toppers, list) or not all(isinstance(t, str) for t in toppers):
+        problems.append(f"footswitches.toppers must be a list of \"<pedal id>.<switch id>\" strings, got {toppers!r}")
+        toppers = []
+    seen = set()
+    keep = []
+    for t in toppers:
+        if t in seen:
+            problems.append(f"footswitches.toppers: {t} is listed twice")
+        elif t not in switch_keys:
+            problems.append(f"footswitches.toppers: {t} is not a footswitch of a pedal in the signal chain")
+        else:
+            keep.append(t)
+        seen.add(t)
+    bonus = cfg.get("topper_bonus_mm", TOPPER_BONUS_MM)
+    if not num(bonus) or bonus < 0:
+        problems.append(f"footswitches.topper_bonus_mm must be a number >= 0 (mm), got {bonus!r}")
+        bonus = TOPPER_BONUS_MM
+    cap = cfg.get("max_toppers")
+    if cap is not None and (not isinstance(cap, int) or isinstance(cap, bool) or cap < 0):
+        problems.append(f"footswitches.max_toppers must be an integer >= 0 or absent (no cap), got {cap!r}")
+        cap = None
+    gain = cfg.get("topper_min_gain", TOPPER_MIN_GAIN)
+    if not num(gain) or not 0 <= gain <= 1:
+        problems.append(f"footswitches.topper_min_gain must be a number in 0..1, got {gain!r}")
+        gain = TOPPER_MIN_GAIN
+    if cap is not None and len(keep) > cap:
+        notes.append(f"footswitches: {len(keep)} toppers are listed, more than max_toppers ({cap})")
+    return {"toppers": keep, "bonus_mm": float(bonus), "max_toppers": cap, "min_gain": float(gain)}, problems, notes
+
+
+def effective_distance(distance_mm, n_toppers, bonus_mm):
+    """d_eff = d + bonus per topper on the pair (0, 1 or 2)."""
+    return distance_mm + n_toppers * bonus_mm
+
+
+def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers=None, min_gain=TOPPER_MIN_GAIN):
+    """Greedy topper suggestions (pure; post-layout, never during the search).
+
+    `pts` = points (key, type, y), `prs` = pairs (a, b, a_type, b_type, plain distance_mm), `existing` = keys that
+    already have a topper (they count towards `max_toppers`). Each step tries a topper on every switch that is in at
+    least one crowded pair (d_eff < comfort) and takes the largest crowding reduction; ties: the switch in more
+    crowded pairs, then the higher type priority, then nearer the front (larger y). Stops at the cap, when no crowding
+    is left, or when the best gain < min_gain x the crowding before suggesting (fixed at the start).
+    Returns {"before": crowding with `existing`, "after": crowding with all, "suggestions": [{key, type, gain,
+    crowding_after}]}."""
+    have = set(existing)
+    info = {p["key"]: p for p in pts}
+
+    def total(toppers):
+        return sum(crowding(effective_distance(r["distance_mm"], (r["a"] in toppers) + (r["b"] in toppers), bonus_mm),
+                            pair_priority(prio, r["a_type"], r["b_type"]), comfort_mm) for r in prs)
+
+    before = current = total(have)
+    out = []
+    limit = None if max_toppers is None else max(0, max_toppers - len(have))
+    while before > 0 and (limit is None or len(out) < limit):
+        crowded = {}
+        for r in prs:
+            if effective_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus_mm) < comfort_mm:
+                for k in (r["a"], r["b"]):
+                    crowded[k] = crowded.get(k, 0) + 1
+        best = None
+        for k, n in crowded.items():
+            if k in have:
+                continue
+            gain = current - total(have | {k})
+            key = (round(gain, 9), n, prio.get(info[k]["type"], 0.0), info[k]["y"])
+            if best is None or key > best[0]:
+                best = (key, k, gain)
+        if best is None or best[2] < min_gain * before or best[2] <= 1e-9:
+            break
+        _, k, gain = best
+        have.add(k)
+        current -= gain
+        out.append({"key": k, "type": info[k]["type"], "gain": gain, "crowding_after": current})
+    return {"before": before, "after": current, "suggestions": out}
+
+
 def pair_priority(prio, type_a, type_b):
     """A pair weighs the larger priority of its two switches (a pair with a bypass switch counts fully)."""
     return max(prio.get(type_a, 0.0), prio.get(type_b, 0.0))
@@ -206,8 +301,14 @@ def check(ctx, cat_pedals, fs_data):
     limit, comfort, problems, notes = spacing_settings(project)
     errors += problems
     warnings += notes
+    tset, tproblems, tnotes = topper_settings(project, {f"{c}.{f['id']}" for c in chain for f in fs_data.get(c, [])})
+    errors += tproblems
+    warnings += tnotes
     ctx.update(footswitch_setup={}, footswitch_fixes=[], footswitch_points=[], footswitch_pairs=[],
-               footswitch_settings={"min_distance_mm": limit, "comfort_mm": comfort, "crowding": None, "layout": False})
+               footswitch_suggestions=None,
+               footswitch_settings={"min_distance_mm": limit, "comfort_mm": comfort, "crowding": None, "layout": False,
+                                    "crowding_plain": None, "toppers": tset["toppers"], "topper_bonus_mm": tset["bonus_mm"],
+                                    "max_toppers": tset["max_toppers"], "topper_min_gain": tset["min_gain"]})
 
     missing = []
     for cid in chain:
@@ -231,12 +332,27 @@ def check(ctx, cat_pedals, fs_data):
     prs = pairs(pts)
     prio = priorities(project)
     ctx["footswitch_points"] = pts
+    have, bonus = set(tset["toppers"]), tset["bonus_mm"]
+    for p in pts:
+        p["topper"] = p["key"] in have
     for r in prs:
-        r["crowding"] = crowding(r["distance_mm"], pair_priority(prio, r["a_type"], r["b_type"]), comfort)
-        r["too_close"] = limit is not None and r["distance_mm"] < limit - 1e-6
+        prr = pair_priority(prio, r["a_type"], r["b_type"])
+        r["toppers"] = (r["a"] in have) + (r["b"] in have)
+        r["effective_mm"] = effective_distance(r["distance_mm"], r["toppers"], bonus)
+        r["crowding_plain"] = crowding(r["distance_mm"], prr, comfort)
+        r["crowding"] = crowding(r["effective_mm"], prr, comfort)
+        r["too_close"] = limit is not None and r["effective_mm"] < limit - 1e-6
         if r["too_close"]:
-            dist_sink.append(f"footswitch: {r['a']} and {r['b']} are {r['distance_mm']:.1f} mm apart "
-                             f"(min {limit:g} mm)")
+            dist_sink.append(f"footswitch: {r['a']} and {r['b']} are {r['effective_mm']:.1f} mm apart"
+                             + (f" (effective with toppers, {r['distance_mm']:.1f} mm plain)" if r["toppers"] else "")
+                             + f" (min {limit:g} mm)")
+    prs.sort(key=lambda r: (r["effective_mm"], r["a"], r["b"]))
     ctx["footswitch_pairs"] = prs
-    ctx["footswitch_settings"].update(crowding=sum(r["crowding"] for r in prs), layout=True)
+    ctx["footswitch_settings"].update(crowding=sum(r["crowding"] for r in prs),
+                                      crowding_plain=sum(r["crowding_plain"] for r in prs), layout=True)
+    sug = suggest_toppers(pts, prs, prio, comfort, bonus, have, tset["max_toppers"], tset["min_gain"])
+    ctx["footswitch_suggestions"] = sug
+    chosen = {s["key"] for s in sug["suggestions"]}
+    for p in pts:
+        p["suggested"] = p["key"] in chosen
 
