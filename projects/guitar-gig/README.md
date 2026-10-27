@@ -340,7 +340,7 @@ Crowding: 184.3 (18 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 
 ### Suggested toppers
 
-Chosen after the layout (never during the search), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the higher priority type, then nearer the front), no cap (`footswitches.max_toppers`), stopping when a topper would remove less than 5 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
+Chosen after the layout (never during the search), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), no cap (`footswitches.max_toppers`), stopping when a topper would remove less than 5 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|

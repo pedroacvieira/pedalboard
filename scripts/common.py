@@ -30,15 +30,23 @@ def load_catalog():
     return pedals, supplies
 
 
+TOPPER_KEYS = ("toppers", "topper_bonus_mm", "max_toppers", "topper_min_gain")   # project footswitches settings, not proposal inputs
+
+
 def proposal_inputs_sha1(pdir):
     """SHA-1 of everything a project's layout proposals depend on: playground_design.json, project.json,
     catalog/cables.json, the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
     supplies, the outline entries (catalog/outlines.json) of the images in the design file, the board image's
     catalog/boards.json entry and the project's board.json (holes). Stored by propose_layout.py in proposals/meta.json;
-    build.py marks the proposals stale on a change."""
+    build.py marks the proposals stale on a change. The project's footswitch topper settings (TOPPER_KEYS) are left out."""
     import hashlib
     pdir = Path(pdir)
     project = load_json(pdir / "project.json")
+    # toppers are a finishing step after the layout: they never make proposals stale
+    fcfg = {k: v for k, v in (project.get("footswitches") or {}).items() if k not in TOPPER_KEYS}
+    project = {k: v for k, v in project.items() if k != "footswitches"}
+    if fcfg:
+        project["footswitches"] = fcfg
     ids = [str(i) for i in list(project.get("signal_chain", [])) + [s.get("supply") for s in (project.get("power") or {}).get("supplies", [])]
            if i is not None]
     pedals, supplies = load_catalog()

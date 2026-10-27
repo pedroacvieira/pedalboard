@@ -641,19 +641,24 @@ def footswitch_section(ctx, cat_pedals):
         md += [f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
     sug = ctx.get("footswitch_suggestions")
     if sug is not None:
-        cap = st.get("max_toppers")
-        md += ["### Suggested toppers", "",
-               "Chosen after the layout (never during the search), greedily: the topper that removes the most crowding "
-               "first (a switch in several close pairs helps them all; ties: the higher priority type, then nearer the front), "
-               f"at most {cap} in all (`footswitches.max_toppers`)" if cap is not None else
-               "Chosen after the layout (never during the search), greedily: the topper that removes the most crowding "
-               "first (a switch in several close pairs helps them all; ties: the higher priority type, then nearer the front), "
-               "no cap (`footswitches.max_toppers`)"]
-        md[-1] += (f", stopping when a topper would remove less than {st['topper_min_gain'] * 100:g} % of the crowding "
-                   "(`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.")
-        md.append("")
+        cap, nset = st.get("max_toppers"), len(toppers)
+        intro = ("Chosen after the layout (never during the search), greedily: the topper that removes the most crowding "
+                 "first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the "
+                 "higher priority type, then nearer the front), "
+                 + (f"at most {cap} in all (`footswitches.max_toppers`)" if cap is not None else "no cap (`footswitches.max_toppers`)")
+                 + f", stopping when a topper would remove less than {st['topper_min_gain'] * 100:g} % of the crowding "
+                 "(`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.")
+        md += ["### Suggested toppers", "", intro, ""]
         if not sug["suggestions"]:
-            md += ["None needed." if sug["before"] <= 0 else "None suggested: no topper removes enough crowding.", ""]
+            if sug["before"] <= 0:
+                why = "None needed."
+            elif cap == 0:
+                why = "None suggested: `footswitches.max_toppers` is 0."
+            elif cap is not None and nset >= cap:
+                why = f"None suggested: the cap `footswitches.max_toppers` is used up ({nset} of {cap})."
+            else:
+                why = "None suggested: no topper removes enough crowding."
+            md += [why, ""]
         else:
             labels = {p["key"]: p for p in ctx.get("footswitch_points") or []}
             md += ["| # | Switch | Pedal | Type | Crowding removed | Crowding after |", "|--:|---|---|---|--:|--:|"]
@@ -663,6 +668,8 @@ def footswitch_section(ctx, cat_pedals):
                 md.append(f"| {i} | {s['key']} ({p['label']}) | {c.get('brand', '')} {c.get('name', p['cid'])} | {s['type']} "
                           f"| {s['gain']:.1f} | {s['crowding_after']:.1f} |")
             md.append("")
+            if cap is not None and nset + len(sug["suggestions"]) >= cap:
+                md += [f"Stopped at the cap `footswitches.max_toppers` ({cap}).", ""]
     return md
 
 
@@ -695,7 +702,8 @@ def proposals_section(ctx, cat_pedals):
 
     rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
             ("Unroutable / squeezed / over the stacking or plug limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
-            ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
+            ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
+             + " (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
             ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}" + (f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else "")),
@@ -841,7 +849,7 @@ def open_issues(ctxs, jacks_data):
                          f"`{footswitches.COMMAND} --list-missing {c['key']} --only footswitches`")
         for r in c.get("footswitch_pairs") or []:
             if r["too_close"]:
-                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {r['distance_mm']:.1f} mm apart "
+                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {footswitches.pair_text(r)} "
                              f"(min {c['footswitch_settings']['min_distance_mm']:.1f} mm)")
         if items:
             md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]

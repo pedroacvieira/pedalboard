@@ -261,7 +261,6 @@ def test_minimum_distance_uses_the_effective_distance(tmp_path):
 @pytest.mark.parametrize("cfg,fragment", [
     ({"toppers": ["a.nope"]}, "a.nope is not a footswitch of a pedal in the signal chain"),
     ({"toppers": ["zzz.bypass"]}, "zzz.bypass is not a footswitch"),
-    ({"toppers": ["a.bypass", "a.bypass"]}, "a.bypass is listed twice"),
     ({"toppers": "a.bypass"}, "footswitches.toppers must be a list"),
     ({"topper_bonus_mm": -1}, "topper_bonus_mm must be a number >= 0"),
     ({"topper_bonus_mm": "x"}, "topper_bonus_mm must be a number >= 0"),
@@ -371,3 +370,113 @@ def test_svg_draws_rings_for_toppers_and_suggestions(tmp_path):
     assert "solid ring: topper on the footswitch" in picture and "dashed orange ring: suggested topper" in picture
     plain = svgdraw.render(build.validate(gig, pedals, supplies, footswitch_data={c: [sw()] for c in chain}), {})
     assert 'class="topper"' not in plain and "solid ring" not in plain
+
+
+def test_duplicate_topper_is_a_warning_and_counted_once(tmp_path):
+    ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"toppers": ["a.bypass", "a.bypass"]}})
+    assert ctx["errors"] == [] and any("a.bypass is listed twice" in w for w in ctx["warnings"])
+    assert ctx["footswitch_settings"]["toppers"] == ["a.bypass"] and ctx["footswitch_pairs"][0]["toppers"] == 1
+    assert ctx["footswitch_pairs"][0]["effective_mm"] == pytest.approx(86.2)
+
+
+def test_topper_on_a_pedal_without_footswitch_data_is_a_warning(tmp_path):
+    """b has no footswitch data (missing): a topper on it is ignored with a warning that says so; an unknown pedal, an
+    unknown switch and a pedal with data `[]` stay errors."""
+    ctx = run(tmp_path, [A(), B()], {"a": [sw()]}, project={"footswitches": {"toppers": ["b.bypass"]}})
+    assert ctx["errors"] == []
+    assert any("b.bypass ignored, the footswitch data of b is missing" in w for w in ctx["warnings"])
+    assert ctx["footswitch_settings"]["toppers"] == []
+    for bad in ("zzz.bypass", "a.nope"):
+        ctx = run(tmp_path, [A(), B()], {"a": [sw()]}, project={"footswitches": {"toppers": [bad]}})
+        assert any(f"{bad} is not a footswitch" in e for e in ctx["errors"])
+    ctx = run(tmp_path, [A(), B()], {"a": [sw()], "b": []}, project={"footswitches": {"toppers": ["b.bypass"]}})
+    assert any("b.bypass is not a footswitch" in e for e in ctx["errors"])
+
+
+def test_pair_text_and_plain_flags(tmp_path):
+    proj = {"footswitches": {"min_distance_mm": 90, "toppers": ["a.bypass"]}}
+    (pair,) = run(tmp_path, [A(), B()], ONE_EACH, project=proj)["footswitch_pairs"]
+    assert fsw.pair_text(pair) == "86.2 mm apart (effective with toppers, 76.2 mm plain)"
+    assert pair["too_close"] and pair["too_close_plain"]
+    proj = {"footswitches": {"min_distance_mm": 80, "toppers": ["a.bypass"]}}
+    (pair,) = run(tmp_path, [A(), B()], ONE_EACH, project=proj)["footswitch_pairs"]
+    assert not pair["too_close"] and pair["too_close_plain"]       # the topper lifts it over the minimum
+    (pair,) = run(tmp_path, [A(), B()], ONE_EACH)["footswitch_pairs"]
+    assert fsw.pair_text(pair) == "76.2 mm apart"
+
+
+def test_empty_suggestion_messages_and_the_cap_note(tmp_path):
+    import build
+    two = [A(), B()]
+    cfg = lambda **kw: {"footswitches": kw}
+    md = lambda ctx: "\n".join(build.footswitch_section(ctx, PEDALS))
+    assert "None suggested: `footswitches.max_toppers` is 0." in md(run(tmp_path, two, ONE_EACH, project=cfg(max_toppers=0)))
+    used = md(run(tmp_path, two, ONE_EACH, project=cfg(max_toppers=1, toppers=["a.bypass"])))
+    assert "None suggested: the cap `footswitches.max_toppers` is used up (1 of 1)." in used
+    assert "None suggested: no topper removes enough crowding." in md(run(tmp_path, two, ONE_EACH, project=cfg(topper_min_gain=1)))
+    assert "None needed." in md(run(tmp_path, [A(), B(left=400)], ONE_EACH, project=cfg(max_toppers=0)))
+    capped = md(run(tmp_path, two, ONE_EACH, project=cfg(max_toppers=1)))
+    assert "| 1 | a.bypass (Bypass)" in capped and "Stopped at the cap `footswitches.max_toppers` (1)." in capped
+    assert "at most 1 in all" in capped and "ties: the switch in more crowded pairs, then the higher priority type" in capped
+    assert "no cap (`footswitches.max_toppers`)" in md(run(tmp_path, two, ONE_EACH))
+
+
+def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path):
+    import build
+    proj = {"footswitches": {"min_distance_mm": 90, "toppers": ["a.bypass"]}}
+    ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)
+    assert any("a.bypass and b.bypass are 86.2 mm apart (effective with toppers, 76.2 mm plain) (min 90 mm)" in w
+               for w in ctx["warnings"])
+    md = "\n".join(build.open_issues([ctx], {}))
+    assert ("Footswitches too close: `a.bypass` and `b.bypass` are 86.2 mm apart "
+            "(effective with toppers, 76.2 mm plain) (min 90.0 mm)") in md
+
+
+def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, min_gain=0.05):
+    """The straightforward greedy (whole-board crowding for every candidate): the reference for suggest_toppers."""
+    have = set(existing)
+    info = {p["key"]: p for p in pts}
+
+    def total(t):
+        return sum(fsw.crowding(fsw.effective_distance(r["distance_mm"], (r["a"] in t) + (r["b"] in t), bonus),
+                                fsw.pair_priority(prio, r["a_type"], r["b_type"]), comfort) for r in prs)
+    before = current = total(have)
+    out = []
+    cap = None if max_toppers is None else max(0, max_toppers - len(have))
+    while before > 0 and (cap is None or len(out) < cap):
+        crowded = {}
+        for r in prs:
+            if fsw.effective_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus) < comfort:
+                for k in (r["a"], r["b"]):
+                    crowded[k] = crowded.get(k, 0) + 1
+        best = None
+        for k, n in crowded.items():
+            if k in have:
+                continue
+            gain = current - total(have | {k})
+            key = (round(gain, 9), n, prio.get(info[k]["type"], 0.0), info[k]["y"])
+            if best is None or key > best[0]:
+                best = (key, k, gain)
+        if best is None or best[2] < min_gain * before or best[2] <= 1e-9:
+            break
+        have.add(best[1])
+        current -= best[2]
+        out.append((best[1], best[2]))
+    return before, out
+
+
+def test_suggestions_equal_the_brute_force_on_random_sets():
+    import random
+    rnd = random.Random(7)
+    for trial in range(12):
+        n = rnd.randint(4, 14)
+        types = list(fsw.TYPES)
+        pts = [{"key": f"p{i}.s", "cid": f"p{i}", "id": "s", "label": "s", "type": rnd.choice(types),
+                "x": rnd.uniform(0, 400), "y": rnd.uniform(0, 120)} for i in range(n)]
+        prs = fsw.pairs(pts)
+        kw = dict(existing=[pts[0]["key"]] if trial % 3 == 0 else (), max_toppers=rnd.choice([None, 3, 6]),
+                  min_gain=rnd.choice([0.0, 0.02, 0.05]))
+        before, want = _brute_force(pts, prs, PRIO, 100.0, 10.0, **kw)
+        got = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, **kw)
+        assert got["before"] == pytest.approx(before)
+        assert [(s["key"], s["gain"]) for s in got["suggestions"]] == [(k, pytest.approx(g)) for k, g in want]
