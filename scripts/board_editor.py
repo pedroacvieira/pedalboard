@@ -14,12 +14,13 @@ of the unrotated image; back = its top edge, front = its bottom edge): the cable
 board edge only where such a segment lies (and through the holes). The image is fetched on demand into .cache/images/ and
 never copied into the repo.
 
-In the editor: drag on empty space draws a box (type shown in the status bar); in edge mode you drag a LINE (rubber band)
+In the editor: pick the type of the next entry with the buttons in the panel or the keys 1 (hole), 2 (filled), 3 (edge),
+shown in the status bar; drag on empty space draws a box; in edge mode (a drag starting on a box still draws) you drag a LINE (rubber band)
 that snaps to the nearest board side on release (`project_edge`: both ends are projected on the side nearest to the line's
 middle and clamped to the board; shorter than 1 mm along the side: rejected); a small margin round the image lets you draw
 just outside the border. Click selects an entry (an edge segment within 2 mm of the click), drag a selected one moves it
-(an edge segment only along its side); T cycles the default type hole -> filled -> edge (on a selected hole / filled box it
-toggles that box; an edge segment has no other type); Delete removes; arrow keys nudge 0.5 mm (Shift 2 mm; an edge
+(an edge segment only along its side); T toggles the selected hole / filled box (with nothing selected it cycles the
+type of the next entry); Esc deselects; Delete removes; arrow keys nudge 0.5 mm (Shift 2 mm; an edge
 segment moves along its side); [ and ] move the selected entry earlier / later in the order; E shows the effective holes
 (derived + boxes); Ctrl+S saves; +/- or the mouse wheel zoom.
 """
@@ -126,11 +127,14 @@ def edge_ends(box):
     return {"left": ((0.0, f), (0.0, t)), "right": ((1.0, f), (1.0, t)), "back": ((f, 0.0), (t, 0.0)), "front": ((f, 1.0), (t, 1.0))}[side]
 
 
-def hit_box(boxes, fx, fy, w_mm=None, h_mm=None):
+def hit_box(boxes, fx, fy, w_mm=None, h_mm=None, types=None):
     """Index of the topmost entry (the LAST in the order wins) that contains the point, else None. An edge segment is hit
-    within HIT_MM of it (needs the image size `w_mm` x `h_mm`; ignored without)."""
+    within HIT_MM of it (needs the image size `w_mm` x `h_mm`; ignored without). `types`: only entries of these types
+    (in edge mode a click on a hole box must not stop the owner from drawing an edge line)."""
     for i in range(len(boxes) - 1, -1, -1):
         b = boxes[i]
+        if types is not None and b["type"] not in types:
+            continue
         if b["type"] == "edge":
             if w_mm is not None and h_mm is not None:
                 (ax, ay), (bx, by) = edge_ends(b)
@@ -297,6 +301,13 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
 
             panel = ttk.Frame(self, padding=8)
             panel.pack(side="right", fill="y")
+            ttk.Label(panel, text="New entry type").pack(anchor="w")
+            self.type_var = tk.StringVar(value=self.default_type)
+            kinds = ttk.Frame(panel)
+            kinds.pack(fill="x", pady=(0, 8))
+            for n, (t, label) in enumerate((("hole", "Hole box"), ("filled", "Filled box"), ("edge", "Edge line")), 1):
+                ttk.Radiobutton(kinds, text=f"{label} ({n})", value=t, variable=self.type_var,
+                                command=lambda: self._set_type(self.type_var.get())).pack(anchor="w")
             ttk.Label(panel, text="Entries in order (a later one wins)").pack(anchor="w")
             self.listbox = tk.Listbox(panel, height=14, width=30, exportselection=False, font=("TkFixedFont", 9))
             self.listbox.pack(fill="x")
@@ -320,7 +331,9 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                          text="No derived holes for this image yet: run uv run scripts/boards.py <project>.").pack(fill="x", pady=8)
             ttk.Label(panel, wraplength=250, foreground="#555", justify="left", text=(
                 "Drag on empty space: new box (edge type: drag a line, it snaps to the nearest board side). Click: select. "
-                "Drag a selected entry: move (an edge segment along its side). T: type (hole, filled, edge). Delete: remove. "
+                "Drag a selected entry: move (an edge segment along its side). 1 / 2 / 3 or the buttons above: type of the next entry "
+                "(in edge mode a drag starting on a box still draws a line). T: toggle the selected box hole / filled. "
+                "Esc: deselect. Delete: remove. "
                 "Arrows: nudge 0.5 mm (Shift 2). [ ]: order. E: effective holes. +/- or wheel: zoom.")).pack(anchor="w", pady=8)
 
             c = self.canvas
@@ -338,6 +351,9 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.bind("<minus>", lambda e: self._guard(lambda: self._zoom(1 / 1.15)))
             for key in ("t", "T"):
                 self.bind(f"<Key-{key}>", lambda e: self._guard(self._toggle_type))
+            for n, t in enumerate(TYPES, 1):
+                self.bind(f"<Key-{n}>", lambda e, t=t: self._guard(lambda: self._set_type(t)))
+            self.bind("<Escape>", lambda e: self._deselect())
             for key in ("e", "E"):
                 self.bind(f"<Key-{key}>", lambda e: self._guard(self._toggle_effective))
             self.bind("<bracketleft>", lambda e: self._guard(lambda: self._reorder(-1)))
@@ -430,7 +446,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
         def _on_down(self, event):
             self.canvas.focus_set()
             fx, fy = self._frac(event)
-            i = hit_box(self.boxes, fx, fy, w_mm, h_mm)
+            i = hit_box(self.boxes, fx, fy, w_mm, h_mm, types=("edge",) if self.default_type == "edge" else None)
             if i is not None and i == self.sel:
                 self.drag = ("move", fx, fy)
             elif i is not None:
@@ -493,9 +509,20 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.zoom = min(12.0, max(1.0, self.zoom * f))
             self._redraw()
 
+        def _set_type(self, type_):
+            """The type of the next drawn entry (radio buttons, keys 1 / 2 / 3); drawing starts from no selection."""
+            self.default_type, self.sel = type_, None
+            self.type_var.set(type_)
+            self._refresh()
+
+        def _deselect(self):
+            self.sel = None
+            self._refresh()
+
         def _toggle_type(self):
             if self.sel is None or self.boxes[self.sel]["type"] == "edge":
                 self.default_type = next_type(self.default_type)
+                self.type_var.set(self.default_type)
             else:
                 self.boxes[self.sel] = toggle_type(self.boxes[self.sel])
             self._refresh()

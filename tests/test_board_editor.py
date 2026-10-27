@@ -192,3 +192,10 @@ def test_the_app_can_be_constructed_and_destroyed(tmp_path):
         assert boards.load_edits(tmp_path) == [box()]
     finally:
         app.destroy()
+
+
+def test_hit_box_can_skip_the_boxes_so_edge_mode_draws_over_them():
+    boxes = [be.make_box("hole", 0.0, 0.0, 0.5, 0.5), be.make_edge("left", 0.0, 0.4)]
+    assert be.hit_box(boxes, 0.1, 0.1, 100.0, 50.0) == 0                       # a click in the hole box
+    assert be.hit_box(boxes, 0.1, 0.1, 100.0, 50.0, types=("edge",)) is None  # edge mode: free to draw
+    assert be.hit_box(boxes, 0.01, 0.2, 100.0, 50.0, types=("edge",)) == 1    # 1 mm from the left segment
