@@ -56,6 +56,36 @@ def test_block_rect_blocks_cell_centres_inside_the_grown_rectangle():
     assert g.blocked == {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}
 
 
+def test_wall_caches_follow_every_way_the_walls_change():
+    """open cells, components and the under layer's components are cached; assigning or extending `blocked` / `body`, a
+    `block_rect`, or an in-place change of a wall set behind the grid's back (size change) all drop them."""
+    g = free_grid(nx=12, ny=9)
+    layers = under_layer(g, {(3, 4)})
+    assert (5, 4) in g.open_cells() and (5, 4, 1) in g.open_states() and g.connected((0, 4), (11, 4))
+    assert layers.connected(g, (0, 4), (11, 4)) and layers.components(g) is layers.components(g)
+    g.block_rect((30.0, 0.0, 42.0, 54.0))                     # a full-height wall
+    assert (5, 4) not in g.open_cells() and not g.connected((0, 4), (11, 4)) and (5, 4) not in g.components()
+    assert (5, 4) not in layers.components(g)
+    g.blocked = set()                                          # assigned: everything open again
+    assert (5, 4) in g.open_cells() and g.connected((0, 4), (11, 4)) and (5, 4) in g.components()
+    assert (5, 4) in layers.components(g)
+    g.blocked.add((5, 4))                                      # in place: the size changes
+    assert (5, 4) not in g.open_cells() and (5, 4) not in g.components() and (5, 4) not in layers.components(g)
+    g.body = {(6, j) for j in range(9)}                        # squeezing is cut only by the bodies
+    assert not g.connected((0, 4), (11, 4), squeeze=True) and (5, 4) in g.components(squeeze=True)
+    layers.grid.blocked = {(7, j) for j in range(9)}           # the under grid changes: the under layer's components follow
+    assert (7, 4, 1) not in layers.components(g) and (7, 4) in layers.components(g)
+
+
+def test_under_components_are_kept_per_top_grid():
+    g1, g2 = free_grid(nx=12, ny=9), free_grid(nx=12, ny=9)
+    g2.block_rect((30.0, 0.0, 42.0, 54.0))
+    layers = under_layer(g1, {(3, 4), (8, 4)})
+    assert layers.connected(g1, (0, 4), (11, 4)) and layers.connected(g2, (0, 4), (11, 4))   # g2: through the holes, under the wall
+    assert (5, 4) in layers.components(g1) and (5, 4) not in layers.components(g2)
+    assert (5, 4) in layers.components(g1)                       # asking about g2 did not poison g1's answer
+
+
 @pytest.mark.parametrize("offset", [0.0, 0.3, 0.7, 1.0, 1.4, 1.9])
 def test_a_gap_one_cable_diameter_wide_is_open_whatever_the_grid_alignment(offset):
     cfg = {**routing.DEFAULTS, "grid_mm": 2.0, "edge_margin_mm": 0.0}
@@ -111,6 +141,34 @@ def test_too_many_cables_through_a_one_cell_gap_report_overflow():
     nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(3)]
     paths, users, overflow, _ = routing.route_all(g, nets, max_stack=2, iterations=10)
     assert (5, 4) in overflow and len(users[(5, 4)]) == 3
+
+
+def test_plain_search_memo_gives_the_same_routes_and_a_history_miss_is_never_checked_again(monkeypatch):
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 36.0, 24.0))
+    g.block_rect((30.0, 30.0, 36.0, 54.0))            # single free cell at (5, 4): three cables overflow it, history grows
+    nets = [(f"n{i}", (1, 4), (10, 4)) for i in range(3)]
+    memo = {}
+    for _, s, t, *_ in nets:
+        routing.plain_search(memo, g, s, t, False, None)
+    assert routing.route_all(g, nets, max_stack=2, iterations=10, memo=memo) == routing.route_all(g, nets, max_stack=2, iterations=10)
+    # _search: a miss on a state with a history cost marks the key dead, a miss on usage alone does not
+    key = ((1, 4), (10, 4), False)
+    path, states = memo[key]
+    mid = next(c for c in states if c not in ((1, 4), (10, 4)))
+    dead, history = set(), {}
+    cost = lambda c: 2.0 if c == mid else 1.0
+    assert routing._search(memo, g, (1, 4), (10, 4), cost, False, None, dead, history) and not dead
+    history[mid] = 0.5
+    assert routing._search(memo, g, (1, 4), (10, 4), cost, False, None, dead, history) and dead == {key}
+    searched = []
+    real = routing.astar
+    monkeypatch.setattr(routing, "astar", lambda *a, **k: searched.append(1) or real(*a, **k))
+    one = lambda c: 1.0
+    routing._search(memo, g, (1, 4), (10, 4), one, False, None)             # no dead set: the remembered search is taken
+    assert not searched
+    routing._search(memo, g, (1, 4), (10, 4), one, False, None, dead, history)   # a dead key: searched, whatever the cost
+    assert searched == [1]
 
 
 def test_two_cables_fit_through_a_one_cell_gap_with_the_default_limit():

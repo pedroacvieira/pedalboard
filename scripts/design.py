@@ -14,6 +14,7 @@ centre of the unrotated box, so a jack's canvas position is:
     canvas   = (left + w/2 + u', top + h/2 + v')
 """
 import json
+import math
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -212,12 +213,18 @@ def shape_overlap(rect, rects, tol_mm=TOL_MM):
     """The overlap (dx, dy) of `rect` with a shape made of several rects (an outline): the bounding box of its
     intersections with all of them, so a plug reaching across several thin bands of an outline gets its full depth;
     None unless both exceed `tol_mm` (see `overlap`)."""
-    parts = [(max(rect[0], r[0]), max(rect[1], r[1]), min(rect[2], r[2]), min(rect[3], r[3])) for r in rects]
-    parts = [p for p in parts if p[2] > p[0] and p[3] > p[1]]
-    if not parts:
+    rx0, ry0, rx1, ry1 = rect
+    lo_x = lo_y = math.inf   # the bounding box of the non-empty intersections
+    hi_x = hi_y = -math.inf
+    for r in rects:
+        # (max(a, b) = b if b > a else a, min(a, b) = b if b < a else a: the builtins' results, without the calls)
+        x0, y0, x1, y1 = r[0] if r[0] > rx0 else rx0, r[1] if r[1] > ry0 else ry0, r[2] if r[2] < rx1 else rx1, r[3] if r[3] < ry1 else ry1
+        if x1 > x0 and y1 > y0:
+            lo_x, lo_y = x0 if x0 < lo_x else lo_x, y0 if y0 < lo_y else lo_y
+            hi_x, hi_y = x1 if x1 > hi_x else hi_x, y1 if y1 > hi_y else hi_y
+    if lo_x == math.inf:
         return None
-    dx = max(p[2] for p in parts) - min(p[0] for p in parts)
-    dy = max(p[3] for p in parts) - min(p[1] for p in parts)
+    dx, dy = hi_x - lo_x, hi_y - lo_y
     return (dx, dy) if dx > tol_mm and dy > tol_mm else None
 
 

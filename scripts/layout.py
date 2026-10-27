@@ -58,6 +58,10 @@ from common import px_to_mm
 
 TOUCH_GAP_MM = 1.0
 CROWD_STEP_MM = 8.0   # largest repair step for a crowded footswitch pair
+# the power estimate's memos in `Model.score` are dropped whole when they reach these sizes (a default gig search makes ~34k / ~6.6k
+# entries and answers 86 % of the nearest-crossing questions from the memo; 5000 entries still hit 85 %): a few MB at most
+NEAR_MEMO_MAX = 20000
+RECT_BITS_MAX = 10000
 SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
@@ -130,7 +134,8 @@ def detour(a, b, rects):
     if seg < 1e-9:
         return 0.0
     nx, ny = -dy / seg, dx / seg
-    x0, x1, y0, y1 = min(a[0], b[0]), max(a[0], b[0]), min(a[1], b[1]), max(a[1], b[1])
+    x0, x1 = (b[0], a[0]) if b[0] < a[0] else (a[0], b[0])   # (min / max of two, without the builtins' calls)
+    y0, y1 = (b[1], a[1]) if b[1] < a[1] else (a[1], b[1])
     offs = []
     for r in rects:
         if r[2] <= x0 or r[0] >= x1 or r[3] <= y0 or r[1] >= y1:
@@ -139,16 +144,17 @@ def detour(a, b, rects):
         t0, t1 = 0.0, 1.0
         ok = True
         for pp, qq in ((-dx, a[0] - r[0]), (dx, r[2] - a[0]), (-dy, a[1] - r[1]), (dy, r[3] - a[1])):
-            if abs(pp) < 1e-12:
+            if -1e-12 < pp < 1e-12:
                 if qq <= 0:
                     ok = False
                     break
                 continue
             t = qq / pp
             if pp < 0:
-                t0 = max(t0, t)
-            else:
-                t1 = min(t1, t)
+                if t > t0:
+                    t0 = t
+            elif t < t1:
+                t1 = t
             if t0 >= t1:
                 ok = False
                 break
@@ -221,6 +227,7 @@ class Model:
         # power cables run under the board and come up through the nearest usable hole: sample the holes once; per candidate
         # only the pedals' coverage of the points near each jack is tested (None: Manhattan between the measure points)
         self.power_setup = power.estimate_setup(project, lay, cable_types)
+        self._rect_bits, self._near_memo = {}, {}   # score(): {footprint: bits of the hole points it covers}, {(point, covered bits): nearest crossing}
         self.inst_under = {iid: pl != "on_board" for iid, pl in lay["inst_placement"].items()}
         over = self.rcfg["overrides"]
         self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
@@ -456,19 +463,26 @@ class Model:
         bx0, by0, bx1, by1 = bb[0] + x - margin, bb[1] + y - margin, bb[2] + x + margin, bb[3] + y + margin
         tol = design.TOL_MM
         hits, intrusion, cost = [], 0.0, 0.0
+        shape_overlap = design.shape_overlap
         for k, title, f, shp in obs:
-            if k == n or min(bx1, f[2]) - max(bx0, f[0]) <= tol or min(by1, f[3]) - max(by0, f[1]) <= tol:
+            # (min(a, b) = b if b < a else a, max(a, b) = b if b > a else a: the builtins' results without the calls)
+            f2, f0, f3, f1 = f[2], f[0], f[3], f[1]
+            if k == n or (f2 if f2 < bx1 else bx1) - (f0 if f0 > bx0 else bx0) <= tol or (f3 if f3 < by1 else by1) - (f1 if f1 > by0 else by0) <= tol:
                 continue
             pen, pen_real, deepest = 0.0, 0.0, None
             for part, r in o["rects"]:
                 rr = (r[0] + x, r[1] + y, r[2] + x, r[3] + y)
-                ov = design.shape_overlap((rr[0] - margin, rr[1] - margin, rr[2] + margin, rr[3] + margin), shp)
+                ov = shape_overlap((rr[0] - margin, rr[1] - margin, rr[2] + margin, rr[3] + margin), shp)
                 if not ov:
                     continue
-                pen = max(pen, min(ov))
-                real = design.shape_overlap(rr, shp) if margin else ov
+                m = ov[1] if ov[1] < ov[0] else ov[0]
+                if m > pen:
+                    pen = m
+                real = shape_overlap(rr, shp) if margin else ov
                 if real:
-                    pen_real = max(pen_real, min(real))
+                    m = real[1] if real[1] < real[0] else real[0]
+                    if m > pen_real:
+                        pen_real = m
                     d = design.part_depth(part, end["facing"], o["side"], real)
                     if deepest is None or d > deepest[1]:
                         deepest = (part, d)
@@ -555,12 +569,33 @@ class Model:
         if self.power_setup:
             pr = self.power_setup["radius"]
             pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
-            holes, memo = self.power_setup["crossings"], {}   # (its points are already free under the board)
+            holes = self.power_setup["crossings"]   # (its points are already free under the board)
+            pts = holes.holes.points
+            # the nearest usable crossing depends on the query point and on WHICH hole points the footprints cover (one bit per point,
+            # a footprint's bits are remembered), so (point, covered set) keys an answer kept over the whole search
+            mask, over, rect_bits = 0, [], self._rect_bits
+            for r in pw_blocked:
+                bits = rect_bits.get(r)
+                if bits is None:
+                    bits = 0
+                    for i, h in enumerate(pts):
+                        if r[0] <= h[0] <= r[2] and r[1] <= h[1] <= r[3]:
+                            bits |= 1 << i
+                    if len(rect_bits) > RECT_BITS_MAX:
+                        rect_bits.clear()
+                    rect_bits[r] = bits
+                if bits:
+                    mask |= bits
+                    over.append(r)
+            memo = self._near_memo
+            if len(memo) > NEAR_MEMO_MAX:
+                memo.clear()
 
             def pw_near(p):
-                if p not in memo:
-                    memo[p] = holes.nearest(p, pw_blocked)
-                return memo[p]
+                key = (p, mask)
+                if key not in memo:
+                    memo[key] = holes.nearest(p, over)
+                return memo[key]
             pw_cfg = self.power_setup["cfg"]
         for port, members, under in self.wiring:
             prev = port

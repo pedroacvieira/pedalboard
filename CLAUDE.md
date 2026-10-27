@@ -73,7 +73,7 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~380 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~430 tests, ~30 s, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands

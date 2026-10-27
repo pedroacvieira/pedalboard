@@ -199,7 +199,9 @@ def test_power_stacking_is_its_own_limit_per_layer():
     ok = pw_ctx(holes=(cell,), hops=hops, d_pedal=True, power_routing=NO_EDGES)
     routed = route(ok)
     assert all(c["status"] == "routed" and c["holes_used"] == 1 for c in routed.values())   # default: 2 cables per cell
-    tight = pw_ctx(holes=(cell,), hops=hops, d_pedal=True, power_routing={**NO_EDGES, "max_stack": 1})
+    # two cables cannot share a one-cell hole at limit 1 however long the router negotiates: a few rounds show it (the 40 default
+    # rounds each search the whole two-layer graph, as the only crossing is the dearest cell, and cost seconds)
+    tight = pw_ctx(holes=(cell,), hops=hops, d_pedal=True, cables={"iterations": 4}, power_routing={**NO_EDGES, "max_stack": 1})
     r = route(tight)
     assert any("over the stacking limit" in c["status"] for c in r.values())
     assert any("beyond the limit of 1 stacked power cables" in w for w in tight["warnings"])

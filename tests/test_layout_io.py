@@ -1,5 +1,7 @@
 """Layout injection and canvas editing (Phase 0 of feat/pedal-position): build.validate with injected items,
 design.move and design.write_canvas. Hand-computed, all lengths in mm (45 px/in -> 1 px = 25.4/45 = 0.5644 mm)."""
+import copy
+import functools
 import json
 import sys
 from pathlib import Path
@@ -32,12 +34,30 @@ def strip(ctx):
     out["routing"] = {k: v for k, v in ctx["routing"].items() if k not in ("grid", "under")}
     out["routing"]["power"] = {k: v for k, v in ctx["routing"]["power"].items() if k != "time_s"}   # wall-clock time
     out.pop("layout_source")
-    return json.loads(json.dumps(out, default=repr, sort_keys=True))
+    return json.loads(json.dumps(out, default=_plain, sort_keys=True))
+
+
+def _plain(obj):
+    """JSON stand-in for what json cannot dump: sets as sorted lists (their repr follows the insertion history, which a deep copy
+    changes), anything else as its repr."""
+    return sorted(obj) if isinstance(obj, (set, frozenset)) else repr(obj)
+
+
+@functools.lru_cache(maxsize=None)
+def _default_build(name):
+    pedals, supplies = load_catalog()
+    return build.validate(ROOT / "projects" / name, pedals, supplies)
+
+
+def default_build(name):
+    """build.validate of a real project as it is on disk: built once per project, every caller gets its own deep copy (a test may
+    change what it gets without touching the others)."""
+    return copy.deepcopy(_default_build(name))
 
 
 def test_validate_with_injected_items_equals_the_file():
     pedals, supplies = load_catalog()
-    from_file = build.validate(GIG, pedals, supplies)
+    from_file = default_build("guitar-gig")
     items = design.parse_design(GIG / "playground_design.json")
     injected = build.validate(GIG, pedals, supplies, items=items)
     assert from_file["layout_source"] == "file" and injected["layout_source"] == "injected"
@@ -84,7 +104,7 @@ def test_real_projects_keep_every_supply_under_the_board():
     pedals, supplies = load_catalog()
     for name in ("guitar-gig", "guitar-practice", "bass"):
         pdir = ROOT / "projects" / name
-        base = build.validate(pdir, pedals, supplies)
+        base = default_build(name)
         titles = {t for t in (supplies[s["sup"]["id"]].get("playground_title") for s in base["supplies"]) if t}
         assert all("placement" not in s["inst"] for s in base["supplies"])
         if base["layout"]:

@@ -22,8 +22,7 @@ done, and keep `CLAUDE.md` current when a decision changes.
 - [x] Code review of the branch (2026-10-23): 9 findings fixed (fair power comparison, first/last jack and power
       side in the surrogate, one power policy, stale detection by input hash, write_canvas patterns, faster
       --list-missing, small cleanups); gig proposals regenerated.
-- [ ] Code-review leftover (not fixed, efficiency only): the router runs A* to pick exit sides and then again in
-      `route_all`; reuse the first path if the build ever gets slow (today ~0.2 s).
+- [x] Code-review leftover: the side-choice A* results are reused by `route_all` when provably identical (feat/routing-speed).
 
 ## Owner input needed
 - [x] Footswitches of every project pedal placed (2026-10-23).
@@ -152,8 +151,8 @@ Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers
 - [ ] Owner: draw the gig's edge crossings (if any) with `uv run scripts/board_editor.py guitar-gig` (T until "edge",
       drag a line along the edge), then `uv run scripts/build.py guitar-gig` and check power.svg.
 - [ ] Owner: verify the Duo 2.1 holes (practice / bass have no layout yet) with `uv run scripts/board_editor.py bass`.
-- [ ] Speed: gig build ~3 s (two-layer A*, power routing), one proposal search ~35 s, test suite ~90 s. Options: reuse
-      the side-choice A* paths in `route_all`, a cheaper side-choice estimate, caching per layout.
+- [x] Speed (`feat/routing-speed`, 2026-10-27, results identical): gig validate 1.23 -> 0.76 s, default search
+      ~47 -> 15 s, test suite 73 -> 30 s (faster A* loop, plain-search memo reused by route_all, HoleIndex scan, score memo).
 - [ ] Under-board fit (supply height vs space under the deck) not checked (owner decision 3); later branch if needed.
 - Feature 2 (power routing) left after this branch: forked vs serial daisy chains, power.svg / separate power view,
   edge-setting refinements.
