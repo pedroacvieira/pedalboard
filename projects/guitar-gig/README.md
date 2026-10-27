@@ -323,6 +323,8 @@ Footswitch data: 17 of 17 pedals (catalog/footswitches.json).
 
 Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
+Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 10 mm (`footswitches.topper_bonus_mm`, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
+
 Crowding: 184.3 (18 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
@@ -335,6 +337,17 @@ Crowding: 184.3 (18 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 | sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 61.7 | 14.6 |
 | fulldrive_2.bypass | bypass | protein.bypass | bypass | 63.3 | 13.5 |
 | beano.bypass | bypass | mini_ego.bypass | bypass | 65.2 | 12.1 |
+
+### Suggested toppers
+
+Chosen after the layout (never during the search), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), no cap (`footswitches.max_toppers`), stopping when a topper would remove less than 5 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
+
+| # | Switch | Pedal | Type | Crowding removed | Crowding after |
+|--:|---|---|---|--:|--:|
+| 1 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 12.3 | 172.0 |
+| 2 | belle_epoch.bypass (Bypass) | Catalinbread Belle Epoch Deluxe | bypass | 12.0 | 160.0 |
+| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 10.9 | 149.2 |
+| 4 | protein.switch_2 (Bypass Blue) | Browne Protein V3 | bypass | 9.7 | 139.5 |
 
 
 ## Layout proposals

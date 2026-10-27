@@ -566,3 +566,16 @@ def test_hole_points_under_an_under_board_supply_are_not_usable_for_the_estimate
     # an on-board supply is a pedal on top, not an under-board obstacle: the model moves it instead and keeps all the points
     on = hole_model([ped("T A", 0), sup(200, 90)], HOLE_BOARD, placement="on_board").power_setup["index"]
     assert len(on) == len(free)
+
+
+def test_surrogate_ignores_toppers():
+    """Toppers are a finishing step after the layout: the surrogate's footswitch term (and the total score) is the
+    same with and without `footswitches.toppers` / `topper_bonus_mm`."""
+    pair = {"a": [sw()], "b": [sw()]}
+    state = at((25.4, 50.8, 0), (105.4, 50.8, 0))
+    plain = model([ped("T A", 0), ped("T B", 180)], fs=pair)
+    topped = model([ped("T A", 0), ped("T B", 180)], fs=pair,
+                   project_extra={"footswitches": {"toppers": ["a.bypass", "b.bypass"], "topper_bonus_mm": 30}})
+    t0, d0 = plain.score(state, detail=True)
+    t1, d1 = topped.score(state, detail=True)
+    assert t0 == t1 and d0["terms"] == d1["terms"] and d1["terms"]["footswitch"] == pytest.approx((4.0, 8.0))
