@@ -322,11 +322,13 @@ def power_cables(cable_list):
 
 
 def power_labels(cable_list):
-    """P# next to the pedal end of each routed power cable."""
+    """The physical cable's id (C#) next to the pedal end of each routed power leg: the legs of one serial cable share it, a
+    forked output's cables each have their own."""
     out = []
     for c in power_cable_list(cable_list):
         x, y = c.get("end_point") or c["draw_path"][-1]
-        out.append(text(x + 1.5, y - 1.5, c["id"], 2.6, "start", POWER_COLOUR, True, font_weight="bold", class_="power-label"))
+        out.append(text(x + 1.5, y - 1.5, c.get("cable") or c["id"], 2.6, "start", POWER_COLOUR, True, font_weight="bold",
+                        class_="power-label"))
     return out
 
 
@@ -400,7 +402,7 @@ def key_entries(ctx, cable_list, max_stack):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
     power = power_cable_list(cable_list)
     if power:
-        e.append(("power", "brown: DC power cable (P#), thinner than the patch cables"))
+        e.append(("power", "brown: DC power cable (C#: one label per physical cable), thinner than the patch cables"))
         if any(any(x["layer"] == "under" for x in c["stretches"]) for c in power):
             e.append(("power_under", "dashed light brown: power cable under the board"))
         if any(c.get("hole_points") for c in power):
@@ -671,15 +673,29 @@ def render_power(ctx, names):
     body += key
     y += kh + 3
 
-    def route(c):
-        parts = [f"{c['holes_used']} hole{'s' if c['holes_used'] != 1 else ''}"] if c.get("holes_used") else []
-        parts += [f"{n} edge" for n in [c.get("edges_used")] if n]
+    by_id = {c["id"]: c for c in cable_list}
+    all_names = {**names, **labels}
+
+    def route(legs):
+        holes, edges = sum(c.get("holes_used") or 0 for c in legs), sum(c.get("edges_used") or 0 for c in legs)
+        parts = [f"{holes} hole{'s' if holes != 1 else ''}"] if holes else []
+        parts += [f"{edges} edge{'s' if edges != 1 else ''}"] if edges else []
         return ", ".join(parts) or "on top"
-    rows = [{"id": c["id"], "colour": POWER_COLOUR, "length": "-" if c.get("min_mm") is None else f"{c['min_mm']:.0f} mm",
-             "route": " -> ".join(_end_name(c[k], {**names, **labels}) for k in ("from", "to")),
-             **({"status": route(c), "status_fill": INK} if (c.get("status") or "").startswith("routed")
-                else {"status": short_status(c.get("status"))})}
-            for c in power]
+    rows = []
+    for cab in ctx.get("power_cable_summary") or []:
+        legs = [by_id[i] for i in cab["legs"] if i in by_id]
+        if not any(c.get("stretches") for c in legs):
+            continue
+        port_cid, _, port_jack = cab["from"].partition(".")
+        pedals = [all_names.get(t.partition(".")[0], t.partition(".")[0]) for t in cab["to"]]
+        part = sum(c["min_mm"] for c in legs if c.get("min_mm") is not None)   # the routed legs of a cable with unrouted ones
+        gone = sum(1 for c in legs if c.get("min_mm") is None)
+        rows.append({"id": cab["id"], "colour": POWER_COLOUR,
+                     "length": (f"{cab['min_mm']:.0f} mm" if cab["min_mm"] is not None else
+                                f">= {part:.0f} mm, {gone} leg{'s' if gone != 1 else ''} unrouted" if gone < len(legs) else "-"),
+                     "route": f"{cab['style']}: " + " -> ".join([f"{all_names.get(port_cid, port_cid)} {port_jack}".strip(), *pedals]),
+                     **({"status": route(legs), "status_fill": INK} if cab["status"].startswith("routed")
+                        else {"status": short_status(cab["status"])})})
     table, th = legend_table(rows, left + PAD, y, width - 2 * PAD)
     body += table
     return document((left, top, width, y + th + PAD - top), body)

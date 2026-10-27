@@ -277,45 +277,64 @@ Signal cables are routed on the board surface between the pedals: never in front
 
 The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` also writes the git-ignored `routing.local.svg` with the pedal images.
 
-Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top.
+Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).
 
-| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
-|---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 95 | routed |
-| S2 | signal | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 153 | routed |
-| S3 | signal | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 180 | routed |
-| S4 | signal | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 105 | routed |
-| S5 | signal | mini_ego.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 119 | routed |
-| S6 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 279 | routed |
-| S7 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 124 | routed |
-| S8 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 68 | routed |
-| S9 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 164 | routed |
-| S10 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 138 | routed |
-| S11 | signal | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 212 | routed |
-| S12 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 150 | routed |
-| S13 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 217 | routed |
-| S14 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 88 | routed |
-| S15 | signal | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 181 | routed |
-| S16 | signal | flight_delay.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 49 | routed |
-| P1 | power | psu1.F1 | flight_delay.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 106 mm under, 2 mm on top | 141 | routed |
-| P2 | power | psu1.F2 | belle_epoch.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 62 mm under, 136 mm on top | 231 | routed |
-| P3 | power | psu1.F3 | monk.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 76 mm under, 27 mm on top | 135 | routed |
-| P4 | power | psu1.SW_A | reticon.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 86 mm under, 34 mm on top | 152 | routed |
-| P5 | power | psu1.SW_B | analog_chorus.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 46 mm under, 46 mm on top | 125 | routed |
-| P6 | power | psu2.F1 | red_muck.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 42 mm under, 7 mm on top | 82 | routed |
-| P7 | power | red_muck.power | beano.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 278 mm under, 40 mm on top | 383 | routed |
-| P8 | power | beano.power | danelectro_3699.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 116 mm under, 31 mm on top | 213 | routed |
-| P9 | power | danelectro_3699.power | sun_face.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 110 mm under, 83 mm on top | 258 | routed |
-| P10 | power | psu2.F2 | polytune_3.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 76 mm on top | 287 | routed |
-| P11 | power | psu2.F3 | ratsbane.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 82 mm under, 15 mm on top | 129 | routed |
-| P12 | power | ratsbane.power | protein.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (140 mm on top) | 175 | routed |
-| P13 | power | protein.power | tumnus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 146 mm under, 66 mm on top | 278 | routed |
-| P14 | power | psu2.SW_A | fulldrive_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 96 mm under, 17 mm on top | 145 | routed |
-| P15 | power | fulldrive_2.power | mini_ego.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 142 mm under, 47 mm on top | 254 | routed |
-| P16 | power | psu2.SW_B | phase_95.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 11 mm under, 52 mm on top | 96 | routed |
-| P17 | power | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (111 mm on top) | 146 | routed |
+| Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
+|---|---|---|---|---|---|---|---|---|:-:|--:|---|
+| S1 | signal | - | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 95 | routed |
+| S2 | signal | - | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 153 | routed |
+| S3 | signal | - | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 180 | routed |
+| S4 | signal | - | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 105 | routed |
+| S5 | signal | - | mini_ego.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 119 | routed |
+| S6 | signal | - | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 279 | routed |
+| S7 | signal | - | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 124 | routed |
+| S8 | signal | - | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 68 | routed |
+| S9 | signal | - | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 164 | routed |
+| S10 | signal | - | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 138 | routed |
+| S11 | signal | - | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 212 | routed |
+| S12 | signal | - | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 150 | routed |
+| S13 | signal | - | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 217 | routed |
+| S14 | signal | - | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 88 | routed |
+| S15 | signal | - | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 181 | routed |
+| S16 | signal | - | flight_delay.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 49 | routed |
+| P1 | power | C1 | psu1.F1 | flight_delay.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 106 mm under, 2 mm on top | 141 | routed |
+| P2 | power | C2 | psu1.F2 | belle_epoch.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 62 mm under, 136 mm on top | 231 | routed |
+| P3 | power | C3 | psu1.F3 | monk.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 76 mm under, 27 mm on top | 135 | routed |
+| P4 | power | C4 | psu1.SW_A | reticon.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 86 mm under, 34 mm on top | 152 | routed |
+| P5 | power | C5 | psu1.SW_B | analog_chorus.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 46 mm under, 46 mm on top | 125 | routed |
+| P6 | power | C6 | psu2.F1 | red_muck.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 42 mm under, 7 mm on top | 82 | routed |
+| P7 | power | C6 | red_muck.power | beano.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 278 mm under, 40 mm on top | 383 | routed |
+| P8 | power | C6 | beano.power | danelectro_3699.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 116 mm under, 31 mm on top | 213 | routed |
+| P9 | power | C6 | danelectro_3699.power | sun_face.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 110 mm under, 83 mm on top | 258 | routed |
+| P10 | power | C7 | psu2.F2 | polytune_3.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 76 mm on top | 287 | routed |
+| P11 | power | C8 | psu2.F3 | ratsbane.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 82 mm under, 15 mm on top | 129 | routed |
+| P12 | power | C8 | ratsbane.power | protein.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (140 mm on top) | 175 | routed |
+| P13 | power | C8 | protein.power | tumnus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 146 mm under, 66 mm on top | 278 | routed |
+| P14 | power | C9 | psu2.SW_A | fulldrive_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 96 mm under, 17 mm on top | 145 | routed |
+| P15 | power | C9 | fulldrive_2.power | mini_ego.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 142 mm under, 47 mm on top | 254 | routed |
+| P16 | power | C10 | psu2.SW_B | phase_95.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 11 mm under, 52 mm on top | 96 | routed |
+| P17 | power | C10 | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (111 mm on top) | 146 | routed |
 
 Signal cable, minimum: 2322 mm over 16 cables.
+
+### DC cables to buy
+
+A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate, the cable is not routed).
+
+| DC cable | Style | Output | Route | Plugs | Legs | Min length (mm) | Status |
+|---|---|---|---|--:|---|--:|---|
+| C1 | serial | psu1_F1 | psu1.F1 -> flight_delay | 2 | P1 | 141 | routed |
+| C2 | serial | psu1_F2 | psu1.F2 -> belle_epoch | 2 | P2 | 231 | routed |
+| C3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | P3 | 135 | routed |
+| C4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | P4 | 152 | routed |
+| C5 | serial | psu1_SW_B | psu1.SW_B -> analog_chorus | 2 | P5 | 125 | routed |
+| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 936 | routed |
+| C7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | P10 | 287 | routed |
+| C8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P11, P12, P13 | 582 | routed |
+| C9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P14, P15 | 399 | routed |
+| C10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe | 3 | P16, P17 | 243 | routed |
+
+DC cable, minimum: 3231 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 

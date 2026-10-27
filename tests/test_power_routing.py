@@ -235,9 +235,7 @@ def test_power_routing_settings_and_validation():
     # the old per-side edge modes are gone: an error that points to the edge segments of the board editor
     old = routing.validate_power_routing({"power_routing": {"edges": {"back": "allowed"}, "avoid_penalty": 10}})
     assert len(old) == 2 and all("was removed" in e and "board_editor" in e for e in old)
-    ctx = pw_ctx(power_routing={"edges": {"back": "allowed"}})
-    route(ctx)
-    assert any("power_routing.edges was removed" in e for e in ctx["errors"])
+    # (build.validate reports them, once: tests/test_daisy_chains.py)
 
 
 def test_the_svg_draws_power_cables_thin_with_under_stretches_dashed_and_marks_the_passes():
@@ -246,7 +244,7 @@ def test_the_svg_draws_power_cables_thin_with_under_stretches_dashed_and_marks_t
     out = "\n".join(svgdraw.power_cables(ctx["cable_list"]))
     assert out.count('class="power-under"') == 1 and out.count('class="power-cable"') == 1 and out.count('class="power-edge"') == 1
     assert 'stroke-dasharray="3 2"' in out and svgdraw.POWER_WIDTH < 2.0
-    assert [x for x in svgdraw.power_labels(ctx["cable_list"]) if ">P1<" in x]
+    assert [x for x in svgdraw.power_labels(ctx["cable_list"]) if ">C1<" in x]   # labelled with the physical cable (C#)
     kinds = [k for k, _ in svgdraw.key_entries(ctx, ctx["cable_list"], 2)]
     assert {"power", "power_under", "power_edge"} <= set(kinds) and "power_hole" not in kinds
 
@@ -258,7 +256,7 @@ def test_power_svg_shows_only_power_with_the_supplies_in_translucent_red():
     assert out.startswith("<svg") and 'class="power-cable"' in out and 'class="cable"' not in out   # no signal cables
     assert out.count('class="supply"') == len(ctx["layout"]["inst_item"]) >= 1
     assert f'fill="{svgdraw.SUPPLY_COLOUR}" fill-opacity="0.22"' in out and 'stroke-dasharray="3 1.5"' in out   # under: dashed
-    assert 'data-id="P1"' in out and "Pedal A power" in out                     # the table row names the pedal
+    assert 'data-id="C1"' in out and "Pedal A" in out                           # one table row per physical cable, naming the pedal
     assert svgdraw.render_power({**ctx, "cable_list": [c for c in ctx["cable_list"] if c["kind"] != "power"]}, {}) is None
 
 

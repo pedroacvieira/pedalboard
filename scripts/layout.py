@@ -371,14 +371,16 @@ class Model:
 
     def set_wiring(self, wiring):
         """Daisy chains for the power term: [(port point or None, [pedal ids][, starts under the board[, (supply instance
-        id, port)]])]; None = the project's own wiring (the flag defaults to True: under-board supplies). A port of a movable
-        (on-board) supply instance follows it: stored as {"inst": state index, "port": port id} whatever point is given."""
+        id, port)[, style]]])]; None = the project's own wiring (the flag defaults to True: under-board supplies). A port of a
+        movable (on-board) supply instance follows it: stored as {"inst": state index, "port": port id} whatever point is given.
+        style: "serial" (default: the cable runs port -> first pedal -> next ...) or "forked" (one cable per pedal from the
+        port); the fourth item of each `self.wiring` entry."""
         if wiring is None:
             import power
             insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"]} for s in self.insts]
             _, ports = power.measure_points({}, self.inst_item, insts, self.jacks_data, self.p_depth)
             wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])), self.inst_under.get(s["inst"]["id"], True),
-                       (s["inst"]["id"], o["port"]))
+                       (s["inst"]["id"], o["port"]), routing.daisy_style(self.project, o))
                       for s in self.insts for o in s["inst"].get("outputs", [])]
         self.wiring = []
         for w in wiring:
@@ -386,7 +388,7 @@ class Model:
             if len(w) > 3 and w[3] and w[3][0] in self.index and self.index[w[3][0]] >= self.n_ped:
                 start = {"inst": self.index[w[3][0]], "port": w[3][1]}
             self.wiring.append((start, [self.index[p] for p in w[1] if p in self.index and self.index[p] < self.n_ped],
-                                w[2] if len(w) > 2 else True))
+                                w[2] if len(w) > 2 else True, w[4] if len(w) > 4 and w[4] in routing.DAISY_STYLES else routing.SERIAL))
 
     # --- candidates --------------------------------------------------------------------------------
     def footprint(self, st, n):
@@ -597,7 +599,7 @@ class Model:
                     memo[key] = holes.nearest(p, over)
                 return memo[key]
             pw_cfg = self.power_setup["cfg"]
-        for port, members, under in self.wiring:
+        for port, members, under, style in self.wiring:
             prev = port
             if isinstance(port, dict):   # a port of an on-board supply: where the candidate puts it
                 off = geo[port["inst"]]["port_pt"].get(port["port"])
@@ -607,7 +609,7 @@ class Model:
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
                     raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near)
-                if here is not None:
+                if here is not None and style != routing.FORKED:   # forked: every cable starts at the port
                     prev, under = here, False
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
