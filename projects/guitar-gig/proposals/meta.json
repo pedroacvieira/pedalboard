@@ -6,7 +6,7 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "e90fdfb47ee0ebca6c69a4f5cae8a9c49eed7b59",
+ "inputs_sha1": "2a63d81b55408f9e51d84e6c8883fdfdea8fdafe",
  "chain": [
   "sun_face",
   "danelectro_3699",
@@ -26,7 +26,7 @@
   "flight_delay",
   "tumnus_deluxe"
  ],
- "runtime_s": 27.5,
+ "runtime_s": 65.8,
  "finalists": 6,
  "owner": {
   "errors": 0,
