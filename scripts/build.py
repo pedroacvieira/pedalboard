@@ -215,6 +215,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     policy = project.get("power_policy", {})
     sensitive, pol_strength, _ = power.policy_settings(project)
     ctx["supplies"] = []
+    errors += [e for e in routing.validate_power_routing(project) if e not in errors]
     powered, instances, run_v = {}, {}, {}
     for inst in project.get("power", {}).get("supplies", []):
         sup = cat_supplies.get(inst["supply"])
@@ -234,8 +235,12 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         for out in inst.get("outputs", []):
             oid = f"{inst['id']}_{out['port']}"
             odef = by_port.get(out["port"])
+            style = routing.daisy_style(project, out)
+            if style not in routing.DAISY_STYLES:
+                errors.append(f"{oid}: style '{style}' is unknown ({', '.join(routing.DAISY_STYLES)})")
+                style = routing.DAISY_STYLES[0]
             row = {"id": oid, "port": out["port"], "voltage_v": out["voltage_v"], "pedals": out.get("pedals", []),
-                   "note": out.get("note"), "load": 0, "limit": None, "def": odef}
+                   "note": out.get("note"), "load": 0, "limit": None, "def": odef, "style": style}
             rows.append(row)
             if odef is None:
                 if outputs_def:
@@ -417,9 +422,9 @@ def mermaid_power(ctx):
             prev = row["id"]
             for pid in row["pedals"]:
                 if pid in pedals:
-                    prev_edge = f"{prev} --> {pid}"
-                    edges.append(prev_edge)
-                    prev = pid
+                    edges.append(f"{prev} --> {pid}")
+                    if row.get("style") != "forked":   # forked: one cable per pedal, each from the port
+                        prev = pid
         lines.append("    end")
     placed = set()
     for s in ctx["supplies"]:
@@ -531,17 +536,42 @@ def routing_section(ctx):
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
            "'~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board "
-           "column gives its passes (holes, edges), the mm under the board and the mm on top.", "",
-           "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
-           "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
+           "column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the "
+           "DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).", "",
+           "| Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
+           "|---|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
-        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
+        md.append(f"| {c['id']} | {c['kind']} | {c.get('cable') or '-'} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
                   f"{under_cell(c)} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
         md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
+    md += dc_cable_table(ctx)
+    return md
+
+
+def dc_cable_table(ctx):
+    """README lines: the physical DC cables to buy (`ctx["power_cable_summary"]`), one row per cable: a SERIAL output is one
+    cable with a plug at the port and one at each pedal (its legs P# are the hops), a FORKED output has one cable per pedal."""
+    summary = ctx.get("power_cable_summary") or []
+    if not summary:
+        return []
+    md = ["", "### DC cables to buy", "",
+          "A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the "
+          "port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the "
+          "supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate, the "
+          "cable is not routed).", "",
+          "| DC cable | Style | Output | Route | Plugs | Legs | Min length (mm) | Status |", "|---|---|---|---|--:|---|--:|---|"]
+    for c in summary:
+        length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
+        route = " -> ".join([c["from"], *(to.split(".")[0] for to in c["to"])])
+        md.append(f"| {c['id']} | {c['style']} | {c['output']} | {route} | {c['plugs']} | {', '.join(c['legs'])} | {length} | {c['status']} |")
+    routed = [c for c in summary if c["min_mm"] is not None]
+    if routed:
+        md += ["", f"DC cable, minimum: {sum(c['min_mm'] for c in routed):.0f} mm over {len(routed)} cables "
+                   f"({sum(1 for c in routed if c['style'] == 'serial')} serial, {sum(1 for c in routed if c['style'] == 'forked')} forked)."]
     return md
 
 
@@ -754,7 +784,7 @@ def project_readme(ctx, cat_pedals):
         for row in s["rows"]:
             odef = row["def"]
             kind = "switchable" if odef and len(odef.get("options", [])) > 1 else "fixed"
-            head = f"**{row['port']}** ({kind})"
+            head = f"**{row['port']}** ({kind}{', forked' if row.get('style') == 'forked' else ''})"
             cell = f"{row['load']} / {row['limit'] or '?'} mA"
             if not row["pedals"]:
                 md.append(f"| {head} | {row['voltage_v']}V | *spare* | 0 | {cell} |")

@@ -6,7 +6,8 @@
   (BBD/digital) pedals never with gain/compressor pedals, mA limits, 18 V pedals sharing 18 V outputs.
 - `assign`: puts the chain pedals on the project's supply outputs (ports, voltages, daisy-chain order) for one
   layout, minimising the DC cable length: Manhattan distance between the half-depth measure points of the plugs
-  (as `jacks.check`), from the supply port through the daisy chain. Used for layout proposals; the build keeps
+  (as `jacks.check`), from the supply port through the daisy chain (a FORKED output, `outputs[].style`: the sum of the
+  port -> pedal distances, one cable each). Used for layout proposals; the build keeps
   using the owner's hand wiring in project.json.
 """
 import itertools
@@ -14,6 +15,7 @@ import math
 import re
 
 import design
+import routing
 from routing import POLARITIES
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
 
@@ -405,6 +407,18 @@ def chain_order(start, members, points, length=None, start_under=False):
     return length(order), order
 
 
+def fork_length(start, members, points, length=None, start_under=False, rank=None):
+    """(length mm, order) of a FORKED output: one cable per member, each from `start` (the supply port) to the member's
+    point, so the length is the sum of those hops (Manhattan between measure points, or `length(a, b, a_under)`; unknown
+    points cost 0) and there is no order to optimise: `order` is the members sorted by `rank` ({id: position}, e.g. the
+    signal chain; default the id) for a stable listing."""
+    hop = length or (lambda a, b, under: manhattan(a, b))
+    rank = rank or {}
+    order = sorted(members, key=lambda p: (rank.get(p, len(rank)), p))
+    total = sum(hop(start, points[p], start_under) for p in order if start is not None and points.get(p) is not None)
+    return total, order
+
+
 def default_voltage(pc):
     """Operating voltage for a pedal without a given one: 9 V if it accepts it, else its minimum."""
     lo, hi = pc.get("min_voltage_v"), pc.get("max_voltage_v")
@@ -433,6 +447,10 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     under_of = {inst["id"]: inst.get("under", True) for inst in insts}
     hop_cache = {}
     cfg = cfg or {}
+    rank = {p: i for i, p in enumerate(chain)}
+    # style per output slot: the owner's (`start`) own `style`, else the project's `power_routing.daisy_style`
+    given_style = {(iid, o["port"]): o.get("style") for iid, outs in (start or {}).items() for o in outs}
+    style_of = {key: routing.daisy_style(project, {"style": st}) for key, st in given_style.items()}
 
     def near(p):
         if p not in hop_cache:
@@ -463,7 +481,10 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
                 else:
                     errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive,
                                                      strength, isolated)
-                    length, order = chain_order(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True))
+                    if style_of.get((inst, port), routing.daisy_style(project)) == "forked":
+                        length, order = fork_length(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True), rank)
+                    else:
+                        length, order = chain_order(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True))
                     cache[key] = (not errs, warns, length, order)
         return cache[key]
 
@@ -540,7 +561,8 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     for n, members in enumerate(state):
         if members:
             _, _, _, order = slot_check(n, members)
-            by_inst[slots[n][0]].append({"port": slots[n][1], "voltage_v": volts[members[0]], "pedals": order})
+            by_inst[slots[n][0]].append({"port": slots[n][1], "voltage_v": volts[members[0]], "pedals": order,
+                                         **({"style": given_style[slots[n][:2]]} if given_style.get(slots[n][:2]) else {})})
     supplies = []
     for inst in insts:
         entry = {"id": inst["id"], "supply": inst["supply"]}

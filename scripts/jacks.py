@@ -477,6 +477,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         signal.append({"from": jack_name(a, "output", "out"), "to": jack_name(b, "input", "in"),
                        **cable(pedal_end(a, "output", d), pedal_end(b, "input", d))})
     p_depth = depth("power")
+    n_cable = 0   # physical DC cables, numbered C1.. over the outputs: a serial output is one cable, a forked one has one per pedal
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
         under = placement(s["inst"], project) != "on_board"
@@ -484,14 +485,23 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
             if not row["pedals"]:
                 continue
             jk = _jack_by_id(jacks_data.get(s["sup"]["id"]) or [], row["port"])
-            prev = endpoint(it, jk, p_depth) if it and jk else None
-            prev_name = f"{s['inst']['id']}.{row['port']}"
-            hop_under = under   # only the first hop (supply port -> first pedal) starts under the board; the daisy hops start on top
+            port = endpoint(it, jk, p_depth) if it and jk else None
+            port_name = f"{s['inst']['id']}.{row['port']}"
+            style = row.get("style") or "serial"
+            prev, prev_name = port, port_name
+            hop_under = under   # serial: only the first hop (supply port -> first pedal) starts under the board; the daisy hops start on top
+            if style == "serial":
+                n_cable += 1
             for pid in row["pedals"]:
                 here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
-                power.append({"output": row["id"], "from": prev_name, "to": to_name, "under_board": hop_under, **cable(prev, here)})
-                prev, prev_name, hop_under = here, to_name, False
+                if style == "forked":   # one cable per pedal, each from the supply port
+                    n_cable += 1
+                power.append({"output": row["id"], "from": port_name if style == "forked" else prev_name, "to": to_name,
+                              "under_board": hop_under, "style": style, "cable": f"C{n_cable}",
+                              **cable(port if style == "forked" else prev, here)})
+                if style == "serial":
+                    prev, prev_name, hop_under = here, to_name, False
     ctx["cables"] = {"signal": signal, "power": power}
 
 

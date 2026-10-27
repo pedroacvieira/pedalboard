@@ -134,7 +134,8 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_dat
                          outline_data=outl, board_data=board_data)
     keep = model.wiring
     under = {i["id"]: i["under"] for i in insts}
-    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True), (s["id"], o["port"]))
+    model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True), (s["id"], o["port"]),
+                       routing.daisy_style(project, o))
                       for s in wiring["supplies"] for o in s["outputs"]])
     m = metrics(ctx, model, state, move_factor)
     model.wiring = keep

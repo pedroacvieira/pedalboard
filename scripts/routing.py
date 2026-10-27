@@ -76,8 +76,10 @@ POWER_ROUTING = {                # project `power_routing` defaults (all optiona
     "top_cost": 3.0,             # cost factor per mm of power cable on top of the board (under the board: 1)
     "max_stack": None,           # power cables allowed on top of each other in one cell, per layer; None: cables.max_stack
     "edge_transit_mm": None,     # extra cable to go round the board edge; None: the board data's, else 2 x hole_transit_mm
+    "daisy_style": "serial",     # default style of the supply outputs (`outputs[].style`): serial | forked (DAISY_STYLES)
 }
 REMOVED_POWER_KEYS = ("edges", "avoid_penalty")   # the old per-side edge modes (replaced by the board's edge segments)
+DAISY_STYLES = ("serial", "forked")   # a supply output's cabling: one cable through every pedal | one cable per pedal from the port
 POWER_UNDER_COST = 1.0           # cost factor per mm of power cable under the board
 POWER_TOP_WARN_MM = 150.0        # a power cable running more than this on top of the board is reported
 TIPS = ("TS", "TRS", "XLR", "DC 2.1 mm", "DC 2.5 mm")
@@ -110,13 +112,19 @@ def settings(project, types=None):
 
 def power_settings(project, cfg=None):
     """`power_routing` of a project with the defaults filled in: {top_cost, max_stack,
-    edge_transit_mm (None: decided with the board data, see route_power)}. `cfg` = `settings(project)`: the default
+    edge_transit_mm (None: decided with the board data, see route_power), daisy_style}. `cfg` = `settings(project)`: the default
     `max_stack` is `cables.max_stack`."""
     given = project.get("power_routing") or {}
     out = {**POWER_ROUTING, **{k: v for k, v in given.items() if k in POWER_ROUTING and v is not None}}
     if out["max_stack"] is None:
         out["max_stack"] = (cfg or settings(project))["max_stack"]
     return out
+
+
+def daisy_style(project, output=None):
+    """The style of a supply output (`power.supplies[].outputs[]` entry `output`): its own `style`, else the project's
+    `power_routing.daisy_style`, else "serial". Not validated (see `DAISY_STYLES`)."""
+    return (output or {}).get("style") or (project.get("power_routing") or {}).get("daisy_style") or DAISY_STYLES[0]
 
 
 def validate_power_routing(project):
@@ -128,7 +136,7 @@ def validate_power_routing(project):
         return ["power_routing must be an object"]
     errs = [f"power_routing.{k} was removed: power cables come round a board edge only along an edge segment; draw them with "
             f"uv run scripts/board_editor.py <project>" if k in REMOVED_POWER_KEYS else
-            f"power_routing: unknown setting '{k}' (top_cost, max_stack, edge_transit_mm)"
+            f"power_routing: unknown setting '{k}' (top_cost, max_stack, edge_transit_mm, daisy_style)"
             for k in given if k not in POWER_ROUTING]
     num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
     for k, good, need in (("top_cost", lambda v: v > 0, "> 0"),
@@ -136,6 +144,8 @@ def validate_power_routing(project):
         v = given.get(k)
         if v is not None and not (num(v) and good(v)):
             errs.append(f"power_routing.{k} must be a number {need}")
+    if given.get("daisy_style") is not None and given["daisy_style"] not in DAISY_STYLES:
+        errs.append(f"power_routing.daisy_style must be one of {', '.join(DAISY_STYLES)}, not {given['daisy_style']!r}")
     return errs
 
 
@@ -704,7 +714,8 @@ def _search(memo, grid, start, goal, cell_cost, squeeze, under, dead=None, histo
     return astar(grid, start, goal, cell_cost, squeeze=squeeze, under=under)
 
 
-def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2, under=None, quick=False, memo=None):
+def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2, under=None, quick=False, memo=None,
+              shared=None):
     """nets: [(name, start_cell, goal_cell[, squeeze])]. Returns ({name: path or None}, {cell: [names]}, overflow cells,
     plug_over). With an `Under` layer the paths, usage and overflow are over states ((i, j) on top, (i, j, 1) under the
     board) and the stacking limit is `under.max_stack` under the board; plug crossings count on top only.
@@ -723,7 +734,10 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
 
     memo: {(start, goal, squeeze): (path, states)} of searches already made with the plain cell cost 1.0 on this grid and layer
     (`plain_search`; `states` = the states whose cost that search asked for). A search here that would see cost 1.0 on every
-    one of those states makes exactly the same moves, so it takes the remembered path instead of searching again."""
+    one of those states makes exactly the same moves, so it takes the remembered path instead of searching again.
+
+    shared: cells (states) where cables meet by design and the stacking limit does not apply: the port of a forked power
+    output, where every cable of the output starts (a splitter)."""
     plugs = plugs or {}
     plug_at = {}   # cell -> [plug keys]
     for key, (_, cells) in plugs.items():
@@ -733,6 +747,9 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
     dead = set()   # memo keys that can no longer hit in the rounds (see `_search`)
     first_clean = False
     limit = (lambda c: under.limit(c, max_stack)) if under is not None else (lambda c: max_stack)
+    if shared:
+        base_limit = limit
+        limit = lambda c: math.inf if c in shared else base_limit(c)
     lim_top, lim_under = limit((0, 0)), limit((0, 0, 1))   # `limit` per layer, for the cost's hot path (one source for both uses)
     cross = {key: set() for key in plugs}   # plug key -> cables other than its owner whose path enters it
 
@@ -753,6 +770,8 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
 
             def cost(c):
                 over = usage.get(c, 0) + 1 - (lim_under if len(c) == 3 else lim_top)
+                if shared and c in shared:
+                    over = 0
                 hist = history.get(c, 0.0)
                 pk = plug_at.get(c)
                 if pk and c != s and c != t:
@@ -1326,6 +1345,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             inst = inst_by_id.get(hop["from"].split(".")[0])
             under = placement(inst if inst is not None else {}, project) != "on_board"
         cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
+                       "cable": hop.get("cable") or f"C{n}", "style": hop.get("style") or DAISY_STYLES[0], "output": hop.get("output"),
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
                        "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
                        "estimate_mm": hop.get("min_mm"), "path": None,
@@ -1343,6 +1363,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             errors.append(f"cables: {c['id']} has unknown {', '.join(bad)} (tips: {', '.join(TIPS)}; polarity: {', '.join(POLARITIES)}; "
                           f"exits: left/right/auto)")
     ctx["cable_list"] = cables
+    ctx["power_cable_summary"] = power_cable_summary(cables)
     from jacks import report_fixed_box
     if not layout:
         report_fixed_box(ctx)
@@ -1553,6 +1574,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     for c in cables:
         for k in ("_ends", "_sides", "_squeeze", "_stretches", "_own", "_leads"):
             c.pop(k, None)
+    ctx["power_cable_summary"] = power_cable_summary(cables)
 
 
 def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects, under_rects, choices, sink):
@@ -1638,12 +1660,18 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     plug_rects = {k: v for k, v in plug_rects.items() if v}
     plugs = {k: ((by_key[k][2] or {}).get("id"), set().union(*(rect_cells(pgrid, r, grow) for r in rs))) for k, rs in plug_rects.items()}
     args = (int(pcfg["max_stack"]), int(cfg["iterations"]), plugs, int(cfg["max_over_plug"]))
-    paths, users, overflow, plug_over = route_all(pgrid, nets, *args, under=layers, quick=True)
+    by_id = {c["id"]: c for c in pcables}
+    forks = {}   # start cell -> forked nets starting there (a splitter at the port: they may share that cell)
+    for name, start, _ in nets:
+        if by_id[name]["style"] == "forked":
+            forks[start] = forks.get(start, 0) + 1
+    shared = {cell for cell, n in forks.items() if n > 1}
+    paths, users, overflow, plug_over = route_all(pgrid, nets, *args, under=layers, quick=True, shared=shared)
     stuck = {n for n, p in paths.items() if p is None}
     if stuck:   # the cables with no free path may squeeze through gaps narrower than the cable
-        paths, users, overflow, plug_over = route_all(pgrid, [(*n, n[0] in stuck) for n in nets], *args, under=layers, quick=True)
+        paths, users, overflow, plug_over = route_all(pgrid, [(*n, n[0] in stuck) for n in nets], *args, under=layers, quick=True,
+                                                      shared=shared)
     radius = pd / 2
-    by_id = {c["id"]: c for c in pcables}
     for name, path in paths.items():
         c = by_id[name]
         if path is None:
@@ -1729,6 +1757,30 @@ def deepest_hits(opt, facing):
     return list(best.values())
 
 
+def power_cable_summary(cables):
+    """The physical DC cables of a cable list (`ctx["cable_list"]`), one entry per `cable` id (C1, C2... in order):
+    {"id", "style", "output", "legs": [P#], "from": port, "to": [pedal power jacks], "plugs": DC plugs on the cable (serial:
+    pedals + 1, forked: 2), "min_mm": sum of the legs' min_mm (None when any leg is not routed), "estimate_mm": sum of the
+    legs' right-angle estimates (None when any is unknown), "status": "routed" when every leg is, else the first leg's
+    status that is not}. A serial cable is one cable through every pedal of its output (its legs are the hops), a forked
+    output has one cable per pedal."""
+    groups = {}
+    for c in cables:
+        if c["kind"] == "power":
+            groups.setdefault(c["cable"], []).append(c)
+    out = []
+    for cid, legs in groups.items():
+        style = legs[0]["style"]
+        bad = [c["status"] for c in legs if not c["status"].startswith("routed")]
+        out.append({"id": cid, "style": style, "output": legs[0].get("output"), "legs": [c["id"] for c in legs],
+                    "from": legs[0]["from"], "to": [c["to"] for c in legs],
+                    "plugs": len(legs) + 1 if style == "serial" else 2,
+                    "min_mm": None if any(c["min_mm"] is None for c in legs) else sum(c["min_mm"] for c in legs),
+                    "estimate_mm": None if any(c.get("estimate_mm") is None for c in legs) else sum(c["estimate_mm"] for c in legs),
+                    "status": bad[0] if bad else "routed"})
+    return out
+
+
 def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
     """The DC plug of every placed pedal's power jack (`cables.power_type`) with the exit side that has the fewest
     blocked parts (then the least overlap; a power cable override `exit_b` fixes it): [(pedal id, jack, power cable
@@ -1757,7 +1809,10 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
         out.append((cid, jk, pc, facing, o))
     # the used ports of on-board supplies: the same DC plug at a power_out jack (the cable's supply end, `exit_a`)
     from jacks import _jack_by_id, placement
-    by_port = {c["from"]: c for c in cables if c["kind"] == "power"}
+    by_port = {}   # port -> its cables (a forked output has one per pedal: they share the port, so one plug side)
+    for c in cables:
+        if c["kind"] == "power":
+            by_port.setdefault(c["from"], []).append(c)
     for s in ctx.get("supplies") or []:
         iid = s["inst"]["id"]
         it = (layout.get("inst_item") or {}).get(iid)
@@ -1767,13 +1822,15 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
             jk = _jack_by_id((layout.get("jacks") or {}).get(s["sup"]["id"]) or [], port)
             if not jk:
                 continue
-            pc = by_port.get(f"{iid}.{port}")
-            facing, opts = end_options(it, jk, ptype, (pc or {}).get("exit_a"), run, layout.get("outward_mm", 0))
+            pcs = by_port.get(f"{iid}.{port}") or []
+            pc = pcs[0] if pcs else None
+            fixed = next((c["exit_a"] for c in pcs if c.get("exit_a")), None)
+            facing, opts = end_options(it, jk, ptype, fixed, run, layout.get("outward_mm", 0))
             for o in opts:
                 o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
             o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
-            if pc is not None:
-                pc["exit_a"] = o["side"]
+            for c in pcs:
+                c["exit_a"] = o["side"]
             out.append((iid, jk, pc, facing, o))
     return out
 
