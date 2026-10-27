@@ -633,28 +633,73 @@ def footswitch_section(ctx, cat_pedals):
     if not st.get("layout"):
         return md + ["*No playground_design.json: footswitch spacing is not checked.*", ""]
     lim, comfort = st.get("min_distance_mm"), st.get("comfort_mm")
+    toppers, bonus = st.get("toppers") or [], st.get("topper_bonus_mm")
     md += ["Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals "
            f"allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance "
            f"({comfort:g} mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, "
            "`footswitches.priority`); lower is better, the layout proposals minimise it. "
-           + (f"Minimum: {lim:g} mm (`footswitches.min_distance_mm`). " if lim is not None else "No minimum distance is set. ")
+           + (f"Minimum: {lim:g} mm (`footswitches.min_distance_mm`, checked on the effective distance). " if lim is not None
+              else "No minimum distance is set. ")
            + "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), "
            "tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).", ""]
+    md += ["Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. "
+           f"A topper adds {bonus:g} mm (`footswitches.topper_bonus_mm`, unverified) to the effective distance of every pair "
+           "its switch is in (both switches of a pair: twice); crowding uses the effective distance. "
+           + (f"Toppers set (`footswitches.toppers`): {', '.join(toppers)}." if toppers else "No toppers are set."), ""]
     prs = ctx.get("footswitch_pairs") or []
     if not prs:
         return md + ["No pair of footswitches on different pedals is known yet.", ""]
     crowded = sum(1 for r in prs if r["crowding"] > 0)
-    md += [f"Crowding: {st['crowding']:.1f} ({crowded} of {len(prs)} pairs closer than {comfort:g} mm). "
-           f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", "",
-           "| Switch | Type | Switch | Type | Distance (mm) | Crowding |" + (" Status |" if lim is not None else ""),
-           "|---|---|---|---|--:|--:|" + ("---|" if lim is not None else "")]
+    plain = st.get("crowding_plain")
+    md += [f"Crowding: {st['crowding']:.1f}"
+           + (f" with {len(toppers)} topper(s) ({plain:.1f} without toppers)" if toppers else "")
+           + f" ({crowded} of {len(prs)} pairs closer than {comfort:g} mm"
+           + (", effective distance" if toppers else "") + "). "
+           f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", ""]
+    eff = bool(toppers)
+    md += ["| Switch | Type | Switch | Type | Distance (mm) |" + (" Effective (mm) |" if eff else "") + " Crowding |"
+           + (" Status |" if lim is not None else ""),
+           "|---|---|---|---|--:|" + ("--:|" if eff else "") + "--:|" + ("---|" if lim is not None else "")]
+    mark = lambda k: f"{k} (topper)" if k in toppers else k
     for r in prs[:footswitches.TOP_PAIRS]:
-        md.append(f"| {r['a']} | {r['a_type']} | {r['b']} | {r['b_type']} | {r['distance_mm']:.1f} | {r['crowding']:.1f} |"
+        md.append(f"| {mark(r['a'])} | {r['a_type']} | {mark(r['b'])} | {r['b_type']} | {r['distance_mm']:.1f} |"
+                  + (f" {r['effective_mm']:.1f} |" if eff else "") + f" {r['crowding']:.1f} |"
                   + (f" {'too close' if r['too_close'] else 'ok'} |" if lim is not None else ""))
     md.append("")
     if lim is not None:
         close = sum(1 for r in prs if r["too_close"])
         md += [f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
+    sug = ctx.get("footswitch_suggestions")
+    if sug is not None:
+        cap, nset = st.get("max_toppers"), len(toppers)
+        intro = ("Chosen after the layout (never during the search), greedily: the topper that removes the most crowding "
+                 "first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the "
+                 "higher priority type, then nearer the front), "
+                 + (f"at most {cap} in all (`footswitches.max_toppers`)" if cap is not None else "no cap (`footswitches.max_toppers`)")
+                 + f", stopping when a topper would remove less than {st['topper_min_gain'] * 100:g} % of the crowding "
+                 "(`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.")
+        md += ["### Suggested toppers", "", intro, ""]
+        if not sug["suggestions"]:
+            if sug["before"] <= 0:
+                why = "None needed."
+            elif cap == 0:
+                why = "None suggested: `footswitches.max_toppers` is 0."
+            elif cap is not None and nset >= cap:
+                why = f"None suggested: the cap `footswitches.max_toppers` is used up ({nset} of {cap})."
+            else:
+                why = "None suggested: no topper removes enough crowding."
+            md += [why, ""]
+        else:
+            labels = {p["key"]: p for p in ctx.get("footswitch_points") or []}
+            md += ["| # | Switch | Pedal | Type | Crowding removed | Crowding after |", "|--:|---|---|---|--:|--:|"]
+            for i, s in enumerate(sug["suggestions"], 1):
+                p = labels[s["key"]]
+                c = cat_pedals[p["cid"]]
+                md.append(f"| {i} | {s['key']} ({p['label']}) | {c.get('brand', '')} {c.get('name', p['cid'])} | {s['type']} "
+                          f"| {s['gain']:.1f} | {s['crowding_after']:.1f} |")
+            md.append("")
+            if cap is not None and nset + len(sug["suggestions"]) >= cap:
+                md += [f"Stopped at the cap `footswitches.max_toppers` ({cap}).", ""]
     return md
 
 
@@ -687,7 +732,8 @@ def proposals_section(ctx, cat_pedals):
 
     rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
             ("Unroutable / squeezed / over the stacking or plug limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
-            ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
+            ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
+             + " (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
             ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}" + (f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else "")),
@@ -833,7 +879,7 @@ def open_issues(ctxs, jacks_data):
                          f"`{footswitches.COMMAND} --list-missing {c['key']} --only footswitches`")
         for r in c.get("footswitch_pairs") or []:
             if r["too_close"]:
-                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {r['distance_mm']:.1f} mm apart "
+                items.append(f"Footswitches too close: `{r['a']}` and `{r['b']}` are {footswitches.pair_text(r)} "
                              f"(min {c['footswitch_settings']['min_distance_mm']:.1f} mm)")
         if items:
             md += [f"### {c['project'].get('name') or c['key']}", ""] + [f"- {i}" for i in items] + [""]
@@ -870,7 +916,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "uv run pytest tests                       geometry and jack-check tests",
         "```",
         "",
-        "Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set.",
+        "Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default 10 mm, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",

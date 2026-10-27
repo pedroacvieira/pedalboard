@@ -218,6 +218,12 @@ def footswitches(points, pairs):
         fill, stroke = FOOTSWITCH_STYLE.get(fp["type"], ("#ffffff", "#263238"))
         out.append(f'<circle cx="{f1(fp["x"])}" cy="{f1(fp["y"])}" r="3.5" fill="{fill}" stroke="{stroke}" stroke-width="0.8" '
                    f'class="footswitch" data-type="{esc(fp["type"])}"/>')
+        if fp.get("topper"):
+            out.append(f'<circle cx="{f1(fp["x"])}" cy="{f1(fp["y"])}" r="5.6" fill="none" stroke="#263238" stroke-width="1" '
+                       f'class="topper"/>')
+        elif fp.get("suggested"):
+            out.append(f'<circle cx="{f1(fp["x"])}" cy="{f1(fp["y"])}" r="5.6" fill="none" stroke="#e65100" stroke-width="1" '
+                       f'stroke-dasharray="2 1.5" class="topper-suggested"/>')
     return out
 
 
@@ -414,6 +420,10 @@ def key_entries(ctx, cable_list, max_stack):
     for t, (fill, stroke) in FOOTSWITCH_STYLE.items():
         if any(p["type"] == t for p in ctx.get("footswitch_points") or []):
             e.append((f"fs:{t}", f"{t} footswitch"))
+    if any(p.get("topper") for p in ctx.get("footswitch_points") or []):
+        e.append(("topper", "solid ring: topper on the footswitch"))
+    if any(p.get("suggested") for p in ctx.get("footswitch_points") or []):
+        e.append(("topper_suggested", "dashed orange ring: suggested topper"))
     if any(p.get("too_close") for p in ctx.get("footswitch_pairs") or []):
         e.append(("close", "footswitches closer than the minimum"))
     return e
@@ -444,6 +454,11 @@ def key_sample(kind, x, y):
     if kind.startswith("fs:"):
         fill, stroke = FOOTSWITCH_STYLE[kind[3:]]
         return f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="2.2" fill="{fill}" stroke="{stroke}" stroke-width="0.6"/>'
+    if kind == "topper":
+        return f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="3.2" fill="none" stroke="#263238" stroke-width="0.8"/>'
+    if kind == "topper_suggested":
+        return (f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="3.2" fill="none" stroke="#e65100" stroke-width="0.8" '
+                f'stroke-dasharray="1.6 1.2"/>')
     if kind == "close":
         return f'<line x1="{f1(x)}" y1="{f1(y)}" x2="{f1(x + 8)}" y2="{f1(y)}" stroke="#d50000" stroke-width="1.2" stroke-dasharray="3 2"/>'
     if kind == "missing":

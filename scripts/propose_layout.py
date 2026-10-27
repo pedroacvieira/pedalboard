@@ -54,9 +54,10 @@ def metrics(ctx, model, state, move_factor):
         "blocked_jacks": sorted({v["jack"] for v in ctx["violations"]}),
         "unroutable": sum(s.startswith("unroutable") for s in status), "squeezed": sum("squeezed" in s for s in status),
         "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
-        "fs_close": sum(1 for r in prs if r.get("too_close")),
-        "fs_closest_mm": round(prs[0]["distance_mm"], 1) if prs else None,
-        "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding") or 0.0, 1),
+        # toppers are a finishing step the search ignores: proposals are compared on the PLAIN distances
+        "fs_close": sum(1 for r in prs if r.get("too_close_plain")),
+        "fs_closest_mm": round(min(r["distance_mm"] for r in prs), 1) if prs else None,
+        "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding_plain") or 0.0, 1),
         "fs_known": det["fs_known"],
         "signal_mm": round(sum(c["min_mm"] for c in sig if c["min_mm"] is not None), 1),
         "signal_routed": sum(1 for c in sig if c["min_mm"] is not None), "signal_cables": len(sig),

@@ -264,3 +264,39 @@ def test_power_metrics_sum_the_routed_cables_only_and_count_the_unrouted():
     out = pl.metrics(ctx, m, m.owner, 1.0)
     assert out["power_mm"] == 125.5 and out["power_unrouted"] == 1        # the 70 mm estimate is not added to the routed length
     assert " (+1 not routed)" in pl.unrouted(out) and pl.unrouted({"power_unrouted": 0}) == ""
+
+
+def test_toppers_never_make_proposals_stale_and_the_table_says_without_toppers(tmp_path, monkeypatch):
+    pdir = gig_copy(tmp_path, monkeypatch)
+    pedals, supplies = load_catalog()
+    assert pl.main(["guitar-gig", "--iterations", "100", "--restarts", "1"]) == 0
+    base = proposal_inputs_sha1(pdir)
+    proj_path = pdir / "project.json"
+    proj = json.loads(proj_path.read_text())
+    chain = proj["signal_chain"]
+    topper = {"toppers": [f"{chain[0]}.bypass"], "topper_bonus_mm": 15, "max_toppers": 2, "topper_min_gain": 0.1}
+    proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), **topper}}))
+    assert proposal_inputs_sha1(pdir) == base                           # topper settings are not proposal inputs
+    ctx = build.validate(pdir, pedals, supplies)
+    md = "\n".join(build.proposals_section(ctx, pedals))
+    assert "**Stale:**" not in md and "| Footswitch crowding, without toppers (lower is better) |" in md
+    proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), "comfort_mm": 90}}))
+    assert proposal_inputs_sha1(pdir) != base                           # another footswitch setting is
+    proj_path.write_text(json.dumps(proj))
+    assert proposal_inputs_sha1(pdir) == base
+    md = "\n".join(build.proposals_section(build.validate(pdir, pedals, supplies), pedals))
+    assert "| Footswitch crowding (lower is better) |" in md
+
+
+def test_footswitch_metrics_use_the_plain_distances():
+    """With toppers the pair list is sorted by effective distance and carries too_close for it; the proposal metrics
+    must still use the plain distances (the search ignores toppers): closest = min plain distance."""
+    m = model([ped("T A", 0), ped("T B", 135)])
+    prs = [{"distance_mm": 70.0, "effective_mm": 80.0, "too_close": False, "too_close_plain": True},
+           {"distance_mm": 60.0, "effective_mm": 60.0, "too_close": True, "too_close_plain": True},
+           {"distance_mm": 95.0, "effective_mm": 95.0, "too_close": False, "too_close_plain": False}]
+    prs.sort(key=lambda r: r["effective_mm"], reverse=True)   # the closest plain pair is not first
+    ctx = {"errors": [], "warnings": [], "violations": [], "footswitch_pairs": prs, "cable_list": [],
+           "footswitch_settings": {"crowding": 3.2, "crowding_plain": 12.34}}
+    out = pl.metrics(ctx, m, m.owner, 1.0)
+    assert out["fs_closest_mm"] == 60.0 and out["fs_close"] == 2 and out["fs_crowding"] == 12.3
