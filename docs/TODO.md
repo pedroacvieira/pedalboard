@@ -123,6 +123,12 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - [ ] The saturated single-hole routing case (two cables forced through one one-cell hole) never converges and runs
       all `cables.iterations` rounds; no provably safe early stop found (feat/routing-speed review).
 
+- [ ] Toppers and pedal height (owner, 2026-10-27): a low pedal at the back of the board is harder to reach, a tall pedal
+      is naturally easier to reach and may not need a topper at all. Needs a height per pedal (enclosure height, and
+      the switch height above the board) and a reach / position model (back vs front row); then the spacing model
+      (`topper_bonus_mm`) and the suggestions weigh a switch by its height and position (a tall pedal's switch gets a
+      bonus of its own, a low one at the back a penalty).
+
 ## 5. Data
 - [ ] Items in the generated README's "Data to verify" (power specs, Reticon, Protein, version assumptions).
 
