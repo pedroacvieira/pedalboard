@@ -175,6 +175,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
   errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
   aggregated warning per project. `routing.svg` draws the switches (colour per type) and too-close lines.
+- Footswitch toppers (owner, 2026-10-27): per project `footswitches.toppers` ["<pedal>.<switch>"], set by hand;
+  a pair's effective distance = d + `topper_bonus_mm` (10, unverified) per topper on it; the build's crowding and
+  `min_distance_mm` use the effective distance, the README also shows it without toppers. Post-layout suggestions
+  (`footswitches.suggest_toppers`, greedy: largest crowding reduction, ties more crowded pairs > type priority > nearer
+  the front; stop at `max_toppers` or below `topper_min_gain` 0.05 of the crowding). The layout search, the proposal
+  metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
