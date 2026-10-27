@@ -235,9 +235,7 @@ def test_power_routing_settings_and_validation():
     # the old per-side edge modes are gone: an error that points to the edge segments of the board editor
     old = routing.validate_power_routing({"power_routing": {"edges": {"back": "allowed"}, "avoid_penalty": 10}})
     assert len(old) == 2 and all("was removed" in e and "board_editor" in e for e in old)
-    ctx = pw_ctx(power_routing={"edges": {"back": "allowed"}})
-    route(ctx)
-    assert any("power_routing.edges was removed" in e for e in ctx["errors"])
+    # (build.validate reports them, once: tests/test_daisy_chains.py)
 
 
 def test_the_svg_draws_power_cables_thin_with_under_stretches_dashed_and_marks_the_passes():

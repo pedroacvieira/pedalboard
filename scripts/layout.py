@@ -388,7 +388,7 @@ class Model:
             if len(w) > 3 and w[3] and w[3][0] in self.index and self.index[w[3][0]] >= self.n_ped:
                 start = {"inst": self.index[w[3][0]], "port": w[3][1]}
             self.wiring.append((start, [self.index[p] for p in w[1] if p in self.index and self.index[p] < self.n_ped],
-                                w[2] if len(w) > 2 else True, (w[4] if len(w) > 4 else None) or routing.DAISY_STYLES[0]))
+                                w[2] if len(w) > 2 else True, w[4] if len(w) > 4 and w[4] in routing.DAISY_STYLES else routing.SERIAL))
 
     # --- candidates --------------------------------------------------------------------------------
     def footprint(self, st, n):
@@ -609,7 +609,7 @@ class Model:
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
                     raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near)
-                if here is not None and style != "forked":   # forked: every cable starts at the port
+                if here is not None and style != routing.FORKED:   # forked: every cable starts at the port
                     prev, under = here, False
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing

@@ -664,7 +664,7 @@ def render_power(ctx, names):
     def route(legs):
         holes, edges = sum(c.get("holes_used") or 0 for c in legs), sum(c.get("edges_used") or 0 for c in legs)
         parts = [f"{holes} hole{'s' if holes != 1 else ''}"] if holes else []
-        parts += [f"{edges} edge"] if edges else []
+        parts += [f"{edges} edge{'s' if edges != 1 else ''}"] if edges else []
         return ", ".join(parts) or "on top"
     rows = []
     for cab in ctx.get("power_cable_summary") or []:
@@ -673,8 +673,11 @@ def render_power(ctx, names):
             continue
         port_cid, _, port_jack = cab["from"].partition(".")
         pedals = [all_names.get(t.partition(".")[0], t.partition(".")[0]) for t in cab["to"]]
+        part = sum(c["min_mm"] for c in legs if c.get("min_mm") is not None)   # the routed legs of a cable with unrouted ones
+        gone = sum(1 for c in legs if c.get("min_mm") is None)
         rows.append({"id": cab["id"], "colour": POWER_COLOUR,
-                     "length": "-" if cab["min_mm"] is None else f"{cab['min_mm']:.0f} mm",
+                     "length": (f"{cab['min_mm']:.0f} mm" if cab["min_mm"] is not None else
+                                f">= {part:.0f} mm, {gone} leg{'s' if gone != 1 else ''} unrouted" if gone < len(legs) else "-"),
                      "route": f"{cab['style']}: " + " -> ".join([f"{all_names.get(port_cid, port_cid)} {port_jack}".strip(), *pedals]),
                      **({"status": route(legs), "status_fill": INK} if cab["status"].startswith("routed")
                         else {"status": short_status(cab["status"])})})

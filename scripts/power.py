@@ -16,7 +16,6 @@ import re
 
 import design
 import routing
-from routing import POLARITIES
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
 
 
@@ -47,8 +46,8 @@ def output_findings(oid, row_pedals, voltage, limit, out_polarity, pedals, sensi
         if lo is not None and hi is not None and not lo <= voltage <= hi:
             errors.append(f"{oid}: {pid} would run at {voltage}V but only accepts {volt_range(pc)}")
         pol = pc.get("polarity")
-        if pol is not None and pol not in POLARITIES:
-            errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(POLARITIES)})")
+        if pol is not None and pol not in routing.POLARITIES:
+            errors.append(f"{pid}: unknown polarity '{pol}' ({', '.join(routing.POLARITIES)})")
         elif pol and out_polarity and pol != out_polarity:
             warnings.append(f"{oid}: {pid} is {pol.replace('_', '-')} but the output is {out_polarity.replace('_', '-')}: "
                             f"use a polarity-reversing cable")
@@ -481,7 +480,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
                 else:
                     errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive,
                                                      strength, isolated)
-                    if style_of.get((inst, port), routing.daisy_style(project)) == "forked":
+                    if style_of.get((inst, port), routing.daisy_style(project)) == routing.FORKED:
                         length, order = fork_length(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True), rank)
                     else:
                         length, order = chain_order(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True))

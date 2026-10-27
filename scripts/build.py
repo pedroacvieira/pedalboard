@@ -235,10 +235,10 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         for out in inst.get("outputs", []):
             oid = f"{inst['id']}_{out['port']}"
             odef = by_port.get(out["port"])
+            own = out.get("style")   # only the output's own style is checked here: a bad project default is reported once, below
+            if own is not None and own not in routing.DAISY_STYLES:
+                errors.append(f"{oid}: style {own!r} is unknown ({', '.join(routing.DAISY_STYLES)})")
             style = routing.daisy_style(project, out)
-            if style not in routing.DAISY_STYLES:
-                errors.append(f"{oid}: style '{style}' is unknown ({', '.join(routing.DAISY_STYLES)})")
-                style = routing.DAISY_STYLES[0]
             row = {"id": oid, "port": out["port"], "voltage_v": out["voltage_v"], "pedals": out.get("pedals", []),
                    "note": out.get("note"), "load": 0, "limit": None, "def": odef, "style": style}
             rows.append(row)
@@ -423,7 +423,7 @@ def mermaid_power(ctx):
             for pid in row["pedals"]:
                 if pid in pedals:
                     edges.append(f"{prev} --> {pid}")
-                    if row.get("style") != "forked":   # forked: one cable per pedal, each from the port
+                    if row.get("style") != routing.FORKED:   # forked: one cable per pedal, each from the port
                         prev = pid
         lines.append("    end")
     placed = set()
@@ -571,7 +571,7 @@ def dc_cable_table(ctx):
     routed = [c for c in summary if c["min_mm"] is not None]
     if routed:
         md += ["", f"DC cable, minimum: {sum(c['min_mm'] for c in routed):.0f} mm over {len(routed)} cables "
-                   f"({sum(1 for c in routed if c['style'] == 'serial')} serial, {sum(1 for c in routed if c['style'] == 'forked')} forked)."]
+                   f"({sum(1 for c in routed if c['style'] == routing.SERIAL)} serial, {sum(1 for c in routed if c['style'] == routing.FORKED)} forked)."]
     return md
 
 
@@ -784,7 +784,7 @@ def project_readme(ctx, cat_pedals):
         for row in s["rows"]:
             odef = row["def"]
             kind = "switchable" if odef and len(odef.get("options", [])) > 1 else "fixed"
-            head = f"**{row['port']}** ({kind}{', forked' if row.get('style') == 'forked' else ''})"
+            head = f"**{row['port']}** ({kind}{', forked' if row.get('style') == routing.FORKED else ''})"
             cell = f"{row['load']} / {row['limit'] or '?'} mA"
             if not row["pedals"]:
                 md.append(f"| {head} | {row['voltage_v']}V | *spare* | 0 | {cell} |")

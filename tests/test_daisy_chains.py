@@ -366,3 +366,108 @@ def test_power_picture_labels_physical_cables_and_tables_one_row_per_cable():
     svg = svgdraw.render_power(ctx, names)
     assert svg.count('class="legend-row"') == 10 and 'data-id="C6"' in svg and 'data-id="P6"' not in svg.split("legend-row")[-1]
     assert "serial: " in svg and "936 mm" in svg
+
+
+# --- review fixes -------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("bad", [["forked"], "forked"])
+def test_a_malformed_power_routing_is_reported_not_a_crash(bad):
+    project = bass_project()
+    project["power_routing"] = bad
+    ctx = validate_bass(project)
+    assert [e for e in ctx["errors"] if e.startswith("power_routing")] == ["power_routing must be an object"]
+    assert routing.daisy_style(project, {"port": "OUT1"}) == "serial" and routing.power_settings(project)["daisy_style"] == "serial"
+    m = model([ped("T A", 0), ped("T B", 135)], project_extra={"power_routing": bad})
+    m.set_wiring([((0.0, 0.0), ["a"])])
+    assert m.wiring[0][3] == "serial"
+    res = power.assign(list("abcd"), PEDALS4, INSTS, project, POINTS, PORTS)
+    assert res["length_mm"] == pytest.approx(160.0)
+
+
+def test_a_bad_project_default_is_reported_once_and_a_bad_output_style_by_its_output():
+    ctx = validate_bass(bass_project(default="star"))
+    assert len([e for e in ctx["errors"] if "daisy_style" in e or "'star'" in e]) == 1
+    assert {r["style"] for r in ctx["supplies"][0]["rows"]} == {"serial"}                 # the rows fall back to serial
+    ctx = validate_bass(bass_project(output_style="star", default="forked"))
+    assert len([e for e in ctx["errors"] if "style" in e]) == 1 and ctx["supplies"][0]["rows"][0]["style"] == "forked"
+    ctx = validate_bass(bass_project(default="star", output_style="serial"))
+    assert len([e for e in ctx["errors"] if "daisy_style" in e]) == 1 and not [e for e in ctx["errors"] if "OUT1: style" in e]
+
+
+def test_power_routing_problems_are_reported_once_by_the_build():
+    project = bass_project()
+    project["power_routing"] = {"edges": {"back": "allowed"}}
+    errs = [e for e in validate_bass(project)["errors"] if "power_routing.edges was removed" in e]
+    assert len(errs) == 1
+
+
+def test_a_shared_cell_does_not_make_its_whole_layer_unlimited():
+    g = routing.Grid(0, 0, 60, 6.0, 6.0)                       # a corridor of 10 cells: two cables must share all of them
+    nets = [("a", (0, 0), (9, 0)), ("b", (0, 0), (9, 0))]
+    _, users, overflow, _ = routing.route_all(g, nets, max_stack=1, iterations=5, shared=frozenset({(0, 0)}))
+    assert (0, 0) not in overflow and (5, 0) in overflow and (9, 0) in overflow             # only the start cell is exempt
+    _, _, overflow, _ = routing.route_all(g, nets, max_stack=1, iterations=5)
+    assert (0, 0) in overflow
+
+
+def test_every_cable_of_a_set_owns_a_plug_and_crosses_it_for_free():
+    g = routing.Grid(0, 0, 60, 6.0, 6.0)
+    nets = [("a", (0, 0), (9, 0)), ("b", (0, 0), (9, 0)), ("c", (0, 0), (9, 0))]
+    cells = {(4, 0), (5, 0)}
+    got = {}
+    for label, owner in (("one", "a"), ("two", {"a", "b"}), ("all", frozenset({"a", "b", "c"}))):
+        *_, plug_over = routing.route_all(g, nets, max_stack=5, iterations=5, plugs={"p": (owner, cells)}, max_over_plug=0)
+        got[label] = plug_over.get("p")
+    assert got == {"one": ["b", "c"], "two": ["c"], "all": None}
+
+
+def onboard_forked_ctx(overrides=None):
+    ctx = forked_ctx()
+    ctx["layout"]["inst_placement"] = {"psu1": "on_board"}
+    ctx["supplies"] = [{"inst": {"id": "psu1", "supply": "sup1", "placement": "on_board"}, "sup": {"id": "sup1"},
+                        "rows": [{"port": "F1", "pedals": ["a", "d"]}]}]
+    ctx["project"]["cables"]["overrides"] = overrides or {}
+    return ctx
+
+
+def test_the_legs_of_a_forked_on_board_port_all_own_its_plug(monkeypatch):
+    seen = []
+    real = routing.route_all
+
+    def spy(*args, **kw):
+        if kw.get("quick"):
+            seen.append(args[4])
+        return real(*args, **kw)
+    monkeypatch.setattr(routing, "route_all", spy)
+    route(onboard_forked_ctx())
+    assert seen[0]["psu1.F1"][0] == {"P1", "P2"}                  # both legs of the forked output own the port's plug
+
+
+def test_conflicting_exit_a_overrides_on_one_forked_port_are_reported():
+    ctx = onboard_forked_ctx({"P1": {"exit_a": "left"}, "P2": {"exit_a": "right"}})
+    legs = route(ctx)
+    assert {c["exit_a"] for c in legs.values()} == {"left"}
+    (w,) = [w for w in ctx["warnings"] if "same port psu1.F1" in w]
+    assert "P1 (exit_a left)" in w and "P2 (exit_a right)" in w and "left is used for both" in w
+    agree = onboard_forked_ctx({"P1": {"exit_a": "left"}, "P2": {"exit_a": "left"}})
+    route(agree)
+    assert not [w for w in agree["warnings"] if "same port" in w]
+
+
+def test_a_hop_without_a_cable_id_never_takes_a_real_cable_id():
+    ctx = pw_ctx(hops=(("psu1.F1", "a.power"), ("a.power", "d.power")), d_pedal=True)
+    ctx["cables"]["power"][1]["cable"] = "C1"
+    legs = route(ctx)
+    assert legs["P2"]["cable"] == "C1" and legs["P1"]["cable"] == "C2"
+    assert [c["id"] for c in ctx["power_cable_summary"]] == ["C2", "C1"]
+
+
+def test_power_picture_shows_the_routed_part_of_a_cable_with_unrouted_legs_and_plural_edges():
+    pedals, supplies, ctx = gig_build()
+    legs = {c["id"]: c for c in ctx["cable_list"] if c["kind"] == "power"}
+    legs["P9"]["min_mm"], legs["P9"]["status"] = None, "unroutable: no free path"
+    legs["P3"]["edges_used"], legs["P4"]["edges_used"] = 2, 1
+    ctx["power_cable_summary"] = routing.power_cable_summary(ctx["cable_list"])
+    svg = svgdraw.render_power(ctx, {pid: pedals[pid]["name"] for pid in ctx["chain"]})
+    part = sum(legs[p]["min_mm"] for p in ("P6", "P7", "P8"))
+    assert f"&gt;= {part:.0f} mm, 1 leg unrouted" in svg   # (escaped in the SVG text)
+    assert "2 edges<" in svg and "1 edge<" in svg and "1 edges" not in svg

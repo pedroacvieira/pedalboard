@@ -79,7 +79,8 @@ POWER_ROUTING = {                # project `power_routing` defaults (all optiona
     "daisy_style": "serial",     # default style of the supply outputs (`outputs[].style`): serial | forked (DAISY_STYLES)
 }
 REMOVED_POWER_KEYS = ("edges", "avoid_penalty")   # the old per-side edge modes (replaced by the board's edge segments)
-DAISY_STYLES = ("serial", "forked")   # a supply output's cabling: one cable through every pedal | one cable per pedal from the port
+SERIAL, FORKED = "serial", "forked"
+DAISY_STYLES = (SERIAL, FORKED)   # a supply output's cabling: one cable through every pedal | one cable per pedal from the port
 POWER_UNDER_COST = 1.0           # cost factor per mm of power cable under the board
 POWER_TOP_WARN_MM = 150.0        # a power cable running more than this on top of the board is reported
 TIPS = ("TS", "TRS", "XLR", "DC 2.1 mm", "DC 2.5 mm")
@@ -114,7 +115,8 @@ def power_settings(project, cfg=None):
     """`power_routing` of a project with the defaults filled in: {top_cost, max_stack,
     edge_transit_mm (None: decided with the board data, see route_power), daisy_style}. `cfg` = `settings(project)`: the default
     `max_stack` is `cables.max_stack`."""
-    given = project.get("power_routing") or {}
+    given = project.get("power_routing")
+    given = given if isinstance(given, dict) else {}   # (a malformed value is reported by validate_power_routing)
     out = {**POWER_ROUTING, **{k: v for k, v in given.items() if k in POWER_ROUTING and v is not None}}
     if out["max_stack"] is None:
         out["max_stack"] = (cfg or settings(project))["max_stack"]
@@ -123,8 +125,15 @@ def power_settings(project, cfg=None):
 
 def daisy_style(project, output=None):
     """The style of a supply output (`power.supplies[].outputs[]` entry `output`): its own `style`, else the project's
-    `power_routing.daisy_style`, else "serial". Not validated (see `DAISY_STYLES`)."""
-    return (output or {}).get("style") or (project.get("power_routing") or {}).get("daisy_style") or DAISY_STYLES[0]
+    `power_routing.daisy_style`, else "serial". Always one of `DAISY_STYLES`: an unknown value (or a malformed
+    `power_routing`) falls back to the next level; the problem itself is reported once where it is validated
+    (`validate_power_routing`; build.validate for the output's own `style`)."""
+    own = (output or {}).get("style")
+    if own in DAISY_STYLES:
+        return own
+    given = project.get("power_routing")
+    default = given.get("daisy_style") if isinstance(given, dict) else None
+    return default if default in DAISY_STYLES else SERIAL
 
 
 def validate_power_routing(project):
@@ -724,7 +733,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
     `max_stack` cables costs more (present factor, growing each round), and cells that stayed over the limit
     get a permanent history cost, so cables spread out until the limit holds (or the rounds run out).
 
-    plugs: {key: (owner cable name or None, cells)}. A net entering a cell of a plug it does not own, where that
+    plugs: {key: (owner cable name, a set of them (all the cables of a forked port own its plug) or None, cells)}. A net entering a cell of a plug it does not own, where that
     plug already carries `max_over_plug` OTHER cables (owner and this net excluded), pays the over-limit penalty
     like an over-stacked cell; plugs still over the limit after a round get a history cost (for the cables that
     do not own them). plug_over = {key: [names]}: the plugs that stayed over the limit, with their crossing cables.
@@ -738,7 +747,8 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
 
     shared: cells (states) where cables meet by design and the stacking limit does not apply: the port of a forked power
     output, where every cable of the output starts (a splitter)."""
-    plugs = plugs or {}
+    plugs = {k: (o if isinstance(o, (set, frozenset)) else frozenset(() if o is None else (o,)), cells)
+             for k, (o, cells) in (plugs or {}).items()}   # owners: a set of cable names
     plug_at = {}   # cell -> [plug keys]
     for key, (_, cells) in plugs.items():
         for c in cells:
@@ -747,15 +757,15 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
     dead = set()   # memo keys that can no longer hit in the rounds (see `_search`)
     first_clean = False
     limit = (lambda c: under.limit(c, max_stack)) if under is not None else (lambda c: max_stack)
-    if shared:
+    lim_top, lim_under = limit((0, 0)), limit((0, 0, 1))   # `limit` per layer, for the cost's hot path (one source for both uses)
+    if shared:   # the shared cells are unlimited, every other cell keeps its layer's limit
         base_limit = limit
         limit = lambda c: math.inf if c in shared else base_limit(c)
-    lim_top, lim_under = limit((0, 0)), limit((0, 0, 1))   # `limit` per layer, for the cost's hot path (one source for both uses)
     cross = {key: set() for key in plugs}   # plug key -> cables other than its owner whose path enters it
 
     def crossed(name, path):
         """plugs a path enters, not counting its own plugs nor its two end cells (a cable may start next to a plug)"""
-        return {k for c in (path or [])[1:-1] for k in plug_at.get(c, ()) if plugs[k][0] != name}
+        return {k for c in (path or [])[1:-1] for k in plug_at.get(c, ()) if name not in plugs[k][0]}
 
     for _ in range(iterations):
         usage = {}
@@ -777,7 +787,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                 if pk and c != s and c != t:
                     over = max(0, over)
                     for key in pk:
-                        if plugs[key][0] != name:
+                        if name not in plugs[key][0]:
                             over += len(cross[key]) >= max_over_plug
                             hist += plug_history.get(key, 0.0)
                 elif over < 0:
@@ -815,7 +825,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
 
             def plain(c):
                 full = usage.get(c, 0) + 1 > limit(c) or (c != s and c != t and any(
-                    plugs[k][0] != name and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
+                    name not in plugs[k][0] and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
                 return CLOSED_COST if full else 1.0
 
             new = _search(memo, grid, s, t, plain, bool(sq and sq[0]), under)
@@ -862,14 +872,14 @@ def _back_on_top(grid, nets, paths, under, limit, plugs, plug_at, max_over_plug)
                 usage[c] = usage.get(c, 0) + 1
             for c in (p or [])[1:-1]:
                 for k in plug_at.get(c, ()):
-                    if plugs[k][0] != name:
+                    if name not in plugs[k][0]:
                         cross[k].add(name)
         return usage, cross
 
     def closed_cost(name, s, t, usage, cross):
         def cost(c):
             full = usage.get(c, 0) + 1 > limit(c) or (c != s and c != t and any(
-                plugs[k][0] != name and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
+                name not in plugs[k][0] and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
             return CLOSED_COST if full else 1.0
         return cost
 
@@ -886,7 +896,7 @@ def _back_on_top(grid, nets, paths, under, limit, plugs, plug_at, max_over_plug)
         if top is None:
             continue
         full = {c for c in top if usage.get(c, 0) + 1 > limit(c)}
-        over_plugs = {k for c in top[1:-1] for k in plug_at.get(c, ()) if plugs[k][0] != name and len(cross[k]) >= max_over_plug}
+        over_plugs = {k for c in top[1:-1] for k in plug_at.get(c, ()) if name not in plugs[k][0] and len(cross[k]) >= max_over_plug}
         crowd = sorted({o for o, p in trial.items() if p and set(p) & full} | {o for k in over_plugs for o in cross[k]})
         trial[name] = top
         ok = True
@@ -1306,7 +1316,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         from common import load_cable_types
         cable_types = load_cable_types()
     errors.extend(e for e in validate_types(cable_types) + validate_project_types(project, cable_types)
-                  + validate_power_routing(project) if e not in errors)
+                  if e not in errors)
     cfg = settings(project, cable_types)
     sink = errors if project.get("validation", {}).get("strict_routing") else warnings
     clear_sink = errors if project.get("validation", {}).get("strict_clearance") else warnings
@@ -1339,13 +1349,22 @@ def route_project(ctx, cat_pedals, cable_types=None):
     # power cables: model and estimate only (they run under the board)
     from jacks import placement
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
+    taken = {h["cable"] for h in (ctx.get("cables") or {}).get("power", []) if h.get("cable")}
+    spare = iter(range(1, 10 ** 6))
+
+    def spare_cable_id():   # a hop without a cable id (hand-made ctx): its own cable, never one of the real ids
+        while True:
+            cid = f"C{next(spare)}"
+            if cid not in taken:
+                taken.add(cid)
+                return cid
     for n, hop in enumerate((ctx.get("cables") or {}).get("power", []), 1):
         under = hop.get("under_board")   # jacks.check sets it per hop; else the placement of the instance the cable starts at
         if under is None:
             inst = inst_by_id.get(hop["from"].split(".")[0])
             under = placement(inst if inst is not None else {}, project) != "on_board"
         cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
-                       "cable": hop.get("cable") or f"C{n}", "style": hop.get("style") or DAISY_STYLES[0], "output": hop.get("output"),
+                       "cable": hop.get("cable") or spare_cable_id(), "style": hop.get("style") or SERIAL, "output": hop.get("output"),
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
                        "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
                        "estimate_mm": hop.get("min_mm"), "path": None,
@@ -1658,12 +1677,17 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     grow = grow_of(pc_cfg)
     plug_rects = {k: [r for part, r in o["rects"] if part in ("head", "barrel")] for k, (_, _, _, _, o) in by_key.items()}
     plug_rects = {k: v for k, v in plug_rects.items() if v}
-    plugs = {k: ((by_key[k][2] or {}).get("id"), set().union(*(rect_cells(pgrid, r, grow) for r in rs))) for k, rs in plug_rects.items()}
+    forked_from = {}   # port key -> the cables of a forked output from it: all of them own the port's plug
+    for c in pcables:
+        if c["style"] == FORKED:
+            forked_from.setdefault(c["from"], set()).add(c["id"])
+    plugs = {k: ({(by_key[k][2] or {}).get("id")} - {None} | forked_from.get(k, set()),
+                 set().union(*(rect_cells(pgrid, r, grow) for r in rs))) for k, rs in plug_rects.items()}
     args = (int(pcfg["max_stack"]), int(cfg["iterations"]), plugs, int(cfg["max_over_plug"]))
     by_id = {c["id"]: c for c in pcables}
     forks = {}   # start cell -> forked nets starting there (a splitter at the port: they may share that cell)
     for name, start, _ in nets:
-        if by_id[name]["style"] == "forked":
+        if by_id[name]["style"] == FORKED:
             forks[start] = forks.get(start, 0) + 1
     shared = {cell for cell, n in forks.items() if n > 1}
     paths, users, overflow, plug_over = route_all(pgrid, nets, *args, under=layers, quick=True, shared=shared)
@@ -1774,7 +1798,7 @@ def power_cable_summary(cables):
         bad = [c["status"] for c in legs if not c["status"].startswith("routed")]
         out.append({"id": cid, "style": style, "output": legs[0].get("output"), "legs": [c["id"] for c in legs],
                     "from": legs[0]["from"], "to": [c["to"] for c in legs],
-                    "plugs": len(legs) + 1 if style == "serial" else 2,
+                    "plugs": len(legs) + 1 if style == SERIAL else 2,
                     "min_mm": None if any(c["min_mm"] is None for c in legs) else sum(c["min_mm"] for c in legs),
                     "estimate_mm": None if any(c.get("estimate_mm") is None for c in legs) else sum(c["estimate_mm"] for c in legs),
                     "status": bad[0] if bad else "routed"})
@@ -1825,6 +1849,12 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
             pcs = by_port.get(f"{iid}.{port}") or []
             pc = pcs[0] if pcs else None
             fixed = next((c["exit_a"] for c in pcs if c.get("exit_a")), None)
+            clash = [c for c in pcs if c.get("exit_a") not in (None, "auto", fixed)]
+            if clash:   # the legs of a forked output share the port's plug: one side
+                first = next(c for c in pcs if c.get("exit_a"))
+                sink = ctx["errors"] if ctx["project"].get("validation", {}).get("strict_routing") else ctx["warnings"]
+                sink.append(f"routing: {first['id']} (exit_a {fixed}) and {clash[0]['id']} (exit_a {clash[0]['exit_a']}) leave the same "
+                            f"port {iid}.{port}, which has one plug: {fixed} is used for both")
             facing, opts = end_options(it, jk, ptype, fixed, run, layout.get("outward_mm", 0))
             for o in opts:
                 o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
