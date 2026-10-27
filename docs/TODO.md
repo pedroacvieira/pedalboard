@@ -42,10 +42,10 @@ done, and keep `CLAUDE.md` current when a decision changes.
 
 ## Gig board layout
 - [ ] Both findings below are fixed by the fix-level proposals (`projects/guitar-gig/README.md`, Layout proposals).
-- [ ] Monk / Belle Epoch are too close: `monk.out` (1.0 mm) and `monk.power` (5.1 mm) plug heads are blocked by the
+- [ ] Monk / Belle Epoch are too close: `monk.out` (12.7 mm) and `monk.power` (9.0 mm, DC plug model) are blocked by the
       Belle Epoch. Move one apart in Pedal Playground and re-save `projects/guitar-gig/playground_design.json`
       (or confirm with measurements that the plugs fit).
-- [ ] `red_muck.power` DC head blocked 3.0 mm by the MXR Analog Chorus.
+- [x] `red_muck.power` DC head blocked 3.0 mm by the MXR Analog Chorus (gone with the pedal outlines, 2026-10-23).
 
 ## Next features (owner, 2026-10-23; one branch each, numbered as the owner listed them)
 Each starts with a short plan in `docs/plans/<branch>.md` + owner decisions, then handovers, as feat/pedal-position.
@@ -75,15 +75,15 @@ routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_
 - [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
   and hard angles everywhere: a cable should be a straight line between two necessary corners.
-- [ ] Paths: reduce each routed path to its necessary corners (any-angle straight segments between them where the
+- [x] Paths: reduce each routed path to its necessary corners (any-angle straight segments between them where the
       line stays clear of the grown pedals: line-of-sight smoothing / string pulling); lengths then follow the
       smoothed path (still no slack), tests updated with hand-computed cases.
-- [ ] Parallel lanes: cables sharing a corridor get side-by-side lanes one cable width apart (ordered so they do
+- [x] Parallel lanes: cables sharing a corridor get side-by-side lanes one cable width apart (ordered so they do
       not cross inside the corridor), not drawn on top of each other.
-- [ ] Pedals: name labels, the jacks drawn (in/out/power/extra with facing), plug heads on the chosen exit side.
-- [ ] Cables: colour per hop with a legend (S#, from -> to, min length), squeezed / over-stacking / unroutable
+- [x] Pedals: name labels, the jacks drawn (in/out/power/extra with facing), plug heads on the chosen exit side.
+- [x] Cables: colour per hop with a legend (S#, from -> to, min length), squeezed / over-stacking / unroutable
       styled distinctly; optional pedal images under the outlines (images from `.cache/images`, never committed).
-- [ ] Shared SVG helpers (board, pedals, jacks, legend) in one module, so power.svg (2) and the web views (4) reuse them.
+- [x] Shared SVG helpers (board, pedals, jacks, legend) in one module, so power.svg (2) and the web views (4) reuse them.
 - Acceptance: same corridors as before; paths straighter and never overlapping (lengths can only get shorter);
   README embeds it.
 
@@ -108,27 +108,18 @@ That matters: the gig's stacked spots (S11/S13, S14/S15) sit in 5.4-5.6 mm box g
       bounding box for pedal-pedal overlap in the layout search (jacks of neighbours cannot interleave freely).
       Decided: committed; routing and clearance; box for overlaps.
 
-### 2. `feat/power-routing`: power cables routed and drawn (power.svg)
-Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs 3 for where cables cross the board.
-- Owner (2026-10-23): power cables stay UNDER the board as much as possible and come up next to each pedal (through
-  a hole or an allowed edge). If there is no easy way to cross the board, a cable comes up once and routes on top.
-  Board edges are per project allowed / avoided / forbidden: front usually forbidden (often not even possible),
-  sides avoided (preferred: holes, then the back). Daisy chains are either FORKED (several cables from one source,
-  each its own cable) or SERIAL (one long cable through every pedal, counted as one cable).
-- [ ] Project settings: `power_routing.edges` {front: forbidden, left: avoid, right: avoid, back: allowed} (cost per
-      avoided crossing), daisy-chain style per output (`forked` | `serial`, from the supply data or the project).
-- [ ] Model per power cable: supply port -> under-board leg -> crossing (hole / allowed edge from 3) -> on-board leg
-      -> pedal DC jack. Serial chains: one cable that surfaces at each pedal and goes back under where a crossing
-      is near, else stays on top; forked: each branch from the source separately.
-- [ ] Route the on-board legs with the grid router (power cable width, own stacking limit with signal cables?); the
-      under-board legs on a separate layer (board frame / rails as obstacles, else free Manhattan).
-- [ ] `power.svg` (top view: on-board legs solid, under-board legs dashed, supplies and crossings drawn) + table:
-      cable, from -> to, min length, crossing used; README section next to the signal routing.
-- [ ] `power.assign` and the layout surrogate use the routed (or crossing-aware) length instead of Manhattan.
-- Owner (2026-10-23): power and patch cables are independent (they do not count against each other); the
-  stacking limit (`max_stack`) applies among power cables in the same place, as among patch cables.
+### 2. `feat/power-routing`: what is left after feature 3 (power cables are routed and drawn since 2026-10-26)
+Done in feature 3: routed DC cables (under the board, up through holes / owner-drawn edge segments), `power.svg`,
+power stacking separate from signal, `power.assign` and the layout surrogate use the nearest-crossing estimate.
+- Owner (2026-10-23): daisy chains are either FORKED (several cables from one source, each its own cable) or SERIAL
+  (one long cable through every pedal, counted as one cable).
+- [ ] Daisy-chain style per output (`forked` | `serial`, from the supply data or the project); today every hop is its
+      own routed cable (supply -> first pedal, pedal -> next).
+- [ ] Serial: one cable that surfaces at each pedal and goes back under where a crossing is near, else stays on top;
+      one length and one shopping-list line. Forked: each branch from the source routed separately.
+- [ ] README / power.svg / shopping list follow the style (cable count, lengths).
 
-### 3. `feat/supply-placement` (2026-10-26, code review done; merge after the owner's OK): supplies on or under the board, board holes, cables through the holes
+### 3. `feat/supply-placement` (merged into main 2026-10-27): supplies on or under the board, board holes, cables through the holes
 Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers `supply-placement-1..6.md` + `-review.md`.
 - [x] Phase 1: board holes from the Pedal Playground board images (`scripts/boards.py`, `catalog/boards.json`): Fender Pro
       Medium 13 slots + the handle strip, Duo 2.1 17 slots; drawn in routing.svg.
@@ -148,14 +139,12 @@ Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers
 - [x] Edge crossings (owner, 2026-10-26): no per-side edge modes; cables (signal and power) cross only through holes
       and owner-drawn edge segments (board editor, type edge); neither = an under-board supply is an error;
       `cables.route_in_front` toggle (gig: false). Handover `supply-placement-edges.md`.
-- [ ] Owner: draw the gig's edge crossings (if any) with `uv run scripts/board_editor.py guitar-gig` (T until "edge",
-      drag a line along the edge), then `uv run scripts/build.py guitar-gig` and check power.svg.
+- [x] Owner: gig edge crossing drawn at the back (handle area, 0.28-0.72), 2026-10-27; no cable uses it yet.
 - [ ] Owner: verify the Duo 2.1 holes (practice / bass have no layout yet) with `uv run scripts/board_editor.py bass`.
-- [x] Speed (`feat/routing-speed`, 2026-10-27, results identical): gig validate 1.23 -> 0.76 s, default search
+- [x] Speed (`feat/routing-speed`, merged 2026-10-27, results identical): gig validate 1.23 -> 0.76 s, default search
       ~47 -> 15 s, test suite 73 -> 30 s (faster A* loop, plain-search memo reused by route_all, HoleIndex scan, score memo).
 - [ ] Under-board fit (supply height vs space under the deck) not checked (owner decision 3); later branch if needed.
-- Feature 2 (power routing) left after this branch: forked vs serial daisy chains, power.svg / separate power view,
-  edge-setting refinements.
+- Feature 2 (power routing) left: forked vs serial daisy chains (see 2).
 
 ### 4. `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
 Goal: replace the Tkinter editor and the README-only views with a local browser app.
