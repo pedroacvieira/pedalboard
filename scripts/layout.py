@@ -1,8 +1,9 @@
 """Pedal positions: candidate model, hard constraints, surrogate score and search (all mm). Pure: no files, no GUI.
 
 A candidate is a centre (cx, cy) and a rotation (0/90/270, never 180 unless the owner's layout has it) per chain
-pedal placed in the owner's layout; the board, supplies (under the board), other items and the chain order are
-fixed. Per pedal and allowed rotation, everything that moves with it is precomputed relative to its centre:
+pedal placed in the owner's layout and per supply instance placed ON the board (`placement: "on_board"`: an obstacle
+by its outline whose used output ports get the DC plug clearance and start the power cables; chain pedals first in
+the state, then the supplies); the board, supplies under the board, other items and the chain order are fixed. Per pedal and allowed rotation, everything that moves with it is precomputed relative to its centre:
 footprint half-sizes, plug options (signal: both exit sides of a right-angle plug, power: the DC plug, extra jacks:
 the fixed box), measure and exit points, footswitch points. Moving a pedal translates cached rectangles.
 
@@ -21,8 +22,11 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  router's 8-connected path length) + detour 0.6 x an estimate of the way around the pedals (grown
                  by the cable radius, so a gap narrower than the cable is closed) the straight line between the
                  exits crosses (layout.detour; 0.6 because the estimate is rough, calibrated on guitar-gig)
-  power          0.1 / mm DC cable: Manhattan between half-depth measure points along each daisy chain (jacks.check)
-                 for a fixed wiring (the search keeps it; finalists get their own wiring from power.assign)
+  power          0.1 / mm DC cable along each daisy chain between half-depth measure points for a fixed wiring (the search
+                 keeps it; finalists get their own wiring from power.assign): the nearest-hole estimate of the power router
+                 (power.hop_estimate: under the board, up through the usable hole nearest the pedal's power jack, a mm on top
+                 counts `power_routing.top_cost`, a pass the hole transit; the points a candidate's pedals cover, or an under-board
+                 supply covers, are not usable); plain Manhattan without holes or a power cable type
   footswitch     2 x crowding: per pair of switches on different pedals priority x max(0, comfort - d)^2 / comfort
                  (footswitches.crowding; comfort `footswitches.comfort_mm`, default 100; priority per switch type:
                  bypass 1.0, boost 0.8, tap 0.8, function 0.5, a pair weighs the larger of its two): spacing is
@@ -48,6 +52,7 @@ import time
 import design
 import footswitches
 import outlines as outlines_mod
+import power
 import routing
 from common import px_to_mm
 
@@ -168,7 +173,7 @@ class Model:
     [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None):
+                 fs_limit=None, outlines=None, board_data=None, board_edits=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -179,15 +184,24 @@ class Model:
                  for i in (project.get("power") or {}).get("supplies", []) if i["supply"] in cat_supplies]
         jset = project.get("jacks", {})
         self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
-        lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines)
+        lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines,
+                                      board_data=board_data, board_edits=board_edits)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
         self.board = design.footprint(lay["board"])
         self.placed = lay["placed"]
         self.inst_item, self.insts = lay["inst_item"], insts
         self.ids = [p for p in chain if p in self.placed]          # movable pedals, chain order
+        self.n_ped = len(self.ids)
+        sup_of = {s["inst"]["id"]: s for s in insts}
+        on_board = [iid for iid in sorted(lay["inst_item"]) if lay["inst_placement"].get(iid) == "on_board"]
+        clash = sorted(set(on_board) & set(self.ids))
+        if clash:
+            raise ValueError(f"supply instance id(s) {', '.join(clash)} are also pedal ids")
+        self.ids += on_board                                       # then the movable on-board supplies
+        self.mitem = {**self.placed, **{iid: lay["inst_item"][iid] for iid in on_board}}   # movable id -> layout item
         self.index = {p: n for n, p in enumerate(self.ids)}
-        moving = {self.placed[p]["id"] for p in self.ids}
+        moving = {self.mitem[p]["id"] for p in self.ids}
         self.fixed = [o for o in lay["obstacles"] if o["id"] not in moving]
         self.fixed_feet = [(o["title"], design.footprint(o)) for o in self.fixed]
         self.fixed_shapes = [design.item_shapes(lay["shapes"], o) for o in self.fixed]   # outlines (clearance only)
@@ -203,13 +217,29 @@ class Model:
         ptype_id = (project.get("cables") or {}).get("power_type")
         self.ptype = cable_types.get(ptype_id) if ptype_id else None
         self.p_depth = float(self.ptype["plug"]["head_depth_mm"]) if self.ptype else self.p_out
-        import power   # a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal (owner's wiring)
+        # (a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal: the owner's wiring)
+        # power cables run under the board and come up through the nearest usable hole: sample the holes once; per candidate
+        # only the pedals' coverage of the points near each jack is tested (None: Manhattan between the measure points)
+        self.power_setup = power.estimate_setup(project, lay, cable_types)
+        self.inst_under = {iid: pl != "on_board" for iid, pl in lay["inst_placement"].items()}
         over = self.rcfg["overrides"]
         self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
                        for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", [])).items()}
-        self.owner = [self._state_of(self.placed[p]) for p in self.ids]
-        self.names = {p: cat_pedals[p].get("name", p) for p in self.ids}
-        self.titles = [self.placed[p]["title"] for p in self.ids]
+        # an on-board supply's power cables start at its used ports: the cable's `exit_a` override (the first pedal's cable)
+        pids = power.cable_ids((project.get("power") or {}).get("supplies", []))
+        self.s_exit = {}
+        for iid in on_board:
+            for r in sup_of[iid]["rows"]:
+                if r["pedals"] and r["port"] not in self.s_exit.get(iid, {}):
+                    self.s_exit.setdefault(iid, {})[r["port"]] = (over.get(pids.get(r["pedals"][0])) or {}).get("exit_a")
+        self.sup_ports = {iid: sorted({r["port"] for r in sup_of[iid]["rows"] if r["pedals"]}) for iid in on_board}
+        self.sup_id = {iid: sup_of[iid]["sup"]["id"] for iid in on_board}
+        self.owner = [self._state_of(self.mitem[p]) for p in self.ids]
+        self.names = {p: cat_pedals[p].get("name", p) for p in self.ids[:self.n_ped]}
+        for iid in on_board:
+            sup = sup_of[iid]["sup"]
+            self.names[iid] = sup_of[iid]["inst"].get("label") or f"{sup.get('brand', '')} {sup.get('model', sup['id'])}".strip()
+        self.titles = [self.mitem[p]["title"] for p in self.ids]
         # allowed rotations (180 only if the owner's layout already has it)
         rots = self.cfg["rotations"]
         self.allowed = []
@@ -220,14 +250,14 @@ class Model:
         self.pins = set(self.cfg.get("pins") or [])
         unknown_pins = self.pins - set(self.ids)
         if unknown_pins:
-            raise ValueError(f"layout.pins: not a placed chain pedal: {', '.join(sorted(unknown_pins))}")
+            raise ValueError(f"layout.pins: not a placed chain pedal or on-board supply: {', '.join(sorted(unknown_pins))}")
         # footswitches
         self.fs_known = any(self.fs_data.get(p) for p in self.ids)
         limit, self.fs_comfort, _, _ = footswitches.spacing_settings(project)
         self.fs_limit = limit if fs_limit is None else fs_limit
         self.fs_priority = footswitches.priorities(project)
         self.access = [access_rule({**cat_pedals[p], "id": p}, [f["type"] for f in self.fs_data.get(p) or []],
-                                   self.cfg["access"]) for p in self.ids]
+                                   self.cfg["access"]) for p in self.ids[:self.n_ped]] + [None] * len(on_board)
         self._geom = {}
         for n, p in enumerate(self.ids):
             for r in self.allowed[n]:
@@ -244,11 +274,14 @@ class Model:
         """Everything of pedal n at rotation `rot` relative to its centre."""
         from jacks import default_jack, _jack_by_id
         pid = self.ids[n]
-        it = self.placed[pid]
+        it = self.mitem[pid]
         tmp = {**it, "rot": rot, "left_mm": -it["w_mm"] / 2, "top_mm": -it["h_mm"] / 2}
         f = design.footprint(tmp)
         have = self.jacks_data.get(pid) or []
-        g = {"half": (f[2], f[3]), "shapes": design.outline_rects(tmp, self.outlines), "ends": {}, "power": None, "extra": [], "fs": [], "in": None, "out": None}
+        g = {"half": (f[2], f[3]), "shapes": design.outline_rects(tmp, self.outlines), "ends": {}, "power": None, "extra": [], "fs": [],
+             "in": None, "out": None, "ports": [], "port_pt": {}}
+        if n >= self.n_ped:
+            return self._supply_geometry(g, tmp, pid)
         chain_pos = self.project["signal_chain"].index(pid)
         chain = self.project["signal_chain"]
         over = self.rcfg["overrides"]
@@ -301,6 +334,28 @@ class Model:
             g["fs"].append((x, y, fs["type"], f"{pid}.{fs['id']}"))
         return g
 
+    def _supply_geometry(self, g, tmp, iid):
+        """An on-board supply: no signal ends, footswitches or extra jacks; its used output ports as plug-clearance ends (the DC
+        plug as for a pedal's power jack, else the fixed power box) and their measure points (half the plug depth in front of
+        the port, as power.measure_points) as the start of the power cables."""
+        from jacks import _jack_by_id
+        have = self.jacks_data.get(self.sup_id[iid]) or []
+        for port in self.sup_ports[iid]:
+            jk = _jack_by_id(have, port)
+            if not jk:
+                continue
+            pt = design.jack_point(tmp, jk["x"], jk["y"])
+            facing = design.jack_facing(tmp, jk["facing"])
+            if self.ptype:
+                _, opts = routing.end_options(tmp, jk, self.ptype, self.s_exit.get(iid, {}).get(port),
+                                              {"exit_run_mm": float(self.ptype["diameter_mm"])}, self.outward)
+            else:
+                opts = [{"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))],
+                         "exit": pt, "measure_mm": 0.0}]
+            g["ports"].append({"jack": f"{iid}.{port}", "facing": facing, "opts": [self._opt(o) for o in opts]})
+            g["port_pt"][port] = design.stub(pt, facing, self.p_depth / 2)
+        return g
+
     @staticmethod
     def _opt(o):
         rects = [(part, r) for part, r in o["rects"]]
@@ -308,14 +363,23 @@ class Model:
                 "exit": o["exit"], "measure_mm": o.get("measure_mm", 0.0)}
 
     def set_wiring(self, wiring):
-        """Daisy chains for the power term: [(port point or None, [pedal ids])]; None = the project's own wiring."""
+        """Daisy chains for the power term: [(port point or None, [pedal ids][, starts under the board[, (supply instance
+        id, port)]])]; None = the project's own wiring (the flag defaults to True: under-board supplies). A port of a movable
+        (on-board) supply instance follows it: stored as {"inst": state index, "port": port id} whatever point is given."""
         if wiring is None:
             import power
             insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"]} for s in self.insts]
             _, ports = power.measure_points({}, self.inst_item, insts, self.jacks_data, self.p_depth)
-            wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])))
+            wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])), self.inst_under.get(s["inst"]["id"], True),
+                       (s["inst"]["id"], o["port"]))
                       for s in self.insts for o in s["inst"].get("outputs", [])]
-        self.wiring = [(pt, [self.index[p] for p in pids if p in self.index]) for pt, pids in wiring]
+        self.wiring = []
+        for w in wiring:
+            start = w[0]
+            if len(w) > 3 and w[3] and w[3][0] in self.index and self.index[w[3][0]] >= self.n_ped:
+                start = {"inst": self.index[w[3][0]], "port": w[3][1]}
+            self.wiring.append((start, [self.index[p] for p in w[1] if p in self.index and self.index[p] < self.n_ped],
+                                w[2] if len(w) > 2 else True))
 
     # --- candidates --------------------------------------------------------------------------------
     def footprint(self, st, n):
@@ -426,7 +490,7 @@ class Model:
         em = self.rcfg["edge_margin_mm"]
         obs = self._obstacles(state, feet)
         # as the build: nothing in front of the lowest pedal OUTLINE (detour estimate: boxes, an approximation)
-        front_y = min(b[3], max(q[3] for k, _, _, shp in obs if k is not None for q in shp)) if feet else b[3]
+        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg)
         area = (b[0] - em, b[1] - em, b[2] + em, front_y)
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
@@ -480,20 +544,36 @@ class Model:
             note_hits(eb["jack"], ib, eb["opts"][kb]["side"], cb[kb][1])
         # power plugs and extra jacks: clearance only
         for n, g in enumerate(geo):
-            for end in ([g["power"]] if g["power"] else []) + g["extra"]:
+            for end in ([g["power"]] if g["power"] else []) + g["extra"] + g["ports"]:
                 cost, k, hits, intr = self._clearance(end, state[n], n, obs, margin)
                 terms["clearance"] += cost
                 raw["clearance"] += intr
                 note_hits(end["jack"], n, end["opts"][k]["side"], hits)
-        # power cable length for the fixed wiring
-        for port, members in self.wiring:
+        # power cable length for the fixed wiring: Manhattan, or (holes known) the nearest-hole estimate with the hole points the
+        # candidate's pedal footprints leave free
+        pw_near = pw_cfg = holes = None
+        if self.power_setup:
+            pr = self.power_setup["radius"]
+            pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
+            holes, memo = self.power_setup["crossings"], {}   # (its points are already free under the board)
+
+            def pw_near(p):
+                if p not in memo:
+                    memo[p] = holes.nearest(p, pw_blocked)
+                return memo[p]
+            pw_cfg = self.power_setup["cfg"]
+        for port, members, under in self.wiring:
             prev = port
+            if isinstance(port, dict):   # a port of an on-board supply: where the candidate puts it
+                off = geo[port["inst"]]["port_pt"].get(port["port"])
+                prev = (off[0] + state[port["inst"]][0], off[1] + state[port["inst"]][1]) if off else None
             for n in members:
                 m = geo[n]["power"]["measure"] if geo[n]["power"] else None
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
-                    raw["power"] += abs(prev[0] - here[0]) + abs(prev[1] - here[1])
-                prev = here if here is not None else prev
+                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near)
+                if here is not None:
+                    prev, under = here, False
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
         if self.fs_known:
@@ -517,16 +597,16 @@ class Model:
                         fs_close.append({"a": p[4], "b": q[4], "distance_mm": d})
                         issues.append((p[0], self.titles[q[0]], lim - d))
         # io: first input to the right edge, last output to the nearest of left / right / back
-        if self.ids and self.ids[0] == chain[0] and geo[0]["in"]:
+        if self.n_ped and self.ids[0] == chain[0] and geo[0]["in"]:
             x = geo[0]["in"][0] + state[0][0]
             raw["io"] += max(0.0, b[2] - x)
-        last = len(self.ids) - 1
-        if self.ids and self.ids[-1] == chain[-1] and geo[last]["out"]:
+        last = self.n_ped - 1
+        if self.n_ped and self.ids[last] == chain[-1] and geo[last]["out"]:
             x, y = geo[last]["out"][0] + state[last][0], geo[last]["out"][1] + state[last][1]
             raw["io"] += max(0.0, min(x - b[0], b[2] - x, y - b[1]))
         terms["io"] = w["io"] * raw["io"]
         # flow: right to left
-        for n in range(1, len(state)):
+        for n in range(1, self.n_ped):
             raw["flow"] += max(0.0, state[n][0] - state[n - 1][0])
         terms["flow"] = w["flow"] * raw["flow"]
         # accessibility
@@ -575,8 +655,8 @@ class Model:
 
     # --- output -----------------------------------------------------------------------------------
     def items_for(self, state, snap=True):
-        """The owner's items with the chain pedals moved to `state` (design.move; snapped to whole px)."""
-        by_id = {self.placed[p]["id"]: n for n, p in enumerate(self.ids)}
+        """The owner's items with the chain pedals and on-board supplies moved to `state` (design.move; snapped to whole px)."""
+        by_id = {self.mitem[p]["id"]: n for n, p in enumerate(self.ids)}
         out = []
         for it in self.items:
             n = by_id.get(it["id"])
@@ -602,7 +682,7 @@ class Model:
             if abs(st[0] - own[0]) < 1e-9 and abs(st[1] - own[1]) < 1e-9 and st[2] == own[2]:
                 out[n] = tuple(own)
                 continue
-            it = self.placed[self.ids[n]]
+            it = self.mitem[self.ids[n]]
             raw = design.move(it, st[0], st[1], st[2], snap=False)
             lx, ty = raw["left_px"], raw["top_px"]
             best = None

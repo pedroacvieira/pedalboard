@@ -29,14 +29,14 @@ flowchart TB
     red_muck["<b>9</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
     ratsbane["<b>10</b> &nbsp;Wampler Ratsbane<br/>drive / distortion"]:::c_drive___distortion
     protein["<b>11</b> &nbsp;Browne Protein V3<br/>drive / distortion"]:::c_drive___distortion
-    reticon["<b>12</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
-    analog_chorus["<b>13</b> &nbsp;MXR Analog Chorus<br/>modulation"]:::c_modulation
+    analog_chorus["<b>12</b> &nbsp;MXR Analog Chorus<br/>modulation"]:::c_modulation
+    reticon["<b>13</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
     monk["<b>14</b> &nbsp;JAM Pedals Harmonious Monk Mk2<br/>tremolo"]:::c_tremolo
     belle_epoch["<b>15</b> &nbsp;Catalinbread Belle Epoch Deluxe<br/>delay"]:::c_delay
     flight_delay["<b>16</b> &nbsp;JHS Flight Delay<br/>delay"]:::c_delay
     tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> reticon --> analog_chorus --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
+    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> analog_chorus --> reticon --> monk --> belle_epoch --> flight_delay --> tumnus_deluxe --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
@@ -63,8 +63,8 @@ flowchart TB
 | 9 | JAM Pedals Red Muck Mk2 | Yes | 9V | 9V | 15 mA | True | No | Ojai R30 · F1 |
 | 10 | Wampler Ratsbane | Yes | 9-18V | 9V | 3 mA | True | No | Ojai R30 · F3 |
 | 11 | Browne Protein V3 | Yes | 9V | 9V | 130 mA | True | No | Ojai R30 · F3 |
-| 12 | PastFX Reticon Flanger | Yes | 18V | 18V | 50 mA | True | No | Ojai R30 · SW_A |
-| 13 | MXR Analog Chorus | Yes | 9V | 9V | 13 mA | Buffered | No | Ojai R30 · SW_B |
+| 12 | MXR Analog Chorus | Yes | 9V | 9V | 13 mA | Buffered | No | Ojai R30 · SW_B |
+| 13 | PastFX Reticon Flanger | Yes | 18V | 18V | 50 mA | True | No | Ojai R30 · SW_A |
 | 14 | JAM Pedals Harmonious Monk Mk2 | Yes | 9V | 9V | 145 mA | True | Yes | Ojai R30 · F3 |
 | 15 | Catalinbread Belle Epoch Deluxe | Yes | 9V | 9V | 200 mA | True (switchable) | Yes | Ojai R30 · F2 |
 | 16 | JHS Flight Delay | No | 9V | 9V | 85 mA | Buffered (switchable) | Yes | Ojai R30 · F1 |
@@ -105,7 +105,7 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 2. **drive before the phasers**: Fulltone Full-Drive 2 Mosfet
 3. **phase-type (phaser, vibe; any order)**: MXR Phase 95, JAM Pedals Retrovibe
 4. **fuzz / distortion after the phasers (Protein still follows Ratsbane)**: JAM Pedals Red Muck Mk2, Wampler Ratsbane, Browne Protein V3
-5. **modulation**: PastFX Reticon Flanger, MXR Analog Chorus
+5. **modulation**: MXR Analog Chorus, PastFX Reticon Flanger
 6. **tremolo**: JAM Pedals Harmonious Monk Mk2
 7. **delays**: Catalinbread Belle Epoch Deluxe, JHS Flight Delay
 8. **eq / boost**: Wampler Tumnus Deluxe
@@ -135,8 +135,8 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **JAM Pedals Red Muck Mk2**: Russian/Civil War Muff fuzz. Sources conflict: 60 mA (JAM shop page) vs 12-15 mA (retailers); planning on 60 mA until the manual is checked. True bypass. Power re-checked 2026-10-21: 12 mA on most listings, 15 mA on Thomann (planning on 15); the old 60 mA appears in no source.
 - **Wampler Ratsbane**: Hard-clipping distortion. 2.5 mA at 9V, 3.2 mA at 18V; approved for 18V but designed around 9V. No battery connector. True bypass.
 - **Browne Protein V3**: Dual overdrive, placed post-Ratsbane to stack or smooth the hard clipping. 9V only ('18V is not better'). Fully analog (per owner), so it may share an output. True bypass (per owner; V3 uses soft/electronic switching per Browne). This is the V3. Browne's sources conflict for V3 current: manual says <100 mA, a Browne Q&A line says 130 mA, retailers quote ~30 mA. Planning on 130 mA (worst case).
-- **PastFX Reticon Flanger**: Analog BBD flanger, post-dirt modulation. Needs an isolated 18V output, no battery. True bypass (per owner). 'Under 50 mA' is from search snippets of the PastFX page/manual (direct fetch failed): verify.
 - **MXR Analog Chorus**: Analog BBD chorus (M234). Buffered bypass per the Dunlop manual (one reviewer says it dulls highs when off). Battery or 9V DC.
+- **PastFX Reticon Flanger**: Analog BBD flanger, post-dirt modulation. Needs an isolated 18V output, no battery. True bypass (per owner). 'Under 50 mA' is from search snippets of the PastFX page/manual (direct fetch failed): verify.
 - **JAM Pedals Harmonious Monk Mk2**: Harmonic tremolo with digital tap controller. Analog signal path but a digital processor, so treated as DIGITAL: must not share an output. JAM recommends an isolated supply; 145 mA is JAM's max (third-party listings say 35-100 mA). True bypass.
 - **Catalinbread Belle Epoch Deluxe**: Tape echo emulation. Analog EP-3-style circuitry around a 24-bit digital delay line, so treated as DIGITAL. Catalinbread lists 9V DC ONLY at 200 mA (it steps up to an internal rail itself): the original plan had it on 18V, which could damage it, so it is on a 9V output here. Give it a clean isolated output. Spelled 'Epoque' in the original plan.
 - **JHS Flight Delay**: Delay with analog-style (BBD voiced) and DSP-style digital modes, so treated as DIGITAL (circuit not confirmed). Planned for the gig board (after the Belle Epoch, to buy) (not in your Pedal Playground save, so marked not owned). 85 mA at 9V DC center-negative per retailers; JHS warns against going above 9V. Bypass is switchable between true bypass and buffered (per owner); buffered in this plan. Also has a Trails bypass mode.
@@ -219,6 +219,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ### Ojai R30 (left)
 
+Placement: under the board. Layout item: Strymon Ojai R30 (item-4000000002).
+
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
 | **F1** (fixed) | 9V | JHS Flight Delay | 85 | 85 / 500 mA |
@@ -229,6 +231,8 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 | | | **Ojai R30 total** | | **493 mA** |
 
 ### Ojai R30 (right)
+
+Placement: under the board. Layout item: Strymon Ojai R30 (item-4000000003).
 
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
@@ -263,13 +267,17 @@ Cable lengths: see Cable routing.
 
 ## Cable routing
 
-Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 3.5 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable width on the board 3.5 mm). Plugs are modelled (default cable type `ernie_ball_flat_patch_ra`, catalog/cables.json): a right-angle plug's cable leaves the head to the left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs 3.5 mm straight, then is routed. Power cables run under the board and are listed, not routed yet; their plug at each pedal's power jack is modelled for clearance (`dc_ra_2_1_low_profile`, exit side in the Exits column).
+Signal cables are routed on the board surface between the pedals: never in front of the lowest pedals, at most 3.5 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable width on the board 3.5 mm). A cable may also pass under the board when that is shorter or less crowded: it goes down in a hole cell (a grid cell whose centre lies in a hole that no pedal covers), or round the board edge along an edge segment the owner drew in the board editor (`board.json`, type `edge`), runs under the board (only the under-board supplies are obstacles there, at most 2 cables stacked) and comes up in a hole or round an edge segment. A pass through the deck adds 15 mm of cable and a crossing of the board edge 30 mm (twice the hole transit), each costs 15 mm more in the search, a mm under the board counts 0.9 in the search (these numbers are unverified estimates; `cables.under_board: false` keeps every cable on top). Plugs are modelled (default cable type `ernie_ball_flat_patch_ra`, catalog/cables.json): a right-angle plug's cable leaves the head to the left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs 3.5 mm straight, then is routed. Power cables are routed with the same router on their own grid (3.2 mm wide; plug `dc_ra_2_1_low_profile`, exit side in the Exits column) and count against each other only: at most 2 stacked per cell and layer, at most 2 across a power plug. They stay under the board as much as they can: a cable from an under-board supply port starts under the board and comes up through the usable hole nearest its pedal's power jack (a hole cell no pedal covers) or round the board edge along an edge segment the owner drew in the board editor (`board.json`, type `edge`; none drawn: holes only; with neither holes nor edge segments an under-board supply is an error), then runs the short way on top to the jack; a hop from a pedal's power jack (daisy chain) or from an on-board supply starts on top. In the search a mm on top counts 3 (under the board 1). A pass through a hole adds 15 mm of cable and a crossing of the board edge 30 mm (both unverified estimates; the edge value is twice the hole transit). A power cable that runs more than 150 mm on top is reported.
+
+![Power routing](power.svg)
+
+`power.svg` shows the power wiring alone: the supplies as translucent red silhouettes (dashed when they hang under the board), the pedals faint, the power jacks and supply ports, the DC cables (dashed under the board, a ring at each hole, a square at each board edge) and a table of the power cables.
 
 ![Signal routing](routing.svg)
 
-The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where they are stacked), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` also writes the git-ignored `routing.local.svg` with the pedal images.
+The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` also writes the git-ignored `routing.local.svg` with the pedal images.
 
-Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).
+Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top.
 
 | Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|:-:|--:|---|
@@ -283,31 +291,31 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S8 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 68 | routed |
 | S9 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 164 | routed |
 | S10 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 138 | routed |
-| S11 | signal | protein.out | reticon.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 317 | routed |
-| S12 | signal | reticon.out | analog_chorus.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 257 | routed |
-| S13 | signal | analog_chorus.out | monk.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 84 | routed |
+| S11 | signal | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 212 | routed |
+| S12 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 150 | routed |
+| S13 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 217 | routed |
 | S14 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 88 | routed |
-| S15 | signal | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 180 | routed |
+| S15 | signal | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 181 | routed |
 | S16 | signal | flight_delay.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 49 | routed |
-| P1 | power | psu1.F1 | flight_delay.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~129 | not routed (under the board) |
-| P2 | power | psu1.F2 | belle_epoch.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~173 | not routed (under the board) |
-| P3 | power | psu1.F3 | monk.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~107 | not routed (under the board) |
-| P4 | power | psu1.SW_A | reticon.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~130 | not routed (under the board) |
-| P5 | power | psu1.SW_B | analog_chorus.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~61 | not routed (under the board) |
-| P6 | power | psu2.F1 | red_muck.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~48 | not routed (under the board) |
-| P7 | power | red_muck.power | beano.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~304 | not routed (under the board) |
-| P8 | power | beano.power | danelectro_3699.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~198 | not routed (under the board) |
-| P9 | power | danelectro_3699.power | sun_face.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~204 | not routed (under the board) |
-| P10 | power | psu2.F2 | polytune_3.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~283 | not routed (under the board) |
-| P11 | power | psu2.F3 | ratsbane.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~95 | not routed (under the board) |
-| P12 | power | ratsbane.power | protein.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~122 | not routed (under the board) |
-| P13 | power | protein.power | tumnus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~237 | not routed (under the board) |
-| P14 | power | psu2.SW_A | fulldrive_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~143 | not routed (under the board) |
-| P15 | power | fulldrive_2.power | mini_ego.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~254 | not routed (under the board) |
-| P16 | power | psu2.SW_B | phase_95.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~59 | not routed (under the board) |
-| P17 | power | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ~163 | not routed (under the board) |
+| P1 | power | psu1.F1 | flight_delay.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 106 mm under, 2 mm on top | 141 | routed |
+| P2 | power | psu1.F2 | belle_epoch.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 62 mm under, 136 mm on top | 231 | routed |
+| P3 | power | psu1.F3 | monk.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 76 mm under, 27 mm on top | 135 | routed |
+| P4 | power | psu1.SW_A | reticon.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 86 mm under, 34 mm on top | 152 | routed |
+| P5 | power | psu1.SW_B | analog_chorus.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 46 mm under, 46 mm on top | 125 | routed |
+| P6 | power | psu2.F1 | red_muck.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 42 mm under, 7 mm on top | 82 | routed |
+| P7 | power | red_muck.power | beano.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 278 mm under, 40 mm on top | 383 | routed |
+| P8 | power | beano.power | danelectro_3699.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 116 mm under, 31 mm on top | 213 | routed |
+| P9 | power | danelectro_3699.power | sun_face.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 110 mm under, 83 mm on top | 258 | routed |
+| P10 | power | psu2.F2 | polytune_3.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 76 mm on top | 287 | routed |
+| P11 | power | psu2.F3 | ratsbane.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 82 mm under, 15 mm on top | 129 | routed |
+| P12 | power | ratsbane.power | protein.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (140 mm on top) | 175 | routed |
+| P13 | power | protein.power | tumnus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 146 mm under, 66 mm on top | 278 | routed |
+| P14 | power | psu2.SW_A | fulldrive_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 96 mm under, 17 mm on top | 145 | routed |
+| P15 | power | fulldrive_2.power | mini_ego.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 142 mm under, 47 mm on top | 254 | routed |
+| P16 | power | psu2.SW_B | phase_95.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 11 mm under, 52 mm on top | 96 | routed |
+| P17 | power | phase_95.power | retrovibe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (111 mm on top) | 146 | routed |
 
-Signal cable, minimum: 2400 mm over 16 cables.
+Signal cable, minimum: 2322 mm over 16 cables.
 
 ## Footswitches
 
@@ -331,19 +339,19 @@ Crowding: 184.3 (18 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 
 ## Layout proposals
 
-Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 15.3 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 65.8 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
 
 | | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
 |---|--:|--:|--:|--:|
 | Blocked plugs | 2 (21.7 mm) | 0 (0.0 mm) | 0 (0.0 mm) | 0 (0.0 mm) |
 | Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
-| Footswitch crowding (lower is better) | 184 | 167 | 156 | 153 |
-| Closest footswitch pair (mm) | 45.6 | 46.6 | 46.6 | 46.6 |
-| Signal cables, routed minimum (mm) | 2400 | 2373 | 2378 | 2380 |
-| Power cables, estimate (mm) | 2504 | 2474 | 2486 | 2509 |
-| First input / last output to the board edges (mm) | 28 | 28 | 28 | 28 |
+| Footswitch crowding (lower is better) | 184 | 147 | 155 | 143 |
+| Closest footswitch pair (mm) | 45.6 | 48.5 | 48.5 | 46.6 |
+| Signal cables, routed minimum (mm) | 2322 | 2238 | 2253 | 2375 |
+| Power cables, routed minimum (mm) | 3213 | 3098 | 3086 | 3159 |
+| First input / last output to the board edges (mm) | 28 | 21 | 28 | 21 |
 | Build errors / warnings | 0 / 2 | 0 / 0 | 0 / 0 | 0 / 0 |
-| Score (lower is better) | 3918 | 3374 | 3382 | 3406 |
+| Score (lower is better) | 4162 | 3463 | 3482 | 3646 |
 
 All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.
 
@@ -355,9 +363,12 @@ Pedal Playground file: [proposals/1.json](proposals/1.json); blocked plugs fixed
 
 | Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
 |---|--:|--:|--:|---|
-| JAM Pedals Red Muck Mk2 | +2.3 | +17.5 | 17.6 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +0.6 | -32.2 | 32.2 | 0 deg |
-| Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+| Wampler Ratsbane | +31.6 | +2.8 | 31.7 | 90 deg |
+| MXR Analog Chorus | -1.1 | -19.8 | 19.8 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +4.5 | -6.8 | 8.1 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +10.2 | 10.9 | 0 deg |
+| JHS Flight Delay | -13.0 | +7.3 | 14.9 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +10.2 | 12.5 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 
@@ -368,9 +379,9 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
 | Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
 | Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
-| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
-| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
-| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2, Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F2 | 9V | MXR Phase 95 |
+| Ojai R30 (right) | F3 | 9V | Wampler Ratsbane, Danelectro 3699 Fuzz, JAM Pedals Retrovibe, AnalogMan Beano Boost, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
 | Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
 
@@ -382,10 +393,11 @@ Pedal Playground file: [proposals/2.json](proposals/2.json); blocked plugs fixed
 
 | Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
 |---|--:|--:|--:|---|
-| JAM Pedals Red Muck Mk2 | +2.3 | +9.0 | 9.3 | 0 deg |
-| MXR Analog Chorus | +0.6 | -7.3 | 7.4 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +0.6 | -40.1 | 40.1 | 0 deg |
+| Wampler Ratsbane | +31.6 | +2.8 | 31.7 | 90 deg |
+| MXR Analog Chorus | -1.1 | -19.8 | 19.8 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | +4.5 | -7.3 | 8.6 | 0 deg |
 | Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+| JHS Flight Delay | -2.3 | +0.0 | 2.3 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 
@@ -396,9 +408,9 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
 | Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
 | Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
-| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2 |
-| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
-| Ojai R30 (right) | F3 | 9V | MXR Phase 95, AnalogMan Beano Boost, JAM Pedals Retrovibe, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2, Browne Protein V3, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F2 | 9V | MXR Phase 95 |
+| Ojai R30 (right) | F3 | 9V | Wampler Ratsbane, Danelectro 3699 Fuzz, JAM Pedals Retrovibe, AnalogMan Beano Boost, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
 | Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
 
@@ -410,11 +422,11 @@ Pedal Playground file: [proposals/3.json](proposals/3.json); blocked plugs fixed
 
 | Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
 |---|--:|--:|--:|---|
-| JAM Pedals Red Muck Mk2 | +2.3 | +24.3 | 24.4 | 0 deg |
-| Wampler Ratsbane | -3.4 | +7.9 | 8.6 | 90 deg |
-| MXR Analog Chorus | +0.6 | -6.8 | 6.8 | 0 deg |
-| JAM Pedals Harmonious Monk Mk2 | +0.6 | -39.5 | 39.5 | 0 deg |
-| Catalinbread Belle Epoch Deluxe | -4.0 | +0.6 | 4.0 | 0 deg |
+| JAM Pedals Red Muck Mk2 | +2.3 | +17.5 | 17.6 | 0 deg |
+| MXR Analog Chorus | +0.0 | -19.8 | 19.8 | 0 deg |
+| JAM Pedals Harmonious Monk Mk2 | -0.6 | -40.1 | 40.1 | 0 deg |
+| Catalinbread Belle Epoch Deluxe | -4.0 | +2.8 | 4.9 | 0 deg |
+| Wampler Tumnus Deluxe | -7.3 | +2.8 | 7.9 | 0 deg |
 
 Power wiring for this layout (computed under the power policy; the build keeps using project.json):
 
@@ -424,10 +436,10 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (left) | F2 | 9V | Catalinbread Belle Epoch Deluxe |
 | Ojai R30 (left) | F3 | 9V | JAM Pedals Harmonious Monk Mk2 |
 | Ojai R30 (left) | SW_A | 18V | PastFX Reticon Flanger |
-| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus |
-| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2, Wampler Ratsbane, Browne Protein V3, Wampler Tumnus Deluxe |
-| Ojai R30 (right) | F2 | 9V | TC Electronic PolyTune 3 |
+| Ojai R30 (left) | SW_B | 9V | MXR Analog Chorus, MXR Phase 95 |
+| Ojai R30 (right) | F1 | 9V | JAM Pedals Red Muck Mk2, Wampler Tumnus Deluxe |
+| Ojai R30 (right) | F2 | 9V | Wampler Ratsbane, Browne Protein V3 |
 | Ojai R30 (right) | F3 | 9V | JAM Pedals Retrovibe, AnalogMan Beano Boost, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
-| Ojai R30 (right) | SW_B | 9V | MXR Phase 95 |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
 

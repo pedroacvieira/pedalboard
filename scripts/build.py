@@ -10,6 +10,7 @@ Exit status is 1 if any project has validation errors.
 import argparse
 import sys
 
+import boards
 import footswitches
 import jacks
 import outlines
@@ -42,14 +43,15 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None, board_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
     candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
     project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
     signal and power jacks falls back to the fixed boxes): for callers that only need the data findings.
-    `outline_data`: usable catalog/outlines.json entries (read if None)."""
+    `outline_data`: usable catalog/outlines.json entries (read if None). `board_data`: usable catalog/boards.json
+    entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
@@ -220,6 +222,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
             errors.append(f"power: {inst['id']}: unknown supply '{inst['supply']}'")
             continue
         instances[inst["supply"]] = instances.get(inst["supply"], 0) + 1
+        if jacks.placement(inst, project) not in jacks.PLACEMENTS:
+            errors.append(f"power.supplies: {inst['id']} has unknown placement '{jacks.placement(inst, project)}' "
+                          f"({', '.join(jacks.PLACEMENTS)})")
         for key in ("brand", "model", "quantity"):
             need(f"supply {sup['id']}.{key}", sup.get(key))
         outputs_def = sup.get("outputs")
@@ -276,7 +281,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True, items=items, outlines=outline_data)
+                cable_types=cable_types, defer=True, items=items, outlines=outline_data, board_data=board_data)
     if route:
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
@@ -327,6 +332,15 @@ def sup_name(sup):
 
 def inst_label(s):
     return s["inst"].get("label") or f"{sup_name(s['sup'])} #{s['inst']['id']}"
+
+
+def placement_line(ctx, s):
+    """'Placement: under the board. Layout item: Strymon Ojai R30 (item-3).' for one supply instance."""
+    on_board = jacks.placement(s["inst"], ctx["project"]) == "on_board"
+    lay = ctx.get("layout")
+    item = ((lay or {}).get("inst_item") or {}).get(s["inst"]["id"])
+    where = "no layout" if lay is None else (f"{item['title']} ({item['id']})" if item else "not in the layout")
+    return f"Placement: {'on the board' if on_board else 'under the board'}. Layout item: {where}."
 
 
 CATEGORY_STYLE = {  # category: (fill, stroke); light fills with dark text read well in light and dark themes
@@ -427,23 +441,82 @@ def mermaid_power(ctx):
     return lines
 
 
+def under_cell(c):
+    """'no', 'yes' (a power cable not routed) or 'yes (2 holes, 180 mm)': the passes through the deck (holes, board
+    edges: 'back edge'), mm under the board; a routed power cable also gives the mm on top ('1 hole, 76 mm under, 27 mm on top')."""
+    if c["kind"] == "power" and c["status"].startswith("routed"):
+        if not c.get("under_mm"):
+            return f"no ({c['top_mm']:.0f} mm on top)"
+        n = c.get("holes_used") or 0
+        passes = ([f"{n} hole{'s' if n != 1 else ''}"] if n else []) + [f"{side} edge" for side in c.get("edge_sides") or []]
+        return f"{', '.join(passes)}; {c['under_mm']:.0f} mm under, {c['top_mm']:.0f} mm on top"
+    if not c["under_board"]:
+        return "no"
+    if c["kind"] != "signal" or not (c.get("holes_used") or c.get("edges_used")):
+        return "yes"
+    n = c["holes_used"]
+    if c.get("edges_used"):
+        passes = ([f"{n} hole{'s' if n != 1 else ''}"] if n else []) + [f"{side} edge" for side in c.get("edge_sides") or []]
+        return f"yes ({', '.join(passes)}, {c['under_mm']:.0f} mm)"
+    return f"yes ({n} hole{'s' if n != 1 else ''}, {c['under_mm']:.0f} mm)"
+
+
+def power_text(ctx, cfg):
+    """The README paragraph on the power cables: the routing model when they are routed, else why not."""
+    pw = ctx["routing"].get("power") or {}
+    power = [c for c in ctx.get("cable_list") or [] if c["kind"] == "power"]
+    if not any(c["status"].startswith("routed") for c in power):
+        return ("Power cables are listed, not routed" + (f" ({power[0]['status']})" if power and power[0]["status"].startswith("not routed (") else "")
+                + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
+                   if cfg.get("power_type") else "."))
+    ps = pw["settings"]
+    return (f"Power cables are routed with the same router on their own grid ({pw['diameter_mm']:g} mm wide; plug `{cfg['power_type']}`, "
+            f"exit side in the Exits column) and count against each other only: at most {ps['max_stack']} stacked per cell and layer, "
+            f"at most {cfg['max_over_plug']} across a power plug. They stay under the board as much as they can: a cable from an "
+            f"under-board supply port starts under the board and comes up through the usable hole nearest its pedal's power jack "
+            f"(a hole cell no pedal covers) or round the board edge along an edge segment the owner drew in the board editor (`board.json`, "
+            f"type `edge`; none drawn: holes only; with neither holes nor edge segments an under-board supply is an error), then runs the "
+            f"short way on top to the jack; a hop from a pedal's power jack (daisy chain) or from an on-board supply starts on top. In the search a mm "
+            f"on top counts {ps['top_cost']:g} (under the board 1). A pass through a hole adds {pw['hole_transit_mm']:g} mm of cable and a crossing of "
+            f"the board edge {pw['edge_transit_mm']:g} mm (both unverified estimates; the edge value is {pw['edge_transit_source']}). "
+            f"A power cable that runs more than {routing.POWER_TOP_WARN_MM:g} mm on top is reported.")
+
+
 def routing_section(ctx):
     """README section: routed signal cables (picture + table) and the power cable list."""
     cables = ctx.get("cable_list") or []
     if not cables:
         return []
     cfg = ctx["routing"]["settings"]
+    under = ctx["routing"].get("under") is not None and (ctx["routing"].get("hole_cells") or ctx["routing"].get("edge_links"))
+    edges = bool(ctx["routing"].get("edge_links"))
+    front = ("on the board and in front of the pedals up to " if cfg.get("route_in_front") else "never in front of the lowest pedals, at most ")
+    where = ("" if under else "never under the board, ")
     md = ["", "## Cable routing", "",
-          f"Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, "
-          f"at most {cfg['edge_margin_mm']:g} mm beyond the back and sides, at most {cfg['max_stack']} cables stacked in one "
+          f"Signal cables are routed on the board surface between the pedals: {where}{front}"
+          f"{cfg['edge_margin_mm']:g} mm beyond the back and sides{' and the front' if cfg.get('route_in_front') else ''}, at most {cfg['max_stack']} cables stacked in one "
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
+          + (f"A cable may also pass under the board when that is shorter or less crowded: it goes down "
+             f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers)"
+             + (", or round the board edge along an edge segment the owner drew in the board editor (`board.json`, type `edge`)" if edges else "")
+             + f", runs under the board (only the "
+             f"under-board supplies are obstacles there, at most {cfg['max_stack_under']} cables stacked) and comes up in a hole"
+             + (" or round an edge segment" if edges else "") + ". "
+             f"A pass through the deck adds {cfg['hole_transit_mm']:g} mm of cable"
+             + (f" and a crossing of the board edge {ctx['routing']['edge_transit_mm']:g} mm ({ctx['routing']['edge_transit_source']})" if edges else "")
+             + f", each costs {cfg['hole_penalty']:g} mm more in the "
+             f"search, a mm under the board counts {cfg['under_cost']:g} in the search (these numbers are unverified estimates; "
+             f"`cables.under_board: false` keeps every cable on top). " if under else "")
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
              f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
              f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
-          + "Power cables run under the board and are listed, not routed yet"
-          + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
-             if cfg.get("power_type") else "."), ""]
+          + power_text(ctx, cfg), ""]
+    if any(c["kind"] == "power" and c.get("stretches") for c in ctx.get("cable_list") or []):
+        md += ["![Power routing](power.svg)", "",
+               "`power.svg` shows the power wiring alone: the supplies as translucent red silhouettes (dashed when they hang "
+               "under the board), the pedals faint, the power jacks and supply ports, the DC cables (dashed under the board, a "
+               "ring at each hole, a square at each board edge) and a table of the power cables.", ""]
     missing = (ctx.get("layout") or {}).get("no_outline")
     if missing:
         md += [f"Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. "
@@ -453,18 +526,19 @@ def routing_section(ctx):
                "The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, "
                "every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) "
                "with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where "
-               "they are stacked), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
+               "they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` "
                "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
-           "'~' marks a power cable: a right-angle estimate between its jacks (power cables are not routed).", "",
+           "'~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board "
+           "column gives its passes (holes, edges), the mm under the board and the mm on top.", "",
            "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
            "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
         md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
-                  f"{'yes' if c['under_board'] else 'no'} | {length} | {c['status']} |")
+                  f"{under_cell(c)} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
         md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
@@ -576,7 +650,7 @@ def proposals_section(ctx, cat_pedals):
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
         md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, outlines, "
-               "cables, specs) changed since these proposals were made; rerun the command above.", ""]
+               "cables, specs) or the board's holes (catalog/boards.json, board.json) changed since these proposals were made; rerun the command above.", ""]
     props = meta.get("proposals") or []
     if not props:
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
@@ -586,7 +660,7 @@ def proposals_section(ctx, cat_pedals):
             ("Footswitch crowding (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
-            ("Power cables, estimate (mm)", lambda m: f"{m['power_mm']:.0f}"),
+            ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}" + (f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else "")),
             ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),
             ("Build errors / warnings", lambda m: f"{m['errors']} / {m['warnings']}"),
             ("Score (lower is better)", lambda m: f"{m['score']:.0f}")]
@@ -607,7 +681,7 @@ def proposals_section(ctx, cat_pedals):
                "| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |", "|---|--:|--:|--:|---|"]
         for mv in p["moved"]:
             rot = f"{mv['rot_from']} -> {mv['rot_to']} deg" if mv["rot_from"] != mv["rot_to"] else f"{mv['rot_to']} deg"
-            md.append(f"| {nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
+            md.append(f"| {mv.get('name') or nm(mv['pedal'])} | {mv['dx_mm']:+.1f} | {mv['dy_mm']:+.1f} | {mv['distance_mm']:.1f} | {rot} |")
         pw = p.get("power") or {}
         md += ["", f"Power wiring for this layout (computed under the power policy; the build keeps using project.json"
                + (f"; {pw['error']}, so the owner's wiring is shown" if pw.get("error") else "") + "):", "",
@@ -676,7 +750,7 @@ def project_readme(ctx, cat_pedals):
     for s in ctx["supplies"]:
         total = sum(r["load"] for r in s["rows"])
         grand += total
-        md += [f"### {inst_label(s)}", "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
+        md += [f"### {inst_label(s)}", "", placement_line(ctx, s), "", "| Output | Voltage | Pedal | Draw (mA) | Output total |", "|---|--:|---|--:|--:|"]
         for row in s["rows"]:
             odef = row["def"]
             kind = "switchable" if odef and len(odef.get("options", [])) > 1 else "fixed"
@@ -884,9 +958,10 @@ def main():
     jacks_file = jacks.read_file()
     fs_file = footswitches.read_file()
     outl = outlines.usable(outlines.read_file()["outlines"])
+    board_data = boards.load()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl)
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -897,6 +972,11 @@ def main():
             (pdir / "routing.svg").write_text(picture)
         else:
             (pdir / "routing.svg").unlink(missing_ok=True)
+        power_picture = svgdraw.render_power(ctx, names)
+        if power_picture:
+            (pdir / "power.svg").write_text(power_picture)
+        else:
+            (pdir / "power.svg").unlink(missing_ok=True)
         if args.images:
             local = svgdraw.render(ctx, names, images=pedal_images(ctx)) if picture else None
             if local:
@@ -906,7 +986,7 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl)
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
                 for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)

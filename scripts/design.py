@@ -121,6 +121,62 @@ def outline_rects(item, outlines):
     return out
 
 
+def _rect_minus(r, cut):
+    """Fraction rectangle `r` minus `cut`: up to four non-overlapping pieces (empty if `cut` covers all of it)."""
+    x0, y0, x1, y1 = r
+    cx0, cy0, cx1, cy1 = max(cut[0], x0), max(cut[1], y0), min(cut[2], x1), min(cut[3], y1)
+    if cx0 >= cx1 or cy0 >= cy1:
+        return [r]
+    pieces = [(x0, y0, x1, cy0), (x0, cy1, x1, y1), (x0, cy0, cx0, cy1), (cx1, cy0, x1, cy1)]   # above, below, left, right
+    return [p for p in pieces if p[2] - p[0] > 1e-9 and p[3] - p[1] > 1e-9]
+
+
+def board_holes(board_item, holes, edits=None):
+    """The effective holes of a board as canvas rectangles (x0, y0, x1, y1) in mm.
+
+    `holes`: the derived holes of the board image (catalog/boards.json, rectangles in fractions of the unrotated
+    image), `edits`: the project's boxes (boards.load_edits: {"type": "hole" | "filled", "x0".."y1"} in fractions of
+    the image; "edge" segments are not holes and are ignored here, see `board_edges`), applied in order: "filled" subtracts
+    its area from the holes so far, "hole" adds its area (a later box wins where boxes overlap). The result is a list of non-overlapping axis-aligned rectangles, mapped like
+    `outline_rects` (0/90/180/270 all right); [] without a board or without holes."""
+    if not board_item:
+        return []
+    rects = [tuple(r) for r in holes or []]
+    for b in edits or []:
+        if b["type"] == "edge":
+            continue
+        box = (b["x0"], b["y0"], b["x1"], b["y1"])
+        rects = [piece for r in rects for piece in _rect_minus(r, box)]
+        if b["type"] == "hole":
+            rects.append(box)
+    out = []
+    for fx0, fy0, fx1, fy1 in rects:
+        (xa, ya), (xb, yb) = jack_point(board_item, fx0, fy0), jack_point(board_item, fx1, fy1)
+        out.append((min(xa, xb), min(ya, yb), max(xa, xb), max(ya, yb)))
+    return out
+
+
+def board_edges(board_item, edits=None):
+    """The edge segments of a board (`edits` as in `board_holes`, only the type "edge": {"side", "from", "to"} along a side of the
+    unrotated image) as canvas segments ((x0, y0), (x1, y1), side) in mm, x0 <= x1 and y0 <= y1; `side` is the canvas side of
+    the board (left / right / back = top / front = bottom) the segment lies on after the rotation. [] without a board."""
+    if not board_item:
+        return []
+    out = []
+    for b in edits or []:
+        if b["type"] != "edge":
+            continue
+        f, t = b["from"], b["to"]
+        ends = {"left": ((0, f), (0, t)), "right": ((1, f), (1, t)), "back": ((f, 0), (t, 0)), "front": ((f, 1), (t, 1))}[b["side"]]
+        (xa, ya), (xb, yb) = (jack_point(board_item, *q) for q in ends)
+        x0, x1, y0, y1 = min(xa, xb), max(xa, xb), min(ya, yb), max(ya, yb)
+        fx0, fy0, fx1, fy1 = footprint(board_item)
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        side = min((abs(mx - fx0), "left"), (abs(mx - fx1), "right"), (abs(my - fy0), "back"), (abs(my - fy1), "front"))[1]
+        out.append(((x0, y0), (x1, y1), side))
+    return out
+
+
 def jack_facing(item, facing):
     """The jack's facing ('left'/'right'/'top'/'down') after the item's rotation."""
     dx, dy = FACING[facing]

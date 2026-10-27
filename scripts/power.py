@@ -10,8 +10,10 @@
   using the owner's hand wiring in project.json.
 """
 import itertools
+import math
 import re
 
+import design
 from routing import POLARITIES
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
 
@@ -122,26 +124,213 @@ def manhattan(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def chain_order(start, members, points):
+HOLE_SAMPLE_MM = 6.0   # spacing of the hole points the power estimate looks for (`hole_sample`)
+
+
+def hole_sample(hole_rects, spacing=HOLE_SAMPLE_MM):
+    """A cheap sample of the points of the board's holes (canvas mm): a grid of `spacing` mm over each hole rectangle,
+    centred in it (a rectangle narrower than the spacing gets its centre line)."""
+    out = []
+    for x0, y0, x1, y1 in hole_rects or []:
+        nx, ny = max(1, int((x1 - x0) // spacing)), max(1, int((y1 - y0) // spacing))
+        ox, oy = (x1 - x0 - (nx - 1) * spacing) / 2, (y1 - y0 - (ny - 1) * spacing) / 2
+        out += [(x0 + ox + i * spacing, y0 + oy + j * spacing) for i in range(nx) for j in range(ny)]
+    return out
+
+
+def edge_sample(segments, spacing=HOLE_SAMPLE_MM):
+    """Points ON the board border along the edge segments (`layout["edge_segments"]`, canvas mm), `spacing` mm apart (centred in
+    the segment; a segment shorter than the spacing gets its middle): the crossing points of the power estimate."""
+    out = []
+    for (x0, y0), (x1, y1), _ in segments or []:
+        length = math.hypot(x1 - x0, y1 - y0)
+        n = max(1, int(length // spacing))
+        for i in range(n):
+            f = 0.5 if length == 0 else (length - (n - 1) * spacing) / 2 / length + i * spacing / length
+            out.append((x0 + (x1 - x0) * f, y0 + (y1 - y0) * f))
+    return out
+
+
+def covered(point, rects):
+    return any(r[0] <= point[0] <= r[2] and r[1] <= point[1] <= r[3] for r in rects)
+
+
+def estimate_setup(project, lay, cable_types):
+    """What the layout-level power estimate needs, or None (then Manhattan is used): {"index": a `HoleIndex` of the hole
+    points of the board that are free under the board (not inside an under-board supply's outline grown by the power
+    cable's radius, as the router's hole cells), "edges": a `HoleIndex` of the points on the board border inside the
+    owner's edge segments (`edge_sample`, likewise free under the board; never covered by a pedal: they are outside it),
+    "cfg": {"top_cost", "transit_mm", "edge_transit_mm"}, "crossings": a `Crossings` of both, "radius": the power cable's
+    radius}. `lay`: jacks.layout_from_items's result (its holes, edge segments, under-board supply items and outline shapes). Under-board supplies do not
+    move in the layout search, so this is done once per model. None without a power cable type, without holes or with
+    `cables.under_board: false`."""
+    import routing
+    cfg = routing.settings(project, cable_types)
+    ptype = cable_types.get(cfg.get("power_type") or "")
+    if not ptype or not cfg["under_board"] or not (lay.get("holes") or lay.get("edge_segments")):
+        return None
+    transit = cfg.get("hole_transit_mm")
+    if transit is None:
+        transit = lay["hole_transit_mm"] if lay.get("hole_transit_mm") is not None else routing.HOLE_TRANSIT_FALLBACK
+    pcfg = routing.power_settings(project, cfg)
+    edge_t = routing.edge_transit(pcfg, lay, transit)[0]
+    radius = float(ptype["diameter_mm"]) / 2
+    under = [r for iid, it in (lay.get("inst_item") or {}).items() if (lay.get("inst_placement") or {}).get(iid) != "on_board"
+             for r in design.item_shapes(lay.get("shapes") or {}, it)]
+    grown = [(a - radius, b - radius, c + radius, d + radius) for a, b, c, d in under]
+    sample = [h for h in hole_sample(lay["holes"]) if not covered(h, grown)]
+    edges = [h for h in edge_sample(routing.usable_edge_segments(lay, cfg)) if not covered(h, grown)]
+    pw_cfg = {"top_cost": float(pcfg["top_cost"]), "transit_mm": float(transit), "edge_transit_mm": float(edge_t)}
+    index, eindex = HoleIndex(sample), HoleIndex(edges)
+    if not index and not eindex:
+        return None
+    return {"index": index, "edges": eindex, "cfg": pw_cfg, "crossings": Crossings(index, eindex, pw_cfg), "radius": radius}
+
+
+def usable_holes(setup, rects):
+    """The crossing points of the setup (`Crossings`) with the hole points that lie in none of `rects` (pedal outlines) grown
+    by the power cable's radius (the edge points are outside every pedal), or None when no point is left."""
+    r = setup["radius"]
+    grown = [(a - r, b - r, c + r, d + r) for a, b, c, d in rects]
+    out = Crossings(setup["index"].without(grown), setup["edges"], setup["cfg"])
+    return out or None
+
+
+class HoleIndex:
+    """The hole sample bucketed in `cell` mm squares: `nearest` looks at the squares round the query point, ring by ring
+    (the layout search asks for the nearest usable hole point of every power jack of every candidate)."""
+
+    def __init__(self, sample, cell=12.0):
+        self.cell, self.buckets, self.points = cell, {}, list(sample)
+        for h in self.points:
+            self.buckets.setdefault((int(h[0] // cell), int(h[1] // cell)), []).append(h)
+        keys = list(self.buckets)
+        self.span = max([abs(i) for i, _ in keys] + [abs(j) for _, j in keys] + [0]) + 1   # rings never need to go beyond
+
+    def __len__(self):
+        return len(self.points)
+
+    def without(self, rects):
+        """A new index of the points that lie in none of `rects`."""
+        return HoleIndex([h for h in self.points if not covered(h, rects)], self.cell)
+
+    def nearest(self, point, blocked=(), reach=100.0):
+        """The sample point nearest to `point` outside every `blocked` rectangle, or None. The rectangles farther than `reach`
+        mm from the point are left out of the first search (they cannot cover a point that close); when that finds nothing
+        within `reach`, the search is repeated over every ring with all of them."""
+        x, y = point
+        near = [r for r in blocked if r[0] <= x + reach and r[2] >= x - reach and r[1] <= y + reach and r[3] >= y - reach]
+        h = self._nearest(point, near, reach)
+        if h is not None and (h[0] - x) ** 2 + (h[1] - y) ** 2 <= reach * reach:
+            return h
+        return self._nearest(point, blocked, math.inf)
+
+    def _nearest(self, point, blocked, reach):
+        c, (ci, cj) = self.cell, (int(point[0] // self.cell), int(point[1] // self.cell))
+        best, bd = None, math.inf
+        limit = min(self.span + max(abs(ci), abs(cj)), int(reach // c) + 1 if reach < math.inf else 10 ** 6)
+        for r in range(limit + 1):
+            ring = [(ci, cj)] if r == 0 else (
+                [(ci + dx, cj + s) for dx in range(-r, r + 1) for s in (-r, r)] +
+                [(ci + s, cj + dy) for dy in range(-r + 1, r) for s in (-r, r)])
+            for key in ring:
+                for h in self.buckets.get(key, ()):
+                    d = (h[0] - point[0]) ** 2 + (h[1] - point[1]) ** 2
+                    if d < bd and not covered(h, blocked):
+                        best, bd = h, d
+            if best is not None and bd <= (r * c) ** 2:   # the next ring is at least r cells away
+                break
+        return best
+
+
+class Crossings:
+    """Where a power cable may change layer, for the estimate: a `HoleIndex` of hole points (a pass costs `cfg["transit_mm"]`) and
+    one of edge points (round the board edge, `cfg["edge_transit_mm"]`; None / empty: holes only). `nearest` gives the
+    cheapest crossing for a query point: transit + `top_cost` x the straight distance to it on top; `transit_of` the transit
+    of a point it returned. Used wherever a `HoleIndex` is (`hop_estimate`, `assign`, `Model`)."""
+
+    def __init__(self, holes, edges, cfg):
+        self.holes, self.edges, self.cfg = holes, edges or HoleIndex([]), cfg
+        self.edge_set = set(self.edges.points)
+
+    def __len__(self):
+        return len(self.holes) + len(self.edges)
+
+    def without(self, rects):
+        return Crossings(self.holes.without(rects), self.edges, self.cfg)
+
+    def nearest(self, point, blocked=(), reach=100.0):
+        if not self.edge_set:   # holes only (the common case): the plain nearest hole point
+            return self.holes.nearest(point, blocked, reach)
+        tc, tr = self.cfg.get("top_cost", 3.0), self.cfg.get("transit_mm", 15.0)
+        te = self.cfg.get("edge_transit_mm", 2 * tr)
+        best = None
+        for index, tt, rects in ((self.holes, tr, blocked), (self.edges, te, ())):
+            h = index.nearest(point, rects, reach) if index else None
+            if h is not None:
+                cost = tt + tc * math.hypot(h[0] - point[0], h[1] - point[1])
+                if best is None or cost < best[0]:
+                    best = (cost, h)
+        return best[1] if best else None
+
+    def transit_of(self, point, default):
+        return self.cfg.get("edge_transit_mm", default) if point in self.edge_set else default
+
+
+def hop_estimate(src, dst, src_under, holes, cfg, near=None):
+    """Cheap estimate of one routed power hop from `src` to `dst` (measure points, mm), in the router's costs (`cfg`:
+    `top_cost` per mm on top, `transit_mm` per hole pass; the under part costs 1 per mm):
+      source under:  Manhattan under to the usable hole point nearest the target, the pass, the straight distance on top;
+      source on top: the cheaper of Manhattan on top (x top_cost) and down through the hole nearest the source, Manhattan
+                     under, up through the hole nearest the target.
+    `holes`: a `HoleIndex` of the usable hole points or a `Crossings` (holes + edge points with their own transit; None / empty:
+    today's plain Manhattan); `near(point)` finds the
+    nearest usable one (default: `holes.nearest`, a caller may memoise it). Also returns plain Manhattan when no hole is
+    usable near the target."""
+    if not holes:
+        return manhattan(src, dst)
+    near = near or holes.nearest
+    tc, tr = cfg.get("top_cost", 3.0), cfg.get("transit_mm", 15.0)
+    transit = getattr(holes, "transit_of", lambda p, d: d)
+    ht = near(dst)
+    if ht is None:
+        return manhattan(src, dst)
+    up = transit(ht, tr) + tc * math.hypot(ht[0] - dst[0], ht[1] - dst[1])
+    if src_under:
+        return manhattan(src, ht) + up
+    hs = near(src)
+    top = tc * manhattan(src, dst)
+    if hs is None:
+        return top
+    return min(top, tc * math.hypot(hs[0] - src[0], hs[1] - src[1]) + transit(hs, tr) + manhattan(hs, ht) + up)
+
+
+def chain_order(start, members, points, length=None, start_under=False):
     """(length mm, order) of the shortest daisy chain from `start` through every member (Manhattan between measure
-    points; unknown points cost 0). Exact up to 7 members, nearest neighbour beyond."""
+    points; unknown points cost 0). Exact up to 7 members, nearest neighbour beyond. `length(a, b, a_under)`: the cost of
+    one hop instead of Manhattan (`hop_estimate`); `start_under`: the first hop starts under the board (a pedal's power
+    jack is on top, so later hops never do)."""
+    hop = length or (lambda a, b, under: manhattan(a, b))
+
     def length(order):
-        total, prev = 0.0, start
+        total, prev, under = 0.0, start, start_under
         for pid in order:
             here = points.get(pid)
             if prev is not None and here is not None:
-                total += manhattan(prev, here)
-            prev = here if here is not None else prev
+                total += hop(prev, here, under)
+            if here is not None:
+                prev, under = here, False
         return total
     if len(members) <= 7:
         best = min(itertools.permutations(sorted(members)), key=lambda o: (length(o), o))
         return length(best), list(best)
-    left, order, prev = sorted(members), [], start
+    left, order, prev, under = sorted(members), [], start, start_under
     while left:
-        nxt = min(left, key=lambda p: (manhattan(prev, points[p]) if prev is not None and points.get(p) is not None else 0, p))
+        nxt = min(left, key=lambda p: (hop(prev, points[p], under) if prev is not None and points.get(p) is not None else 0, p))
         order.append(nxt)
         left.remove(nxt)
-        prev = points.get(nxt) if points.get(nxt) is not None else prev
+        if points.get(nxt) is not None:
+            prev, under = points[nxt], False
     return length(order), order
 
 
@@ -153,7 +342,7 @@ def default_voltage(pc):
     return lo
 
 
-def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None):
+def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None, holes=None, cfg=None):
     """Power wiring for one layout: every chain pedal on one supply output, daisy chains ordered for the shortest
     DC cable, under the project's power policy.
 
@@ -161,12 +350,24 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     points: {pedal id: measure point (mm) of its power plug}; port_points: {(instance id, port): point}.
     run_v: {pedal id: operating voltage} to keep (the owner's choice); others get `default_voltage`.
     start: a project-style wiring ({inst id: [{"port", "voltage_v", "pedals"}]}) to improve from (else greedy).
+    holes: a `HoleIndex` (or `Crossings`) of the usable crossing points (`hole_sample` minus the pedals, see `usable_holes`) and cfg {"top_cost", "transit_mm"}: the daisy chains are then
+    measured with `hop_estimate` (power cables run under the board and come up through the hole nearest each pedal; an
+    instance with `"under": False` starts its chain on top); without holes: Manhattan between the measure points.
     Returns {"supplies": [project.json power.supplies entries], "length_mm", "warnings": [build warnings of the
     wiring], "errors": []} or raises ValueError if no wiring satisfies the policy."""
     sensitive, strength, group_18v = policy_settings(project)
     chain = [p for p in chain if p in pedals]
     run_v = dict(run_v or {})
     volts = {p: run_v.get(p) or default_voltage(pedals[p]["power_consumption"]) for p in chain}
+    under_of = {inst["id"]: inst.get("under", True) for inst in insts}
+    hop_cache = {}
+    cfg = cfg or {}
+
+    def near(p):
+        if p not in hop_cache:
+            hop_cache[p] = holes.nearest(p)
+        return hop_cache[p]
+    hop = (lambda a, b, under: hop_estimate(a, b, under, holes, cfg, near)) if holes else None
     slots = []   # (inst id, port, {voltage: max_ma}, polarity, isolated)
     for inst in insts:
         sup = inst["sup"]
@@ -191,7 +392,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
                 else:
                     errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive,
                                                      strength, isolated)
-                    length, order = chain_order(port_points.get((inst, port)), members, points)
+                    length, order = chain_order(port_points.get((inst, port)), members, points, hop, under_of.get(inst, True))
                     cache[key] = (not errs, warns, length, order)
         return cache[key]
 
@@ -333,7 +534,6 @@ def measure_points(placed, inst_item, insts, jacks_data, depth_mm):
     """({pedal id: point}, {(instance id, port): point}): where DC cable lengths are measured (mm), half the plug
     depth in front of each power jack, as jacks.check does. placed: {pedal id: layout item}; inst_item: {supply
     instance id: layout item}; insts: [{"id", "supply"}]."""
-    import design
     from jacks import default_jack   # late: jacks imports routing lazily
     pts, ports = {}, {}
     for cid, it in placed.items():

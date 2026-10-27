@@ -14,6 +14,7 @@ FOOTSWITCHES_FILE = CATALOG / "footswitches.json"
 CABLES_FILE = CATALOG / "cables.json"
 SITE = "https://pedalplayground.com/public/data/"
 IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
+BOARD_IMAGE_URLS = ("https://pedalplayground.com/public/images/pedalboards/{}", "https://pedalplayground.com/app/images/pedalboards/{}")
 IMAGE_DIR = CACHE / "images"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
@@ -32,7 +33,9 @@ def load_catalog():
 def proposal_inputs_sha1(pdir):
     """SHA-1 of everything a project's layout proposals depend on: playground_design.json, project.json,
     catalog/cables.json, the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
-    supplies and the outline entries (catalog/outlines.json) of the images in the design file. Stored by propose_layout.py in proposals/meta.json; build.py marks the proposals stale on a change."""
+    supplies, the outline entries (catalog/outlines.json) of the images in the design file, the board image's
+    catalog/boards.json entry and the project's board.json (holes). Stored by propose_layout.py in proposals/meta.json;
+    build.py marks the proposals stale on a change."""
     import hashlib
     pdir = Path(pdir)
     project = load_json(pdir / "project.json")
@@ -52,6 +55,14 @@ def proposal_inputs_sha1(pdir):
         have = outlines.load()
         images = sorted({i["image"] for i in design_mod.parse_design(design) if i.get("image")})
         h.update(json.dumps({n: have.get(n) for n in images}, sort_keys=True).encode())
+        # the board image's holes and transit estimate (catalog/boards.json) and the project's board.json corrections
+        import boards
+        known = boards.load()
+        names = sorted({i["image"] for i in design_mod.parse_design(design) if i.get("kind") == "pedalboard" and i.get("image")})
+        h.update(json.dumps({n: known.get(n) for n in names}, sort_keys=True).encode())
+    edits = pdir / "board.json"
+    if edits.exists():
+        h.update(edits.read_bytes())
     return h.hexdigest()
 
 
@@ -129,15 +140,15 @@ def dumps_per_line(doc, key, mapping, key_order):
     return "\n".join(lines) + "\n"
 
 
-def fetch_image(image_name, refresh=False):
-    """Download a Pedal Playground pedal PNG into .cache/images/ (larger version first); returns the cached path.
-    Raises RuntimeError with every failure when none of the URLs works."""
+def fetch_image(image_name, refresh=False, kind="pedals"):
+    """Download a Pedal Playground pedal PNG (`kind="pedalboards"`: a board PNG) into .cache/images/ (larger version
+    first); returns the cached path. Raises RuntimeError with every failure when none of the URLs works."""
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     path = IMAGE_DIR / image_name
     if path.exists() and not refresh:
         return path
     errors = []
-    for url in IMAGE_URLS:
+    for url in (BOARD_IMAGE_URLS if kind == "pedalboards" else IMAGE_URLS):
         url = url.format(image_name)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})

@@ -30,6 +30,9 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   fractions of the unrotated image that cover every opaque pixel (alpha > 128; protruding jacks and rounded corners
   included). Derived data written ONLY by `scripts/outlines.py` from the cached images (no images in the repo);
   missing = the Pedal Playground box. Pedal Playground's Width/Height include the jacks (images are not squeezed).
+- `catalog/boards.json`: board holes per Pedal Playground BOARD image name: `holes` = rects in fractions of the unrotated
+  image that lie INSIDE the transparent, border-disconnected regions (conservative), `hole_transit_mm` (15, unverified),
+  optional `edge_transit_mm`. Derived data written ONLY by `scripts/boards.py` (keeps non-hole keys on `--refresh`).
 - `catalog/footswitches.json`: footswitches per pedal id, written ONLY by `scripts/pedal_editor.py`. x,y = fractions of
   the image (unrotated) at the CENTRE of the switch cap; `type` bypass|tap|boost|function (bypass = turns the pedal or
   one side of it on/off, tap = tap tempo, boost = boost/extra-gain stomp, function = any other switch), optional
@@ -38,29 +41,39 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   missing id = unknown. Supplies have none. The owner places the data (every project pedal has it, 2026-10-23).
 - `projects/<name>/project.json`: everything that can change per board: board, signal_chain, rules (with
   priorities), sections, power wiring (`power.supplies[].outputs[]`, daisy-chain order = list order, operating
-  voltage = output voltage), power_policy, `jacks` (clearance = audio box, power_clearance = smaller DC box used only
+  voltage = output voltage; `power.supplies[].placement` under|on_board, default `jacks.supplies_layer`), power_policy,
+  `power_routing` (top_cost, max_stack, edge_transit_mm; the old `edges` / `avoid_penalty` keys are errors), `jacks` (clearance = audio box, power_clearance = smaller DC box used only
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
-  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side), `footswitches.comfort_mm`
+  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side; `under_board`, `hole_transit_mm`,
+  `hole_penalty`, `under_cost`, `max_stack_under` for the under-board layer; `route_in_front` default false = nothing in
+  front of the lowest pedals, true = the routing area reaches the board front), `footswitches.comfort_mm`
   (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
   weight per switch type), `layout` (optional: pins,
   rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
   (`require_footswitches`, `strict_footswitches` among them).
+- `projects/<name>/board.json` (optional): the owner's hole corrections, `boxes` [{type hole|filled, x0..y1 fractions of the
+  board image}] applied in order on the derived holes (filled closes, hole opens, later wins; `design.board_holes`),
+  and edge crossings `{type edge, side left|right|back|front, from, to}` (fractions along that side of the unrotated
+  image; `design.board_edges`, `layout["edge_segments"]`; the editor snaps a drawn line to the nearest side).
+  Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
-  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `playground.json` (and the
+  Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `power.svg` (power wiring only,
+  supplies as translucent red silhouettes; `svgdraw.render_power`), `playground.json` (and the
   git-ignored `routing.local.svg` with pedal images, `build.py --images`);
   `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
   loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
   saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
-  `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `routing.py` (cable model, plug
+  `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `boards.py` (board
+  holes from the board images + CLI, `load_edits`), `board_editor.py` (GUI: hole / filled boxes per project), `routing.py` (cable model, plug
   heads, side choice, grid router, smoothing, lanes, plug-head clearance), `svgdraw.py` (shared SVG drawing: board,
   pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~283 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~380 tests, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
@@ -73,6 +86,8 @@ uv run scripts/pedal_editor.py <catalog id> [--footswitches]   # place jacks / f
 uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswitches]   # what is still missing
 uv run scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
 uv run scripts/outlines.py [project...] [--image NAME] [--refresh]   # pedal outlines from the images
+uv run scripts/boards.py [project...] [--image NAME] [--refresh]     # board holes from the board images
+uv run scripts/board_editor.py <project> | --list   # holes and edge crossings (drag; T hole/filled/edge; E effective)
 uv run scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
@@ -94,7 +109,27 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   Polarity: `power_consumption.polarity` per pedal and `polarity` per supply (an output may override it); a
   mismatch warns (use a polarity-reversing cable), mixed polarities on one output are an error; power cables carry
   the pedal's polarity. Every current pedal is center-negative (owner, 2026-10-22).
-- Supplies sit under the board (`supplies_layer: "under"`): not obstacles; power cables are modelled, not routed.
+- Supply placement per instance (`power.supplies[].placement`, default `jacks.supplies_layer`, all projects "under"):
+  an under-board supply is not an obstacle on top (it is one on the under layer); an on-board supply is an obstacle by
+  its outline, its used ports get the DC plug clearance (key "<instance>.<port>") and the layout search may move it.
+- Board holes (plan `docs/plans/supply-placement.md`): effective holes = `catalog/boards.json` derived holes + the
+  project's `board.json` edits, `layout["holes"]` (canvas mm). A cable changes layer only in a hole cell: centre inside
+  a hole AND free on top (a pedal over part of a hole blocks that part) AND free under. No under-board fit check.
+- Two-layer routing (`routing.py`, `Under`): the under layer = the board footprint (under-board supplies are its only
+  obstacles), same cells as the top grid. Cables cross the deck ONLY through holes and the owner's edge
+  segments (round the board edge where the border lies inside a segment, `edge_transit_mm` per crossing: board data,
+  else `power_routing.edge_transit_mm`, else 2 x hole transit; a front segment only with `cables.route_in_front`).
+  No edge segments = holes only; an under-board supply with neither usable holes nor segments is an error (owner,
+  2026-10-26). Signal cables start/end on top and may go under through holes or segments: per pass
+  `hole_transit_mm` (length, board data 15, unverified) + `hole_penalty` 15 (search only), under mm cost 0.9; own
+  stacking limit `max_stack_under`; per-layer smoothing; lanes on top only. `route_all` ends with clean-ups (re-route
+  each cable with plain costs; `_back_on_top` undoes a cable sent under so another could take its corridor), so
+  congestion history never leaves a needless detour. Gig: no signal cable goes under (2026-10-26).
+- Power cables are routed (`routing.route_power`, own grids with the DC cable width, own stacking, not counted against
+  signal cables): an under-board supply's hop starts under the board, daisy hops and on-board supply hops on top; under
+  mm cost 1, top mm `power_routing.top_cost` 3, up through holes or edge segments (edge transit, no penalty). Min length = plug measures +
+  polylines + transits. A long top run (> 150 mm) warns. `power.assign` and the layout surrogate use the
+  nearest-crossing estimate (`power.Crossings`: holes + edge points, `power.hop_estimate`, a cost in mm-equivalents with top mm x top_cost).
 - Plug heads (`design.plug_geometry`): head = depth x width rectangle centred on the jack, extending along the
   facing. Right-angle: cable leaves to the LEFT or RIGHT of the facing (seen from above looking out along the
   facing; facing right -> left is up), `exit_offset_mm` out (default depth/2), body to `body_reach_mm` from the jack
@@ -118,7 +153,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
   diameter is a corridor); area = board + `edge_margin_mm` (default one diameter, 6 mm) at back and sides,
-  nothing in front of the lowest pedals; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
+  nothing in front of the lowest pedals unless `cables.route_in_front`; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
   cables across one plug (head + barrel, signal and power plugs; its own cable excluded); signal cables only.
   The grid path is then smoothed (`routing.smooth`: string pulling to any-angle segments, never closer to a pedal
   than the grid path, no new plug crossings); `min_mm` and `path` follow it. Stacking is counted on the grid paths.
@@ -126,8 +161,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   side by side one width apart (the lane set may shift off-centre), else marked stacked; lanes never change lengths.
 - Cable lengths are a **minimum to buy**, not a product suggestion (owner uses DIY kits / any brand): measured from a
   point on each jack's axis half the clearance depth in front of the jack (half the plug head depth, else half the
-  fixed box), along the plug's cable exit and the routed path; no slack, no rounding (`min_mm`). Power cables: a
-  right-angle estimate between those points. Goal is an approximation, not a real 3D simulation: all cables bend
+  fixed box), along the plug's cable exit and the routed path; no slack, no rounding (`min_mm`). Power cables: routed (see above); `estimate_mm` keeps
+  the old right-angle estimate for comparison. Goal is an approximation, not a real 3D simulation: all cables bend
   the same (no bend radius, flat or round), routes are not hand-tuned.
 - Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
 - Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.

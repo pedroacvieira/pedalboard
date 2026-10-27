@@ -254,3 +254,171 @@ def test_fixed_box_is_blocked_by_the_outline_not_the_box(tmp_path):
     ctx = project(tmp_path, [A(0), B(90)])
     jacks.check(ctx, PEDALS, SUPPLIES, DATA, outlines={})
     assert ctx["layout"]["no_outline"] == ["T A", "T B"]
+
+
+# --- per-supply placement (under | on_board) -----------------------------------------------------
+SUP_JACKS = [{"id": "F1", "label": "F1", "function": "power_out", "x": 1.0, "y": 0.5, "facing": "right"},
+             {"id": "F2", "label": "F2", "function": "power_out", "x": 1.0, "y": 0.9, "facing": "right"}]
+PDATA = dict(DATA, s1=SUP_JACKS)
+DC_TYPES = {"dc": {"name": "test DC right angle", "role": "power", "diameter_mm": 3.5, "tips": "DC 2.1 mm",
+                   "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 10.0}}}
+
+
+def insts(*specs):
+    """specs: (instance id, placement or None, pedals fed by F1) -> supply instances with F1 used and F2 spare."""
+    out = []
+    for iid, pl, fed in specs:
+        inst = {"id": iid, **({"placement": pl} if pl else {})}
+        rows = [{"port": "F1", "id": f"{iid}_F1", "pedals": list(fed)}, {"port": "F2", "id": f"{iid}_F2", "pedals": []}]
+        out.append({"inst": inst, "sup": SUPPLIES["s1"], "rows": rows})
+    return out
+
+
+def S(left=0, top=0, w=2.0, h=1.0):
+    return ("S One", left, top, w, h, 0, "pedal")
+
+
+def test_placement_is_the_instances_own_else_the_global_layer_else_under():
+    assert jacks.placement({"id": "p"}, {}) == "under"
+    assert jacks.placement({"id": "p"}, {"jacks": {"supplies_layer": "on_board"}}) == "on_board"
+    assert jacks.placement({"id": "p", "placement": "under"}, {"jacks": {"supplies_layer": "on_board"}}) == "under"
+    assert jacks.placement({"id": "p", "placement": "on_board"}, {"jacks": {"supplies_layer": "under"}}) == "on_board"
+    assert jacks.placement({"id": "p", "placement": "on_board"}, {}) == "on_board"
+
+
+def layout_of(tmp_path, specs, supplies, jacks_block=None, chain=("a",)):
+    ctx = project(tmp_path, specs, jacks_block=jacks_block, chain=chain, supplies=supplies)
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA)
+    return ctx["layout"]
+
+
+def test_layout_obstacles_follow_each_instances_placement(tmp_path):
+    specs = [A(0), S(300, 0), S(500, 0)]          # two supply items: the left one is psu1's, the right one psu2's
+    lay = layout_of(tmp_path, specs, insts(("psu1", None, ["a"]), ("psu2", "on_board", [])))
+    assert lay["inst_placement"] == {"psu1": "under", "psu2": "on_board"}
+    assert [o["id"] for o in lay["obstacles"]] == ["item-0", lay["inst_item"]["psu2"]["id"]]    # A and psu2's item
+    assert lay["inst_item"]["psu1"]["left_mm"] < lay["inst_item"]["psu2"]["left_mm"]
+    # the other way round: the global layer is the default, an instance overrides it
+    lay = layout_of(tmp_path, specs, insts(("psu1", "under", ["a"]), ("psu2", None, [])), jacks_block={"supplies_layer": "on_board"})
+    assert lay["inst_placement"] == {"psu1": "under", "psu2": "on_board"}
+    assert lay["inst_item"]["psu1"]["id"] not in [o["id"] for o in lay["obstacles"]]
+    assert lay["inst_item"]["psu2"]["id"] in [o["id"] for o in lay["obstacles"]]
+
+
+def test_a_supply_item_without_an_instance_is_an_obstacle_only_with_the_global_on_board_layer(tmp_path):
+    specs = [A(0), S(300, 0), S(500, 0)]          # one instance, two items: the second is matched to nothing
+    under = layout_of(tmp_path, specs, insts(("psu1", "on_board", ["a"])))
+    assert [o["id"] for o in under["obstacles"]] == ["item-0", under["inst_item"]["psu1"]["id"]]
+    on = layout_of(tmp_path, specs, insts(("psu1", "under", ["a"])), jacks_block={"supplies_layer": "on_board"})
+    assert [o["id"] for o in on["obstacles"]] == ["item-0", "item-2"]        # the unmatched item, not psu1's
+
+
+def test_unknown_placement_is_an_error():
+    import build
+    from common import load_catalog, load_json
+    pedals, supplies = load_catalog()
+    gig = ROOT / "projects" / "guitar-gig"
+    proj = load_json(gig / "project.json")
+    proj["power"]["supplies"][0]["placement"] = "sideways"
+    ctx = build.validate(gig, pedals, supplies, project=proj)
+    assert any(e.startswith(f"power.supplies: {proj['power']['supplies'][0]['id']} has unknown placement 'sideways'") for e in ctx["errors"])
+    proj["power"]["supplies"][0]["placement"] = "on_board"
+    assert not any("unknown placement" in e for e in build.validate(gig, pedals, supplies, project=proj)["errors"])
+
+
+def test_an_on_board_supply_blocks_a_pedal_jack_an_under_one_does_not(tmp_path):
+    # A (0..50.8 mm) has its output at (50.8, 50.8); the supply starts 5 px = 2.82 mm further right: 6.3 - 2.82 = 3.48 mm deep
+    specs = [A(0), S(95, 0, 2.0, 4.0)]
+    ctx = project(tmp_path, specs, chain=("a",), supplies=insts(("psu1", "on_board", ["a"])))
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA)
+    v = next(v for v in ctx["violations"] if v["jack"] == "a.out")
+    assert v["obstacle"] == "S One" and v["depth_mm"] == pytest.approx(6.3 - 5 * 25.4 / 45)
+    ctx = project(tmp_path, specs, chain=("a",), supplies=insts(("psu1", "under", ["a"])))
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA)
+    assert not [v for v in ctx["violations"] if v["jack"] == "a.out"]
+
+
+def test_an_on_board_supply_is_routed_around(tmp_path):
+    # board 12 x 6 in; A (x 50.8..101.6, y 25.4..127), B (x 228.6..279.4); the supply (x 152.4..165.1, y 0..101.6) is a wall
+    # between them that ends 25 mm above the front of the pedals: a cable has to pass below it
+    board = ("Board", 0, 0, 12.0, 6.0, 0, "pedalboard")
+    specs = [board, ("T A", 90, 45, 2.0, 4.0, 0, "pedal"), ("T B", 405, 45, 2.0, 4.0, 0, "pedal"), S(270, 0, 0.5, 4.0)]
+    lengths = {}
+    for pl in ("under", "on_board"):
+        ctx = project(tmp_path, specs, supplies=insts(("psu1", pl, ["a"])))
+        jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+        routing.route_project(ctx, {}, cable_types={})
+        (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+        # (an under-board supply on a board without holes or edge segments is an error: no power cable could come up)
+        assert c["status"] == "routed" and [e for e in ctx["errors"] if "no power cable can come up" not in e] == []
+        assert bool(ctx["errors"]) == (pl == "under")
+        lengths[pl] = c["min_mm"]
+    assert lengths["under"] == pytest.approx(228.6 - 101.6 - 6.3, abs=0.01)     # straight, between the 3.15 mm points
+    assert lengths["on_board"] > lengths["under"] + 10                           # down past y 101.6 and up again
+
+
+def test_only_the_first_hop_of_a_daisy_chain_starts_under_the_board(tmp_path):
+    specs = [A(0), ("T B", 100, 0, 2.0, 4.0, 0, "pedal"), S(300, 0)]
+    ctx = project(tmp_path, specs, chain=("a", "b"), supplies=insts(("psu1", "under", ["a", "b"])))
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    assert [(h["from"], h["under_board"]) for h in ctx["cables"]["power"]] == [("psu1.F1", True), ("a.power", False)]
+
+
+def test_power_cables_are_under_the_board_per_supply(tmp_path):
+    specs = [A(0), ("T B", 100, 0, 2.0, 4.0, 0, "pedal"), S(300, 0), S(500, 0)]
+    ctx = project(tmp_path, specs, chain=("a", "b"), supplies=insts(("psu1", "under", ["a"]), ("psu2", "on_board", ["b"])))
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    assert [(h["from"], h["under_board"]) for h in ctx["cables"]["power"]] == [("psu1.F1", True), ("psu2.F1", False)]
+    routing.route_project(ctx, {}, cable_types={})
+    p = [c for c in ctx["cable_list"] if c["kind"] == "power"]
+    assert [(c["under_board"], c["status"]) for c in p] == [(True, "not routed (no pedalboard in the layout)"),
+                                                            (False, "not routed (no pedalboard in the layout)")]
+
+
+def blocked_port_ctx(tmp_path, power_type):
+    """The supply (x 0..50.8, y 0..25.4) has F1 (used) at (50.8, 12.7) and F2 (spare) at (50.8, 22.9), both facing right; a
+    non-chain pedal C starts at x 95 px = 53.67 mm over y 0..101.6: 2.63 mm into F1's and F2's 5.5 mm power box."""
+    specs = [("T A", 400, 0, 2.0, 4.0, 0, "pedal"), S(0, 0, 2.0, 1.0), ("T C", 95, 0, 2.0, 4.0, 0, "pedal")]
+    ctx = project(tmp_path, specs, chain=("a",), supplies=insts(("psu1", "on_board", ["a"])))
+    if power_type:
+        ctx["project"]["cables"] = {"power_type": "dc"}
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    routing.route_project(ctx, {}, cable_types=DC_TYPES)
+    return ctx
+
+
+def test_on_board_supply_port_without_a_power_type_gets_the_fixed_power_box_once(tmp_path):
+    ctx = blocked_port_ctx(tmp_path, power_type=False)
+    hits = [v for v in ctx["violations"] if v["jack"].startswith("psu1.")]
+    assert [(v["jack"], v["obstacle"], v["zone"]) for v in hits] == [("psu1.F1", "T C", "power")]    # F2 is spare
+    assert hits[0]["depth_mm"] == pytest.approx(5.5 - (95 * 25.4 / 45 - 50.8))
+    assert sum("psu1.F1" in w for w in ctx["warnings"]) == 1
+
+
+def test_on_board_supply_port_with_a_power_type_gets_the_dc_plug_once(tmp_path):
+    ctx = blocked_port_ctx(tmp_path, power_type=True)
+    hits = [v for v in ctx["violations"] if v["jack"].startswith("psu1.")]
+    # DC head 10 x 10 at the jack (50.8, 12.7) facing right: x 50.8..60.8; C starts at 53.67: 7.13 mm into the head
+    assert [(v["jack"], v["part"], v["cable_type"], v["cable"]) for v in hits] == [("psu1.F1", "head", "dc", "P1")]
+    assert hits[0]["depth_mm"] == pytest.approx(60.8 - 95 * 25.4 / 45)
+    assert sum("psu1.F1" in w for w in ctx["warnings"]) == 1
+    (p,) = [c for c in ctx["cable_list"] if c["kind"] == "power"]
+    assert p["exit_a"] in ("left", "right") and p["under_board"] is False
+    assert [h for h in ctx["routing"]["heads"] if h["cable"] == "P1"]
+
+
+def test_on_board_port_takes_the_free_exit_side_and_an_override_fixes_it(tmp_path):
+    # C only reaches the up side's cable run (y 4.2..7.7, x 54.05..57.55): C y 0..6.35 from x 56.44 -> the down side is free
+    specs = [("T A", 400, 0, 2.0, 4.0, 0, "pedal"), S(0, 0, 2.0, 1.0), ("T C", 100, 0, 2.0, 0.25, 0, "pedal")]
+    ctx = project(tmp_path, specs, chain=("a",), supplies=insts(("psu1", "on_board", ["a"])))
+    ctx["project"]["cables"] = {"power_type": "dc"}
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    routing.route_project(ctx, {}, cable_types=DC_TYPES)
+    (p,) = [c for c in ctx["cable_list"] if c["kind"] == "power"]
+    assert p["exit_a"] == "right" and not [v for v in ctx["violations"] if v["jack"] == "psu1.F1"]   # right = down (facing right)
+    ctx = project(tmp_path, specs, chain=("a",), supplies=insts(("psu1", "on_board", ["a"])))
+    ctx["project"]["cables"] = {"power_type": "dc", "overrides": {"P1": {"exit_a": "left"}}}
+    jacks.check(ctx, PEDALS, SUPPLIES, PDATA, defer=True)
+    routing.route_project(ctx, {}, cable_types=DC_TYPES)
+    (v,) = [v for v in ctx["violations"] if v["jack"] == "psu1.F1"]
+    assert v["side"] == "left" and v["part"] == "cable" and v["obstacle"] == "T C"

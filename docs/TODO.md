@@ -129,21 +129,34 @@ Goal: real DC cable paths and lengths instead of the right-angle estimate. Needs
 - Owner (2026-10-23): power and patch cables are independent (they do not count against each other); the
   stacking limit (`max_stack`) applies among power cables in the same place, as among patch cables.
 
-### 3. `feat/supply-placement`: supplies on or under the board, board holes
-Goal: per supply instance `placement` on_board | under (today one global `jacks.supplies_layer`), and the board's
-crossings (holes, slots, rail gaps, open edges) where power cables go from under to over the board.
-- [ ] Data: `catalog/boards.json` (new): per board model the frame, rails/slots and access holes in mm (or image
-      fractions, placed with a board mode in the pedal editor); research Fender Professional Medium and RockBoard
-      Duo 2.1 (maker drawings first; "unverified" otherwise).
-- [ ] Project: `power.supplies[].placement` + position under the board (x, y, rotation) for under-board supplies;
-      on-board supplies are layout items (obstacles, port clearance, movable by the layout search).
-- [ ] Build: on-board supply ports get the DC plug clearance; under-board supply positions must fit the board's
-      underside (height/space data if known); each power cable needs a reachable crossing (finding if none).
-- [ ] Board edges as crossings with the per-project allowed / avoided / forbidden setting of 2 (front forbidden by
-      default); holes preferred.
-- [ ] Layout search: optional term for DC length through crossings; optionally move on-board supplies.
-- [ ] Keep the crossing model usable for patch cables too (see "Later: patch cables under the board" below).
-- Acceptance: today's projects (all supplies under) give identical results with placement defaulting to under.
+### 3. `feat/supply-placement` (2026-10-26, code review done; merge after the owner's OK): supplies on or under the board, board holes, cables through the holes
+Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers `supply-placement-1..6.md` + `-review.md`.
+- [x] Phase 1: board holes from the Pedal Playground board images (`scripts/boards.py`, `catalog/boards.json`): Fender Pro
+      Medium 13 slots + the handle strip, Duo 2.1 17 slots; drawn in routing.svg.
+- [x] Phase 2: `scripts/board_editor.py` (hole / filled boxes per project, `projects/<name>/board.json`). The owner
+      corrected the gig holes with it (13 full slots + the handle cutout).
+- [x] Phase 3: per-instance `power.supplies[].placement` (under | on_board); on-board supplies are obstacles, their ports
+      get the DC plug clearance.
+- [x] Phase 4: two-layer router for signal cables (holes, transit 15 + penalty 15 per pass, under 0.9 / mm), clean-up
+      passes in `route_all` (`_back_on_top`). Gig: no signal cable goes under (total 2401 mm, S15 +1 mm by smoothing).
+- [x] Phase 5: power cables routed (under first, up through the nearest usable hole or an allowed edge,
+      `power_routing`); nearest-hole estimate in `power.assign` and the layout surrogate. Gig: side edges forbidden
+      (owner, 2026-10-26).
+- [x] Phase 6: the layout search moves on-board supplies (tested on synthetic projects only).
+- [ ] Owner: measure the Fender deck thickness (+ bend) for `hole_transit_mm` (15, estimate) and the board height at
+      the back edge for `edge_transit_mm` (default 2 x hole transit = 30, estimate); put them in catalog/boards.json.
+- [ ] Owner: power search weight: on-top mm cost 3 x (`power_routing.top_cost`); P2 / P12 / P17 still run 111-140 mm on top of the gig board. Tune if the routes look wrong in routing.svg.
+- [x] Edge crossings (owner, 2026-10-26): no per-side edge modes; cables (signal and power) cross only through holes
+      and owner-drawn edge segments (board editor, type edge); neither = an under-board supply is an error;
+      `cables.route_in_front` toggle (gig: false). Handover `supply-placement-edges.md`.
+- [ ] Owner: draw the gig's edge crossings (if any) with `uv run scripts/board_editor.py guitar-gig` (T until "edge",
+      drag a line along the edge), then `uv run scripts/build.py guitar-gig` and check power.svg.
+- [ ] Owner: verify the Duo 2.1 holes (practice / bass have no layout yet) with `uv run scripts/board_editor.py bass`.
+- [ ] Speed: gig build ~3 s (two-layer A*, power routing), one proposal search ~35 s, test suite ~90 s. Options: reuse
+      the side-choice A* paths in `route_all`, a cheaper side-choice estimate, caching per layout.
+- [ ] Under-board fit (supply height vs space under the deck) not checked (owner decision 3); later branch if needed.
+- Feature 2 (power routing) left after this branch: forked vs serial daisy chains, power.svg / separate power view,
+  edge-setting refinements.
 
 ### 4. `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
 Goal: replace the Tkinter editor and the README-only views with a local browser app.
@@ -186,7 +199,7 @@ Goal: a topper (larger, higher cap) on a switch makes it easier to hit and its n
 - [ ] Layout search: ignores toppers entirely (the layout is optimised first, toppers finish it).
 
 ### Later: patch cables under the board and more plug orientations (owner, 2026-10-23; after 3, needs board holes)
-- [ ] Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
+- [x] (Done in feature 3, 2026-10-26.) Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
       under pedals. Add this routing option once the boards have their holes set; same crossing model as power (2).
 - [ ] Plug orientation, today: a right-angle plug's cable leaves left or right of the facing and the plug occupies
       more space on that side (modelled: `design.plug_geometry`, side chosen by the router). New case, U-turn: when

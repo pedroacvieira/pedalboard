@@ -27,9 +27,10 @@ CANVAS = ('<div id="item-1" class="item pedalboard undefined" title="Board" data
 
 
 def strip(ctx):
-    """The comparable part of a build context (drops the folder and the router's grid object)."""
+    """The comparable part of a build context (drops the folder and the router's grid objects)."""
     out = {k: v for k, v in ctx.items() if k not in ("dir", "routing")}
-    out["routing"] = {k: v for k, v in ctx["routing"].items() if k != "grid"}
+    out["routing"] = {k: v for k, v in ctx["routing"].items() if k not in ("grid", "under")}
+    out["routing"]["power"] = {k: v for k, v in ctx["routing"]["power"].items() if k != "time_s"}   # wall-clock time
     out.pop("layout_source")
     return json.loads(json.dumps(out, default=repr, sort_keys=True))
 
@@ -75,6 +76,31 @@ def test_layout_from_items_maps_pedals_board_and_obstacles():
     assert lay["board"]["id"] == "item-1" and set(lay["placed"]) == {"a", "b"}
     assert [o["id"] for o in lay["obstacles"]] == ["item-2", "item-3"]
     assert clear == ["layout: c is in the signal chain but not in playground_design.json"] and warnings == []
+
+
+def test_real_projects_keep_every_supply_under_the_board():
+    """Placement phase 3: no real project sets a placement, so the default (jacks.supplies_layer, "under") applies: no
+    supply is an obstacle, every power cable is under the board, and an explicit "under" changes nothing."""
+    pedals, supplies = load_catalog()
+    for name in ("guitar-gig", "guitar-practice", "bass"):
+        pdir = ROOT / "projects" / name
+        base = build.validate(pdir, pedals, supplies)
+        titles = {t for t in (supplies[s["sup"]["id"]].get("playground_title") for s in base["supplies"]) if t}
+        assert all("placement" not in s["inst"] for s in base["supplies"])
+        if base["layout"]:
+            assert set(base["layout"]["inst_placement"].values()) <= {"under"}
+            assert not [o for o in base["layout"]["obstacles"] if o["title"] in titles]
+        power = [c for c in base["cable_list"] if c["kind"] == "power"]
+        assert base["cable_list"] and all(c["status"] == "not routed" for c in power if not base["layout"])      # no layout, no route
+        assert all(c["status"].startswith("routed") and (c["under_board"] or c["top_mm"] > 0) for c in power if base["layout"])
+        proj = load_json(pdir / "project.json")
+        for inst in proj["power"]["supplies"]:
+            inst["placement"] = "under"
+        explicit = build.validate(pdir, pedals, supplies, project=proj)
+        a, b = strip(base), strip(explicit)
+        for k in ("project", "supplies"):
+            a.pop(k), b.pop(k)
+        assert a == b
 
 
 # --- design.move ---------------------------------------------------------------------------------

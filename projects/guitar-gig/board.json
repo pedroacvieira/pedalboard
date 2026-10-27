@@ -1,0 +1,20 @@
+{
+  "_doc": "Corrections of the board holes of this project and the places where cables may go round the board edge. Boxes in fractions (0..1) of the Pedal Playground board image (unrotated, origin top-left, 4 decimals), applied in order on the holes derived in catalog/boards.json: type 'filled' closes the area, type 'hole' opens it; a later box wins. type 'edge' is a line segment along one side of the image (side left|right|back|front, back = the image's top edge, front = its bottom edge; from < to = fractions along that side: of the height from the top for left / right, of the width from the left for back / front): cables may go from under the board round the board edge only along such a segment (and through the holes). Written ONLY by scripts/board_editor.py.",
+  "boxes": [
+    {"type": "hole", "x0": 0.7186, "y0": 0.5428, "x1": 0.964, "y1": 0.5962},
+    {"type": "hole", "x0": 0.3779, "y0": 0.5449, "x1": 0.6221, "y1": 0.5919},
+    {"type": "hole", "x0": 0.2826, "y0": 0.0064, "x1": 0.7174, "y1": 0.0577},
+    {"type": "hole", "x0": 0.0372, "y0": 0.1303, "x1": 0.1791, "y1": 0.1774},
+    {"type": "hole", "x0": 0.8221, "y0": 0.1282, "x1": 0.9605, "y1": 0.1795},
+    {"type": "hole", "x0": 0.0384, "y0": 0.3376, "x1": 0.1151, "y1": 0.3889},
+    {"type": "hole", "x0": 0.2093, "y0": 0.3376, "x1": 0.4581, "y1": 0.3889},
+    {"type": "hole", "x0": 0.5419, "y0": 0.3355, "x1": 0.7919, "y1": 0.3889},
+    {"type": "hole", "x0": 0.8849, "y0": 0.3355, "x1": 0.964, "y1": 0.3868},
+    {"type": "hole", "x0": 0.0372, "y0": 0.5406, "x1": 0.2802, "y1": 0.5962},
+    {"type": "hole", "x0": 0.036, "y0": 0.7479, "x1": 0.1151, "y1": 0.7992},
+    {"type": "hole", "x0": 0.2081, "y0": 0.7479, "x1": 0.4558, "y1": 0.7992},
+    {"type": "hole", "x0": 0.543, "y0": 0.7479, "x1": 0.7919, "y1": 0.8013},
+    {"type": "hole", "x0": 0.8849, "y0": 0.7479, "x1": 0.9651, "y1": 0.7992},
+    {"type": "edge", "side": "back", "from": 0.2826, "to": 0.7151}
+  ]
+}

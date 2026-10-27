@@ -359,3 +359,199 @@ def test_surrogate_crowding_equals_the_builds_on_the_gig_layout():
                      supplies, jacks.read_file()["jacks"], fs_data, load_cable_types())
     raw = m.score(m.owner, detail=True)[1]["terms"]["footswitch"][0]
     assert ctx["footswitch_settings"]["crowding"] > 0 and raw == pytest.approx(ctx["footswitch_settings"]["crowding"])
+
+
+# --- on-board supplies are movable items ------------------------------------------------------------
+PX = 25.4 / 45
+SUPPLIES = {"s1": {"id": "s1", "brand": "S", "model": "One", "playground_title": "S One"}}
+SUP_JACKS = [{"id": "F1", "label": "F1", "function": "power_out", "x": 1.0, "y": 0.5, "facing": "right"},
+             {"id": "F2", "label": "F2", "function": "power_out", "x": 1.0, "y": 0.9, "facing": "right"}]
+
+
+def sup(left_px, top_px=0, w=2.0, h=1.0):
+    return ("S One", left_px, top_px, w, h, 0, "pedal")
+
+
+def smodel(specs, chain=("a",), placement="on_board", extra=None, pedals=PEDALS):
+    """A project with one supply instance psu1 (F1 feeds pedal a, F2 spare); its item is the one titled "S One"."""
+    inst = {"id": "psu1", "supply": "s1", "outputs": [{"port": "F1", "pedals": ["a"]}]}
+    if placement:
+        inst["placement"] = placement
+    proj = {"signal_chain": list(chain), "cables": {"type": "t"}, "jacks": {}, "power": {"supplies": [inst]}, **(extra or {})}
+    items = design.parse_canvas(canvas(BOARD, *specs))
+    return layout.Model(proj, items, pedals, SUPPLIES, {**JACKS, "s1": SUP_JACKS}, {}, TYPES, outlines={})
+
+
+QUIET_W = {"layout": {"weights": {"io": 0, "flow": 0, "access": 0}}}
+
+
+def test_an_on_board_supply_is_a_movable_item_after_the_chain_pedals():
+    m = smodel([sup(200), ped("T A", 0), ped("T B", 100)], chain=("a", "b"))
+    assert m.ids == ["a", "b", "psu1"] and m.n_ped == 2 and m.index["psu1"] == 2
+    assert m.titles == ["T A", "T B", "S One"] and m.names["psu1"] == "S One" and m.access[2] is None
+    assert m.owner[2] == pytest.approx((200 * PX + 25.4, 12.7, 0)) and m.allowed[2] == [0, 90, 270]
+    assert m.fixed == [] and m._geom[(2, 0)]["ends"] == {} and m._geom[(2, 0)]["fs"] == []
+    # an under-board supply is neither movable nor an obstacle; the chain pedals alone are the state
+    u = smodel([sup(200), ped("T A", 0)], placement="under")
+    assert u.ids == ["a"] and u.n_ped == 1 and u.fixed == [] and len(u.owner) == 1
+    assert smodel([sup(200), ped("T A", 0)], placement=None).ids == ["a"]
+
+
+def test_the_supply_never_overlaps_a_pedal_or_overhangs_and_pins_hold():
+    m = smodel([ped("T A", 0), sup(200)])
+    ok = [m.owner[0], (150.0, 20.0, 0)]
+    assert m.feasible(ok) and m.feasible_one(ok, 1)
+    assert not m.feasible([m.owner[0], (40.0, 60.0, 0)])          # on top of pedal a
+    assert not m.feasible([m.owner[0], (240.0, 20.0, 0)])         # 11 mm over the right edge
+    assert not m.feasible_one([m.owner[0], (150.0, 20.0, 180)], 1)   # never 180
+    assert m.feasible([m.owner[0], (150.0, 40.0, 90)])            # rotated: 25.4 x 50.8
+    assert not m.feasible([(120.0, 50.8, 0), (138.0, 12.7, 0)])   # a pedal moved onto the supply
+    for seed in range(12):
+        for _, st in layout.search(m, "rearrange", seed=seed, iterations=80, restarts=1):
+            assert m.feasible(st)
+    pin = smodel([ped("T A", 0), sup(200)], extra={"layout": {"pins": ["psu1"]}})
+    assert not pin.feasible([pin.owner[0], (150.0, 20.0, 0)]) and pin.feasible(pin.owner)
+    for _, st in layout.search(pin, "rearrange", seed=2, iterations=100, restarts=2):
+        assert st[1] == pin.owner[1]
+    with pytest.raises(ValueError, match="layout.pins"):
+        smodel([ped("T A", 0), sup(200)], placement="under", extra={"layout": {"pins": ["psu1"]}})
+
+
+def test_moving_the_supply_moves_its_ports_and_the_power_term():
+    m = smodel([ped("T A", 0), sup(200)])
+    # a: power jack top middle (25.4, 0), measure 2.75 above; psu1.F1 at its right edge middle facing right: measure 2.75 right
+    for (cx, cy), want in (((138.289, 100.0), (138.289 + 25.4 + 2.75 - 25.4) + (100.0 + 2.75)),
+                           ((100.0, 30.0), (100.0 + 25.4 + 2.75 - 25.4) + (30.0 + 2.75))):
+        _, det = m.score([m.owner[0], (cx, cy, 0)], detail=True)
+        assert det["terms"]["power"][0] == pytest.approx(want, abs=1e-6)
+        assert det["terms"]["power"][1] == pytest.approx(0.1 * want, abs=1e-6)
+    # rotated 90 deg: the port faces down, at the bottom edge middle: 25.4 + 2.75 below the centre; 270 deg: up
+    assert m._geom[(1, 90)]["port_pt"]["F1"] == pytest.approx((0.0, 28.15)) and m._geom[(1, 270)]["port_pt"]["F1"] == pytest.approx((0.0, -28.15))
+    _, det = m.score([m.owner[0], (100.0, 40.0, 90)], detail=True)
+    assert det["terms"]["power"][0] == pytest.approx(abs(100.0 - 25.4) + abs(40.0 + 28.15 + 2.75), abs=1e-6)
+    # an under-board supply keeps its owner position: the power term does not follow the state
+    u = smodel([ped("T A", 0), sup(200)], placement="under")
+    assert u.score(u.owner, detail=True)[1]["terms"]["power"][0] > 0 and len(u.owner) == 1
+
+
+def test_a_supply_port_with_a_blocking_pedal_costs_clearance_and_moving_the_supply_clears_it():
+    # obstacle b (not in the chain) 2.82 mm right of the supply's right edge: F1's 5.5 mm power box reaches 2.68 mm into it
+    m = smodel([ped("T A", 0), sup(200), ped("T B", 295)], extra=QUIET_W)
+    gap = 295 * PX - (200 + 90) * PX
+    assert gap == pytest.approx(2.822, abs=1e-3)
+    _, det = m.score(m.owner, margin=0, detail=True)
+    (hit,) = [b for b in det["blocked"] if b["jack"] == "psu1.F1"]
+    assert hit["obstacle"] == "T B" and hit["part"] == "box" and hit["depth_mm"] == pytest.approx(5.5 - gap, abs=1e-3)
+    assert det["terms"]["clearance"][1] >= 50 * hit["depth_mm"] + 100
+    moved = [m.owner[0], (m.owner[1][0] - 10.0, m.owner[1][1], 0)]
+    _, det2 = m.score(moved, margin=0, detail=True)
+    assert not [b for b in det2["blocked"] if b["jack"] == "psu1.F1"]
+    assert det2["terms"]["clearance"][1] < det["terms"]["clearance"][1]
+    # the supply as an obstacle: a plug of pedal a's output (box 6.3 mm) next to the supply is blocked by it
+    near = smodel([ped("T A", 0), sup(95, 0, 2.0, 4.0)], extra=QUIET_W)        # supply starts 2.82 mm right of a's right edge
+    _, d3 = near.score(near.owner, margin=0, detail=True)
+    assert [b for b in d3["blocked"] if b["jack"] == "a.out" and b["obstacle"] == "S One"]
+    # the search clears the port by moving the supply (b is a fixed obstacle; a is far from everything)
+    best = layout.search(m, "fix", seed=1, iterations=400, restarts=1)[0][1]
+    assert m.feasible(best) and blocked_of(m, best) == [] and best[1] != m.owner[1]
+
+
+def blocked_of(m, state):
+    return m.score(state, margin=0, detail=True)[1]["blocked"]
+
+
+def test_with_a_power_type_the_port_gets_the_dc_plug_on_the_better_side():
+    dc = {"dc": {"role": "power", "diameter_mm": 3.5, "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 10.0}}}
+    inst_types = {**TYPES, **dc}
+    inst = {"id": "psu1", "supply": "s1", "placement": "on_board", "outputs": [{"port": "F1", "pedals": ["a"]}]}
+    proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc", "overrides": {"P1": {"exit_a": "left"}}}, "jacks": {},
+            "power": {"supplies": [inst]}}
+    items = design.parse_canvas(canvas(BOARD, ped("T A", 0), sup(200)))
+    m = layout.Model(proj, items, PEDALS, SUPPLIES, {**JACKS, "s1": SUP_JACKS}, {}, inst_types, outlines={})
+    (port,) = m._geom[(1, 0)]["ports"]
+    assert port["jack"] == "psu1.F1" and {o["side"] for o in port["opts"]} == {"left"}        # the override fixes the side
+    assert m._geom[(1, 0)]["port_pt"]["F1"] == pytest.approx((25.4 + 5.0, 0.0))                # half the 10 mm head in front
+    free = layout.Model({**proj, "cables": {"type": "t", "power_type": "dc"}}, items, PEDALS, SUPPLIES,
+                        {**JACKS, "s1": SUP_JACKS}, {}, inst_types, outlines={})
+    assert {o["side"] for o in free._geom[(1, 0)]["ports"][0]["opts"]} == {"left", "right"}
+
+
+def test_items_for_moves_the_supply_item_and_leaves_the_rest():
+    m = smodel([ped("T A", 0), sup(200), ped("T B", 295)])
+    state = [m.owner[0], (100.0, 30.0, 90)]
+    out = {it["id"]: it for it in m.items_for(state, snap=False)}
+    sid = m.inst_item["psu1"]["id"]
+    cx, cy = design.centre(out[sid])
+    assert (cx, cy) == pytest.approx((100.0, 30.0)) and out[sid]["rot"] == 90
+    assert out[m.placed["a"]["id"]] == m.placed["a"]
+    assert [it for it in m.items if it["title"] == "T B"][0] in m.items_for(state)
+    assert m.items_for(m.owner, snap=True)[1:] and design.centre(m.items_for(m.owner)[0]) == pytest.approx(design.centre(m.items[0]))
+
+
+def test_wiring_given_by_the_search_follows_an_on_board_supply():
+    """propose_layout.evaluate passes (port point, pedals, under, (instance, port)): the on-board port follows the state."""
+    m = smodel([ped("T A", 0), sup(200)])
+    m.set_wiring([((0.0, 0.0), ["a"], False, ("psu1", "F1"))])
+    _, det = m.score([m.owner[0], (100.0, 30.0, 0)], detail=True)
+    assert det["terms"]["power"][0] == pytest.approx((100.0 + 2.75 + 25.4 - 25.4) + (30.0 + 2.75) - 0.0, abs=1e-6)
+    m.set_wiring([((0.0, 0.0), ["a"], True, ("other", "F1"))])    # not a movable supply: the fixed point stays
+    _, det = m.score([m.owner[0], (100.0, 30.0, 0)], detail=True)
+    assert det["terms"]["power"][0] == pytest.approx((25.4 - 0.0) + (0.0 + 2.75), abs=1e-6)
+
+
+# recorded from the commit before on-board supplies became movable (uv run scripts/propose_layout.py guitar-gig --score)
+
+
+def test_the_gig_score_is_unchanged_by_movable_supplies():
+    """No on-board supply: only chain pedals move, and an explicit "under" on every supply scores exactly as the
+    default (compared within the current data, so owner edits of the gig never break this test)."""
+    pedals, supplies = load_catalog()
+    proj = load_json(GIG / "project.json")
+    args = (design.parse_design(GIG / "playground_design.json"), pedals, supplies, jacks.read_file()["jacks"],
+            footswitches.read_file()["footswitches"], load_cable_types())
+    m = layout.Model(proj, *args)
+    assert m.ids == m.ids[:m.n_ped] and m.n_ped == len(m.owner)       # no on-board supply: only chain pedals move
+    under = copy.deepcopy(proj)
+    for inst in under["power"]["supplies"]:
+        inst["placement"] = "under"
+    u = layout.Model(under, *args)
+    assert u.ids == m.ids
+    (total, det), (total_u, det_u) = m.score(m.owner, detail=True), u.score(u.owner, detail=True)
+    assert total == pytest.approx(total_u) and det["terms"] == det_u["terms"]
+
+
+# --- the power estimate's hole points: the project's hole edits, free under the board -----------------------
+DC_TYPES = {**TYPES, "dc": {"role": "power", "diameter_mm": 3.5, "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 10.0}}}
+HOLE_BOARD = {"x.png": {"holes": [[0.4, 0.4, 0.6, 0.6]]}}         # x 101.6..152.4, y 50.8..76.2 on the 254 x 127 mm board
+
+
+def hole_model(specs, board_data, board_edits=None, placement="under"):
+    inst = {"id": "psu1", "supply": "s1", "placement": placement, "outputs": [{"port": "F1", "pedals": ["a"]}]}
+    proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc"}, "jacks": {}, "power": {"supplies": [inst]}}
+    items = design.parse_canvas(canvas(BOARD, *specs))
+    return layout.Model(proj, items, PEDALS, SUPPLIES, {**JACKS, "s1": SUP_JACKS}, {}, DC_TYPES, outlines={},
+                        board_data=board_data, board_edits=board_edits)
+
+
+def test_the_model_uses_the_projects_hole_edits_for_the_power_estimate():
+    specs = [ped("T A", 0)]
+    assert hole_model(specs, {}).power_setup is None                                    # no holes known
+    edit = {"type": "hole", "x0": 0.4, "y0": 0.4, "x1": 0.6, "y1": 0.6}
+    opened = hole_model(specs, {}, [edit]).power_setup                                  # the project's box opens a hole
+    assert opened is not None and len(opened["index"]) > 0
+    assert all(101.6 <= x <= 152.4 and 50.8 <= y <= 76.2 for x, y in opened["index"].points)
+    closed = hole_model(specs, HOLE_BOARD, [{"type": "filled", "x0": 0, "y0": 0, "x1": 1, "y1": 1}])
+    assert closed.power_setup is None                                                   # the board data's hole filled by an edit
+    assert len(hole_model(specs, HOLE_BOARD).power_setup["index"]) == len(opened["index"])
+
+
+def test_hole_points_under_an_under_board_supply_are_not_usable_for_the_estimate():
+    free = hole_model([ped("T A", 0)], HOLE_BOARD).power_setup["index"]
+    # the supply item (x 112.9..163.7, y 50.8..76.2) hangs under the board over the hole's right part; grown by the cable radius 1.75
+    under = hole_model([ped("T A", 0), sup(200, 90)], HOLE_BOARD).power_setup["index"]
+    assert 0 < len(under) < len(free)
+    assert all(not (112.9 - 1.75 <= x <= 163.7 + 1.75 and 50.8 - 1.75 <= y <= 76.2 + 1.75) for x, y in under.points)
+    assert set(under.points) < set(free.points)
+    # an on-board supply is a pedal on top, not an under-board obstacle: the model moves it instead and keeps all the points
+    on = hole_model([ped("T A", 0), sup(200, 90)], HOLE_BOARD, placement="on_board").power_setup["index"]
+    assert len(on) == len(free)

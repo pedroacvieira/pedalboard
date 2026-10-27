@@ -82,6 +82,17 @@ def test_build_grid_area_has_margin_at_back_and_sides_and_stops_at_the_front():
     assert not g.inside(g.cell_of(250.0, 290.0))                             # in front of the lowest row: outside
 
 
+def test_front_limit_is_the_lowest_pedal_or_with_route_in_front_the_front_edge_plus_the_margin():
+    board = (100.0, 100.0, 400.0, 300.0)
+    assert routing.front_limit(board, [250.0, 280.0], CFG) == 280.0
+    assert routing.front_limit(board, [], CFG) == 300.0 and routing.front_limit(board, [320.0], CFG) == 300.0   # never beyond the board
+    on = {**CFG, "route_in_front": True}
+    assert routing.front_limit(board, [250.0], on) == pytest.approx(306.0)                                  # the front edge + 6 mm
+    g = routing.build_grid(board, [], routing.front_limit(board, [250.0], on), on)
+    assert g.inside(g.cell_of(250.0, 303.0)) and not g.inside(g.cell_of(250.0, 310.0))
+    assert routing.settings({}) ["route_in_front"] is False and routing.settings({"cables": {"route_in_front": True}})["route_in_front"] is True
+
+
 def test_stacking_limit_spreads_cables_over_a_corridor():
     g = free_grid(nx=12, ny=9)
     for r in ((18.0, 0.0, 54.0, 24.0), (18.0, 30.0, 54.0, 54.0)):           # a corridor two cells wide (rows 4..4 and 5)
@@ -650,3 +661,325 @@ def test_a_lane_never_moves_into_a_pedal_the_centreline_touches():
     res = routing.lanes(routes, [r], {}, AREA, 6.0)
     for c in ("S1", "S2"):
         assert all(routing.seg_rect_distance(p, q, r) > 0 for p, q in zip(res[c]["corners"][1:-2], res[c]["corners"][2:-1]))
+
+
+# --- the under-board layer (cables through the board's holes) -------------------------------------------
+HOLE_L, HOLE_R = (92.0, 60.0, 112.0, 100.0), (168.0, 100.0, 188.0, 140.0)   # left / right of the wall x 120..160
+
+
+def under_ctx(cables=None, wall=(120, -10, 40, 170), holes=(HOLE_L, HOLE_R), supplies=(), edges=()):
+    """plug_ctx with a wall C between A and B over the whole routing height (closed on top), holes either side of it
+    and optional under-board supplies [(item, placement)]. A's cable leaves at (80, 94) (right) or (80, 66) (left);
+    B's at (190, 126) (right) or (190, 154) (left). Transit 15 mm per pass (the fallback)."""
+    ctx = plug_ctx({"type": "ra", **(cables or {})}, extra_obstacles=[mm_item("i-c", "C", *wall)])
+    lay = ctx["layout"]
+    lay["holes"] = list(holes)
+    lay["edge_segments"] = list(edges)
+    lay["inst_item"] = {f"psu{n}": it for n, (it, _) in enumerate(supplies, 1)}
+    lay["inst_placement"] = {f"psu{n}": p for n, (_, p) in enumerate(supplies, 1)}
+    return ctx
+
+
+def the_cable(ctx):
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    return c
+
+
+def test_a_cable_walled_off_on_top_goes_under_through_a_hole_on_each_side():
+    ctx = under_ctx()
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    assert c["status"] == "routed" and c["under_board"] and c["holes_used"] == 2 and ctx["errors"] == []
+    assert [s["layer"] for s in c["stretches"]] == ["top", "under", "top"]
+    top_a, under, top_b = (s["points"] for s in c["stretches"])
+    assert len(c["hole_points"]) == 2 and c["hole_points"][0] == under[0] and c["hole_points"][1] == under[-1]
+    assert routing.polyline_length(under) == pytest.approx(c["under_mm"])
+    # each hole point is a hole cell centre: inside a hole, outside every pedal
+    for pt, hole in zip(c["hole_points"], (HOLE_L, HOLE_R)):
+        assert hole[0] <= pt[0] <= hole[2] and hole[1] <= pt[1] <= hole[3]
+    # min length = both plug measures (2 x (8 + 6) mm) + the top and under polylines between the exits + 2 x 15 mm transit
+    exits = c["path"][2:-2]
+    assert c["min_mm"] == pytest.approx(28 + routing.polyline_length(exits) + 2 * 15.0, abs=1e-6)
+    assert c["under_mm"] > 0 and routing.polyline_length(top_a) > 0 and routing.polyline_length(top_b) > 0
+    assert len(ctx["routing"]["hole_cells"]) > 0 and ctx["routing"]["under"] is not None
+    lanes_top = c["draw_path"]
+    assert lanes_top[0] == (70.0, 80.0) and lanes_top[-1] == (200.0, 140.0)
+
+
+BACK_ALL = ((0.0, 0.0), (300.0, 0.0), "back")     # edge segments (canvas mm) of the board 0..300 x 0..200
+BACK_A = ((0.0, 0.0), (100.0, 0.0), "back")       # over A's side of the wall only
+BACK_B = ((180.0, 0.0), (300.0, 0.0), "back")     # over B's side
+
+
+def test_a_cable_walled_off_on_top_goes_under_round_the_back_edge_through_edge_segments():
+    ctx = under_ctx(holes=(), edges=(BACK_A, BACK_B))
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    assert c["status"] == "routed" and c["under_board"] and ctx["errors"] == []
+    assert c["holes_used"] == 0 and c["edges_used"] == 2 and c["edge_sides"] == ["back", "back"]
+    assert [s["layer"] for s in c["stretches"]] == ["top", "under", "top"]
+    first, second = c["edge_points"]
+    assert 0 <= first[0] <= 100 and 180 <= second[0] <= 300 and first[1] < 3 and second[1] < 3   # inside the segments, at the border
+    et = ctx["routing"]["edge_transit_mm"]
+    assert et == 30.0 and ctx["routing"]["edge_transit_source"] == "twice the hole transit"
+    # min length = both plug measures (2 x 14) + the top and under polylines between the exits + one edge transit per crossing
+    # (the 2 mm cell step of each link in c["path"] is part of the transit, not of the polylines)
+    exits = c["path"][2:-2]
+    assert c["min_mm"] == pytest.approx(28 + routing.polyline_length(exits) - 2 * 2.0 + 2 * et, abs=1e-6)
+    assert ctx["routing"]["edge_links"] > 0 and ctx["routing"]["hole_cells"] == set()
+    assert "square" in [t for k, t in svgdraw.key_entries(ctx, ctx["cable_list"], 2) if k == "pass_edge"][0]
+    assert 'class="edge-pass"' in "\n".join(svgdraw.cables(ctx["cable_list"], svgdraw.cable_colours(ctx["cable_list"])))
+
+
+def test_a_cable_cannot_come_up_where_no_edge_segment_is():
+    # a segment only over A's side: the cable can go down there but never up on B's side of the closed wall
+    ctx = under_ctx(holes=(), edges=(BACK_A,))
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert the_cable(ctx)["status"].startswith("unroutable")
+    none = under_ctx(holes=())
+    routing.route_project(none, {}, cable_types=TYPES)
+    assert the_cable(none)["status"].startswith("unroutable") and none["routing"].get("edge_links") == 0
+    # an edge crossing and a hole mix: down through the left hole, up over the back edge on B's side
+    mixed = under_ctx(holes=(HOLE_L,), edges=(BACK_B,))
+    routing.route_project(mixed, {}, cable_types=TYPES)
+    c = the_cable(mixed)
+    assert c["status"] == "routed" and c["holes_used"] == 1 and c["edges_used"] == 1
+    assert c["min_mm"] == pytest.approx(28 + routing.polyline_length(c["path"][2:-2]) - 2.0 + 15.0 + 30.0, abs=1e-6)
+
+
+def test_the_edge_transit_of_a_signal_cable_follows_the_board_data_and_the_project():
+    base = under_ctx(holes=(), edges=(BACK_ALL,))
+    routing.route_project(base, {}, cable_types=TYPES)
+    data = under_ctx(holes=(), edges=(BACK_ALL,))
+    data["layout"]["edge_transit_mm"] = 20.0
+    routing.route_project(data, {}, cable_types=TYPES)
+    assert data["routing"]["edge_transit_source"] == "the board data"
+    assert the_cable(data)["min_mm"] == pytest.approx(the_cable(base)["min_mm"] - 2 * 10.0, abs=1e-6)
+    proj = under_ctx(holes=(), edges=(BACK_ALL,))
+    proj["project"]["power_routing"] = {"edge_transit_mm": 45.0}
+    routing.route_project(proj, {}, cable_types=TYPES)
+    assert the_cable(proj)["min_mm"] == pytest.approx(the_cable(base)["min_mm"] + 2 * 15.0, abs=1e-6)
+
+
+def test_route_in_front_extends_the_routing_area_to_the_front_edge_plus_the_margin():
+    wall = (120, -10, 40, 205)        # reaches 5 mm beyond the board front: closed on top while nothing is routed in front
+    off = under_ctx(wall=wall, holes=())
+    routing.route_project(off, {}, cable_types=TYPES)
+    assert off["routing"]["front_y"] == pytest.approx(160.0) and the_cable(off)["status"].startswith("unroutable")
+    shorter = under_ctx(wall=(120, -10, 40, 192), holes=())      # leaves y 195..206 free once the front is open
+    routing.route_project(shorter, {}, cable_types=TYPES)
+    assert the_cable(shorter)["status"].startswith("unroutable")
+    on = under_ctx({"route_in_front": True}, wall=(120, -10, 40, 192), holes=())
+    routing.route_project(on, {}, cable_types=TYPES)
+    c = the_cable(on)
+    assert on["routing"]["front_y"] == pytest.approx(200.0 + 6.0)             # the board's front edge + the edge margin (6 mm)
+    assert c["status"] == "routed" and max(q[1] for q in c["path"]) > 160.0   # the cable runs in front of the pedals
+    assert on["errors"] == []
+    # a value that is not a boolean is an error
+    bad = under_ctx({"route_in_front": "yes"}, holes=())
+    routing.route_project(bad, {}, cable_types=TYPES)
+    assert any("route_in_front must be true or false" in e for e in bad["errors"])
+
+
+def test_route_in_front_makes_front_edge_segments_usable_for_signal_cables():
+    front = ((0.0, 200.0), (300.0, 200.0), "front")
+    wall = (120, -10, 40, 230)        # closes the routing area on top, in front of the pedals too
+    # the only way is under the board: down at the front on A's side, up at the front on B's
+    off = under_ctx(wall=wall, holes=(), edges=(front,))
+    routing.route_project(off, {}, cable_types=TYPES)
+    assert the_cable(off)["status"].startswith("unroutable")
+    assert any("edge segment 1 is at the front" in w and "route_in_front" in w for w in off["warnings"])
+    on = under_ctx({"route_in_front": True}, wall=wall, holes=(), edges=(front,))
+    routing.route_project(on, {}, cable_types=TYPES)
+    c = the_cable(on)
+    assert c["status"] == "routed" and c["edges_used"] == 2 and c["edge_sides"] == ["front", "front"]
+    assert all(q[1] > 195 for q in c["edge_points"]) and not any("edge segment" in w for w in on["warnings"])
+
+
+def test_under_board_false_keeps_the_cable_on_top():
+    ctx = under_ctx({"under_board": False})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    assert c["status"].startswith("unroutable") and not c["under_board"] and ctx["routing"]["under"] is None
+    # with a gap in front of the wall the cable goes round it on top, holes or not
+    gap = under_ctx({"under_board": False}, wall=(120, -10, 40, 140))
+    routing.route_project(gap, {}, cable_types=TYPES)
+    g = the_cable(gap)
+    assert g["status"] == "routed" and not g["under_board"] and g["holes_used"] == 0 and len(g["stretches"]) == 1
+
+
+def test_a_hole_a_pedal_covers_is_not_usable():
+    ctx = under_ctx(holes=((125.0, 60.0, 155.0, 100.0),))   # a hole entirely under the wall (a pedal on top of it)
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert ctx["routing"]["hole_cells"] == set() and the_cable(ctx)["status"].startswith("unroutable")
+    g = routing.Grid(0, 0, 60, 60, 6.0)
+    g.block_rect((12.0, 0.0, 30.0, 60.0))
+    ug = routing.Grid(0, 0, 60, 60, 6.0)
+    # a hole across x 6..42: only the cells outside the pedal (centres 3, 9 and 33, 39) are hole cells
+    assert routing.hole_cells(g, ug, [(6.0, 12.0, 42.0, 18.0)]) == {(1, 2), (5, 2), (6, 2)}
+
+
+def test_a_cable_stays_on_top_when_the_detour_saves_less_than_two_passes():
+    holes = (HOLE_L, HOLE_R)
+    near = under_ctx(wall=(120, -10, 40, 130))                       # open below y = 130: a short way round on top
+    routing.route_project(near, {}, cable_types=TYPES)
+    n = the_cable(near)
+    plain = under_ctx(wall=(120, -10, 40, 130), holes=())
+    routing.route_project(plain, {}, cable_types=TYPES)
+    assert n["status"] == "routed" and not n["under_board"] and n["min_mm"] == pytest.approx(the_cable(plain)["min_mm"])
+    # the same wall open only at the back (y < 30): the way round is about 150 mm longer, so under wins even with 2 x (15 + 15) mm
+    tall = under_ctx(wall=(120, 30, 40, 140), holes=holes)
+    routing.route_project(tall, {}, cable_types=TYPES)
+    assert the_cable(tall)["under_board"]
+
+
+def test_hole_transit_comes_from_the_project_then_the_board_data():
+    base = under_ctx()
+    routing.route_project(base, {}, cable_types=TYPES)
+    long_ = under_ctx({"hole_transit_mm": 40})
+    routing.route_project(long_, {}, cable_types=TYPES)
+    assert the_cable(long_)["min_mm"] == pytest.approx(the_cable(base)["min_mm"] + 2 * 25.0, abs=1e-6)   # same route, 25 mm more per pass
+    data = under_ctx()
+    data["layout"]["hole_transit_mm"] = 20.0
+    routing.route_project(data, {}, cable_types=TYPES)
+    assert data["routing"]["settings"]["hole_transit_mm"] == 20.0
+    assert the_cable(data)["min_mm"] == pytest.approx(the_cable(base)["min_mm"] + 2 * 5.0, abs=1e-6)
+
+
+def test_an_under_board_supply_blocks_the_under_layer():
+    full = mm_item("i-s", "PSU", 116, 0, 56, 200)                   # between the holes, the full board height
+    ctx = under_ctx(supplies=[(full, "under")])
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert the_cable(ctx)["status"].startswith("unroutable")
+    part = mm_item("i-s", "PSU", 116, 0, 56, 150)                   # leaves y 150..200 under the board open
+    ctx = under_ctx(supplies=[(part, "under")])
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    assert c["status"] == "routed" and c["under_board"]
+    (under,) = [s["points"] for s in c["stretches"] if s["layer"] == "under"]
+    assert min_dist(under, (116.0, 0.0, 172.0, 150.0)) >= 3.0 - 1e-6
+    # the same supply ON the board is a pedal on top (not an under obstacle): the cable then goes under past it
+    on = under_ctx(supplies=[(full, "on_board")])
+    on["layout"]["obstacles"].append(full)
+    routing.route_project(on, {}, cable_types=TYPES)
+    assert the_cable(on)["under_board"]
+
+
+def under_layer(grid, holes, max_stack=2, cost=0.9, transit=15.0, penalty=15.0, blocked=()):
+    ug = routing.Grid(grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell, grid.y0 + grid.ny * grid.cell, grid.cell)
+    ug.blocked = set(blocked)
+    return routing.Under(ug, holes, transit, penalty, cost, max_stack)
+
+
+def test_two_layer_search_goes_under_a_closed_wall_and_pays_for_the_passes():
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 42.0, 54.0))                            # a full-height wall (columns 5..6)
+    layers = under_layer(g, {(3, 4), (8, 4)})
+    assert routing.astar(g, (0, 4), (11, 4), lambda c: 1.0) is None
+    path = routing.astar(g, (0, 4), (11, 4), lambda c: 1.0, under=layers)
+    assert path[0] == (0, 4) and path[-1] == (11, 4)
+    assert [lay for lay, _ in routing.layer_stretches(path)] == ["top", "under", "top"]
+    assert (3, 4) in path and (3, 4, 1) in path and (8, 4, 1) in path and (8, 4) in path
+    # 11 cells of 6 mm in a line + 2 passes of 15 mm; the under stretch (5 cells) is 5 x 6 mm
+    assert routing.path_length(g, path, 15.0) == pytest.approx(11 * 6.0 + 2 * 15.0)
+    assert routing.Under.connected(layers, g, (0, 4), (11, 4)) and not g.connected((0, 4), (11, 4))
+    # an under obstacle between the holes closes the under layer as well
+    shut = under_layer(g, {(3, 4), (8, 4)}, blocked={(5, j) for j in range(9)})
+    assert not shut.connected(g, (0, 4), (11, 4)) and routing.astar(g, (0, 4), (11, 4), lambda c: 1.0, under=shut) is None
+
+
+def test_under_search_prefers_top_when_the_passes_cost_more_than_the_detour():
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 36.0, 42.0))                            # open only at row 8: a detour of 2 x 4 diagonal-ish cells
+    layers = under_layer(g, {(3, 4), (8, 4)})
+    path = routing.astar(g, (0, 4), (11, 4), lambda c: 1.0, under=layers)
+    assert all(len(c) == 2 for c in path)                           # the saving (about 25 mm) is far below 2 x (15 + 15)
+    cheap = under_layer(g, {(3, 4), (8, 4)}, transit=0.0, penalty=0.0)
+    assert any(len(c) == 3 for c in routing.astar(g, (0, 4), (11, 4), lambda c: 1.0, under=cheap))   # free passes: under wins
+
+
+def test_equal_routes_prefer_under_the_board():
+    g = free_grid(nx=12, ny=9)
+    layers = under_layer(g, {(2, 4), (9, 4)}, transit=0.0, penalty=0.0)
+    path = routing.astar(g, (0, 4), (11, 4), lambda c: 1.0, under=layers)
+    assert any(len(c) == 3 for c in path)                           # 0.9 x per mm under, no cost to pass
+
+
+def test_max_stack_under_is_respected_and_overflow_is_reported_per_layer():
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 42.0, 54.0))
+    holes = {(3, r) for r in (3, 4, 5)} | {(8, r) for r in (3, 4, 5)}
+    nets = [(f"n{r}", (0, r), (11, r)) for r in (3, 4, 5)]
+    paths, users, overflow, _ = routing.route_all(g, nets, 2, 20, under=under_layer(g, holes, max_stack=1))
+    assert all(paths.values()) and not overflow
+    under_cells = [c for c in users if len(c) == 3]
+    assert under_cells and max(len(users[c]) for c in under_cells) == 1
+    one = {(3, 4), (8, 4)}                                           # a single hole cell on each side: two cables must share it
+    paths, users, overflow, _ = routing.route_all(g, nets[:2], 2, 10, under=under_layer(g, one, max_stack=1))
+    assert (3, 4, 1) in overflow and all(len(c) == 3 for c in overflow)    # reported on the under layer only
+    paths, users, overflow, _ = routing.route_all(g, nets[:2], 2, 10, under=under_layer(g, one, max_stack=2))
+    assert not overflow
+
+
+def test_route_project_reports_over_stacking_under_the_board(monkeypatch):
+    real = routing.route_all
+
+    def crowded(grid, nets, *a, **k):   # force the over-limit under the board (route_all itself is tested above)
+        paths, users, overflow, plug_over = real(grid, nets, *a, **k)
+        cell = next(c for p in paths.values() for c in p if len(c) == 3)
+        users[cell] = ["S1", "SX"]
+        return paths, users, {cell}, plug_over
+    monkeypatch.setattr(routing, "route_all", crowded)
+    ctx = under_ctx({"max_stack_under": 1})
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    assert any("shares cells with SX beyond the limit of 1 stacked cables under the board" in w for w in ctx["warnings"])
+    assert the_cable(ctx)["status"] == "routed, over the stacking limit" and ctx["routing"]["overflow_under"]
+
+
+def test_settings_defaults_of_the_under_layer():
+    s = routing.settings({"cables": {"max_stack": 3}})
+    assert s["under_board"] is True and s["hole_penalty"] == 15.0 and s["under_cost"] == 0.9 and s["max_stack_under"] == 3
+    assert routing.settings({"cables": {"max_stack_under": 1}})["max_stack_under"] == 1
+
+
+def test_svg_draws_dashed_under_stretches_and_hole_markers():
+    ctx = under_ctx()
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    out = "\n".join(svgdraw.cables([c], {"S1": "#c62828"}, 3.5))
+    assert out.count('class="cable-under"') == 1 and 'stroke-dasharray="4 2.4"' in out and out.count('class="hole-pass"') == 2
+    assert out.count('class="cable"') == 2 and out.count('class="casing"') == 2     # the top stretches only
+    kinds = [k for k, _ in svgdraw.key_entries(ctx, [c], 2)]
+    assert "under" in kinds and "pass" in kinds
+    on_top = {"id": "S1", "kind": "signal", "status": "routed", "under_board": False, "path": [(0, 0), (10, 0)]}
+    assert "cable-under" not in "\n".join(svgdraw.cables([on_top], {"S1": "#c62828"}, 3.5))
+    assert "under" not in [k for k, _ in svgdraw.key_entries(ctx, [on_top], 2)]
+
+
+def test_lanes_take_only_the_top_stretches_of_a_cable_that_goes_under():
+    ctx = under_ctx()
+    routing.route_project(ctx, {}, cable_types=TYPES)
+    c = the_cable(ctx)
+    assert c["stacked_with"] == [] and c["draw_path"][0] == c["path"][0]
+    under = [s["points"] for s in c["stretches"] if s["layer"] == "under"]
+    assert under and all(len(u) >= 2 for u in under)
+
+
+def test_back_on_top_undoes_a_cable_sent_under_so_another_could_take_its_corridor():
+    g = free_grid(nx=12, ny=9)
+    g.block_rect((30.0, 0.0, 42.0, 24.0))                            # a wall with a one-cell gap at row 4 ...
+    g.block_rect((30.0, 30.0, 42.0, 48.0))                           # ... and an opening at row 8 (a detour)
+    layers = under_layer(g, {(3, 4), (8, 4)})
+    nets = [("A", (0, 4), (11, 4)), ("B", (0, 5), (11, 5))]
+    a_under = routing.astar(g, (0, 4), (11, 4), lambda c: 1.0 if len(c) == 3 or not 3 < c[0] < 8 else 100.0, under=layers)
+    b_gap = routing.astar(g, (0, 5), (11, 5), lambda c: 1.0)
+    assert any(len(c) == 3 for c in a_under) and (5, 4) in b_gap   # what negotiation can leave behind (max_stack 1)
+    paths = routing._back_on_top(g, nets, {"A": a_under, "B": b_gap}, layers, lambda c: 1, {}, {}, 2)
+    assert all(len(c) == 2 for c in paths["A"]) and (5, 4) in paths["A"]   # A back through the gap on top
+    assert all(len(c) == 2 for c in paths["B"]) and (5, 8) in paths["B"]   # B takes the detour (cheaper than 2 passes)
+    assert not set(paths["A"]) & set(paths["B"])                    # the stacking limit (1) still holds
+    before = routing.path_cost(g, a_under, layers) + routing.path_cost(g, b_gap, layers)
+    assert routing.path_cost(g, paths["A"], layers) + routing.path_cost(g, paths["B"], layers) < before
+    # nothing to undo when the cable under the board is alone
+    alone = routing._back_on_top(g, nets[:1], {"A": a_under}, layers, lambda c: 1, {}, {}, 2)
+    assert all(len(c) == 2 for c in alone["A"])

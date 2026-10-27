@@ -19,6 +19,8 @@ JACK_COLOURS = {"input": "#1565c0", "output": "#2e7d32", "power": "#ef6c00", "po
 FOOTSWITCH_STYLE = {"bypass": ("#263238", "#263238"), "boost": ("#e53935", "#263238"), "tap": ("#1e88e5", "#263238"),
                     "function": ("#ffffff", "#263238")}   # footswitch dots: (fill, stroke) per type
 INK, CASING, GREY = "#263238", "#1c2428", "#78909c"
+POWER_COLOUR = "#6d4c41"   # DC power cables: one neutral (brown) family, thinner than the patch cables
+POWER_WIDTH = 1.2          # mm drawn
 PAD = 10.0          # white border round the board (mm)
 FONT = 2.8          # legend font (mm; >= 2.5 so it reads when printed at 1:1)
 CHAR = 0.56         # average glyph width / font size (sans-serif estimate)
@@ -51,6 +53,25 @@ def text(x, y, s, size=FONT, anchor="start", fill=INK, halo=False, **attrs):
 # --- board, area, pedals ------------------------------------------------------------------------
 def board(box):
     return rect(*box, fill="#eceff1", stroke="#90a4ae", stroke_width=1, class_="board")
+
+
+def holes(rects):
+    """The board's holes (slots / cutouts in the deck), a darker fill so the board outline stays readable; one group, so
+    rectangles that touch do not show seams. Nothing without holes."""
+    if not rects:
+        return []
+    return ['<g class="holes" opacity="0.3">'] + [rect(*r, fill="#90a4ae", class_="hole") for r in rects] + ["</g>"]
+
+
+EDGE_COLOUR = "#7e57c2"
+EDGE_KEY = "edge crossing: cables may go round the board edge here"
+
+
+def edge_segments(segments):
+    """The owner's edge segments (board.json, type "edge": where cables may go round the board edge, canvas ((x0, y0), (x1, y1),
+    side)) as a thick translucent purple line on the board border. Nothing without segments."""
+    return [f'<line x1="{f1(a[0])}" y1="{f1(a[1])}" x2="{f1(b[0])}" y2="{f1(b[1])}" stroke="{EDGE_COLOUR}" stroke-opacity="0.6" '
+            f'stroke-width="2.4" stroke-linecap="butt" class="edge-segment"/>' for a, b, _ in segments or []]
 
 
 def routing_area(x0, y0, x1, y1):
@@ -243,15 +264,63 @@ def cables(cable_list, colours, diameter=3.5, ends=None):
                        f'stroke-linecap="round" class="cable-missing" data-id="{c["id"]}"/>')
             continue
         join = 'fill="none" stroke-linejoin="round" stroke-linecap="round"'
-        if "over the" in st:
-            out.append(f'<polyline points="{pts}" {join} stroke="#ff1744" stroke-opacity="0.55" stroke-width="{diameter + 2.4:g}" class="halo"/>')
-        out.append(f'<polyline points="{pts}" {join} stroke="{CASING}" stroke-width="{diameter:g}" class="casing"/>')
-        dash = ' stroke-dasharray="3 1.6"' if "squeezed" in st else ""
-        out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-width="{max(diameter - 0.9, 0.8):g}"{dash} '
-                   f'class="cable" data-id="{c["id"]}"/>')
+        parts = c.get("stretches") if any(x["layer"] == "under" for x in c.get("stretches") or []) else None
+        for stretch in parts or [{"layer": "top", "points": path}]:
+            pts = points(stretch["points"])
+            if stretch["layer"] == "under":   # under the board: lighter, dashed, no casing
+                out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-opacity="0.55" '
+                           f'stroke-width="{max(diameter - 0.9, 0.8):g}" stroke-dasharray="4 2.4" class="cable-under" data-id="{c["id"]}"/>')
+                continue
+            if "over the" in st:
+                out.append(f'<polyline points="{pts}" {join} stroke="#ff1744" stroke-opacity="0.55" stroke-width="{diameter + 2.4:g}" class="halo"/>')
+            out.append(f'<polyline points="{pts}" {join} stroke="{CASING}" stroke-width="{diameter:g}" class="casing"/>')
+            dash = ' stroke-dasharray="3 1.6"' if "squeezed" in st else ""
+            out.append(f'<polyline points="{pts}" {join} stroke="{colours[c["id"]]}" stroke-width="{max(diameter - 0.9, 0.8):g}"{dash} '
+                       f'class="cable" data-id="{c["id"]}"/>')
+        for x, y in c.get("hole_points") or []:   # where the cable passes through the deck
+            out.append(f'<circle cx="{f1(x)}" cy="{f1(y)}" r="{diameter * 0.9:.1f}" fill="#ffffff" fill-opacity="0.6" stroke="{CASING}" '
+                       f'stroke-width="0.6" class="hole-pass" data-id="{c["id"]}"/>')
+        for x, y in c.get("edge_points") or []:   # where the cable goes round the board edge
+            out.append(rect(x - diameter * 0.9, y - diameter * 0.9, x + diameter * 0.9, y + diameter * 0.9, fill="#ffffff", fill_opacity=0.6,
+                            stroke=CASING, stroke_width=0.6, class_="edge-pass", data_id=c["id"]))
         for run in c.get("stacked_runs") or ([] if not c.get("stacked_with") else [path]):   # only where it is stacked
             out.append(f'<polyline points="{points(run)}" {join} stroke="#ffffff" stroke-width="0.6" stroke-dasharray="2.4 2.4" '
                        f'class="stacked"/>')
+    return out
+
+
+def power_cable_list(cable_list):
+    return [c for c in cable_list or [] if c.get("kind") == "power" and c.get("stretches")]
+
+
+def power_cables(cable_list):
+    """Routed DC power cables: a thin brown line on top of the board, light and dashed under it, a small ring where the
+    cable passes through a hole and a small square where it goes over a board edge."""
+    out = []
+    for c in power_cable_list(cable_list):
+        join = 'fill="none" stroke-linejoin="round" stroke-linecap="round"'
+        for st in c["stretches"]:
+            if st["layer"] == "under":
+                out.append(f'<polyline points="{points(st["points"])}" {join} stroke="{POWER_COLOUR}" stroke-opacity="0.55" '
+                           f'stroke-width="{POWER_WIDTH:g}" stroke-dasharray="3 2" class="power-under" data-id="{c["id"]}"/>')
+            else:
+                out.append(f'<polyline points="{points(st["points"])}" {join} stroke="{POWER_COLOUR}" stroke-width="{POWER_WIDTH:g}" '
+                           f'class="power-cable" data-id="{c["id"]}"/>')
+        for x, y in c.get("hole_points") or []:
+            out.append(f'<circle cx="{f1(x)}" cy="{f1(y)}" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="{POWER_COLOUR}" '
+                       f'stroke-width="0.5" class="power-hole" data-id="{c["id"]}"/>')
+        for x, y in c.get("edge_points") or []:
+            out.append(rect(x - 1.8, y - 1.8, x + 1.8, y + 1.8, fill="#ffffff", fill_opacity=0.6, stroke=POWER_COLOUR, stroke_width=0.5,
+                            class_="power-edge", data_id=c["id"]))
+    return out
+
+
+def power_labels(cable_list):
+    """P# next to the pedal end of each routed power cable."""
+    out = []
+    for c in power_cable_list(cable_list):
+        x, y = c.get("end_point") or c["draw_path"][-1]
+        out.append(text(x + 1.5, y - 1.5, c["id"], 2.6, "start", POWER_COLOUR, True, font_weight="bold", class_="power-label"))
     return out
 
 
@@ -297,7 +366,7 @@ def legend_table(rows, x, y, width):
                    + text(cx + 9, cy + FONT * 0.35, r["id"], FONT, fill=r["colour"], font_weight="bold")
                    + text(cx + 9 + w_id, cy + FONT * 0.35, r["route"])
                    + text(cx + 9 + w_id + w_route + w_len, cy + FONT * 0.35, r["length"], anchor="end", class_="length")
-                   + text(cx + 9 + w_id + w_route + w_len + 2, cy + FONT * 0.35, r["status"], fill="#b71c1c")
+                   + text(cx + 9 + w_id + w_route + w_len + 2, cy + FONT * 0.35, r["status"], fill=r.get("status_fill", "#b71c1c"))
                    + "</g>")
     return out, per * ROW
 
@@ -305,13 +374,33 @@ def legend_table(rows, x, y, width):
 def key_entries(ctx, cable_list, max_stack):
     """(sample kind, text) for the key line: the symbols this picture uses."""
     r = ctx.get("routing") or {}
+    layout_holes = (ctx.get("layout") or {}).get("holes")
     st = [c.get("status") or "" for c in signal_cables(cable_list)]
     e = [("jack_used", "used jack (colour: input blue, output green, power orange, other purple)"),
          ("jack_free", "unused jack (the tick points to the side the plug enters from)"),
          ("head", "plug head and its cable exit"), ("area", "routing area"),
          ("box", "dashed: Pedal Playground box")]
+    if layout_holes:
+        e.append(("hole", "Board hole"))
+    if (ctx.get("layout") or {}).get("edge_segments"):
+        e.append(("edge", EDGE_KEY))
+    if any(c.get("under_board") for c in signal_cables(cable_list)):
+        e += [("under", "dashed light: cable under the board")]
+        if any(c.get("holes_used") for c in signal_cables(cable_list)):
+            e.append(("pass", "ring: pass through a hole"))
+        if any(c.get("edges_used") for c in signal_cables(cable_list)):
+            e.append(("pass_edge", "square: pass over the board edge"))
     if any("squeezed" in s for s in st):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
+    power = power_cable_list(cable_list)
+    if power:
+        e.append(("power", "brown: DC power cable (P#), thinner than the patch cables"))
+        if any(any(x["layer"] == "under" for x in c["stretches"]) for c in power):
+            e.append(("power_under", "dashed light brown: power cable under the board"))
+        if any(c.get("hole_points") for c in power):
+            e.append(("power_hole", "ring: power cable through a hole"))
+        if any(c.get("edge_points") for c in power):
+            e.append(("power_edge", "square: power cable over the board edge"))
     if any(c.get("stacked_with") for c in signal_cables(cable_list)):
         e.append(("stacked", "white dashes: cables stacked on top of each other"))
     if any("over the" in s for s in st):
@@ -341,6 +430,13 @@ def key_sample(kind, x, y):
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke=GREY, stroke_dasharray="4 3", stroke_width=0.8)
     if kind == "box":
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke="#455a64", stroke_width=0.3, stroke_dasharray="2 1.5", opacity=0.45)
+    if kind == "hole":
+        return rect(x, y - 2, x + 8, y + 2, fill="#90a4ae", opacity=0.3)
+    if kind == "edge":
+        return f'<line x1="{f1(x)}" y1="{f1(y)}" x2="{f1(x + 8)}" y2="{f1(y)}" stroke="{EDGE_COLOUR}" stroke-opacity="0.6" stroke-width="2.4"/>'
+    if kind == "supply":
+        return rect(x, y - 2, x + 8, y + 2, fill=SUPPLY_COLOUR, fill_opacity=0.22, stroke=SUPPLY_COLOUR, stroke_width=0.6,
+                    stroke_dasharray="3 1.5")
     if kind == "overflow":
         return rect(x, y - 2, x + 8, y + 2, fill="#ff1744", opacity=0.35)
     if kind.startswith("fs:"):
@@ -354,6 +450,20 @@ def key_sample(kind, x, y):
     base = swatch(x, y, "#78909c", 8.0).replace('stroke-linecap="round"', 'stroke-linecap="butt"')
     if kind == "squeezed":
         return (f'<line {line} stroke="{CASING}" stroke-width="2.4"/><line {line} stroke="#78909c" stroke-width="1.6" stroke-dasharray="2 1.2"/>')
+    if kind == "under":
+        return f'<line {line} stroke="#78909c" stroke-opacity="0.55" stroke-width="1.6" stroke-dasharray="4 2.4"/>'
+    if kind == "power":
+        return f'<line {line} stroke="{POWER_COLOUR}" stroke-width="{POWER_WIDTH:g}"/>'
+    if kind == "power_under":
+        return f'<line {line} stroke="{POWER_COLOUR}" stroke-opacity="0.55" stroke-width="{POWER_WIDTH:g}" stroke-dasharray="3 2"/>'
+    if kind == "power_hole":
+        return f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="{POWER_COLOUR}" stroke-width="0.5"/>'
+    if kind == "power_edge":
+        return rect(cx - 1.8, y - 1.8, cx + 1.8, y + 1.8, fill="#ffffff", fill_opacity=0.6, stroke=POWER_COLOUR, stroke_width=0.5)
+    if kind == "pass":
+        return f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="2.2" fill="#ffffff" fill-opacity="0.6" stroke="{CASING}" stroke-width="0.6"/>'
+    if kind == "pass_edge":
+        return rect(cx - 2.0, y - 2.0, cx + 2.0, y + 2.0, fill="#ffffff", fill_opacity=0.6, stroke=CASING, stroke_width=0.6)
     if kind == "stacked":
         return base + f'<line {line} stroke="#ffffff" stroke-width="0.6" stroke-dasharray="1.6 1.6"/>'
     if kind == "over":
@@ -445,19 +555,21 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     cable_list = ctx.get("cable_list") or []
     colours, ends = cable_colours(cable_list), jack_ends(layout, cable_list)
 
-    body = [board(bx), routing_area(ax0, ay0, ax1, r.get("front_y") or bx[3])]
+    body = [board(bx)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + [routing_area(ax0, ay0, ax1, r.get("front_y") or bx[3])]
     for o in layout["obstacles"]:
         cid = cid_of.get(o["id"])
         body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), uris.get(cid), (layout.get("shapes") or {}).get(o["id"])))
     body += overflow_cells(grid, r.get("overflow"))
     body += plug_heads(r.get("heads"))
     body += cables(cable_list, colours, diameter, ends)
+    body += power_cables(cable_list)
     jd = layout.get("jacks") or {}
     for cid, it in placed.items():
         body += jacks(it, jd.get(cid) or [], used_jacks(ctx, cid))
     body += footswitches(ctx.get("footswitch_points"), ctx.get("footswitch_pairs"))
     body += list(overlay or [])
     body += cable_labels(cable_list, colours, ends)
+    body += power_labels(cable_list)
 
     width, y = right - left, bx[3] + 8
     key, kh = key_block(key_entries(ctx, cable_list, max_stack), left + PAD, y, width - 2 * PAD, legend)
@@ -470,6 +582,92 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     body += table
     height = y + th + PAD - top
     return document((left, top, width, height), body)
+
+
+SUPPLY_COLOUR = "#e53935"   # power.svg: supply silhouettes, translucent so the board, holes and cables show through
+
+
+def supply(item, label, shapes=None, on_board=False):
+    """A power supply's silhouette (its outline, default the box) in translucent red, its label centred: under the
+    board it is drawn dashed (it hangs below the deck), on the board solid."""
+    cx, cy = design.centre(item)
+    x0, y0, x1, y1 = design.footprint(item)
+    d = " ".join("M" + " L".join(f"{f1(x)} {f1(y)}" for x, y in loop) + " Z"
+                 for loop in union_outline(shapes or [design.footprint(item)]))
+    dash = "" if on_board else ' stroke-dasharray="3 1.5"'
+    fs, lines = fit_label(label, x1 - x0 - 4, y1 - y0 - 4)
+    y = cy - (len(lines) - 1) * fs * 1.2 / 2 + fs * 0.35
+    return "\n".join([f'<g class="supply" data-id="{esc(item.get("id", ""))}">',
+                      f'<path d="{d}" fill="{SUPPLY_COLOUR}" fill-opacity="0.22" stroke="{SUPPLY_COLOUR}" stroke-width="0.6"{dash} '
+                      f'stroke-linejoin="round" class="supply-outline"/>']
+                     + [text(cx, y + n * fs * 1.2, ln, fs, "middle", "#b71c1c", True, class_="supply-name") for n, ln in enumerate(lines)]
+                     + ["</g>"])
+
+
+def render_power(ctx, names):
+    """power.svg: the power wiring alone. The board and its holes, the pedals as faint outlines, every power supply as a
+    translucent red silhouette (dashed when it hangs under the board), the power jacks and supply ports, the DC plug
+    heads, the routed power cables (under the board dashed, hole / edge passes marked) and a table of the power cables.
+    None without a routing grid / layout or without routed power cables."""
+    r = ctx.get("routing") or {}
+    grid, layout = r.get("grid"), ctx.get("layout")
+    cable_list = ctx.get("cable_list") or []
+    power = power_cable_list(cable_list)
+    if not grid or not layout or not power:
+        return None
+    bx = design.footprint(layout["board"])
+    ax0, ay0, ax1 = grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell
+    left, right, top = min(bx[0], ax0) - PAD, max(bx[2], ax1) + PAD, ay0 - PAD
+    shapes = layout.get("shapes") or {}
+    placed, inst_item = layout["placed"], layout.get("inst_item") or {}
+    supply_ids = {it["id"] for it in inst_item.values()}
+    cid_of = {it["id"]: cid for cid, it in placed.items()}
+    labels = {s["inst"]["id"]: s["inst"].get("label") or s["inst"]["id"] for s in ctx.get("supplies") or []}
+    placement = layout.get("inst_placement") or {}
+
+    body = [board(bx)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments"))
+    body.append('<g class="pedals-faint" opacity="0.45">')
+    for o in layout["obstacles"]:
+        if o["id"] not in supply_ids:
+            cid = cid_of.get(o["id"])
+            body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), None, shapes.get(o["id"])))
+    body.append("</g>")
+    for iid, it in inst_item.items():
+        body.append(supply(it, labels.get(iid, iid), shapes.get(it["id"]), placement.get(iid) == "on_board"))
+    power_ids = {c["id"] for c in power}
+    body += plug_heads([h for h in r.get("heads") or [] if h.get("cable") in power_ids])
+    body += power_cables(cable_list)
+    jd = layout.get("jacks") or {}
+    for cid, it in placed.items():
+        body += jacks(it, [j for j in jd.get(cid) or [] if j.get("function") == "power"], used_jacks(ctx, cid))
+    for s in ctx.get("supplies") or []:
+        it = inst_item.get(s["inst"]["id"])
+        if it:
+            used = {row["port"] for row in s["rows"] if row["pedals"]}
+            body += jacks(it, [j for j in jd.get(s["sup"]["id"]) or [] if j.get("function") == "power_out"], used)
+    body += power_labels(cable_list)
+
+    width, y = right - left, bx[3] + 8
+    entries = [("supply", "power supply (dashed: under the board)"), ("jack_used", "used power jack / supply port"),
+               ("head", "DC plug head")] + ([("hole", "Board hole")] if layout.get("holes") else [])
+    entries += [("edge", EDGE_KEY)] if layout.get("edge_segments") else []
+    entries += [e for e in key_entries(ctx, cable_list, 2) if e[0].startswith("power")]
+    key, kh = key_block(entries, left + PAD, y, width - 2 * PAD)
+    body += key
+    y += kh + 3
+
+    def route(c):
+        parts = [f"{c['holes_used']} hole{'s' if c['holes_used'] != 1 else ''}"] if c.get("holes_used") else []
+        parts += [f"{n} edge" for n in [c.get("edges_used")] if n]
+        return ", ".join(parts) or "on top"
+    rows = [{"id": c["id"], "colour": POWER_COLOUR, "length": "-" if c.get("min_mm") is None else f"{c['min_mm']:.0f} mm",
+             "route": " -> ".join(_end_name(c[k], {**names, **labels}) for k in ("from", "to")),
+             **({"status": route(c), "status_fill": INK} if (c.get("status") or "").startswith("routed")
+                else {"status": short_status(c.get("status"))})}
+            for c in power]
+    table, th = legend_table(rows, left + PAD, y, width - 2 * PAD)
+    body += table
+    return document((left, top, width, y + th + PAD - top), body)
 
 
 def _end_name(key, names):
