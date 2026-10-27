@@ -1,208 +1,143 @@
 # To do
 
 Hand-written backlog (not generated). Build-derived findings (warnings, data to verify, shopping list) live in the
-generated `README.md`; this file holds the work and the questions for the owner. Tick items off or delete them when
-done, and keep `CLAUDE.md` current when a decision changes.
+generated `README.md`; this file holds the work and the questions for the owner. Tick items off or move them to
+"Done" when finished, and keep `CLAUDE.md` current when a decision changes.
 
-## Branch `feat/pedal-position` (merged into main 2026-10-23)
-- [ ] Plan: `docs/plans/pedal-position.md` (handover `docs/handovers/pedal-position.md`); answer its open questions.
-- [x] Phases 0-2 (2026-10-22): layout injection, `design.move` / `write_canvas`, footswitch data + spacing check,
-      `scripts/pedal_editor.py` (renamed from jack_setter, footswitch mode, Pillow instead of numpy).
-- [ ] Manual GUI check of the pedal editor (footswitch mode, J/F, no-footswitch box, the four-way switch type) by the owner.
-- [x] Phases 3-5 (2026-10-22): `scripts/layout.py` (surrogate score, search), `scripts/power.py` (policy checks
-      shared with the build, power assignment per layout), `scripts/propose_layout.py`, README "Layout proposals".
-- [ ] Owner: look at the guitar-gig proposals (`projects/guitar-gig/proposals/1.json`, Load from File) and say whether
-      the moves are acceptable; tune `layout.weights` / `max_move_mm` if not.
-- [ ] Owner: try `--max-change rearrange` (bigger moves, swaps, rotations) once and judge the result.
-- [x] Proposals rerun with all gig footswitches (2026-10-23).
-- [ ] Surrogate vs router: the signal estimate (octile + detour around crossed pedals) still misjudges some routes
-      (finalists are checked with the router, so proposals are safe, but the search may miss better ones).
-- [x] `feat/cable-routing` merged into `main` and pushed.
-- [x] uv project (2026-10-23): `pyproject.toml`, `uv.lock`, `.venv`; all commands are `uv run ...`.
-- [x] Code review of the branch (2026-10-23): 9 findings fixed (fair power comparison, first/last jack and power
-      side in the surrogate, one power policy, stale detection by input hash, write_canvas patterns, faster
-      --list-missing, small cleanups); gig proposals regenerated.
-- [x] Code-review leftover: the side-choice A* results are reused by `route_all` when provably identical (feat/routing-speed).
+Sections: 1 owner input (measurements, decisions, checks) · 2 gig board · 3 next features (in order) · 4 later /
+ideas · 5 data · 6 done.
 
-## Owner input needed
-- [x] Footswitches of every project pedal placed (2026-10-23).
-- [x] Footswitch spacing is comfort, no minimum (owner, 2026-10-23): crowding term, maximised by the search.
-- [ ] Owner: judge whether the proposals spread the switches enough; tune `footswitches.comfort_mm` (100) or
-      `layout.weights.footswitch` (2) if not.
-- [ ] Measure one **Ernie Ball flat patch plug**: depth from the jack face (catalog: 6.4 mm, maker) and the length
-      from the jack axis to where the ribbon leaves (catalog: 19 mm, estimate). Update
-      `catalog/cables.json` `ernie_ball_flat_patch_ra` and its `verified` list.
-- [ ] Measure one **Ojai DC plug** (depth from the jack face, width, height) and its cable thickness. The current
+## 1. Owner input
+
+### Measurements (each replaces an estimate that feeds every cable length / clearance check)
+- [ ] **Fender Pro Medium deck**: thickness (+ the bend of a ribbon through a slot) for `hole_transit_mm` (15,
+      estimate) and the board height at the back edge for `edge_transit_mm` (30 = 2 x hole transit, estimate); put
+      them in `catalog/boards.json` (`fender-pro-medium.png`).
+- [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
+      to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
+      `verified` list.
+- [ ] **Ojai DC plug**: depth from the jack face, width, height, and the cable thickness. Today
       `dc_ra_2_1_low_profile` (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation, ~11 mm deep) is deeper than the
       Ernie Ball plug, against the owner's expectation; RockBoard's own page also gives 5/16 in height.
-- [ ] Confirm the power-jack fallback box `jacks.power_clearance` (default 5.5 x 5.5 mm, estimate).
+- [ ] Confirm the power-jack fallback box `jacks.power_clearance` (5.5 x 5.5 mm, estimate; only used without a
+      `cables.power_type`).
+
+### Decisions
+- [ ] Next feature (3.1, daisy chains): where the style is set (per output in project.json, or a default per supply)
+      and whether a serial cable may run on top between pedals or must dip under where a hole is near.
 - [ ] Power plug side: when neither side is blocked the tool reports "left". Does the side matter?
+- [ ] Power routes on top: P2 / P12 / P17 run 111-140 mm on top of the gig board (on-top mm cost 3 x,
+      `power_routing.top_cost`). Acceptable, or tune it?
+- [ ] Footswitch spacing: do the proposals spread the switches enough? Else tune `footswitches.comfort_mm` (100) or
+      `layout.weights.footswitch` (2).
+- [ ] Layout proposals: are the moves acceptable (else tune `layout.weights` / `max_move_mm`)? Try
+      `--max-change rearrange` (bigger moves, swaps, rotations) once and judge it.
+- [ ] Answer the open questions of `docs/plans/pedal-position.md`.
+
+### Checks by eye
+- [ ] `projects/guitar-gig/routing.svg` and `power.svg` (and `uv run scripts/build.py --images` for
+      `routing.local.svg`): label placement is basic (some S# labels on short segments or overlapping in lanes).
+- [ ] Pedal editor GUI: footswitch mode, J/F, the no-footswitch box, the four-way switch type.
+- [ ] Duo 2.1 holes (practice / bass have no layout yet): `uv run scripts/board_editor.py bass`.
+
+### Later, when it happens
 - [ ] Polarity: every pedal and supply is recorded center-negative (owner); add the real value when a
       center-positive pedal arrives.
 
-## Gig board layout
-- [ ] Both findings below are fixed by the fix-level proposals (`projects/guitar-gig/README.md`, Layout proposals).
-- [ ] Monk / Belle Epoch are too close: `monk.out` (12.7 mm) and `monk.power` (9.0 mm, DC plug model) are blocked by the
-      Belle Epoch. Move one apart in Pedal Playground and re-save `projects/guitar-gig/playground_design.json`
-      (or confirm with measurements that the plugs fit).
-- [x] `red_muck.power` DC head blocked 3.0 mm by the MXR Analog Chorus (gone with the pedal outlines, 2026-10-23).
+## 2. Gig board
+- [ ] Monk / Belle Epoch are too close in the owner's layout: `monk.out` (12.7 mm) and `monk.power` (9.0 mm, DC plug
+      model) are blocked by the Belle Epoch. All three layout proposals fix it: load
+      `projects/guitar-gig/proposals/1.json` in Pedal Playground (Load from File) and re-save
+      `projects/guitar-gig/playground_design.json`, or move the two apart by hand (or measure that the plugs fit).
+- Current state (2026-10-27): signal 2322 mm (chorus before the Reticon), no signal cable under the board; 17 power
+  cables through holes (P12 / P17 stay on top); one owner-drawn edge crossing at the back (handle area), unused.
 
-## Next features (owner, 2026-10-23; one branch each, numbered as the owner listed them)
-Each starts with a short plan in `docs/plans/<branch>.md` + owner decisions, then handovers, as feat/pedal-position.
-Suggested order: 1 routing-view -> 3 supply-placement -> 2 power-routing -> 6 footswitch-toppers ->
-5 pedal-preferences -> 4 web-ui.
+## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
+Order (owner, 2026-10-23, updated): daisy chains -> footswitch toppers -> pedal preferences -> web UI.
 
-### 1. `feat/routing-view` (merged into main 2026-10-23): a clearer signal routing picture (routing.svg)
-Goal: a picture the owner can wire the board from. Today: grid staircase paths, pedal boxes, S# labels.
-Plan: `docs/plans/routing-view.md` (owner decisions 2026-10-23: any angle; lanes not in the length; rename to
-routing.svg; images only in a git-ignored `routing.local.svg`; `cables.max_over_plug` 2; printable 1:1 in mm).
-- [x] Phase 1 (handover `docs/handovers/routing-view-1.md`, 2026-10-23): plug-head limit + smoothing; gig signal
-      total 2576 -> 2512 mm, no cable longer, no plug-limit findings. Proposals count plug-limit cables as overflow.
-- [ ] The layout surrogate (octile) now overestimates the smoothed router by up to ~8 % per cable; consider an
-      any-angle estimate in `layout.py` (adds to "Surrogate vs router" above).
-- [x] Phase 2 (handover `docs/handovers/routing-view-2.md`, 2026-10-23): parallel lanes (`routing.lanes`, drawing
-      only: `draw_path`, `stacked_with`); the lane set may shift off-centre (cables hug pedal edges). Gig: S6/S8 in
-      lanes; S11/S13 and S14/S15 stacked (gaps ~5.5 mm between pedals, two 3.5 mm ribbons need 7).
-- [x] Phases 3-4 (handover `docs/handovers/routing-view-3.md`, 2026-10-23): `scripts/svgdraw.py`, `routing.svg`
-      (mm, 1:1 print, jacks, plug heads, legend table), `routing.local.svg` (`--images`, git-ignored), README and
-      proposals use it; `fetch_image` in common.py; stacked dashes only on the stacked stretches.
-- [ ] Owner: look at `projects/guitar-gig/routing.svg` (and `--images`); label placement is basic (some S# labels on
-      short segments or overlapping in lanes).
-- [x] Code review of the branch (2026-10-23): 10 findings fixed (smoothing / lanes could pass through a pedal a plug
-      exit touches, statuses keep every problem, incremental plug crossings, a cable's end cells never cross a plug,
-      stacked dashes on the drawn geometry, shared rect_cells / jack colours, xlink:href, fetch_image message);
-      merged into main.
-- [ ] Later: many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
-- Owner (2026-10-23): the worst parts today are cables drawn on the same position where they could run in parallel,
-  and hard angles everywhere: a cable should be a straight line between two necessary corners.
-- [x] Paths: reduce each routed path to its necessary corners (any-angle straight segments between them where the
-      line stays clear of the grown pedals: line-of-sight smoothing / string pulling); lengths then follow the
-      smoothed path (still no slack), tests updated with hand-computed cases.
-- [x] Parallel lanes: cables sharing a corridor get side-by-side lanes one cable width apart (ordered so they do
-      not cross inside the corridor), not drawn on top of each other.
-- [x] Pedals: name labels, the jacks drawn (in/out/power/extra with facing), plug heads on the chosen exit side.
-- [x] Cables: colour per hop with a legend (S#, from -> to, min length), squeezed / over-stacking / unroutable
-      styled distinctly; optional pedal images under the outlines (images from `.cache/images`, never committed).
-- [x] Shared SVG helpers (board, pedals, jacks, legend) in one module, so power.svg (2) and the web views (4) reuse them.
-- Acceptance: same corridors as before; paths straighter and never overlapping (lengths can only get shorter);
-  README embeds it.
-
-### 1b. `feat/pedal-outlines` (merged into main 2026-10-26): route around the pedal's real shape, not its bounding box (owner, 2026-10-23)
-Plan `docs/plans/pedal-outlines.md`; phases 1-2 done (2026-10-23, handovers `pedal-outlines-1/2.md`): gig signal
-total 2512 -> 2400 mm, S11/S13 no longer stacked (S14/S15 still), red_muck.power no longer blocked (it only touched
-the box); proposals rerun (all three clear monk.out / monk.power). Code review (2026-10-26): 10 findings fixed (overlap
-measured against the whole outline, one rule for build / fixed box / surrogate, surrogate routing area from the
-outlines, corner-touching outline loops, faster surrogate, outlines read once, range-checked data); merged into main.
-- [ ] `harley_benton_iso5_pro` has no `playground_title`, so no outline (box); practice/bass layouts still missing.
-Finding (2026-10-23, `.cache/images`): the Pedal Playground images are tightly cropped RGBA, 80-98 % opaque. The
-side strips are mostly the protruding jacks and the corners are rounded: the enclosure itself is narrower than the
-box by about 5-10 % of the width per side (TC minis / Mini Ego / MXR / Jam / Reticon), i.e. a few mm per pedal.
-That matters: the gig's stacked spots (S11/S13, S14/S15) sit in 5.4-5.6 mm box gaps.
-- [x] Outline per image (keyed by image file name, not catalog id) from the image alpha: a few axis-aligned rects (run-length rows merged at ~1 mm, or a
-      simplified polygon), in image fractions like jacks.json; rotated with the item (`design.jack_point`).
-- [x] Router and smoothing: block the outline rects instead of the footprint (grid + `smooth` / `lanes` distances).
-- [x] Verify first: does Pedal Playground's data-width/height cover the image incl. jacks (then the outline is
-      right), or only the enclosure (then the image is squeezed)? Check 2-3 pedals against maker dimensions. Done: Width/Height include the jacks (bodies match Hammond sizes).
-- [x] Owner decisions: commit the outlines (small derived data, build works offline; no images) or keep them in
-      `.cache`; use them for plug clearance too (fewer findings at rounded corners) or only for routing; keep the
-      bounding box for pedal-pedal overlap in the layout search (jacks of neighbours cannot interleave freely).
-      Decided: committed; routing and clearance; box for overlaps.
-
-### 2. `feat/power-routing`: what is left after feature 3 (power cables are routed and drawn since 2026-10-26)
-Done in feature 3: routed DC cables (under the board, up through holes / owner-drawn edge segments), `power.svg`,
-power stacking separate from signal, `power.assign` and the layout surrogate use the nearest-crossing estimate.
+### 3.1 `feat/power-routing`: forked vs serial daisy chains (the rest of the power-routing feature)
+Routing, `power.svg`, holes / edge segments and the nearest-crossing estimate are done (feature supply-placement).
 - Owner (2026-10-23): daisy chains are either FORKED (several cables from one source, each its own cable) or SERIAL
   (one long cable through every pedal, counted as one cable).
-- [ ] Daisy-chain style per output (`forked` | `serial`, from the supply data or the project); today every hop is its
-      own routed cable (supply -> first pedal, pedal -> next).
-- [ ] Serial: one cable that surfaces at each pedal and goes back under where a crossing is near, else stays on top;
+- [ ] Style per output (`forked` | `serial`); today every hop is its own routed cable (supply -> first pedal, pedal
+      -> next).
+- [ ] Serial: one cable that surfaces at each pedal (and goes back under where a crossing is near, else stays on top),
       one length and one shopping-list line. Forked: each branch from the source routed separately.
 - [ ] README / power.svg / shopping list follow the style (cable count, lengths).
 
-### 3. `feat/supply-placement` (merged into main 2026-10-27): supplies on or under the board, board holes, cables through the holes
-Plan `docs/plans/supply-placement.md` (owner decisions in two rounds), handovers `supply-placement-1..6.md` + `-review.md`.
-- [x] Phase 1: board holes from the Pedal Playground board images (`scripts/boards.py`, `catalog/boards.json`): Fender Pro
-      Medium 13 slots + the handle strip, Duo 2.1 17 slots; drawn in routing.svg.
-- [x] Phase 2: `scripts/board_editor.py` (hole / filled boxes per project, `projects/<name>/board.json`). The owner
-      corrected the gig holes with it (13 full slots + the handle cutout).
-- [x] Phase 3: per-instance `power.supplies[].placement` (under | on_board); on-board supplies are obstacles, their ports
-      get the DC plug clearance.
-- [x] Phase 4: two-layer router for signal cables (holes, transit 15 + penalty 15 per pass, under 0.9 / mm), clean-up
-      passes in `route_all` (`_back_on_top`). Gig: no signal cable goes under (total 2401 mm, S15 +1 mm by smoothing).
-- [x] Phase 5: power cables routed (under first, up through the nearest usable hole or an allowed edge,
-      `power_routing`); nearest-hole estimate in `power.assign` and the layout surrogate. Gig: side edges forbidden
-      (owner, 2026-10-26).
-- [x] Phase 6: the layout search moves on-board supplies (tested on synthetic projects only).
-- [ ] Owner: measure the Fender deck thickness (+ bend) for `hole_transit_mm` (15, estimate) and the board height at
-      the back edge for `edge_transit_mm` (default 2 x hole transit = 30, estimate); put them in catalog/boards.json.
-- [ ] Owner: power search weight: on-top mm cost 3 x (`power_routing.top_cost`); P2 / P12 / P17 still run 111-140 mm on top of the gig board. Tune if the routes look wrong in routing.svg.
-- [x] Edge crossings (owner, 2026-10-26): no per-side edge modes; cables (signal and power) cross only through holes
-      and owner-drawn edge segments (board editor, type edge); neither = an under-board supply is an error;
-      `cables.route_in_front` toggle (gig: false). Handover `supply-placement-edges.md`.
-- [x] Owner: gig edge crossing drawn at the back (handle area, 0.28-0.72), 2026-10-27; no cable uses it yet.
-- [ ] Owner: verify the Duo 2.1 holes (practice / bass have no layout yet) with `uv run scripts/board_editor.py bass`.
-- [x] Speed (`feat/routing-speed`, merged 2026-10-27, results identical): gig validate 1.23 -> 0.76 s, default search
-      ~47 -> 15 s, test suite 73 -> 30 s (faster A* loop, plain-search memo reused by route_all, HoleIndex scan, score memo).
-- [ ] Under-board fit (supply height vs space under the deck) not checked (owner decision 3); later branch if needed.
-- Feature 2 (power routing) left: forked vs serial daisy chains (see 2).
-
-### 4. `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
-Goal: replace the Tkinter editor and the README-only views with a local browser app.
-- Owner (2026-10-23): new dependencies are fine when there is a reason for each; Python ones via uv (`uv add`),
-  anything else (npm, system packages) only after asking the owner.
-- [ ] Stack (decide in the plan): a Python web framework via uv (e.g. FastAPI/Starlette or Flask) serving a JSON
-      API over the existing functions (`build.validate`, `jacks.save_*`, `footswitches.save_footswitches`,
-      `propose_layout`), front end plain JS/SVG first; a JS toolchain (npm) only with the owner's OK. Local only.
-- [ ] Tabs: Board (layout, findings), Pedal editor (jacks + footswitches + toppers on the image: port of
-      `pedal_editor.py`, same pure helpers), Signal routing (1), Power routing (2/3), Preferences (5), Proposals
-      (compare, load into Pedal Playground).
-- [ ] Writes only through the existing save functions (one-item-per-line JSON, same validation); the build stays the
-      single source of findings; images still fetched server-side into `.cache/`.
-- [ ] Keep the CLI working; retire the Tkinter editor once the web editor covers it.
-- Open: drag pedals in the Board tab and save as a new layout file (never `playground_design.json` itself)?
-
-### 5. `feat/pedal-preferences`: one preference profile per pedal in a project
-Goal: every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with 4).
-- [ ] Data: `projects/<name>/project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin,
-      allowed rotations, order wishes (before/after X with priority -> expands into today's rules), power wishes
-      (own output, preferred supply/port, voltage), footswitch topper (6), access override.
-- [ ] Migrate today's scattered knobs into it (`layout.access.pedals`, `layout.pins`, `layout.rotations.<id>`,
-      per-pedal rules, power output choice) with the old keys still read (or a one-off migration script).
-- [ ] Build: validate the profile, README table "Preferences" (what each pedal asks for, met or not in the
-      owner's layout and in each proposal); layout search and `power.assign` read it.
-- [ ] Until 4: edit project.json by hand (documented schema); then the Preferences tab edits the same block.
-
-### 6. `feat/footswitch-toppers`: toppers on footswitches
-Goal: a topper (larger, higher cap) on a switch makes it easier to hit and its neighbour less likely to be hit too.
+### 3.2 `feat/footswitch-toppers`: toppers on footswitches
+A topper (larger, higher cap) makes a switch easier to hit and its neighbour less likely to be hit too.
 - Owner (2026-10-23): toppers are a finishing step AFTER the best layout is found; supply is unlimited, but a project
   may cap the total per board; the preference is always none or only a handful. So toppers are per project.
-- [ ] Data: project `footswitches.toppers` ["<pedal>.<switch>", ...] (set by the owner in the pedal editor, later
-      the web tab) and `footswitches.max_toppers` (optional cap per board).
+- [ ] Data: project `footswitches.toppers` ["<pedal>.<switch>", ...] (set in the pedal editor, later the web tab) and
+      `footswitches.max_toppers` (optional cap per board).
 - [ ] Spacing: a pair where one switch has a topper counts as less crowded (effective distance = d + bonus, or a
       crowding factor; owner picks the model); the README shows toppers in the footswitch table and the SVG.
-- [ ] Suggestions (post-layout, never during the search): the fewest toppers that remove the most crowding, each
-      on ONE switch of a crowded pair (a topper on a switch shared by several close pairs helps them all; then the
-      higher priority type, then the one nearer the front), within `max_toppers`, stopping when the next topper
-      gains little (threshold); listed in the README, not applied automatically.
-- [ ] Layout search: ignores toppers entirely (the layout is optimised first, toppers finish it).
+- [ ] Suggestions (post-layout, never during the search): the fewest toppers that remove the most crowding, each on
+      ONE switch of a crowded pair (a switch shared by several close pairs first; then the higher priority type, then
+      the one nearer the front), within `max_toppers`, stopping when the next topper gains little; listed in the
+      README, not applied automatically.
+- [ ] Layout search: ignores toppers entirely.
 
-### Later: patch cables under the board and more plug orientations (owner, 2026-10-23; after 3, needs board holes)
-- [x] (Done in feature 3, 2026-10-26.) Patch cables may go under the board and come back up (through holes / allowed edges from 3), so they can pass
-      under pedals. Add this routing option once the boards have their holes set; same crossing model as power (2).
-- [ ] Plug orientation, today: a right-angle plug's cable leaves left or right of the facing and the plug occupies
-      more space on that side (modelled: `design.plug_geometry`, side chosen by the router). New case, U-turn: when
-      the plug cannot point to the side the cable has to go, point it to the opposite side and turn the cable back
-      (U-turn) towards the right direction; longer minimum length (the turn and the way back past the plug) and the
-      turned cable occupies space on both sides; the router considers it when the direct side is blocked or worse.
-- [ ] Plug pointing down into a hole: a jack above or next to a board hole can have its plug's cable pointed down
-      into the hole; the cable then either runs under the board until it has to resurface (another hole / edge), or
-      comes straight back up through the same hole and is routed on top from there.
+### 3.3 `feat/pedal-preferences`: one preference profile per pedal in a project
+Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
+- [ ] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
+      order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
+      voltage), footswitch topper, access override.
+- [ ] Migrate today's scattered knobs (`layout.access.pedals`, `layout.pins`, `layout.rotations.<id>`, per-pedal rules,
+      power output choice), old keys still read (or a one-off migration script).
+- [ ] Build: validate the profile, README table "Preferences" (asked for, met or not in the owner's layout and in
+      each proposal); the layout search and `power.assign` read it.
+- [ ] Until the web UI: edit project.json by hand (documented schema).
 
-## Features
-- [ ] Model the guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): needs guitar
-      and amp positions (or board-edge exit points) in the project.
+### 3.4 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
+Replaces the Tkinter editors and the README-only views with a local browser app.
+- Owner (2026-10-23): new dependencies are fine with a reason each; Python ones via uv, anything else (npm, system
+  packages) only after asking.
+- [ ] Stack (decide in the plan): a Python web framework via uv (FastAPI/Starlette or Flask) serving a JSON API over
+      the existing functions (`build.validate`, the save functions, `propose_layout`); front end plain JS/SVG first.
+      Local only.
+- [ ] Tabs: Board (layout, findings), Pedal editor (jacks, footswitches, toppers), Board editor (holes, edge segments),
+      Signal routing, Power routing, Preferences, Proposals (compare, load into Pedal Playground).
+- [ ] Writes only through the existing save functions (one-item-per-line JSON, same validation); the build stays the
+      single source of findings; images still fetched server-side into `.cache/`.
+- [ ] Keep the CLI working; retire the Tkinter editors once the web ones cover them.
+- Open: drag pedals in the Board tab and save as a new layout file (never `playground_design.json` itself)?
+
+## 4. Later / ideas
 - [ ] Layouts for `guitar-practice` and `bass` (`playground_design.json`), so their cables and clearance are checked.
-- [ ] Practice board: out of scope for now (owner, 2026-10-22); the third Ojai R30 is still to buy.
+      The Harley Benton ISO-5 Pro has no Pedal Playground entry (`playground_title`), so it never appears in a layout
+      and has no outline. Practice board: out of scope for now (owner, 2026-10-22); its Ojai R30 is still to buy.
+- [ ] Guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): need guitar and amp
+      positions (or board-edge exit points) in the project.
+- [ ] Layout surrogate vs router: the signal estimate (octile + detour around crossed pedals) misjudges some routes and
+      overestimates the smoothed router by up to ~8 % per cable; an any-angle estimate in `layout.py` (finalists are
+      checked with the router, so proposals are safe, but the search may miss better ones).
+- [ ] U-turn plugs: when a right-angle plug cannot point to the side its cable has to go, point it the other way and
+      turn the cable back; longer minimum length, the turned cable occupies both sides; the router considers it when
+      the direct side is blocked or worse.
+- [ ] Plug pointing down into a hole: a jack above or next to a hole sends its cable straight down; it runs under the
+      board until it resurfaces (another hole / edge segment) or comes straight back up.
+- [ ] Many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
+- [ ] Under-board fit (supply height vs space under the deck) is not checked (owner decision); a later branch if needed.
+- [ ] The saturated single-hole routing case (two cables forced through one one-cell hole) never converges and runs
+      all `cables.iterations` rounds; no provably safe early stop found (feat/routing-speed review).
 
-## Data
+## 5. Data
 - [ ] Items in the generated README's "Data to verify" (power specs, Reticon, Protein, version assumptions).
+
+## 6. Done (merged into main; details in the plans and handovers)
+- `feat/jack-tracking`, `feat/cable-routing` (2026-10-22): jack data, clearance, cable model and grid router.
+- `feat/pedal-position` (2026-10-23, `docs/plans/pedal-position.md`): layout injection, footswitches and spacing,
+  `pedal_editor.py`, layout search and proposals, power assignment; uv project.
+- `feat/routing-view` (2026-10-23, `docs/plans/routing-view.md`): plug limit, smoothing, lanes, `routing.svg`
+  (1:1 print, legend), `routing.local.svg` with images, shared `svgdraw.py`.
+- `feat/pedal-outlines` (2026-10-26, `docs/plans/pedal-outlines.md`): real pedal shapes for routing and clearance
+  (gig signal 2512 -> 2400 mm).
+- `feat/supply-placement` (2026-10-27, `docs/plans/supply-placement.md`): board holes (`boards.py`, board editor,
+  owner's gig corrections), per-supply placement, signal cables under the board, routed power cables, `power.svg`,
+  edge crossings as owner-drawn segments, `cables.route_in_front`, on-board supplies movable in the search.
+- `feat/routing-speed` (2026-10-27, results identical): gig check 1.2 -> 0.7 s, layout search ~47 -> 15 s, tests
+  73 -> 30 s; side-choice searches reused by `route_all`.
+- Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
+  gig chain: chorus before the Reticon (2026-10-27).
