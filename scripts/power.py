@@ -196,6 +196,20 @@ def usable_holes(setup, rects):
     return out or None
 
 
+SCAN_POINTS = 100   # a `HoleIndex` of at most this many points is scanned whole by `nearest`, a bigger one is walked square by square
+
+_RINGS = {}
+
+
+def _ring_offsets(r):
+    """The (dx, dy) of the squares of ring r round a square, in walk order: the rows dy = -r, r for every dx, then the columns
+    dx = -r, r for the dy between."""
+    if r not in _RINGS:
+        _RINGS[r] = [(0, 0)] if r == 0 else (
+            [(dx, s) for dx in range(-r, r + 1) for s in (-r, r)] + [(s, dy) for dy in range(-r + 1, r) for s in (-r, r)])
+    return _RINGS[r]
+
+
 class HoleIndex:
     """The hole sample bucketed in `cell` mm squares: `nearest` looks at the squares round the query point, ring by ring
     (the layout search asks for the nearest usable hole point of every power jack of every candidate)."""
@@ -217,30 +231,75 @@ class HoleIndex:
     def nearest(self, point, blocked=(), reach=100.0):
         """The sample point nearest to `point` outside every `blocked` rectangle, or None. The rectangles farther than `reach`
         mm from the point are left out of the first search (they cannot cover a point that close); when that finds nothing
-        within `reach`, the search is repeated over every ring with all of them."""
+        within `reach`, the search is repeated over the whole sample with all of them."""
         x, y = point
         near = [r for r in blocked if r[0] <= x + reach and r[2] >= x - reach and r[1] <= y + reach and r[3] >= y - reach]
         h = self._nearest(point, near, reach)
-        if h is not None and (h[0] - x) ** 2 + (h[1] - y) ** 2 <= reach * reach:
+        if h is not None:
             return h
         return self._nearest(point, blocked, math.inf)
 
     def _nearest(self, point, blocked, reach):
+        """The sample point nearest to `point`, within `reach` mm, that no rectangle of `blocked` covers (None without one). Of two
+        equally near points the one met first when walking the squares ring by ring round the query point (then by position in
+        the ring, then in sample order) wins. A big sample is walked that way (`_nearest_rings`); a small one is cheaper to scan
+        whole, with the walk's order only deciding ties."""
+        if len(self.points) > SCAN_POINTS:
+            return self._nearest_rings(point, blocked, reach)
+        px, py = point
+        best, bd, bkey = None, math.nextafter(reach * reach, math.inf), None   # d < bd: within reach
+        for h in self.points:
+            d = (h[0] - px) ** 2 + (h[1] - py) ** 2
+            if d > bd:
+                continue
+            for q in blocked:
+                if q[0] <= h[0] <= q[2] and q[1] <= h[1] <= q[3]:
+                    break
+            else:
+                if d < bd:
+                    best, bd, bkey = h, d, None
+                elif best is not None:   # an equal distance
+                    if bkey is None:
+                        bkey = self._walk_key(best, point)
+                    key = self._walk_key(h, point)
+                    if key < bkey:
+                        best, bkey = h, key
+        return best
+
+    def _nearest_rings(self, point, blocked, reach):
         c, (ci, cj) = self.cell, (int(point[0] // self.cell), int(point[1] // self.cell))
+        px, py = point
         best, bd = None, math.inf
         limit = min(self.span + max(abs(ci), abs(cj)), int(reach // c) + 1 if reach < math.inf else 10 ** 6)
+        buckets_get = self.buckets.get
         for r in range(limit + 1):
-            ring = [(ci, cj)] if r == 0 else (
-                [(ci + dx, cj + s) for dx in range(-r, r + 1) for s in (-r, r)] +
-                [(ci + s, cj + dy) for dy in range(-r + 1, r) for s in (-r, r)])
-            for key in ring:
-                for h in self.buckets.get(key, ()):
-                    d = (h[0] - point[0]) ** 2 + (h[1] - point[1]) ** 2
-                    if d < bd and not covered(h, blocked):
-                        best, bd = h, d
+            for dx, dy in _ring_offsets(r):
+                pts = buckets_get((ci + dx, cj + dy))
+                if pts is None:
+                    continue
+                for h in pts:
+                    d = (h[0] - px) ** 2 + (h[1] - py) ** 2
+                    if d < bd:
+                        for q in blocked:
+                            if q[0] <= h[0] <= q[2] and q[1] <= h[1] <= q[3]:
+                                break
+                        else:
+                            best, bd = h, d
             if best is not None and bd <= (r * c) ** 2:   # the next ring is at least r cells away
                 break
-        return best
+        return best if best is not None and bd <= reach * reach else None
+
+    def _walk_key(self, h, point):
+        """(ring, position in the ring) of the square of `h` in the walk round the square of `point`: first the rows dy = -r, r for
+        every dx, then the columns dx = -r, r for the dy between."""
+        c = self.cell
+        dx, dy = int(h[0] // c) - int(point[0] // c), int(h[1] // c) - int(point[1] // c)
+        r = max(abs(dx), abs(dy))
+        if r == 0:
+            return (0, 0)
+        if abs(dy) == r:
+            return (r, (dx + r) * 2 + (dy > 0))
+        return (r, (2 * r + 1) * 2 + (dy + r - 1) * 2 + (dx > 0))
 
 
 class Crossings:
@@ -311,6 +370,14 @@ def chain_order(start, members, points, length=None, start_under=False):
     one hop instead of Manhattan (`hop_estimate`); `start_under`: the first hop starts under the board (a pedal's power
     jack is on top, so later hops never do)."""
     hop = length or (lambda a, b, under: manhattan(a, b))
+    if length:   # the orders share their hops: every (from, to, under) pair is estimated once
+        seen, estimate = {}, length
+
+        def hop(a, b, under):
+            key = (a, b, under)
+            if key not in seen:
+                seen[key] = estimate(a, b, under)
+            return seen[key]
 
     def length(order):
         total, prev, under = 0.0, start, start_under

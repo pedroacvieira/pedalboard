@@ -149,6 +149,8 @@ class Grid:
         self.blocked = set()   # no cable centre here (pedal grown by the cable radius minus half a cell)
         self.body = set()      # cell centre inside a pedal body: never passable, even when squeezing
         self._comps = {}
+        self._open = {}
+        self._open3 = None
 
     def inside(self, c):
         return 0 <= c[0] < self.nx and 0 <= c[1] < self.ny
@@ -173,9 +175,30 @@ class Grid:
         self.blocked |= cells
         self.body |= {c for c in cells if r[0] <= self.centre(c)[0] <= r[2] and r[1] <= self.centre(c)[1] <= r[3]}
         self._comps = {}
+        self._open = {}
+        self._open3 = None
 
     def walls(self, squeeze=False):
         return self.body if squeeze else self.blocked
+
+    def open_cells(self, squeeze=False):
+        """The passable cells (inside the grid and not a wall) as a set, cached per mode (the search's one-lookup passability
+        test); rebuilt when the wall set was replaced or changed size."""
+        walls = self.walls(squeeze)
+        hit = self._open.get(squeeze)
+        if hit is None or hit[0] is not walls or hit[1] != len(walls):
+            cells = {(i, j) for i in range(self.nx) for j in range(self.ny)}
+            cells -= walls
+            hit = self._open[squeeze] = (walls, len(walls), cells)
+        return hit[2]
+
+    def open_states(self):
+        """`open_cells` as under-board states (i, j, 1), cached like it (the under layer's passable set of the search)."""
+        walls = self.blocked
+        hit = self._open3
+        if hit is None or hit[0] is not walls or hit[1] != len(walls):
+            hit = self._open3 = (walls, len(walls), {(i, j, 1) for i, j in self.open_cells(False)})
+        return hit[2]
 
     def components(self, squeeze=False):
         """{cell: component id} over passable cells (4-connected: a legal diagonal move implies a 4-connected
@@ -299,29 +322,34 @@ class Under:
         """{state: component id} over the passable states of both layers (4-connected; layers joined at hole cells and over
         the edge links)."""
         if squeeze not in self._comps:
-            walls, uwalls, ug = top.walls(squeeze), self.grid.blocked, self.grid
+            live = set(top.open_cells(squeeze))
+            live.update((i, j, 1) for i, j in self.grid.open_cells(False))   # the passable states of both layers
+            holes, up, down = self.holes, self.up, self.down
             comp, n = {}, 0
-            for layer, g, w in ((0, top, walls), (1, ug, uwalls)):
-                for i in range(g.nx):
-                    for j in range(g.ny):
-                        st = (i, j, 1) if layer else (i, j)
-                        if (i, j) in w or st in comp:
-                            continue
-                        comp[st], todo = n, [st]
-                        while todo:
-                            x = todo.pop()
-                            nbrs = [(x[0] + dx, x[1] + dy) + x[2:] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
-                            if (x[0], x[1]) in self.holes:   # the other layer, same cell
-                                nbrs.append((x[0], x[1], 1) if len(x) == 2 else (x[0], x[1]))
-                            if self.edges:   # the other layer over an edge link
-                                nbrs += [(u[0], u[1], 1) for u, _ in self.down.get((x[0], x[1]), ())] if len(x) == 2 else \
-                                    [t for t, _ in self.up.get((x[0], x[1]), ())]
-                            for c in nbrs:
-                                gg, ww = (ug, uwalls) if len(c) == 3 else (top, walls)
-                                if gg.inside(c) and (c[0], c[1]) not in ww and c not in comp:
-                                    comp[c] = n
-                                    todo.append(c)
-                        n += 1
+            for st in live:
+                if st in comp:
+                    continue
+                comp[st], todo = n, [st]
+                while todo:
+                    x = todo.pop()
+                    i, j = x[0], x[1]
+                    if len(x) == 2:
+                        nbrs = [(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)]
+                        if (i, j) in holes:   # the other layer, same cell
+                            nbrs.append((i, j, 1))
+                        if up or down:   # the other layer over an edge link
+                            nbrs += [(u[0], u[1], 1) for u, _ in down.get((i, j), ())]
+                    else:
+                        nbrs = [(i + 1, j, 1), (i - 1, j, 1), (i, j + 1, 1), (i, j - 1, 1)]
+                        if (i, j) in holes:
+                            nbrs.append((i, j))
+                        if up or down:
+                            nbrs += [t for t, _ in up.get((i, j), ())]
+                    for c in nbrs:
+                        if c in live and c not in comp:
+                            comp[c] = n
+                            todo.append(c)
+                n += 1
             self._comps[squeeze] = comp
         return self._comps[squeeze]
 
@@ -446,106 +474,195 @@ def tight_heuristic(under, goal, cell):
     return h
 
 
-def astar_layers(grid, start, goal, cell_cost, squeeze, under):
+def _step_tables(cell, top_mult, under_mult):
+    """(dx, dy, diagonal, step length) per neighbour in NEIGHBOURS order, for the top and the under layer; the step length is
+    cell x (sqrt 2 or 1) x layer factor, multiplied in the same order as the search always did."""
+    root2 = math.sqrt(2)
+    return tuple([(dx, dy, bool(dx and dy), cell * (root2 if dx and dy else 1.0) * mult) for dx, dy in NEIGHBOURS]
+                 for mult in (top_mult, under_mult))
+
+
+def _search_cells(grid, walls_squeeze, extra):
+    """The passable cell set of one search: `Grid.open_cells` plus the `extra` cells (plug ends: always enterable) that lie
+    inside the grid; the cached set itself when nothing has to be added."""
+    cells = grid.open_cells(walls_squeeze)
+    add = [c for c in extra if grid.inside(c) and c not in cells]
+    return cells | set(add) if add else cells
+
+
+def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
     """`astar` over (cell, layer) states (`Under`): within a layer as there; under steps cost `under.cost` x their length
     (and the cell cost of the under state), top steps `under.top_cost` x, the other layer is entered only at a hole cell
     for `under.hole_cost` (or over a board edge link, `under.edges`, for its cost). The goal is a top cell; the start a
     top cell or, for a cable that starts under the board, an under state (i, j, 1) (always enterable, like the goal).
-    A state is (i, j) on top and (i, j, 1) under the board."""
-    walls, ug = grid.walls(squeeze), under.grid
-    uwalls, uc, tc, hc, cell = ug.blocked, under.cost, under.top_cost, under.hole_cost, grid.cell
+    A state is (i, j) on top and (i, j, 1) under the board. `costs`: an optional dict that receives {state: cell cost} of every
+    state the search asked the cell cost of. `cell_cost` None: the plain cost 1.0 everywhere (a squeezed cell SQUEEZE_COST), without
+    asking; `costs` then receives the states the search reached (the ones it would have asked about, and the start)."""
+    ug = under.grid
+    uc, tc, hc, cell = under.cost, under.top_cost, under.hole_cost, grid.cell
     start_under = len(start) == 3
-
-    def top_ok(i, j):
-        return 0 <= i < grid.nx and 0 <= j < grid.ny and ((i, j) not in walls or (i, j) == start or (i, j) == goal)
-
-    def under_ok(i, j):
-        return 0 <= i < ug.nx and 0 <= j < ug.ny and ((i, j) not in uwalls or (start_under and (i, j) == start[:2]))
-
-    base = cell_cost
-    if squeeze:
-        cell_cost = lambda c: base(c) * (SQUEEZE_COST if c in grid.blocked else 1.0)
+    top_open = _search_cells(grid, squeeze, [c for c in (start, goal) if len(c) == 2])
+    under_open = ug.open_states()   # (i, j, 1)
+    if start_under and start not in under_open:
+        under_open = under_open | {start}   # the start is always enterable
+    blocked, holes, edges = grid.blocked, under.holes, under.edges
+    t_orth, t_diag = cell * 1.0 * tc, cell * math.sqrt(2) * tc   # step lengths, multiplied in the order the search always did
+    u_orth, u_diag = cell * 1.0 * uc, cell * math.sqrt(2) * uc
     hs = cell * min(1.0, uc, tc)
     h = tight_heuristic(under, goal, cell) if under.tight else None
-    if h is None:
-        h = lambda c: math.hypot(c[0] - goal[0], c[1] - goal[1]) * hs
-    openq, best, came = [(h(start), 0.0, start)], {start: 0.0}, {}
+    gx, gy, hypot, inf = goal[0], goal[1], math.hypot, math.inf
+    heappush, heappop = heapq.heappush, heapq.heappop
+    unit = cell_cost is None
+    if costs is None or unit:
+        seen, costs = costs, {}   # the cell cost of a state does not change within one search: ask `cell_cost` once per state
+    else:
+        seen = None
+    costs_get = costs.get
+    start_h = h(start) if h else hypot(start[0] - gx, start[1] - gy) * hs
+    openq, best, came = [(start_h, 0.0, start)], {start: 0.0}, {}
+    best_get = best.get
     while openq:
-        _, g, c = heapq.heappop(openq)
+        _, g, c = heappop(openq)
         if c == goal:
             path = [c]
             while c in came:
                 c = came[c]
                 path.append(c)
+            if unit and seen is not None:
+                seen.update(best)
             return path[::-1]
-        if g > best.get(c, math.inf):
+        if g > best_get(c, inf):
             continue
-        low = len(c) == 3
-        ok, i, j = (under_ok if low else top_ok), c[0], c[1]
-        moves = []
-        for dx, dy in NEIGHBOURS:
-            if not ok(i + dx, j + dy) or (dx and dy and not (ok(i + dx, j) and ok(i, j + dy))):
-                continue
-            n = (i + dx, j + dy, 1) if low else (i + dx, j + dy)
-            moves.append((n, cell * (math.sqrt(2) if dx and dy else 1.0) * (uc if low else tc) * cell_cost(n)))
-        if (i, j) in under.holes:
-            moves.append(((i, j) if low else (i, j, 1), hc))
-        if under.edges:
-            if low:
-                moves += [(t, e) for t, e in under.up.get((i, j), ()) if top_ok(*t)]
-            else:
-                moves += [((u[0], u[1], 1), e) for u, e in under.down.get((i, j), ()) if under_ok(*u)]
+        i, j = c[0], c[1]
+        if len(c) == 3:
+            ok, orth, diag = under_open, u_orth, u_diag
+            e, w, d, u = (i + 1, j, 1), (i - 1, j, 1), (i, j + 1, 1), (i, j - 1, 1)   # east, west, down, up (NEIGHBOURS order)
+            low = True
+        else:
+            ok, orth, diag = top_open, t_orth, t_diag
+            e, w, d, u = (i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)
+            low = False
+        e_ok, w_ok, d_ok, u_ok = e in ok, w in ok, d in ok, u in ok
+        moves = []   # (next state, step length) in NEIGHBOURS order; a diagonal needs both orthogonal cells beside it
+        if e_ok:
+            moves.append((e, orth))
+        if w_ok:
+            moves.append((w, orth))
+        if d_ok:
+            moves.append((d, orth))
+        if u_ok:
+            moves.append((u, orth))
+        if e_ok:
+            if d_ok:
+                n = (i + 1, j + 1, 1) if low else (i + 1, j + 1)
+                if n in ok:
+                    moves.append((n, diag))
+            if u_ok:
+                n = (i + 1, j - 1, 1) if low else (i + 1, j - 1)
+                if n in ok:
+                    moves.append((n, diag))
+        if w_ok:
+            if d_ok:
+                n = (i - 1, j + 1, 1) if low else (i - 1, j + 1)
+                if n in ok:
+                    moves.append((n, diag))
+            if u_ok:
+                n = (i - 1, j - 1, 1) if low else (i - 1, j - 1)
+                if n in ok:
+                    moves.append((n, diag))
         for n, step in moves:
-            ng = g + step
-            if ng < best.get(n, math.inf):
+            if unit:
+                ng = g + step * (SQUEEZE_COST if squeeze and n in blocked else 1.0)
+            else:
+                cc = costs_get(n)
+                if cc is None:
+                    cc = costs[n] = cell_cost(n) * SQUEEZE_COST if (squeeze and n in blocked) else cell_cost(n)
+                ng = g + step * cc
+            if ng < best_get(n, inf):
                 best[n], came[n] = ng, c
-                heapq.heappush(openq, (ng + h(n), ng, n))
+                heappush(openq, (ng + (h(n) if h else hypot(n[0] - gx, n[1] - gy) * hs), ng, n))
+        if (i, j) in holes:
+            n = (i, j) if low else (i, j, 1)
+            ng = g + hc
+            if ng < best_get(n, inf):
+                best[n], came[n] = ng, c
+                heappush(openq, (ng + (h(n) if h else hypot(i - gx, j - gy) * hs), ng, n))
+        if edges:
+            if low:
+                emoves = [(t, e) for t, e in under.up.get((i, j), ()) if t in top_open]
+            else:
+                emoves = [((u[0], u[1], 1), e) for u, e in under.down.get((i, j), ()) if (u[0], u[1], 1) in under_open]
+            for n, e in emoves:
+                ng = g + e
+                if ng < best_get(n, inf):
+                    best[n], came[n] = ng, c
+                    heappush(openq, (ng + (h(n) if h else hypot(n[0] - gx, n[1] - gy) * hs), ng, n))
+    if unit and seen is not None:
+        seen.update(best)
     return None
 
 
-def astar(grid, start, goal, cell_cost, squeeze=False, under=None):
+def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None):
     """Cheapest 8-connected path from start to goal; diagonals may not cut obstacle corners.
     start/goal are always enterable (they are the plug ends, possibly squeezed against a pedal).
     squeeze=True: cells narrower than the cable (grown margin, not the pedal body) are passable at SQUEEZE_COST.
-    under: an `Under` layer; the path is then a list of states ((i, j) on top, (i, j, 1) under the board)."""
+    under: an `Under` layer; the path is then a list of states ((i, j) on top, (i, j, 1) under the board).
+    costs: an optional dict that receives {state: cell cost} of every state whose cell cost the search asked for."""
     if under is not None:
-        return astar_layers(grid, start, goal, cell_cost, squeeze, under)
-    walls, nx, ny = grid.walls(squeeze), grid.nx, grid.ny
-
-    def passable(c):
-        return 0 <= c[0] < nx and 0 <= c[1] < ny and (c not in walls or c == start or c == goal)
-
-    if squeeze:
-        base = cell_cost
-        cell_cost = lambda c: base(c) * (SQUEEZE_COST if c in grid.blocked else 1.0)
-
-    h = lambda c: math.hypot(c[0] - goal[0], c[1] - goal[1]) * grid.cell
-    openq, best, came = [(h(start), 0.0, start)], {start: 0.0}, {}
+        return astar_layers(grid, start, goal, cell_cost, squeeze, under, costs)
+    ok = _search_cells(grid, squeeze, (start, goal))
+    blocked, cell = grid.blocked, grid.cell
+    steps = _step_tables(cell, 1.0, 1.0)[0]
+    gx, gy, hypot, inf = goal[0], goal[1], math.hypot, math.inf
+    heappush, heappop = heapq.heappush, heapq.heappop
+    if costs is None:
+        costs = {}
+    costs_get = costs.get
+    openq, best, came = [(hypot(start[0] - gx, start[1] - gy) * cell, 0.0, start)], {start: 0.0}, {}
+    best_get = best.get
     while openq:
-        _, g, c = heapq.heappop(openq)
+        _, g, c = heappop(openq)
         if c == goal:
             path = [c]
             while c in came:
                 c = came[c]
                 path.append(c)
             return path[::-1]
-        if g > best.get(c, math.inf):
+        if g > best_get(c, inf):
             continue
-        for dx, dy in NEIGHBOURS:
-            n = (c[0] + dx, c[1] + dy)
-            if not passable(n):
+        i, j = c
+        for dx, dy, diag, step in steps:
+            x, y = i + dx, j + dy
+            if (x, y) not in ok or (diag and ((x, j) not in ok or (i, y) not in ok)):
                 continue
-            if dx and dy and not (passable((c[0] + dx, c[1])) and passable((c[0], c[1] + dy))):
-                continue
-            step = grid.cell * (math.sqrt(2) if dx and dy else 1.0)
-            ng = g + step * cell_cost(n)
-            if ng < best.get(n, math.inf):
+            n = (x, y)
+            cc = costs_get(n)
+            if cc is None:
+                cc = costs[n] = cell_cost(n) * SQUEEZE_COST if (squeeze and n in blocked) else cell_cost(n)
+            ng = g + step * cc
+            if ng < best_get(n, inf):
                 best[n], came[n] = ng, c
-                heapq.heappush(openq, (ng + h(n), ng, n))
+                heappush(openq, (ng + hypot(x - gx, y - gy) * cell, ng, n))
     return None
 
 
-def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2, under=None, quick=False):
+def plain_search(memo, grid, start, goal, squeeze, under):
+    """`astar` with the plain cell cost 1.0, remembered in `memo` for `route_all` (see there)."""
+    states = {}
+    path = astar(grid, start, goal, None if under is not None else (lambda _: 1.0), squeeze=squeeze, under=under, costs=states)
+    memo[(start, goal, squeeze)] = (path, states)
+    return path
+
+
+def _search(memo, grid, start, goal, cell_cost, squeeze, under):
+    """`astar`, or the remembered plain search (`plain_search`) when `cell_cost` is 1.0 on every state that search asked for."""
+    hit = memo.get((start, goal, squeeze)) if memo else None
+    if hit is not None and all(c == start or cell_cost(c) == 1.0 for c in hit[1]):
+        return list(hit[0]) if hit[0] is not None else None
+    return astar(grid, start, goal, cell_cost, squeeze=squeeze, under=under)
+
+
+def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2, under=None, quick=False, memo=None):
     """nets: [(name, start_cell, goal_cell[, squeeze])]. Returns ({name: path or None}, {cell: [names]}, overflow cells,
     plug_over). With an `Under` layer the paths, usage and overflow are over states ((i, j) on top, (i, j, 1) under the
     board) and the stacking limit is `under.max_stack` under the board; plug crossings count on top only.
@@ -560,7 +677,11 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
     do not own them). plug_over = {key: [names]}: the plugs that stayed over the limit, with their crossing cables.
 
     quick: skip the clean-up passes when the first round already left every limit satisfied (no history costs exist
-    then, so the clean-up would repeat the same searches; used for the power cables, where time matters)."""
+    then, so the clean-up would repeat the same searches; used for the power cables, where time matters).
+
+    memo: {(start, goal, squeeze): (path, states)} of searches already made with the plain cell cost 1.0 on this grid and layer
+    (`plain_search`; `states` = the states whose cost that search asked for). A search here that would see cost 1.0 on every
+    one of those states makes exactly the same moves, so it takes the remembered path instead of searching again."""
     plugs = plugs or {}
     plug_at = {}   # cell -> [plug keys]
     for key, (_, cells) in plugs.items():
@@ -569,6 +690,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
     history, plug_history, paths, present = {}, {}, {}, 0.5
     first_clean = False
     limit = (lambda c: under.limit(c, max_stack)) if under is not None else (lambda c: max_stack)
+    lim_under = under.max_stack if under is not None else max_stack   # what `limit` gives a 3-tuple (under-board) state
     cross = {key: set() for key in plugs}   # plug key -> cables other than its owner whose path enters it
 
     def crossed(name, path):
@@ -587,16 +709,22 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                 cross[k].discard(name)
 
             def cost(c):
-                over = max(0, usage.get(c, 0) + 1 - limit(c))
+                over = usage.get(c, 0) + 1 - (lim_under if len(c) == 3 else max_stack)
                 hist = history.get(c, 0.0)
-                if c != s and c != t:
-                    for key in plug_at.get(c, ()):
+                pk = plug_at.get(c)
+                if pk and c != s and c != t:
+                    over = max(0, over)
+                    for key in pk:
                         if plugs[key][0] != name:
                             over += len(cross[key]) >= max_over_plug
                             hist += plug_history.get(key, 0.0)
+                elif over < 0:
+                    over = 0
+                if not over and not hist:
+                    return 1.0   # (1.0 + 0.0) * (1.0 + present * 0 * 10)
                 return (1.0 + hist) * (1.0 + present * over * 10)
 
-            paths[name] = astar(grid, s, t, cost, squeeze=bool(sq and sq[0]), under=under)
+            paths[name] = _search(memo, grid, s, t, cost, bool(sq and sq[0]), under)
             for c in paths[name] or []:
                 usage[c] = usage.get(c, 0) + 1
             for k in crossed(name, paths[name]):
@@ -628,7 +756,7 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                     plugs[k][0] != name and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
                 return CLOSED_COST if full else 1.0
 
-            new = astar(grid, s, t, plain, squeeze=bool(sq and sq[0]), under=under)
+            new = _search(memo, grid, s, t, plain, bool(sq and sq[0]), under)
             if new is not None and not any(plain(c) == CLOSED_COST for c in new[1:-1]):
                 paths[name] = new
             for c in paths[name] or []:
@@ -1211,6 +1339,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
                                 f"(its border cells are blocked or outside the cable area)")
     run_given = "exit_run_mm" in (project.get("cables") or {})
 
+    memo = {}   # the side choice's plain searches, reused by route_all where the negotiated costs leave them unchanged
     nets, chosen = [], {}   # chosen: cable id -> (end a option or None, end b option or None)
     for c in (x for x in cables if x["kind"] == "signal"):
         a, ja, b, jb = c["_ends"]
@@ -1244,7 +1373,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         top = min(k for k, _, _ in combos)
         best = None
         for key, oa, ob in (x for x in combos if x[0] == top):   # A* only for the best-ranked combinations
-            path = astar(grid, oa["cell"], ob["cell"], lambda _: 1.0, squeeze=key[1] == 1, under=layers) if key[1] < 2 else None
+            path = plain_search(memo, grid, oa["cell"], ob["cell"], key[1] == 1, layers) if key[1] < 2 else None
             length = (oa["measure_mm"] + ob["measure_mm"] + path_length(grid, path, cfg.get("hole_transit_mm", 0.0),
                                                                         ctx["routing"].get("edge_transit_mm", 0.0))) if path else \
                 math.hypot(oa["exit"][0] - ob["exit"][0], oa["exit"][1] - ob["exit"][1])
@@ -1283,7 +1412,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     grow = grow_of(cfg)
     plugs = {k: (plug_owner[k], set().union(*(rect_cells(grid, r, grow) for r in rs))) for k, rs in plug_rects.items()}
     paths, users, overflow, plug_over = (route_all(grid, nets, int(cfg["max_stack"]), int(cfg["iterations"]), plugs,
-                                                   int(cfg["max_over_plug"]), under=layers) if grid else ({}, {}, set(), {}))
+                                                   int(cfg["max_over_plug"]), under=layers, memo=memo) if grid else ({}, {}, set(), {}))
     ctx["routing"]["overflow"] = {c for c in overflow if len(c) == 2}
     ctx["routing"]["overflow_under"] = {c for c in overflow if len(c) == 3}
     ctx["routing"]["plug_over"] = plug_over

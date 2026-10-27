@@ -1,6 +1,7 @@
 """Layout model and surrogate score (scripts/layout.py) and the power assignment (scripts/power.py).
 Hand-computed cases on small synthetic boards; all lengths in mm (45 px/in -> 1 px = 25.4/45 mm)."""
 import copy
+import functools
 import json
 import math
 import sys
@@ -100,9 +101,15 @@ def test_clearance_is_measured_against_the_outline():
     assert rot._geom[(0, 90)]["shapes"] == [pytest.approx((-10.16, -25.4, 10.16, 25.4))]
 
 
-def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
+@functools.lru_cache(maxsize=1)
+def gig_build():
+    """(pedals, supplies, ctx): the build of the real guitar-gig, made once for the tests that only read it."""
     pedals, supplies = load_catalog()
-    ctx = build.validate(GIG, pedals, supplies)
+    return pedals, supplies, build.validate(GIG, pedals, supplies)
+
+
+def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
+    pedals, supplies, ctx = gig_build()
     m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
                      supplies, jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types())
     _, det = m.score(m.owner, margin=0, detail=True)
@@ -234,8 +241,7 @@ def test_chain_order_is_the_shortest_daisy_chain():
 
 
 def gig_assignment():
-    pedals, supplies = load_catalog()
-    ctx = build.validate(GIG, pedals, supplies)
+    pedals, supplies, ctx = gig_build()   # (read only by every caller)
     lay, project = ctx["layout"], ctx["project"]
     insts = [{**i, "sup": supplies[i["supply"]]} for i in project["power"]["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, lay["jacks"], 11.0)

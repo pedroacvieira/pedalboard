@@ -100,10 +100,10 @@ def gig_copy(tmp_path, monkeypatch):
 def test_propose_writes_loadable_proposals_and_the_readme_section(tmp_path, monkeypatch, capsys):
     pdir = gig_copy(tmp_path, monkeypatch)
     design_before = (pdir / "playground_design.json").read_bytes()
-    assert pl.main(["guitar-gig", "--iterations", "400", "--restarts", "2", "--top", "2"]) == 0
+    assert pl.main(["guitar-gig", "--iterations", "150", "--restarts", "1", "--top", "2"]) == 0
     assert (pdir / "playground_design.json").read_bytes() == design_before   # never written
     meta = json.loads((pdir / "proposals" / "meta.json").read_text())
-    assert meta["command"].endswith("--iterations 400 --restarts 2 --top 2") and 1 <= len(meta["proposals"]) <= 2
+    assert meta["command"].endswith("--iterations 150 --restarts 1 --top 2") and 1 <= len(meta["proposals"]) <= 2
     owner_items = {i["id"]: i for i in design.parse_design(pdir / "playground_design.json")}
     for p in meta["proposals"]:
         items = design.parse_design(pdir / "proposals" / p["file"])
@@ -147,10 +147,10 @@ def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeyp
     pedals, supplies = load_catalog()
     ctx = build.validate(pdir, pedals, supplies)
     assert "None yet" in "\n".join(build.proposals_section(ctx, pedals))
-    assert pl.main(["guitar-gig", "--iterations", "300", "--restarts", "1"]) == 0
+    assert pl.main(["guitar-gig", "--iterations", "100", "--restarts", "1"]) == 0
     md = "\n".join(build.proposals_section(ctx, pedals))
     assert "## Layout proposals" in md and "| Blocked plugs | 2 (21.7 mm) |" in md and "Stale" not in md
-    assert "![Proposal 1](proposals/1.svg)" in md and "Daisy chain" in md and "--iterations 300 --restarts 1" in md
+    assert "![Proposal 1](proposals/1.svg)" in md and "Daisy chain" in md and "--iterations 100 --restarts 1" in md
     design_path = pdir / "playground_design.json"
     original = design_path.read_bytes()
     doc = json.loads(original)

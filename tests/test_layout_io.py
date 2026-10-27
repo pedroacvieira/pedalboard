@@ -1,5 +1,6 @@
 """Layout injection and canvas editing (Phase 0 of feat/pedal-position): build.validate with injected items,
 design.move and design.write_canvas. Hand-computed, all lengths in mm (45 px/in -> 1 px = 25.4/45 = 0.5644 mm)."""
+import functools
 import json
 import sys
 from pathlib import Path
@@ -35,9 +36,16 @@ def strip(ctx):
     return json.loads(json.dumps(out, default=repr, sort_keys=True))
 
 
+@functools.lru_cache(maxsize=None)
+def default_build(name):
+    """build.validate of a real project as it is on disk, made once per project for the tests that only read it."""
+    pedals, supplies = load_catalog()
+    return build.validate(ROOT / "projects" / name, pedals, supplies)
+
+
 def test_validate_with_injected_items_equals_the_file():
     pedals, supplies = load_catalog()
-    from_file = build.validate(GIG, pedals, supplies)
+    from_file = default_build("guitar-gig")
     items = design.parse_design(GIG / "playground_design.json")
     injected = build.validate(GIG, pedals, supplies, items=items)
     assert from_file["layout_source"] == "file" and injected["layout_source"] == "injected"
@@ -84,7 +92,7 @@ def test_real_projects_keep_every_supply_under_the_board():
     pedals, supplies = load_catalog()
     for name in ("guitar-gig", "guitar-practice", "bass"):
         pdir = ROOT / "projects" / name
-        base = build.validate(pdir, pedals, supplies)
+        base = default_build(name)
         titles = {t for t in (supplies[s["sup"]["id"]].get("playground_title") for s in base["supplies"]) if t}
         assert all("placement" not in s["inst"] for s in base["supplies"])
         if base["layout"]:
