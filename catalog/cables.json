@@ -47,6 +47,32 @@
       ],
       "notes": "No head dimensions are published for the Strymon Ojai / Ojai R30 cables, Harley Benton ISO-5 Pro cables, Truetone or Cioks (checked 2026-10-22); the RockBoard angled plug is the closest published low-profile reference. Mapping of RockBoard's figures to our axes is OUR INTERPRETATION: W 11 = depth out from the jack face, H 10.5 = height above the board, L 20 = length along the cable, with the barrel axis about 5.5 mm (half the width) from the plug's far end, so the body reaches 20 - 5.5 = 14.5 mm from the jack axis on the exit side; head_width 11 assumed round body. barrel_width 6 (strain relief) and diameter 3.2 (generic cable, not the Strymon cable) are estimates. Measure one of the owner's Ojai cables to confirm."
     },
+    "dc_ra_owner_baseline": {
+      "name": "DC power cable, right-angle 2.1 mm plug (owner-measured baseline)",
+      "role": "power",
+      "diameter_mm": 3.2,
+      "jacket": {"shape": "round", "width_mm": 3.2, "height_mm": 3.2},
+      "tips": "DC 2.1 mm",
+      "plug": {"style": "right_angle", "head_depth_mm": 12.0, "head_width_mm": 8.0, "head_thickness_mm": null, "exit_offset_mm": null, "body_reach_mm": 19.0, "barrel_width_mm": 6.0},
+      "verified": ["head_depth_mm", "head_width_mm", "body_reach_mm"],
+      "sources": [
+        "owner measured a random DC cable, 2026-10-28: right-angle end needs 12 mm outwards from the jack, 19 mm on the side it bends to (from the jack axis, where the cable leaves the body), 4 mm on the other side (the head's radius); pointing down 4 mm to each side and the same 12 mm out"
+      ],
+      "notes": "OWNER BASELINE, may be smaller: the measured cable is probably bigger than most of the owner's own; the owner updates these values later. head_width 8 = 2 x the 4 mm head radius. exit_offset = default (half the depth, not measured). barrel_width 6 and diameter 3.2 are estimates (copied from dc_ra_2_1_low_profile). Replaces dc_ra_2_1_low_profile (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation to 11 deep x 11 wide, body reach 14.5) as the projects' power_type."
+    },
+    "dc_straight_owner_baseline": {
+      "name": "DC power cable, straight 2.1 mm plug (owner-measured baseline)",
+      "role": "power",
+      "diameter_mm": 3.2,
+      "jacket": {"shape": "round", "width_mm": 3.2, "height_mm": 3.2},
+      "tips": "DC 2.1 mm",
+      "plug": {"style": "straight", "head_depth_mm": 34.0, "head_width_mm": 10.0, "head_thickness_mm": 10.0},
+      "verified": ["head_depth_mm", "head_width_mm"],
+      "sources": [
+        "owner measured a random DC cable, 2026-10-28: the straight end needs 34 mm outwards from the jack and a 5 mm radius (10 mm wide)"
+      ],
+      "notes": "OWNER BASELINE, may be smaller (the owner's straight plugs are likely smaller; updated later). head_thickness 10 = the 5 mm radius (round body, informational). diameter 3.2 is UNVERIFIED (the right-angle type's estimate)."
+    },
     "generic_straight": {
       "name": "Generic straight patch plug (placeholder)",
       "role": "reference",

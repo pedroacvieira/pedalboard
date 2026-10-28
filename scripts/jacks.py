@@ -145,6 +145,13 @@ def validate_jacks_file(data, pedals, supplies):
 
 # --- project check (called from build.validate) -------------------------------------------------
 CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}          # audio jacks without a modelled plug
+def default_power_type(project):
+    """The project's default DC plug type as the router reads it (`routing.settings`): `cables.power_type`, else the first of
+    `cables.power_types`; None without either."""
+    import routing
+    return routing.settings(project)["power_type"]
+
+
 POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
@@ -319,6 +326,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
     `outlines`: catalog/outlines.json (read if None), for the layout's "shapes"; `board_data`: usable
     catalog/boards.json (read if None), for the layout's "holes" (with the project's board.json edits).
+    The power cable lengths this makes (`estimate_mm`, the '~' lengths of the README, used where the cable is not routed) are an estimate that
+    always uses the project's DEFAULT DC plug type (`default_power_type`) for the plug depth, never the type a plug was chosen to take.
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
@@ -328,12 +337,13 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     side = float(jset.get("clearance", {}).get("side_mm", CLEARANCE_DEFAULT["side_mm"]))
     p_out = float(jset.get("power_clearance", {}).get("outward_mm", POWER_CLEARANCE_DEFAULT["outward_mm"]))
     p_side = float(jset.get("power_clearance", {}).get("side_mm", POWER_CLEARANCE_DEFAULT["side_mm"]))
-    power_modelled = bool((project.get("cables") or {}).get("power_type"))
+    power_type_id = default_power_type(project)
+    power_modelled = bool(power_type_id)
     extra_used = jset.get("extra_used", {})
     supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[],
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[],
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
                               "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
@@ -392,7 +402,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
                             board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings))
-    ptype = ((cable_types or {}).get((project.get("cables") or {}).get("power_type") or "") or {})
+    ptype = ((cable_types or {}).get(power_type_id or "") or {})
     errors.extend(layout_crossing_errors(ctx, lay, float(ptype.get("diameter_mm") or 0.0) / 2))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
@@ -424,6 +434,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         is_power = jk["function"] in ("power", "power_out")
         out_mm, side_mm = (p_out, p_side) if is_power else (outward, side)
         zone = design.clearance_rect(pt, facing, out_mm, side_mm)
+        ctx["fixed_zones"][f"{cid}.{jk['id']}"] = {"rect": zone, "facing": facing, "zone": "power" if is_power else "audio",
+                                                   "label": jk["label"]}
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
@@ -446,7 +458,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         cable_types = load_cable_types()
 
     def depth(kind, cable_id=None):
-        tid = (project.get("cables") or {}).get("power_type") if kind == "power" else cable_type_id(project, cable_id)
+        tid = power_type_id if kind == "power" else cable_type_id(project, cable_id)
         if tid in cable_types:
             return float(cable_types[tid]["plug"]["head_depth_mm"])
         return p_out if kind == "power" else outward

@@ -199,9 +199,17 @@ def jacks(item, jack_list, used):
     return out
 
 
+def down_marker(x, y, class_="plug-down"):
+    """The mark of a plug that points down into a hole (at its bend point): a small filled circle with a cross."""
+    return (f'<g class="{class_}"><circle cx="{f1(x)}" cy="{f1(y)}" r="1.9" fill="#37474f" fill-opacity="0.85" stroke="#ffffff" '
+            f'stroke-width="0.4"/><path d="M{f1(x - 1.0)} {f1(y - 1.0)} L{f1(x + 1.0)} {f1(y + 1.0)} M{f1(x - 1.0)} {f1(y + 1.0)} '
+            f'L{f1(x + 1.0)} {f1(y - 1.0)}" stroke="#ffffff" stroke-width="0.5" fill="none"/></g>')
+
+
 def plug_heads(heads):
-    return [rect(*r, fill="#90a4ae", opacity=0.45, stroke="#37474f", stroke_width=0.3, class_="plug-head")
-            for h in heads or [] for _, r in h["rects"]]
+    out = [rect(*r, fill="#90a4ae", opacity=0.45, stroke="#37474f", stroke_width=0.3, class_="plug-head")
+           for h in heads or [] for _, r in h["rects"]]
+    return out + [down_marker(*h["down"]) for h in heads or [] if h.get("down")]
 
 
 def overflow_cells(grid, cells):
@@ -388,6 +396,8 @@ def key_entries(ctx, cable_list, max_stack):
          ("jack_free", "unused jack (the tick points to the side the plug enters from)"),
          ("head", "plug head and its cable exit"), ("area", "routing area"),
          ("box", "dashed: Pedal Playground box")]
+    if any(h.get("down") for h in r.get("heads") or []):
+        e.insert(3, ("down", "plug points down into a hole"))
     if layout_holes:
         e.append(("hole", "Board hole"))
     if (ctx.get("layout") or {}).get("edge_segments"):
@@ -438,6 +448,8 @@ def key_sample(kind, x, y):
                 f'<circle cx="{f1(cx)}" cy="{f1(y)}" r="1.4" fill="{col if kind == "jack_used" else "#ffffff"}" stroke="{col}" stroke-width="0.6"/>')
     if kind == "head":
         return rect(x, y - 2, x + 8, y + 2, fill="#90a4ae", opacity=0.45, stroke="#37474f", stroke_width=0.3)
+    if kind == "down":
+        return down_marker(cx, y, "key-down")
     if kind == "area":
         return rect(x, y - 2, x + 8, y + 2, fill="none", stroke=GREY, stroke_dasharray="4 3", stroke_width=0.8)
     if kind == "box":
@@ -666,7 +678,8 @@ def render_power(ctx, names):
 
     width, y = right - left, bx[3] + 8
     entries = [("supply", "power supply (dashed: under the board)"), ("jack_used", "used power jack / supply port"),
-               ("head", "DC plug head")] + ([("hole", "Board hole")] if layout.get("holes") else [])
+               ("head", "DC plug head")] + ([("down", "plug points down into a hole")] if any(h.get("down") for h in r.get("heads") or []) else []) \
+              + ([("hole", "Board hole")] if layout.get("holes") else [])
     entries += [("edge", EDGE_KEY)] if layout.get("edge_segments") else []
     entries += [e for e in key_entries(ctx, cable_list, 2) if e[0].startswith("power")]
     key, kh = key_block(entries, left + PAD, y, width - 2 * PAD)

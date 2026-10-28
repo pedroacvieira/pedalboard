@@ -128,7 +128,7 @@ def test_no_better_layout_writes_no_proposal(tmp_path, monkeypatch):
 def test_score_prints_the_breakdown(capsys):
     assert pl.main(["guitar-gig", "--score"]) == 0
     out = capsys.readouterr().out
-    assert "Blocked plugs (no margin, as the build): 2" in out and "footswitch" in out and "clearance" in out
+    assert "Blocked plugs (no margin, as the build): 5" in out and "footswitch" in out and "clearance" in out
 
 
 def test_the_board_data_and_the_projects_edits_are_read_once(monkeypatch, capsys):
@@ -149,7 +149,7 @@ def test_readme_section_lists_proposals_and_detects_stale_ones(tmp_path, monkeyp
     assert "None yet" in "\n".join(build.proposals_section(ctx, pedals))
     assert pl.main(["guitar-gig", "--iterations", "100", "--restarts", "1"]) == 0
     md = "\n".join(build.proposals_section(ctx, pedals))
-    assert "## Layout proposals" in md and "| Blocked plugs | 2 (21.7 mm) |" in md and "Stale" not in md
+    assert "## Layout proposals" in md and "| Blocked plugs | 5 (37.2 mm) |" in md and "Stale" not in md
     assert "![Proposal 1](proposals/1.svg)" in md and "Daisy chain" in md and "--iterations 100 --restarts 1" in md
     design_path = pdir / "playground_design.json"
     original = design_path.read_bytes()

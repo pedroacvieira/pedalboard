@@ -44,8 +44,10 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   voltage = output voltage; `power.supplies[].placement` under|on_board, default `jacks.supplies_layer`), power_policy,
   `power_routing` (top_cost, max_stack, edge_transit_mm; the old `edges` / `avoid_penalty` keys are errors), `jacks` (clearance = audio box, power_clearance = smaller DC box used only
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
-  patch; `power_type` = DC plug type, role power; routing parameters; `overrides.<S#>` with `type`, `exit_a`,
-  `exit_b` = left|right|auto, tips; `overrides.<P#>.exit_b` fixes a power plug's side; `under_board`, `hole_transit_mm`,
+  patch; `power_type` = default DC plug type, role power; `power_types` = the DC plug types the router may pick (default
+  [power_type]); `jack_height_mm` (12, unverified: jack axis above the deck, for down plugs); routing parameters;
+  `overrides.<S#>` with `type`, `exit_a`, `exit_b` = left|right|down|auto, tips; `overrides.<P#>.exit_b` fixes a power
+  plug's exit, `type_a` / `type_b` its port / pedal plug type; `under_board`, `hole_transit_mm`,
   `hole_penalty`, `under_cost`, `max_stack_under` for the under-board layer; `route_in_front` default false = nothing in
   front of the lowest pedals, true = the routing area reaches the board front), `footswitches.comfort_mm`
   (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
@@ -73,7 +75,7 @@ with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~430 tests, ~30 s, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
+- `tests/`: pytest (`uv run pytest tests`), ~565 tests, ~60 s, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
   full guitar-gig search).
 
 ## Commands
@@ -143,12 +145,26 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   plug-check (extra and first-in / last-out jacks, unknown types, projects without `cables.type`). Warnings name
   the plug part an obstacle reaches deepest. The routing width is the widest signal cable type in use; each
   plug's straight run is one diameter of its own type.
+- Plug orientation (`feat/plug-orientation`, plan `docs/plans/plug-orientation.md`, owner 2026-10-28):
+  **collisions**: every used plug's footprint (chosen option: head, barrel, run; jacks without a plug model keep their
+  fixed box from `ctx["fixed_zones"]`: first input, last output, extra jacks) must not overlap another jack's
+  (`routing.plug_collision_findings`, `ctx["plug_collisions"]`, clearance warnings; NOT in `ctx["violations"]`); the
+  side choice counts a collision like a blocked part (signal cables in chain order, then the DC plugs); proposals gate
+  on `collisions`. **Down**: a right-angle plug (signal or power) may point down into a hole: `routing.down_available`
+  (a cable-wide square at the bend point inside the effective holes, clear of under-board supplies; the top "free"
+  rule does not apply); footprint = the head; measure = |exit_offset - depth/2| + `cables.jack_height_mm` + hole
+  transit; the route starts / ends under the board. Owner: **always down when available**, even if longer (ranking:
+  feasible, down, blocked + collisions, length). **DC plug types**: `cables.power_types`, per plug `routing.plug_rank`
+  (feasible exit, down, blocked + collisions, overlap, list order); one pedal-end type per serial cable (the port plug
+  apart), per leg when forked; cables carry `type_a` / `type_b`; the power grid uses the widest type. The layout
+  surrogate mirrors all three (per plug best type, no serial rule).
 - Cable types in use (owner, 2026-10-22): patch cables are **Ernie Ball flat ribbon** (`ernie_ball_flat_patch_ra`,
   3.5 mm on-board width, flat angled plug 6.4 deep x 12.7 wide, ribbon leaves 19 mm from the jack axis: mostly
   estimates, see the file); every patch plug is angled, no straight plugs (straight/Neutrik types are role
   `reference` only). Fender Professional (`fender_pro_instrument_ra`, role instrument) is only the guitar/amp cable,
-  not modelled yet. Power jacks: `cables.power_type` = `dc_ra_2_1_low_profile` (RockBoard angled plug 20 x 11 x
-  10.5 mm as reference): the head on the less blocked exit side (fewest blocked parts, then least overlap) plus a
+  not modelled yet. Power jacks: `cables.power_type` = `dc_ra_owner_baseline` (owner-measured random DC cable,
+  2026-10-28: 12 deep x 8 wide, body reach 19; `dc_straight_owner_baseline` 34 x 10; both a baseline the owner may
+  shrink; RockBoard `dc_ra_2_1_low_profile` kept as reference data): the head on the less blocked exit side (fewest blocked parts, then least overlap) plus a
   one-cable-width run is checked in `routing.power_plug_clearance`; without a power type `jacks.power_clearance`
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable

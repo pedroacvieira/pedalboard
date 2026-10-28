@@ -10,13 +10,17 @@ ideas · 5 data · 6 done.
 ## 1. Owner input
 
 ### Measurements (each replaces an estimate that feeds every cable length / clearance check)
+- [ ] **Jack height** above the deck (`cables.jack_height_mm`, 12, estimate): the length of a plug pointing down.
+- [ ] **Owner's own DC plugs** (right-angle and straight): `dc_ra_owner_baseline` / `dc_straight_owner_baseline` are a
+      random cable's sizes (12 x 8, body reach 19 / 34 x 10), likely bigger than the owner's.
 - [ ] **Fender Pro Medium deck**: thickness (+ the bend of a ribbon through a slot) for `hole_transit_mm` (15,
       estimate) and the board height at the back edge for `edge_transit_mm` (30 = 2 x hole transit, estimate); put
       them in `catalog/boards.json` (`fender-pro-medium.png`).
 - [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
       to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
       `verified` list.
-- [ ] **Ojai DC plug**: depth from the jack face, width, height, and the cable thickness. Today
+- [ ] **Ojai DC plug** (a random DC cable was measured by the owner 2026-10-28: right-angle 12 out / 19 bend side / 4
+      other side, straight 34 out / 5 radius; used in `docs/plans/plug-orientation.md`; the Ojai's own plug is still open): depth from the jack face, width, height, and the cable thickness. Today
       `dc_ra_2_1_low_profile` (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation, ~11 mm deep) is deeper than the
       Ernie Ball plug, against the owner's expectation; RockBoard's own page also gives 5/16 in height.
 - [ ] Confirm the power-jack fallback box `jacks.power_clearance` (5.5 x 5.5 mm, estimate; only used without a
@@ -43,12 +47,12 @@ ideas · 5 data · 6 done.
       center-positive pedal arrives.
 
 ## 2. Gig board
-- [ ] Monk / Belle Epoch are too close in the owner's layout: `monk.out` (12.7 mm) and `monk.power` (9.0 mm, DC plug
-      model) are blocked by the Belle Epoch. All three layout proposals fix it: load
-      `projects/guitar-gig/proposals/1.json` in Pedal Playground (Load from File) and re-save
-      `projects/guitar-gig/playground_design.json`, or move the two apart by hand (or measure that the plugs fit).
-- Current state (2026-10-27): signal 2322 mm (chorus before the Reticon), no signal cable under the board; 17 power
-  cables through holes (P12 / P17 stay on top); one owner-drawn edge crossing at the back (handle area), unused.
+- [ ] The owner's layout has 5 blocked plugs (monk.out / monk.power by the Belle Epoch, danelectro_3699.out by the
+      Retrovibe, red_muck / analog_chorus DC heads) and 7 plug collisions (mostly a patch plug vs the DC plug on the
+      same pedal). All three layout proposals reach 0 / 0 (2026-10-28): load `projects/guitar-gig/proposals/1.json` in
+      Pedal Playground (Load from File) and re-save `projects/guitar-gig/playground_design.json`, or move by hand.
+- Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
+  S15 / S16 ends, P1, P11, P13); one owner-drawn edge crossing at the back (handle area), unused.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
 Order (owner, 2026-10-23, updated): power-cable inventory -> pedal preferences -> web UI.
@@ -108,8 +112,6 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - [ ] U-turn plugs: when a right-angle plug cannot point to the side its cable has to go, point it the other way and
       turn the cable back; longer minimum length, the turned cable occupies both sides; the router considers it when
       the direct side is blocked or worse.
-- [ ] Plug pointing down into a hole: a jack above or next to a hole sends its cable straight down; it runs under the
-      board until it resurfaces (another hole / edge segment) or comes straight back up.
 - [ ] Many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - [ ] Under-board fit (supply height vs space under the deck) is not checked (owner decision); a later branch if needed.
 - [ ] The saturated single-hole routing case (two cables forced through one one-cell hole) never converges and runs
@@ -142,5 +144,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - `feat/footswitch-toppers` (2026-10-27, defaults 2026-10-28): `footswitches.toppers`, effective distance (+4.5 mm per
   topper = its added height), cap 5 per board, post-layout suggestions (gig: ratsbane, belle_epoch, fulldrive_2 boost,
   monk tap, protein blue: crowding 184 -> 157).
+- `feat/plug-orientation` (2026-10-28, `docs/plans/plug-orientation.md`): plug-to-plug collisions, right-angle plugs
+  pointing down into a hole (always when available), several DC plug types per project (`cables.power_types`, one
+  pedal-end type per serial cable), owner-measured DC plugs, the layout surrogate mirrors all three.
 - Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
   gig chain: chorus before the Reticon (2026-10-27).

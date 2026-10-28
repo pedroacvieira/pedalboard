@@ -341,7 +341,7 @@ class Crossings:
         return self.cfg.get("edge_transit_mm", default) if point in self.edge_set else default
 
 
-def hop_estimate(src, dst, src_under, holes, cfg, near=None):
+def hop_estimate(src, dst, src_under, holes, cfg, near=None, dst_under=False):
     """Cheap estimate of one routed power hop from `src` to `dst` (measure points, mm), in the router's costs (`cfg`:
     `top_cost` per mm on top, `transit_mm` per hole pass; the under part costs 1 per mm):
       source under:  Manhattan under to the usable hole point nearest the target, the pass, the straight distance on top;
@@ -350,12 +350,20 @@ def hop_estimate(src, dst, src_under, holes, cfg, near=None):
     `holes`: a `HoleIndex` of the usable hole points or a `Crossings` (holes + edge points with their own transit; None / empty:
     today's plain Manhattan); `near(point)` finds the
     nearest usable one (default: `holes.nearest`, a caller may memoise it). Also returns plain Manhattan when no hole is
-    usable near the target."""
+    usable near the target. `dst_under`: the target plug points down into a hole, so the cable ends UNDER the board at `dst` (no pass
+    up): Manhattan under from an under source, else down through the hole nearest the source and Manhattan under."""
     if not holes:
         return manhattan(src, dst)
     near = near or holes.nearest
     tc, tr = cfg.get("top_cost", 3.0), cfg.get("transit_mm", 15.0)
     transit = getattr(holes, "transit_of", lambda p, d: d)
+    if dst_under:
+        if src_under:
+            return manhattan(src, dst)
+        hs = near(src)
+        if hs is None:
+            return tc * manhattan(src, dst)
+        return tc * math.hypot(hs[0] - src[0], hs[1] - src[1]) + transit(hs, tr) + manhattan(hs, dst)
     ht = near(dst)
     if ht is None:
         return manhattan(src, dst)

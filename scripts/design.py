@@ -240,6 +240,8 @@ def overlap_depth(zone_facing, ov):
 
 # --- plug heads (mm) --------------------------------------------------------------------------
 SIDES = ("left", "right")
+DOWN = "down"                 # a right-angle plug can also point straight down into a board hole (no side)
+EXITS = (*SIDES, DOWN)
 
 
 def side_vector(facing, side):
@@ -256,13 +258,17 @@ def _rect(p, u, a0, a1, v, b0, b1):
     return (min(xs), min(ys), max(xs), max(ys))
 
 
-def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None):
+def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None, drop_mm=0.0):
     """Footprint and cable lead of a plug in a jack at `point` (all mm, canvas frame).
 
     plug: catalog/cables.json `plug` block. Right-angle plugs need `side` ('left'/'right' of the facing): the
     cable leaves the head there, `exit_offset_mm` out from the jack face, the plug body reaches
     `body_reach_mm` from the jack axis, then the cable runs `run_mm` straight before it may bend.
     Straight plugs: the cable leaves along the facing at `head_depth_mm`, then runs `run_mm`.
+    side "down" (right-angle plugs only): the cable leaves the head straight down, at the bend point (the point a side exit bends
+    at); the footprint on the board is the head alone, `exit` = `lead[-1]` = the bend point (where the routed cable continues
+    under the board), `measure_mm` includes `drop_mm` (the cable down through the jack height and the deck) and the option
+    has "down": True. `drop_mm` is ignored for the other exits.
     Returns {"rects": [(part, rect)], "lead": [points from the jack to the exit], "exit": point, "lead_mm": float,
     "measure": point, "measure_mm": float} with parts "head", "barrel" (right-angle body beyond the head, if any)
     and "cable" (the straight run). Cable lengths are measured from `measure` (on the jack axis, half the head
@@ -279,11 +285,16 @@ def plug_geometry(point, facing, plug, diameter_mm, run_mm, side=None):
         ex = (point[0] + u[0] * (depth + run_mm), point[1] + u[1] * (depth + run_mm))
         return {"rects": rects, "lead": [point, ex], "exit": ex, "lead_mm": depth + run_mm,
                 "measure": m, "measure_mm": depth / 2 + run_mm}
-    if side not in SIDES:
-        raise ValueError(f"right-angle plug needs side left/right, got {side!r}")
-    s = side_vector(facing, side)
+    if side not in EXITS:
+        raise ValueError(f"right-angle plug needs side left/right/down, got {side!r}")
     off = plug.get("exit_offset_mm")
     off = depth / 2 if off is None else float(off)
+    if side == DOWN:
+        bend = (point[0] + u[0] * off, point[1] + u[1] * off)
+        head = _rect(point, u, 0, depth, side_vector(facing, "left"), -width / 2, width / 2)
+        return {"rects": [("head", head)], "lead": [point, bend], "exit": bend, "lead_mm": off, "measure": m,
+                "measure_mm": abs(off - depth / 2) + float(drop_mm), "down": True}
+    s = side_vector(facing, side)
     reach = plug.get("body_reach_mm")
     reach = width / 2 if reach is None else max(float(reach), width / 2)
     bw = plug.get("barrel_width_mm")
