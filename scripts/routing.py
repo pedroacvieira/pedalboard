@@ -1304,6 +1304,94 @@ def blocked_parts(opt, own_id, obstacles, shapes=None):
     return hits
 
 
+def collision_count(opt, own_key, taken):
+    """How many (part of this plug option, other footprint) pairs overlap (`design.overlap`, TOL like pedals):
+    `taken` = {"<id>.<jack id>": [(part, rect)]}, the fixed boxes and the plugs already chosen; the option's own key is skipped."""
+    n = 0
+    for _, r in opt["rects"]:
+        for key, parts in taken.items():
+            if key != own_key and any(design.overlap(r, r2) for _, r2 in parts):
+                n += 1
+    return n
+
+
+def power_plug_keys(ctx, cable_types, cfg):
+    """The jack keys ("<id>.<jack id>") `power_plug_choices` will model with the DC plug: the power jack of every placed
+    pedal and every used port of an on-board supply (empty without `cables.power_type`)."""
+    layout = ctx.get("layout") or {}
+    if not cable_types.get(cfg.get("power_type") or "") or not layout.get("placed"):
+        return set()
+    from jacks import default_jack, _jack_by_id, placement
+    keys = set()
+    for cid in layout["placed"]:
+        jk = default_jack((layout.get("jacks") or {}).get(cid) or [], "power")
+        if jk:
+            keys.add(f"{cid}.{jk['id']}")
+    for s in ctx.get("supplies") or []:
+        iid = s["inst"]["id"]
+        if (layout.get("inst_item") or {}).get(iid) is None or placement(s["inst"], ctx["project"]) != "on_board":
+            continue
+        for port in sorted({r["port"] for r in s["rows"] if r["pedals"]}):
+            if _jack_by_id((layout.get("jacks") or {}).get(s["sup"]["id"]) or [], port):
+                keys.add(f"{iid}.{port}")
+    return keys
+
+
+def fixed_footprints(ctx, modelled):
+    """The fixed boxes (`ctx["fixed_zones"]`, set by jacks.check) of the used jacks that get no plug model: ({key: [("box", rect)]},
+    {key: kind}). `modelled` = the keys that do. kind says what the jack is ("first input, fixed box", "last output, fixed
+    box", "extra jack, fixed box", "power box" or "audio box")."""
+    zones = ctx.get("fixed_zones") or {}
+    layout = ctx.get("layout") or {}
+    jd, chain = layout.get("jacks") or {}, ctx.get("chain") or []
+    from jacks import default_jack
+    first = last = None
+    if chain:
+        ji, jo = default_jack(jd.get(chain[0]) or [], "input"), default_jack(jd.get(chain[-1]) or [], "output")
+        first = f"{chain[0]}.{ji['id']}" if ji else None
+        last = f"{chain[-1]}.{jo['id']}" if jo else None
+    extra = {f"{cid}.{j}" for cid, ids in ((ctx["project"].get("jacks") or {}).get("extra_used") or {}).items() for j in ids}
+    parts, kinds = {}, {}
+    for key, z in zones.items():
+        if key in modelled:
+            continue
+        parts[key] = [("box", z["rect"])]
+        kinds[key] = ("first input, fixed box" if key == first else "last output, fixed box" if key == last else
+                      "extra jack, fixed box" if key in extra else "power box" if z["zone"] == "power" else "audio box")
+    return parts, kinds
+
+
+def plug_collision_findings(ctx, footprints, meta, clear_sink):
+    """Every pair of footprints of different jacks that overlap (`footprints` {key: [(part, rect)]}; `meta` {key: {kind,
+    label, how, cable, cable_type, side}}): one finding per pair, its deepest part pair (depth = min(dx, dy) of the
+    overlap, `design.overlap`). Appended to ctx["plug_collisions"] and sent to `clear_sink` (the pair in natural key order)."""
+    keys = sorted(footprints, key=natural_key)
+    for i, ka in enumerate(keys):
+        for kb in keys[i + 1:]:
+            best = None
+            for pa, ra in footprints[ka]:
+                for pb, rb in footprints[kb]:
+                    ov = design.overlap(ra, rb)
+                    if ov and (best is None or min(ov) > best[0]):
+                        best = (min(ov), pa, pb)
+            if best is None:
+                continue
+            ma, mb = meta.get(ka) or {}, meta.get(kb) or {}
+            col = {"jack": ka, "part": best[1], "with": kb, "with_part": best[2], "depth_mm": best[0],
+                   "cable": ma.get("cable"), "cable_type": ma.get("cable_type"), "side": ma.get("side"),
+                   "with_kind": mb.get("kind"), "kind": ma.get("kind"), "label": ma.get("label"), "how": ma.get("how")}
+            ctx["plug_collisions"].append(col)
+            clear_sink.append(f"clearance: {collision_text(col)}")
+
+
+def collision_text(col):
+    """'a.power (Power, dc_ra right-angle plug, cable exits left) collides with the plug at a.out (last output, fixed box): 4.2 mm
+    (its barrel into the box)' for one `ctx["plug_collisions"]` entry."""
+    part = lambda p: "cable run" if p == "cable" else p
+    return (f"{col['jack']} ({col['label']}, {col['how']}) collides with the plug at {col['with']} ({col['with_kind']}): "
+            f"{col['depth_mm']:.1f} mm (its {part(col['part'])} into the {part(col['with_part'])})")
+
+
 def route_project(ctx, cat_pedals, cable_types=None):
     """Build ctx['cable_list'] (signal + power cables with attributes), route the signal cables and check the
     clearance of their plugs (appended to ctx['violations']).
@@ -1323,6 +1411,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     ctx["routing"] = {"settings": cfg, "grid": None, "overflow": set(), "overflow_under": set(), "front_y": None, "heads": [],
                       "under": None, "hole_cells": set(), "power": {"settings": power_settings(project, cfg)}}
     ctx.setdefault("violations", [])
+    ctx["plug_collisions"] = []
     layout = ctx.get("layout")
     cables = []
     over = cfg["overrides"]
@@ -1424,6 +1513,39 @@ def route_project(ctx, cat_pedals, cable_types=None):
 
     memo = {}   # the side choice's plain searches, reused by route_all where the negotiated costs leave them unchanged
     nets, chosen = [], {}   # chosen: cable id -> (end a option or None, end b option or None)
+    # plug footprints for the collision check: {"<id>.<jack id>": [(part, rect)]}. Jacks with a plug model (signal ends with a
+    # cable type, DC plugs) get theirs when their side is chosen; every other used jack keeps its fixed box from the start.
+    modelled = set(power_plug_keys(ctx, cable_types, cfg))
+    for c in (x for x in cables if x["kind"] == "signal"):
+        if c["type"] in cable_types:
+            modelled |= {f"{cid}.{jk['id']}" for cid, jk in ((c["_ends"][0], c["_ends"][1]), (c["_ends"][2], c["_ends"][3]))
+                         if jk and cid in placed}
+    taken, kinds = fixed_footprints(ctx, modelled)
+    meta = {k: {"kind": kd, "label": ctx["fixed_zones"][k]["label"], "how": kd, "cable": None, "cable_type": None, "side": None}
+            for k, kd in kinds.items()}
+
+    def take_signal(c, ends, opts):
+        """Footprints of the chosen options of signal cable `c` (the later choices avoid them)."""
+        ctype = cable_types.get(c["type"]) if c["type"] else None
+        for e, o in zip(ends, opts):
+            if not (e and o and ctype):
+                continue
+            key = f"{e['cid']}.{e['jack']['id']}"
+            taken[key] = list(o["rects"])
+            meta[key] = {"kind": f"{c['type']} plug", "label": e["jack"]["label"], "cable": c["id"], "cable_type": c["type"],
+                         "side": o["side"], "how": f"{c['type']} {ctype['plug']['style'].replace('_', '-')} plug"
+                         + (f", cable exits {o['side']}" if o["side"] else "")}
+
+    def hits_and_collisions(e, o, other=None):
+        """Blocked parts + plug collisions of one end option (with the footprints taken so far and, when given, the other end's
+        option of the same cable)."""
+        key = f"{e['cid']}.{e['jack']['id']}"
+        n = len(o["hits"]) + collision_count(o, key, taken)
+        if other is not None:
+            okey, oo = other
+            n += sum(1 for _, r in o["rects"] for _, r2 in oo["rects"] if design.overlap(r, r2)) if okey != key else 0
+        return n
+
     for c in (x for x in cables if x["kind"] == "signal"):
         a, ja, b, jb = c["_ends"]
         ctype = cable_types.get(c["type"]) if c["type"] else None
@@ -1442,8 +1564,9 @@ def route_project(ctx, cat_pedals, cable_types=None):
         if grid is None or not all(ends):
             c["status"] = "not routed (no pedalboard in the layout)" if grid is None else "not routed (jack or placement missing)"
             # still choose a side per known end (fewest blocked parts) for the clearance check
-            chosen[c["id"]] = tuple(min(e["opts"], key=lambda o: len(o["hits"])) if e else None for e in ends)
+            chosen[c["id"]] = tuple(min(e["opts"], key=lambda o, e=e: hits_and_collisions(e, o)) if e else None for e in ends)
             c["exit_a"], c["exit_b"] = ((o or {}).get("side") for o in chosen[c["id"]])
+            take_signal(c, ends, chosen[c["id"]])
             continue
         combos = []
         for oa, ob in itertools.product(ends[0]["opts"], ends[1]["opts"]):
@@ -1452,7 +1575,9 @@ def route_project(ctx, cat_pedals, cable_types=None):
             conn = (lambda a, b, sq=False: layers.connected(grid, a, b, sq)) if layers else grid.connected   # through the holes too
             if inside:
                 mode = 0 if conn(oa["cell"], ob["cell"]) else (1 if conn(oa["cell"], ob["cell"], True) else 2)
-            combos.append(((not inside, mode, len(oa["hits"]) + len(ob["hits"])), oa, ob))
+            blocked = hits_and_collisions(ends[0], oa, (f"{ends[1]['cid']}.{ends[1]['jack']['id']}", ob)) + \
+                hits_and_collisions(ends[1], ob)
+            combos.append(((not inside, mode, blocked), oa, ob))
         top = min(k for k, _, _ in combos)
         best = None
         for key, oa, ob in (x for x in combos if x[0] == top):   # A* only for the best-ranked combinations
@@ -1465,6 +1590,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         (outside, mode, _, _), oa, ob = best
         chosen[c["id"]] = (oa, ob)
         c["exit_a"], c["exit_b"] = oa["side"], ob["side"]
+        take_signal(c, ends, (oa, ob))
         if outside:
             c["status"] = "unroutable: a plug end is outside the routing area (in front of the lowest pedals or beyond the margin)"
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) {c['status'][len('unroutable: '):]}")
@@ -1480,7 +1606,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         nets.append((c["id"], oa["cell"], ob["cell"], bool(mode)))
 
     # every plug of the layout (head + barrel): the power plugs' sides are chosen before routing, as the signal ones
-    power_choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles) if grid else []
+    power_choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken)   # avoids the signal plugs and fixed boxes
     plug_rects, plug_owner = {}, {}   # "<pedal id>.<jack id>" -> [head / barrel rects], owner cable id
     if grid:
         for c in (x for x in cables if x["kind"] == "signal" and x["id"] in chosen):
@@ -1588,7 +1714,13 @@ def route_project(ctx, cat_pedals, cable_types=None):
     else:
         for c in (x for x in cables if x["kind"] == "power"):
             c["status"] = "not routed (no pedalboard in the layout)"
-    checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, power_choices if grid else None)
+    checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, power_choices)
+    ptype = cable_types.get(cfg.get("power_type") or "")
+    for cid, jk, pc, _, o in power_choices:
+        meta[f"{cid}.{jk['id']}"] = {"kind": "DC plug", "label": jk["label"], "cable": (pc or {}).get("id"), "cable_type": cfg["power_type"],
+                                     "side": o["side"], "how": f"{cfg['power_type']} {ptype['plug']['style'].replace('_', '-')} plug"
+                                     + (f", cable exits {o['side']}" if o["side"] else "")}
+    plug_collision_findings(ctx, {k: v for k, v in taken.items() if v}, meta, clear_sink)
     report_fixed_box(ctx, checked)
     for c in cables:
         for k in ("_ends", "_sides", "_squeeze", "_stretches", "_own", "_leads"):
@@ -1805,10 +1937,12 @@ def power_cable_summary(cables):
     return out
 
 
-def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
+def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None):
     """The DC plug of every placed pedal's power jack (`cables.power_type`) with the exit side that has the fewest
     blocked parts (then the least overlap; a power cable override `exit_b` fixes it): [(pedal id, jack, power cable
-    or None, facing, plug option)]. Sets the power cable's `exit_b`. Also every used port of an on-board supply
+    or None, facing, plug option)]. `taken` {"<id>.<jack id>": [(part, rect)]} = the signal plugs and fixed boxes: a part
+    overlapping one of them counts like a blocked part, and every chosen plug is added to it for the next ones (None: no
+    collision check). Sets the power cable's `exit_b`. Also every used port of an on-board supply
     ("<instance id>" instead of the pedal id; the cable starting at the port, its side is `exit_a`). Empty without a
     power type."""
     ptype = cable_types.get(cfg.get("power_type") or "")
@@ -1825,9 +1959,13 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
             continue
         pc = by_jack.get(f"{cid}.{jk['id']}")
         facing, opts = end_options(it, jk, ptype, (pc or {}).get("exit_b"), run, layout.get("outward_mm", 0))
+        key = f"{cid}.{jk['id']}"
         for o in opts:
             o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
-        o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
+        o = min(opts, key=lambda o: (len(o["hits"]) + (collision_count(o, key, taken) if taken is not None else 0),
+                                     sum(min(ov) for _, _, ov in o["hits"])))
+        if taken is not None:
+            taken[key] = list(o["rects"])
         if pc is not None:
             pc["exit_b"] = o["side"]
         out.append((cid, jk, pc, facing, o))
@@ -1856,9 +1994,13 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles):
                 sink.append(f"routing: {first['id']} (exit_a {fixed}) and {clash[0]['id']} (exit_a {clash[0]['exit_a']}) leave the same "
                             f"port {iid}.{port}, which has one plug: {fixed} is used for both")
             facing, opts = end_options(it, jk, ptype, fixed, run, layout.get("outward_mm", 0))
+            key = f"{iid}.{port}"
             for o in opts:
                 o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
-            o = min(opts, key=lambda o: (len(o["hits"]), sum(min(ov) for _, _, ov in o["hits"])))
+            o = min(opts, key=lambda o: (len(o["hits"]) + (collision_count(o, key, taken) if taken is not None else 0),
+                                         sum(min(ov) for _, _, ov in o["hits"])))
+            if taken is not None:
+                taken[key] = list(o["rects"])
             for c in pcs:
                 c["exit_a"] = o["side"]
             out.append((iid, jk, pc, facing, o))

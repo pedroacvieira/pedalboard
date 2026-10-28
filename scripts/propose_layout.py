@@ -11,9 +11,9 @@ The search (scripts/layout.py: simulated annealing + greedy polish on a surrogat
 and iteration budget) yields distinct finalists. Each finalist gets its own power wiring (power.assign: supply
 outputs and daisy chains for the shortest DC cable under the power policy) and is checked with the real pipeline
 (build.validate with the injected layout: plug clearance, routed cables, footswitch spacing). A finalist becomes a
-proposal only if it is not worse than the owner's layout on blocked plugs, routing problems (unroutable, squeezed,
+proposal only if it is not worse than the owner's layout on blocked plugs, plug collisions, routing problems (unroutable, squeezed,
 over the stacking or plug limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
-blocked mm, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
+blocked mm, plug collisions, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
 penalties).
 
 Output in projects/<name>/proposals/: <n>.json (Pedal Playground "Load from File": the owner's canvas with only the
@@ -52,6 +52,7 @@ def metrics(ctx, model, state, move_factor):
         "errors": len(ctx["errors"]), "warnings": len(ctx["warnings"]),
         "blocked": len(ctx["violations"]), "blocked_mm": round(sum(v["depth_mm"] for v in ctx["violations"]), 1),
         "blocked_jacks": sorted({v["jack"] for v in ctx["violations"]}),
+        "collisions": len(ctx.get("plug_collisions") or []),
         "unroutable": sum(s.startswith("unroutable") for s in status), "squeezed": sum("squeezed" in s for s in status),
         "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         # toppers are a finishing step the search ignores: proposals are compared on the PLAIN distances
@@ -81,12 +82,13 @@ def routing_problems(m):
 
 
 def rank_key(m):
-    return (m["errors"], m["blocked"], m["blocked_mm"], routing_problems(m), m["fs_close"], m["score"])
+    return (m["errors"], m["blocked"], m["blocked_mm"], m.get("collisions", 0), routing_problems(m), m["fs_close"], m["score"])
 
 
 def acceptable(m, owner):
     """Not worse than the owner's layout on errors, blocked plugs, routing and footswitch pairs; better overall."""
     return (m["errors"] <= owner["errors"] and m["blocked"] <= owner["blocked"]
+            and m.get("collisions", 0) <= owner.get("collisions", 0)
             and routing_problems(m) <= routing_problems(owner) and m["fs_close"] <= owner["fs_close"]
             and rank_key(m) < rank_key(owner))
 
@@ -185,7 +187,7 @@ def print_score(model, owner_ctx):
         print(f"Footswitch crowding {det['terms']['footswitch'][0]:.1f} (comfort {model.fs_comfort:g} mm); "
               f"minimum {lim}, pairs closer: {len(det['fs_close'])}")
     print(f"Build check of the owner's layout: {len(owner_ctx['violations'])} blocked plug(s), "
-          f"{len(owner_ctx['errors'])} error(s), {len(owner_ctx['warnings'])} warning(s)")
+          f"{len(owner_ctx.get('plug_collisions') or [])} plug collision(s), {len(owner_ctx['errors'])} error(s), {len(owner_ctx['warnings'])} warning(s)")
 
 
 def main(argv=None):
@@ -306,7 +308,8 @@ def report(pdir, meta, owner):
     def line(label, m):
         fs = ("no footswitch data" if not m["fs_known"] else
               f"crowding {m['fs_crowding']:.0f}, closest {m['fs_closest_mm']} mm, {m['fs_close']} below the minimum")
-        return (f"  {label:9} blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; routing problems "
+        return (f"  {label:9} blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; plug collisions "
+                f"{m.get('collisions', 0)}; routing problems "
                 f"{routing_problems(m)}; signal {m['signal_mm']:.0f} mm ({m['signal_routed']}/{m['signal_cables']} routed); "
                 f"power {m['power_mm']:.0f} mm routed{unrouted(m)}; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
     print(line("owner", owner))

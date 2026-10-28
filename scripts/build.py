@@ -513,7 +513,7 @@ def routing_section(ctx):
              f"search, a mm under the board counts {cfg['under_cost']:g} in the search (these numbers are unverified estimates; "
              f"`cables.under_board: false` keeps every cable on top). " if under else "")
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
-             f"left or right of the jack's facing (chosen per end: fewest blocked plugs, then the shortest route), runs "
+             f"left or right of the jack's facing (chosen per end: fewest blocked plugs and plug collisions, then the shortest route), runs "
              f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
           + power_text(ctx, cfg), ""]
@@ -614,6 +614,10 @@ def jacks_section(ctx):
         md += [f"- `{v['jack']}` is blocked by {v['obstacle']}: {violation_where(v)}" for v in ctx["violations"]] + [""]
     else:
         md += [f"No blocked cable space found ({zone}).", ""]
+    if ctx.get("plug_collisions"):
+        md += ["Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them "
+               "where it can):", ""]
+        md += [f"- {routing.collision_text(col)}" for col in ctx["plug_collisions"]] + [""]
     md += ["Cable lengths: see Cable routing.", ""]
     return md
 
@@ -731,6 +735,7 @@ def proposals_section(ctx, cat_pedals):
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
 
     rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
+            ("Plug collisions", lambda m: f"{m.get('collisions', 0)}"),
             ("Unroutable / squeezed / over the stacking or plug limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
             ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
              + " (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
@@ -872,6 +877,8 @@ def open_issues(ctxs, jacks_data):
             items.append(f"Jacks not set up for `{cid}`: `{cmd}`")
         for v in c.get("violations", []):
             items.append(f"Blocked cable space: `{v['jack']}` is blocked by {v['obstacle']} ({violation_where(v)}); move one of the pedals apart")
+        for col in c.get("plug_collisions", []):
+            items.append(f"Plug collision: {routing.collision_text(col)}; move a pedal or set a plug side in `cables.overrides`")
         for note in c.get("jack_notes", []):
             items.append(note[0].upper() + note[1:])
         if c.get("footswitch_fixes"):
@@ -923,7 +930,8 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
         "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
         "power jacks against the DC plug type (`cables.power_type`) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
-        "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). All cable figures are in mm.",
+        "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). "
+        "Plugs and fixed zones of different jacks that overlap each other are reported as plug collisions (same severity as blocked space; the side choice avoids them where it can). All cable figures are in mm.",
         "",
         "## Projects",
         "",

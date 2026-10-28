@@ -333,7 +333,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[],
+    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[],
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
                               "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
@@ -424,6 +424,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         is_power = jk["function"] in ("power", "power_out")
         out_mm, side_mm = (p_out, p_side) if is_power else (outward, side)
         zone = design.clearance_rect(pt, facing, out_mm, side_mm)
+        ctx["fixed_zones"][f"{cid}.{jk['id']}"] = {"rect": zone, "facing": facing, "zone": "power" if is_power else "audio",
+                                                   "label": jk["label"]}
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
