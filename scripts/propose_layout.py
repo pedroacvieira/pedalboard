@@ -178,6 +178,9 @@ def print_score(model, owner_ctx):
     print(f"Blocked plugs (no margin, as the build): {len(real['blocked'])}")
     for b in real["blocked"]:
         print(f"  {b['jack']} by {b['obstacle']}: {b['depth_mm']:.1f} mm into the {b['part']} (exit {b['side'] or '-'})")
+    print(f"Plug collisions (no margin, as the build): {len(real['collisions'])}")
+    for c in real["collisions"]:
+        print(f"  {c['jack']} with {c['with']}: {c['depth_mm']:.1f} mm")
     print(f"Clearance raw = penetration of the plug parts grown by the {model.cfg['clearance_margin_mm']:g} mm margin "
           f"({real['terms']['clearance'][0]:.1f} mm without the margin)")
     if not model.fs_known:

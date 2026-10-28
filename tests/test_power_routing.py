@@ -351,7 +351,7 @@ def test_the_surrogate_power_term_skips_hole_points_a_candidate_pedal_covers():
         return m.score(state, detail=True)[1]["terms"]["power"][0]
 
     def expect(state, hole):
-        ms = m._geom[(0, state[0][2])]["power"]["measure"]
+        ms = m._geom[(0, state[0][2])]["power"]["opts"][0]["measure"]
         here = (ms[0] + state[0][0], ms[1] + state[0][1])
         return abs(port[0] - hole[0]) + abs(port[1] - hole[1]) + 15 + 3 * math.hypot(hole[0] - here[0], hole[1] - here[1])
 
@@ -360,7 +360,7 @@ def test_the_surrogate_power_term_skips_hole_points_a_candidate_pedal_covers():
     clear = at((60.0, 50.8, 0), (200, 50.8, 0))                   # a (34.6..85.4) leaves (30, 10) free and nearest
     assert raw(clear) == pytest.approx(expect(clear, (30.0, 10.0)))
     m.power_setup = None                                          # no holes known: Manhattan between the measure points
-    ms = m._geom[(0, 0)]["power"]["measure"]
+    ms = m._geom[(0, 0)]["power"]["opts"][0]["measure"]
     assert raw(clear) == pytest.approx(abs(port[0] - ms[0] - 60.0) + abs(port[1] - ms[1] - 50.8))
 
 

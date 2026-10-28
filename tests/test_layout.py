@@ -12,6 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import boards as boards_mod  # noqa: E402
 import build  # noqa: E402
 import design  # noqa: E402
 import footswitches  # noqa: E402
@@ -72,12 +73,14 @@ def test_clearance_of_two_facing_straight_plugs():
     total, det = m.score(state, margin=0, detail=True)
     hits = {(b["jack"], b["obstacle"], b["part"]): b["depth_mm"] for b in det["blocked"]}
     assert hits == pytest.approx({("a.out", "T B", "head"): 4.4, ("b.in", "T A", "head"): 4.4})
-    # clearance = 2 x (50 x penetration 4.4 + 100 per hit); penetration = smaller overlap side (4.4 of 4.4 x 8)
-    assert det["terms"]["clearance"] == pytest.approx((2 * 4.4, 2 * (50 * 4.4 + 100)))
+    # the two heads also overlap each other by the 5.6 mm gap (a.out 50.8..60.8, b.in 46.4..56.4): one plug collision
+    assert det["collisions"] == [pytest.approx({"jack": "a.out", "with": "b.in", "depth_mm": 5.6})]
+    # clearance = 2 x (50 x penetration 4.4 + 100 per hit); penetration = smaller overlap side (4.4 of 4.4 x 8); the collision: 50 x 5.6 + 100
+    assert det["terms"]["clearance"] == pytest.approx((2 * 4.4 + 5.6, 2 * (50 * 4.4 + 100) + 50 * 5.6 + 100))
     # with the 2 mm margin the cable run (4 x 4, grown to 8 x 8, all inside the other pedal) penetrates 8 mm:
-    # 50 x 4.4 real + 10 x the extra 3.6 + 100 per end
+    # 50 x 4.4 real + 10 x the extra 3.6 + 100 per end; the collision: 50 x 5.6 real + 10 x the extra 2 (7.6 with the margin) + 100
     _, det2 = m.score(state, detail=True)
-    assert det2["terms"]["clearance"] == pytest.approx((2 * 8.0, 2 * (50 * 4.4 + 10 * 3.6 + 100)))
+    assert det2["terms"]["clearance"] == pytest.approx((2 * 8.0 + 7.6, 2 * (50 * 4.4 + 10 * 3.6 + 100) + 50 * 5.6 + 10 * 2 + 100))
 
 
 def test_clearance_is_measured_against_the_outline():
@@ -92,9 +95,9 @@ def test_clearance_is_measured_against_the_outline():
     assert hits([0.2, 0, 1, 1]) == pytest.approx({("b.in", "T A", "head"): 4.4})    # b starts 10 mm further in
     assert hits([0, 0, 0.8, 1]) == pytest.approx({("a.out", "T B", "head"): 4.4})   # a ends 10 mm earlier
     assert hits([0.2, 0, 0.8, 1]) == {}
-    # the cost follows: no hit, no penetration
+    # the cost follows: no hit, no penetration into a pedal (the two heads still overlap each other by the 5.6 mm gap: a plug collision)
     m = model([ped("T A", 0), ped("T B", 135)], outlines={"x.png": [[0.2, 0, 0.8, 1]]})
-    assert m.score(state, margin=0, detail=True)[1]["terms"]["clearance"] == (0.0, 0.0)
+    assert m.score(state, margin=0, detail=True)[1]["terms"]["clearance"] == pytest.approx((5.6, 50 * 5.6 + 100))
     # a rotated pedal: its outline turns with it (a band across the middle of the 50.8 x 101.6 box)
     rot = model([ped("T A", 0), ped("T B", 135)], outlines={"x.png": [[0, 0.4, 1, 0.6]]})
     assert rot._geom[(0, 0)]["shapes"] == [pytest.approx((-25.4, -10.16, 25.4, 10.16))]
@@ -113,14 +116,48 @@ def gig_build():
     return copy.deepcopy(_gig_build())
 
 
+def gig_model(pedals, supplies):
+    """The surrogate's model of the owner's gig layout, with the project's board.json (its holes decide which plugs point down)."""
+    return layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
+                        supplies, jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types(),
+                        board_edits=boards_mod.load_edits(GIG))
+
+
 def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     pedals, supplies, ctx = gig_build()
-    m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
-                     supplies, jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types())
+    m = gig_model(pedals, supplies)
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]}
     want = {(v["jack"], v["obstacle"], v["part"], round(v["depth_mm"], 1)) for v in ctx["violations"]}
     assert got == want and len(got) == 4   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm)
+
+
+def test_surrogate_plug_collisions_match_the_build_on_the_gig_layout():
+    """The surrogate chooses the plugs' exits as the build does where plugs collide (`Model._resolve`: signal cables in chain order, then the
+    DC plugs, each seeing the plugs decided before it, ranked by blocked parts + collisions): the same pairs of jacks, the same depths."""
+    pedals, supplies, ctx = gig_build()
+    m = gig_model(pedals, supplies)
+    _, det = m.score(m.owner, margin=0, detail=True)
+    got = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in det["collisions"]}
+    want = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in ctx["plug_collisions"]}
+    assert got == want and len(got) == 10
+
+
+def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
+    """The same plugs point down (hole under the bend point, owner rule: always down where available). The exits of the other plugs agree
+    too except where two exits are about equally good (the surrogate's length is an estimate): at most 2 of the 49 differ."""
+    pedals, supplies, ctx = gig_build()
+    m = gig_model(pedals, supplies)
+    _, det = m.score(m.owner, margin=0, detail=True)
+    want = {}
+    for c in ctx["cable_list"]:
+        if c["kind"] == "signal":
+            want[c["from"]], want[c["to"]] = c["exit_a"], c["exit_b"]
+        else:
+            want[c["to"]] = c["exit_b"]
+    got = {k: v["side"] for k, v in det["plugs"].items() if k in want}
+    assert {k for k, v in want.items() if v == "down"} == {k for k, v in got.items() if v == "down"} and len(want) == 49
+    assert sum(1 for k in want if got[k] != want[k]) <= 2
 
 
 # --- cable lengths --------------------------------------------------------------------------------
@@ -580,3 +617,159 @@ def test_surrogate_ignores_toppers():
     t0, d0 = plain.score(state, detail=True)
     t1, d1 = topped.score(state, detail=True)
     assert t0 == t1 and d0["terms"] == d1["terms"] and d1["terms"]["footswitch"] == pytest.approx((4.0, 8.0))
+
+
+# --- plugs pointing down, plug collisions, DC plug types (plan plug-orientation, phase 4) ----------------
+RA = {"ra": {"role": "patch", "diameter_mm": 4.0, "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 8.0}}}
+RA_HOLE = {"x.png": {"holes": [[0.4, 0.4, 0.6, 0.6]]}}   # x 101.6..152.4, y 50.8..76.2 of the 254 x 127 mm board
+
+
+def ra_model(specs, board_data=None, types=RA, jacks_data=None, project_extra=None, chain=("a", "b")):
+    """Right-angle patch plugs (head 10 x 8, cable 4 mm: exit offset 5, side exits 8 mm out of the jack axis); `board_data` the holes."""
+    proj = {"signal_chain": list(chain), "cables": {"type": "ra"}, "jacks": {}, **(project_extra or {})}
+    items = design.parse_canvas(canvas(BOARD, *specs))
+    return layout.Model(proj, items, PEDALS, {}, jacks_data or JACKS, {}, types, outlines={}, board_data=board_data)
+
+
+def test_a_plug_points_down_where_a_hole_is_under_its_bend_point_and_not_when_the_pedal_moves_off_it():
+    m = ra_model([ped("T A", 0), ped("T B", 135)], RA_HOLE)       # a, b 50.8 x 101.6; a.out facing right, b.in facing left
+    end = m._geom[(0, 0)]["ends"]["S1"]
+    on_hole = at((96.6, 63.5, 0), (200.0, 63.5, 0))                # a.out at (122, 63.5): the bend point (127, 63.5) is in the hole
+    assert [o["side"] for o in m._cands(end, on_hole[0])] == ["down"]
+    # down: 27 mm = |exit offset - head depth / 2| + jack height 12 + the deck 15 (fallback transit); b.in: 8 mm (0 + 4 barrel + 4 run);
+    # then under the board from (127, 63.5) to the exit of b's plug (169.6, 63.5 +- 8) (no power cable: no crossing known, the pass counts 15)
+    _, det = m.score(on_hole, detail=True)
+    assert det["plugs"]["a.out"] == {"side": "down", "type": "ra", "down": True}
+    assert det["plugs"]["b.in"]["side"] in ("left", "right")
+    assert det["signal"]["S1"] == pytest.approx(27 + 8 + layout.octile((127.0, 63.5), (169.6, 55.5)) + 15)
+    off = at((25.4, 63.5, 0), (200.0, 63.5, 0))                     # the bend point (55.8, 63.5) is over solid board
+    assert {o["side"] for o in m._cands(end, off[0])} == {"left", "right"}
+    _, det = m.score(off, detail=True)
+    assert det["plugs"]["a.out"]["side"] in ("left", "right")
+    assert det["signal"]["S1"] == pytest.approx(8 + 8 + 113.8)       # both exits on one side: a straight run
+    # a plug pointing down is never outside the routing area; a side exit in front of the lowest pedal is
+    assert det["terms"]["routing_area"] == (0.0, 0.0)
+
+
+def test_both_plugs_down_run_under_the_board_without_a_detour():
+    m = ra_model([ped("T A", 0), ped("T B", 135)], {"x.png": {"holes": [[0.2, 0.3, 0.9, 0.7]]}})   # x 50.8..228.6, y 38.1..88.9
+    state = at((70.0, 63.5, 0), (180.0, 63.5, 0))                   # a.out (95.4), b.in (154.6): bends (100.4, 63.5) and (149.6, 63.5)
+    _, det = m.score(state, detail=True)
+    assert det["plugs"]["a.out"]["down"] and det["plugs"]["b.in"]["down"]
+    assert det["signal"]["S1"] == pytest.approx(27 + 27 + 49.2)
+
+
+def test_an_under_board_supply_blocks_a_hole_for_a_plug_pointing_down():
+    m = ra_model([ped("T A", 0), ped("T B", 135)], RA_HOLE)
+    assert m._down_ok(127.0, 63.5, 4.0) and not m._down_ok(127.0, 63.5, 40.0) and not m._down_ok(153.5, 63.5, 4.0)
+    m.under_rects = [(120.0, 60.0, 130.0, 70.0)]                    # a supply under the board over the bend point
+    assert not m._down_ok(127.0, 63.5, 4.0) and m._down_ok(105.0, 63.5, 4.0)
+
+
+def test_straight_plugs_never_point_down_and_without_holes_nothing_does():
+    m = model([ped("T A", 0), ped("T B", 135)])                      # the straight test type
+    assert m.down_on is False and all(not e["down"] for g in m._geom.values() for e in g["ends"].values())
+    s = ra_model([ped("T A", 0), ped("T B", 135)], RA_HOLE, types={"t": TYPES["t"]}, project_extra={"cables": {"type": "t"}})
+    assert s.down_on and all(not e["down"] for g in s._geom.values() for e in g["ends"].values())
+    n = ra_model([ped("T A", 0), ped("T B", 135)], None)             # right-angle, no hole on this board
+    assert n.down_on is False and all(not e["down"] for g in n._geom.values() for e in g["ends"].values())
+
+
+AUX_JACKS = {"a": [*pedal_jacks(), {"id": "aux", "label": "Aux", "function": "other", "x": 1.0, "y": 0.53, "facing": "right"}],
+             "b": pedal_jacks()}
+
+
+def test_two_plugs_on_one_pedal_that_overlap_collide_cost_and_are_listed():
+    """a.out (straight 10 x 8 head at (50.8, 50.8), 4 x 4 cable run behind it) and the fixed box (6.3 deep, 7 mm to each side of the axis) of an
+    extra jack on the same edge 3 mm lower: the head and the box overlap 6.3 mm along x."""
+    extra = {"jacks": {"extra_used": {"a": ["aux"]}}}
+    plain = model([ped("T A", 0), ped("T B", 135)], project_extra=None)
+    m = layout.Model({"signal_chain": ["a", "b"], "cables": {"type": "t"}, **extra}, design.parse_canvas(canvas(BOARD, ped("T A", 0), ped("T B", 135))),
+                     PEDALS, {}, AUX_JACKS, {}, TYPES, outlines={})
+    state = at((25.4, 50.8, 0), (200.0, 50.8, 0))
+    _, base = plain.score(state, margin=0, detail=True)
+    _, det = m.score(state, margin=0, detail=True)
+    box = design.clearance_rect((50.8, 0.53 * 101.6), "right", 6.3, 7.0)                 # x 50.8..57.1, y 46.85..60.85
+    head = (50.8, 46.8, 60.8, 54.8)
+    real = min(design.overlap(head, box))                                                # 6.3 (x) of 7.95 (y)
+    assert real == pytest.approx(6.3) and det["collisions"] == [pytest.approx({"jack": "a.aux", "with": "a.out", "depth_mm": real})]
+    assert base["collisions"] == []
+    # the weights of a clearance: 50 per mm + 100 per colliding pair, no obstacle involved
+    assert det["terms"]["clearance"][1] - base["terms"]["clearance"][1] == pytest.approx(50 * real + 100)
+    assert det["terms"]["clearance"][0] - base["terms"]["clearance"][0] == pytest.approx(real)
+    # plugs of different pedals count too: b.in of a pedal pushed against a.out's cable run
+    close = at((25.4, 50.8, 0), (25.4 + 50.8 + 12.0, 50.8, 0))                           # b.in head (62.8 - 10 .. 62.8) over a.out's run
+    _, det2 = plain.score(close, margin=0, detail=True)
+    assert [(c["jack"], c["with"]) for c in det2["collisions"]] == [("a.out", "b.in")]
+
+
+def test_a_colliding_plug_takes_the_free_side_as_the_build_does():
+    """a.out's right-angle plug (head 50.8..60.8 x 46.8..54.8; its cable run goes 8 mm out to the left (up) or the right (down)) with the fixed
+    box of an extra jack that lies under one of the runs: the plug takes the other side, whatever the length says."""
+    for y_aux, free in ((0.61, "left"), (0.39, "right")):
+        jd = {"a": [*pedal_jacks(), {"id": "aux", "label": "Aux", "function": "other", "x": 1.0, "y": y_aux, "facing": "right"}], "b": pedal_jacks()}
+        m = layout.Model({"signal_chain": ["a", "b"], "cables": {"type": "ra"}, "jacks": {"extra_used": {"a": ["aux"]}}},
+                         design.parse_canvas(canvas(BOARD, ped("T A", 0), ped("T B", 135))), PEDALS, {}, jd, {}, RA, outlines={})
+        state = at((25.4, 50.8, 0), (200.0, 50.8, 0))
+        _, det = m.score(state, margin=0, detail=True)
+        assert det["collisions"] == [] and det["plugs"]["a.out"]["side"] == free and det["terms"]["clearance"] == (0.0, 0.0)
+        # without the other side to go to (a fixed exit): the collision stays and is listed
+        fixed = layout.Model({"signal_chain": ["a", "b"], "cables": {"type": "ra", "overrides": {"S1": {"exit_a": "right" if free == "left" else "left"}}},
+                              "jacks": {"extra_used": {"a": ["aux"]}}},
+                             design.parse_canvas(canvas(BOARD, ped("T A", 0), ped("T B", 135))), PEDALS, {}, jd, {}, RA, outlines={})
+        _, det = fixed.score(state, margin=0, detail=True)
+        assert [(c["jack"], c["with"]) for c in det["collisions"]] == [("a.aux", "a.out")]
+
+
+DC_A = {"role": "power", "diameter_mm": 3.0, "plug": {"style": "right_angle", "head_depth_mm": 10.0, "head_width_mm": 8.0}}
+DC_B = {**DC_A, "plug": {**DC_A["plug"], "head_depth_mm": 4.0}}
+
+
+def test_the_surrogate_takes_the_dc_plug_type_the_build_takes_in_a_simple_case():
+    """Pedal a's power jack (top middle, facing up) with a pedal 6.2 mm above it: the 10 mm head of `dca` reaches 3.8 mm into it, the 4 mm head
+    of `dcb` does not (the build ranks a plug without blocked parts first): whatever the order of the types, `dcb` is the one."""
+    specs = [ped("T A", 0, 100, w=2.0, h=2.0), ped("T C", 0, 44, w=2.0, h=1.0)]       # c: y 24.8..50.2, a: y 56.4..107.2 (the jack at 56.4)
+    types = {**TYPES, "dca": DC_A, "dcb": DC_B}
+
+    def plugs(power_types):
+        proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": power_types[0], "power_types": power_types[1:]}, "jacks": {}}
+        m = layout.Model(proj, design.parse_canvas(canvas(BOARD, *specs)), PEDALS, {}, JACKS, {}, types, outlines={})
+        return m.score(m.owner, margin=0, detail=True)[1]
+    for order in (["dca", "dcb"], ["dcb", "dca"]):
+        det = plugs(order)
+        assert det["plugs"]["a.power"]["type"] == "dcb" and [b for b in det["blocked"] if b["jack"] == "a.power"] == []
+    det = plugs(["dca"])                                                       # only the long head: blocked 3.8 mm
+    assert [(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]] == [("a.power", "T C", "head", 3.8)]
+    # a free pedal takes the first type of the list (ties by list order)
+    free = [ped("T A", 0, 100, w=2.0, h=2.0)]
+    proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dcb", "power_types": ["dca"]}, "jacks": {}}
+    m = layout.Model(proj, design.parse_canvas(canvas(BOARD, *free)), PEDALS, {}, JACKS, {}, types, outlines={})
+    assert m.score(m.owner, detail=True)[1]["plugs"]["a.power"]["type"] == "dcb"
+
+
+def test_a_dc_plug_pointing_down_ends_the_power_cable_under_the_board():
+    """Pedal a (50.8 x 50.8, centre (127.0, 94.8)): its power jack faces up, the bend point of the 10 mm head is 5 mm above it, inside the
+    hole (x 101.6..152.4, y 50.8..76.2); the cable (from a point under the board) ends there: no pass up, plus the 12 mm jack height and
+    the 15 mm deck."""
+    m = hole_model([ped("T A", 180, 123, w=2.0, h=2.0)], HOLE_BOARD)
+    st = m.owner[0]
+    bend = (st[0], st[1] - 25.4 - 5.0)
+    assert m._down_ok(bend[0], bend[1], 3.5)
+    m.set_wiring([((200.0, 100.0), ["a"], True)])
+    _, det = m.score(m.owner, detail=True)
+    assert det["plugs"]["a.power"] == {"side": "down", "type": "dc", "down": True}
+    assert det["terms"]["power"][0] == pytest.approx(abs(200.0 - bend[0]) + abs(100.0 - bend[1]) + 27.0)
+    # the same pedal moved off the hole: a plug on top (the old estimate: down a hole, under, up again beside it)
+    off = [(25.4, 94.8, 0)]
+    _, det = m.score(off, detail=True)
+    assert det["plugs"]["a.power"]["side"] in ("left", "right")
+
+
+def test_hop_estimate_with_a_target_under_the_board():
+    index = power.HoleIndex([(100.0, 50.0)])
+    cfg = {"top_cost": 3.0, "transit_mm": 15.0}
+    assert power.hop_estimate((10.0, 10.0), (60.0, 90.0), True, index, cfg, dst_under=True) == pytest.approx(50 + 80)           # all under
+    # from the top: 3 x the way to the hole (100, 50), the pass, then Manhattan under to the target
+    assert power.hop_estimate((90.0, 10.0), (60.0, 90.0), False, index, cfg, dst_under=True) == pytest.approx(
+        3 * math.hypot(10.0, 40.0) + 15 + 40 + 40)
+    assert power.hop_estimate((90.0, 10.0), (60.0, 90.0), False, None, cfg, dst_under=True) == pytest.approx(30 + 80)           # no holes
