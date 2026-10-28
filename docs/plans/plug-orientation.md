@@ -159,3 +159,9 @@ findings 2 -> 4: monk.power 9.0 -> 15.0 mm (barrel), new red_muck.power / analog
   and the Tumnus findings; routing.svg / power.svg show the down plugs.
 - CLAUDE.md (plug model, collisions, down exit, power types, jack height) and docs/TODO.md updated; proposals
   regenerated; code review fixed; merge after the owner's OK.
+
+## Owner decisions after the review (2026-10-28)
+- Longer cables are fine when the rule that makes them longer gives a cleaner board: keep "always down when
+  available" and the part-count side ranking (gig: collisions 10 -> 7, one more blocked plug, +182 mm signal).
+- Straight DC plugs: the owner owns some but does not use them now; the gig keeps `power_types` unset (right-angle
+  only). The feature stays so they can be considered later.

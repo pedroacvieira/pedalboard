@@ -27,13 +27,6 @@ ideas · 5 data · 6 done.
       `cables.power_type`).
 
 ### Decisions
-- [ ] Plug orientation (feat/plug-orientation, 2026-10-28): signal and DC plug sides now avoid each other, ranked by
-      blocked + colliding plug PARTS. On the gig this trades collisions 10 -> 7 for one more blocked plug
-      (danelectro_3699.out, 7.2 mm by the Retrovibe) and +182 mm signal / +87 mm DC. Acceptable, or rank by depth / by
-      plugs instead of parts?
-- [ ] Straight DC plugs on the gig: set `cables.power_types: ["dc_ra_owner_baseline", "dc_straight_owner_baseline"]`?
-      (trial: no plug turns straight usefully today; the measured straight plug is 34 mm deep).
-- [ ] "Always down when available" makes some cables longer (gig S16 49 -> 102 mm, both ends down). Keep?
 - [ ] Power plug side: when neither side is blocked the tool reports "left". Does the side matter?
 - [ ] Power routes on top: P2 / P12 / P17 run 111-140 mm on top of the gig board (on-top mm cost 3 x,
       `power_routing.top_cost`). Acceptable, or tune it?
