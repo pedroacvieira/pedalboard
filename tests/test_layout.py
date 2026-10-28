@@ -129,23 +129,24 @@ def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]}
     want = {(v["jack"], v["obstacle"], v["part"], round(v["depth_mm"], 1)) for v in ctx["violations"]}
-    assert got == want and len(got) == 4   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm)
+    assert got == want and len(got) == 5   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm); danelectro_3699.out by the Retrovibe
 
 
 def test_surrogate_plug_collisions_match_the_build_on_the_gig_layout():
     """The surrogate chooses the plugs' exits as the build does where plugs collide (`Model._resolve`: signal cables in chain order, then the
-    DC plugs, each seeing the plugs decided before it, ranked by blocked parts + collisions): the same pairs of jacks, the same depths."""
+    DC plugs, each seeing the plugs decided before it, then rounds in which the signal plugs see the DC plugs and the other way round,
+    ranked by blocked parts + collisions): the same pairs of jacks, the same depths."""
     pedals, supplies, ctx = gig_build()
     m = gig_model(pedals, supplies)
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in det["collisions"]}
     want = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in ctx["plug_collisions"]}
-    assert got == want and len(got) == 10
+    assert got == want and len(got) == 7
 
 
 def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
     """The same plugs point down (hole under the bend point, owner rule: always down where available). The exits of the other plugs agree
-    too except where two exits are about equally good (the surrogate's length is an estimate): at most 2 of the 49 differ."""
+    too except where two exits are about equally good (the surrogate's length is an estimate, and it re-chooses only the ends that still collide): at most 3 of the 49 differ."""
     pedals, supplies, ctx = gig_build()
     m = gig_model(pedals, supplies)
     _, det = m.score(m.owner, margin=0, detail=True)
@@ -157,7 +158,7 @@ def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
             want[c["to"]] = c["exit_b"]
     got = {k: v["side"] for k, v in det["plugs"].items() if k in want}
     assert {k for k, v in want.items() if v == "down"} == {k for k, v in got.items() if v == "down"} and len(want) == 49
-    assert sum(1 for k in want if got[k] != want[k]) <= 2
+    assert sum(1 for k in want if got[k] != want[k]) <= 3
 
 
 # --- cable lengths --------------------------------------------------------------------------------
@@ -773,3 +774,47 @@ def test_hop_estimate_with_a_target_under_the_board():
     assert power.hop_estimate((90.0, 10.0), (60.0, 90.0), False, index, cfg, dst_under=True) == pytest.approx(
         3 * math.hypot(10.0, 40.0) + 15 + 40 + 40)
     assert power.hop_estimate((90.0, 10.0), (60.0, 90.0), False, None, cfg, dst_under=True) == pytest.approx(30 + 80)           # no holes
+
+
+def chain_hole_model(overrides=None):
+    """Pedals a and b (50.8 x 50.8) with a power jack at the top middle facing up, DC head 10 deep: with the centres at (60, 94.8) and
+    (160, 94.8) the jacks are at (60, 69.4) / (160, 69.4) and the bend points 5 mm above them, (60, 64.4) / (160, 64.4), inside the hole
+    (x 25.4..228.6, y 38.1..88.9). One under-board supply; the serial cable a -> b."""
+    inst = {"id": "psu1", "supply": "s1", "placement": "under", "outputs": [{"port": "F1", "pedals": ["a", "b"]}]}
+    proj = {"signal_chain": ["a", "b"], "cables": {"type": "t", "power_type": "dc", "overrides": overrides or {}}, "jacks": {},
+            "power": {"supplies": [inst]}}
+    items = design.parse_canvas(canvas(BOARD, ped("T A", 0, 100, w=2.0, h=2.0), ped("T B", 100, 100, w=2.0, h=2.0)))
+    return layout.Model(proj, items, PEDALS, SUPPLIES, {**JACKS, "s1": SUP_JACKS}, {}, DC_TYPES, outlines={},
+                        board_data={"x.png": {"holes": [[0.1, 0.3, 0.9, 0.7]]}})
+
+
+def test_the_down_plugs_extra_cable_is_counted_once_per_plug_in_a_serial_chain():
+    """From a point under the board (20, 100), both plugs pointing down: Manhattan under to a's bend point (40 + 35.6), a's plug 27 mm
+    (jack height 12 + the deck 15), under to b's bend point (100), b's plug 27 mm. The 27 mm of a's plug are not counted again as the lead of
+    the next hop (they were, in the first version: 256.6)."""
+    m = chain_hole_model()
+    m.set_wiring([((20.0, 100.0), ["a", "b"], True)])
+    state = at((60.0, 94.8, 0), (160.0, 94.8, 0))
+    _, det = m.score(state, detail=True)
+    assert det["plugs"]["a.power"]["down"] and det["plugs"]["b.power"]["down"]
+    assert det["terms"]["power"][0] == pytest.approx((40.0 + 35.6) + 27.0 + 100.0 + 27.0)
+    # a port of an on-board supply whose plug points down starts the cable under the board and pays its 27 mm once, in the first hop only
+    first = layout.Model.__dict__["_opt"]({"side": "down", "rects": [], "exit": (0.0, 0.0), "measure": (0.0, 0.0), "measure_mm": 27.0, "down": True})
+    side = layout.Model.__dict__["_opt"]({"side": "left", "rects": [], "exit": (0.0, 0.0), "measure": (0.0, 0.0), "measure_mm": 8.5})
+    assert first["drop_mm"] == pytest.approx(27.0) and side["drop_mm"] == 0.0
+
+
+def test_a_hop_whose_target_sits_over_a_hole_costs_at_most_the_jack_height_more_than_the_same_hop_with_a_side_plug():
+    """Convention of the build (`routing.end_options`): a plug pointing down is measured with the jack height (12 mm) + the deck (15 mm), a
+    side plug has no jack height (the cable on top is measured flat) and pays the hole pass (15 mm) + the top mm x `top_cost` instead.
+    The surrogate mirrors it: the two estimates differ by the jack height at most (the side plug's way on top is short here)."""
+    state = at((60.0, 94.8, 0), (160.0, 94.8, 0))
+    down = chain_hole_model()
+    down.set_wiring([((20.0, 100.0), ["a"], True)])
+    side = chain_hole_model({"P1": {"exit_b": "left"}})                                   # the plug has to be a side plug: up through the hole
+    side.set_wiring([((20.0, 100.0), ["a"], True)])
+    _, dd = down.score(state, detail=True)
+    _, ds = side.score(state, detail=True)
+    assert dd["plugs"]["a.power"]["down"] and ds["plugs"]["a.power"]["side"] == "left"
+    assert dd["terms"]["power"][0] == pytest.approx(40.0 + 35.6 + 27.0)
+    assert dd["terms"]["power"][0] <= ds["terms"]["power"][0] + 12.0

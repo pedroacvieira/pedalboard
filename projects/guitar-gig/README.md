@@ -4,24 +4,22 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 14 warning(s) (`no_unknown` on)
+- **Validation:** OK, 12 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
-- WARN clearance: red_muck.power (Power, facing left, dc_ra_owner_baseline right-angle plug, cable exits left) is blocked by MXR Analog Chorus: it reaches 1.0 mm into the plug's head
+- WARN clearance: danelectro_3699.out (Output, facing top, ernie_ball_flat_patch_ra right-angle plug, cable exits left) is blocked by Jam Pedals Retrovibe: it reaches 7.2 mm into the plug's barrel
+- WARN clearance: monk.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits left) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 12.7 mm into the plug's barrel
+- WARN clearance: red_muck.power (Power, facing left, dc_ra_owner_baseline right-angle plug, cable exits right) is blocked by MXR Analog Chorus: it reaches 1.0 mm into the plug's head
 - WARN clearance: analog_chorus.power (Power, facing right, dc_ra_owner_baseline right-angle plug, cable exits left) is blocked by Jam Pedals Red Muck: it reaches 1.3 mm into the plug's head
 - WARN clearance: monk.power (Power, facing left, dc_ra_owner_baseline right-angle plug, cable exits right) is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): it reaches 15.0 mm into the plug's barrel
-- WARN clearance: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at analog_chorus.power (DC plug): 6.0 mm (its barrel into the barrel)
-- WARN clearance: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at red_muck.power (DC plug): 1.1 mm (its cable run into the head)
-- WARN clearance: analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.6 mm (its head into the head)
-- WARN clearance: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.9 mm (its head into the barrel)
+- WARN clearance: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at analog_chorus.power (DC plug): 3.3 mm (its head into the barrel)
+- WARN clearance: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 3.1 mm (its head into the cable run)
+- WARN clearance: analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 5.4 mm (its barrel into the barrel)
+- WARN clearance: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 1.6 mm (its head into the head)
 - WARN clearance: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 4.3 mm (its barrel into the head)
-- WARN clearance: belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the head)
-- WARN clearance: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 6.4 mm (its barrel into the head)
-- WARN clearance: monk.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 3.5 mm (its cable run into the head)
-- WARN clearance: red_muck.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.1 mm (its head into the barrel)
-- WARN clearance: reticon.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.power (DC plug): 5.2 mm (its barrel into the head)
+- WARN clearance: belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.7 mm (its head into the barrel)
+- WARN clearance: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 
 </details>
 
@@ -271,23 +269,21 @@ Jack data: 18 of 18 catalog items set up (pedals and supplies in this project).
 
 Blocked cable space (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side):
 
-- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right
-- `red_muck.power` is blocked by MXR Analog Chorus: 1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits left
+- `danelectro_3699.out` is blocked by Jam Pedals Retrovibe: 7.2 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left
+- `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left
+- `red_muck.power` is blocked by MXR Analog Chorus: 1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits right
 - `analog_chorus.power` is blocked by Jam Pedals Red Muck: 1.3 mm into the head of the dc_ra_owner_baseline plug, cable exits left
 - `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition): 15.0 mm into the barrel of the dc_ra_owner_baseline plug, cable exits right
 
 Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
 
-- analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at analog_chorus.power (DC plug): 6.0 mm (its barrel into the barrel)
-- analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at red_muck.power (DC plug): 1.1 mm (its cable run into the head)
-- analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.6 mm (its head into the head)
-- belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.9 mm (its head into the barrel)
+- analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at analog_chorus.power (DC plug): 3.3 mm (its head into the barrel)
+- analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 3.1 mm (its head into the cable run)
+- analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 5.4 mm (its barrel into the barrel)
+- belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 1.6 mm (its head into the head)
 - belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 4.3 mm (its barrel into the head)
-- belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the head)
-- danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 6.4 mm (its barrel into the head)
-- monk.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 3.5 mm (its cable run into the head)
-- red_muck.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.1 mm (its head into the barrel)
-- reticon.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.power (DC plug): 5.2 mm (its barrel into the head)
+- belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.7 mm (its head into the barrel)
+- danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 
 Cable lengths: see Cable routing.
 
@@ -304,12 +300,12 @@ Signal cables are routed on the board surface between the pedals: never in front
 
 The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` also writes the git-ignored `routing.local.svg` with the pedal images.
 
-Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).
+Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks (with the project's default DC plug type). A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).
 
 | Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|---|:-:|--:|---|
 | S1 | signal | - | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 95 | routed |
-| S2 | signal | - | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 153 | routed |
+| S2 | signal | - | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 199 | routed |
 | S3 | signal | - | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 180 | routed |
 | S4 | signal | - | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 105 | routed |
 | S5 | signal | - | mini_ego.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 119 | routed |
@@ -318,19 +314,19 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S8 | signal | - | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 68 | routed |
 | S9 | signal | - | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 164 | routed |
 | S10 | signal | - | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 138 | routed |
-| S11 | signal | - | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 212 | routed |
+| S11 | signal | - | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 257 | routed |
 | S12 | signal | - | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 150 | routed |
-| S13 | signal | - | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 217 | routed |
-| S14 | signal | - | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 88 | routed |
+| S13 | signal | - | reticon.out | monk.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 263 | routed |
+| S14 | signal | - | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 133 | routed |
 | S15 | signal | - | belle_epoch.out | flight_delay.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 86 mm) | 248 | routed |
 | S16 | signal | - | flight_delay.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 48 mm) | 102 | routed |
 | P1 | power | C1 | psu1.F1 | flight_delay.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 100 mm under, 0 mm on top | 127 | routed |
 | P2 | power | C2 | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 62 mm under, 141 mm on top | 240 | routed |
 | P3 | power | C3 | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 74 mm under, 11 mm on top | 122 | routed |
 | P4 | power | C4 | psu1.SW_A | reticon.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 84 mm under, 32 mm on top | 153 | routed |
-| P5 | power | C5 | psu1.SW_B | analog_chorus.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 46 mm under, 50 mm on top | 133 | routed |
-| P6 | power | C6 | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 42 mm under, 3 mm on top | 82 | routed |
-| P7 | power | C6 | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 276 mm under, 35 mm on top | 386 | routed |
+| P5 | power | C5 | psu1.SW_B | analog_chorus.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 46 mm under, 50 mm on top | 134 | routed |
+| P6 | power | C6 | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 42 mm under, 47 mm on top | 125 | routed |
+| P7 | power | C6 | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 276 mm under, 79 mm on top | 430 | routed |
 | P8 | power | C6 | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 117 mm under, 31 mm on top | 223 | routed |
 | P9 | power | C6 | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 114 mm under, 123 mm on top | 311 | routed |
 | P10 | power | C7 | psu2.F2 | polytune_3.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 71 mm on top | 287 | routed |
@@ -342,11 +338,11 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P16 | power | C10 | psu2.SW_B | phase_95.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 11 mm under, 49 mm on top | 97 | routed |
 | P17 | power | C10 | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (107 mm on top) | 151 | routed |
 
-Signal cable, minimum: 2442 mm over 16 cables.
+Signal cable, minimum: 2624 mm over 16 cables.
 
 ### DC cables to buy
 
-A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate, the cable is not routed).
+A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate with the default DC plug type, the cable is not routed).
 
 | DC cable | Style | Output | Route | Plugs | Legs | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
@@ -354,14 +350,14 @@ A **serial** output is one cable that runs from the supply port to the first ped
 | C2 | serial | psu1_F2 | psu1.F2 -> belle_epoch | 2 | P2 | 240 | routed |
 | C3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | P3 | 122 | routed |
 | C4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | P4 | 153 | routed |
-| C5 | serial | psu1_SW_B | psu1.SW_B -> analog_chorus | 2 | P5 | 133 | routed |
-| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 1002 | routed |
+| C5 | serial | psu1_SW_B | psu1.SW_B -> analog_chorus | 2 | P5 | 134 | routed |
+| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 1090 | routed |
 | C7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | P10 | 287 | routed |
 | C8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P11, P12, P13 | 553 | routed |
 | C9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P14, P15 | 403 | routed |
 | C10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe | 3 | P16, P17 | 248 | routed |
 
-DC cable, minimum: 3268 mm over 10 cables (10 serial, 0 forked).
+DC cable, minimum: 3355 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 

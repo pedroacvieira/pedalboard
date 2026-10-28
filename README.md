@@ -35,7 +35,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 14 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 12 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -46,20 +46,18 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right); move one of the pedals apart
-- Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `danelectro_3699.out` is blocked by Jam Pedals Retrovibe (7.2 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
 - Blocked cable space: `analog_chorus.power` is blocked by Jam Pedals Red Muck (1.3 mm into the head of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
 - Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (15.0 mm into the barrel of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
-- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at analog_chorus.power (DC plug): 6.0 mm (its barrel into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at red_muck.power (DC plug): 1.1 mm (its cable run into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.6 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.9 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at analog_chorus.power (DC plug): 3.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 3.1 mm (its head into the cable run); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 5.4 mm (its barrel into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 1.6 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
 - Plug collision: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 4.3 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 6.4 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: monk.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 3.5 mm (its cable run into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: red_muck.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 4.1 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: reticon.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.power (DC plug): 5.2 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.7 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
 
 ### Guitar practice board
 

@@ -308,3 +308,35 @@ def test_the_readme_shows_down_in_the_exits_column_and_explains_it():
     assert "point straight down" not in "\n".join(build.routing_section(ctx))
     ctx, ps = power()
     assert "| P1 | power |" in "\n".join(build.routing_section(ctx)) and "| - / down |" in "\n".join(build.routing_section(ctx))
+
+
+# --- the bend point of a down plug is tested against the UNDER area ---------------------------------------
+def test_a_front_facing_plug_of_the_lowest_pedal_goes_down_through_a_hole_in_front_of_the_top_area():
+    """A (20..70 x 60..160) is the lowest pedal, so nothing is routed in front of y 160; its out jack at (45, 160) faces the front: the head
+    (20 deep) reaches y 180 and every side exit (45 +- 14, 170) lies beyond the top area. The bend point (45, 170) lies under the board
+    (0..300 x 0..200), over a hole: the plug points down. (The old test against the top area made every option infeasible: unroutable.)"""
+    hole_front = (35.0, 160.0, 55.0, 180.0)                                  # round A's bend point (45, 170)
+    ctx = plug_ctx({"type": "ra"})
+    ctx["layout"]["jacks"]["a"] = [{"id": "out", "label": "Output", "function": "output", "x": 0.5, "y": 1.0, "facing": "down"}]
+    ctx["layout"]["holes"] = [hole_front, HOLE_B]
+    routing.route_project(ctx, {}, cable_types=TY)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert ctx["routing"]["front_y"] == pytest.approx(160.0)
+    assert (c["exit_a"], c["exit_b"], c["status"]) == ("down", "down", "routed")
+    assert c["min_mm"] == pytest.approx(2 * DROP + math.hypot(190.0 - 45.0, 140.0 - 170.0), abs=0.01)
+    ctx = plug_ctx({"type": "ra"})                                           # no hole in front: nowhere to go, reported (not routed)
+    ctx["layout"]["jacks"]["a"] = [{"id": "out", "label": "Output", "function": "output", "x": 0.5, "y": 1.0, "facing": "down"}]
+    ctx["layout"]["holes"] = [HOLE_B]
+    routing.route_project(ctx, {}, cable_types=TY)
+    (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+    assert c["status"].startswith("unroutable")
+
+
+def test_exit_feasible_tests_a_down_option_against_the_under_area_and_the_others_against_the_top_area():
+    top = lambda p: p[1] < 160.0
+    under = lambda p: p[1] < 200.0
+    down, side = {"exit": (45.0, 170.0), "down": True}, {"exit": (45.0, 170.0), "down": False}
+    assert routing.exit_feasible(down, "x", [], inside=top, inside_under=under)
+    assert not routing.exit_feasible(side, "x", [], inside=top, inside_under=under)
+    assert not routing.exit_feasible({"exit": (45.0, 210.0), "down": True}, "x", [], inside=top, inside_under=under)
+    assert routing.exit_feasible({"exit": (45.0, 150.0), "down": False}, "x", [], inside=top, inside_under=under)

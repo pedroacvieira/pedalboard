@@ -40,7 +40,7 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  (power.hop_estimate: under the board, up through the usable hole nearest the pedal's power jack, a mm on top
                  counts `power_routing.top_cost`, a pass the hole transit; the points a candidate's pedals cover, or an under-board
                  supply covers, are not usable; a DC plug pointing down ends / starts the cable under the board at its bend point:
-                 no pass up, + its measure); plain Manhattan without holes or a power cable type
+                 no pass up, + the jack height and the deck, once per plug (`drop_mm`), as a side plug has none of them); plain Manhattan without holes or a power cable type
   footswitch     2 x crowding: per pair of switches on different pedals priority x max(0, comfort - d)^2 / comfort
                  (footswitches.crowding; comfort `footswitches.comfort_mm`, default 100; priority per switch type:
                  bypass 1.0, boost 0.8, tap 0.8, function 0.5, a pair weighs the larger of its two): spacing is
@@ -184,6 +184,10 @@ def _shift(r, dx, dy):
 
 def _bbox(rects):
     return (min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects))
+
+
+ROUNDS = 2   # plug side rounds of the surrogate (`Model.score`): the build's first pass and its first full round; its later rounds, which
+             # only confirm the result when nothing changes (`routing.SIDE_ROUNDS`), are left out for speed (the search calls it a million times)
 
 
 class Model:
@@ -392,11 +396,15 @@ class Model:
     def _opt(o, **extra):
         """One plug option as the score needs it (relative to the pedal's centre): side, rects [(part, rect)], their bbox, `exit` (the
         point the cable leaves at, for a plug pointing down the bend point where it continues under the board), `measure_mm`, `measure` (the
-        point cable lengths start at), `down`; `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
+        point cable lengths start at), `down`, `drop_mm` (a plug pointing down: `measure_mm` less the offset along the jack axis = jack height +
+        deck); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
         rects = [(part, r) for part, r in o["rects"]]
+        drop = 0.0   # a plug pointing down: the cable beyond what a side plug has (jack height + deck), counted once per plug in the power term
+        if o.get("down"):
+            drop = o["measure_mm"] - math.hypot(o["exit"][0] - o["measure"][0], o["exit"][1] - o["measure"][1])
         return {"side": o["side"], "rects": rects, "bbox": _bbox([r for _, r in rects]) if rects else None,
                 "exit": o["exit"], "measure_mm": o.get("measure_mm", 0.0), "measure": o.get("measure"),
-                "down": bool(o.get("down")), **extra}
+                "down": bool(o.get("down")), "drop_mm": drop, **extra}
 
     def _pool(self, tmp, jk, cands, fixed, run):
         """(facing, side options, down options) of one jack for the plug types `cands` [(position in the list, id, cable type)] (routing.
@@ -422,7 +430,7 @@ class Model:
             box = {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))], "exit": pt,
                    "measure_mm": 0.0, "measure": design.stub(pt, facing, self.p_depth / 2)}
             return [self._opt(box, type=None, tidx=0, diam=0.0)], []
-        names = [fixed_type] if fixed_type in self.cable_types else self.pcands
+        names = [fixed_type] if routing.is_power_type(self.cable_types, fixed_type) else self.pcands
         cands = [(0 if len(names) == 1 else i, t, self.cable_types[t]) for i, t in enumerate(names)]
         jh = self.rcfg.get("jack_height_mm", routing.DEFAULTS["jack_height_mm"])
         run = lambda ct: {"exit_run_mm": float(ct["diameter_mm"]), "jack_height_mm": jh,
@@ -509,7 +517,11 @@ class Model:
 
     def _cands(self, end, st):
         """The options a plug end can take with its pedal at `st`: the options pointing down that fit into a hole there (owner rule:
-        always down where available, even if longer), else every side option."""
+        always down where available, even if longer), else every side option. Approximation: the build ranks "feasible" first and only
+        then "down", and a down end is infeasible there when the cable cannot reach the other end under the board (`mode` 2, the
+        connectivity of the under grid). The surrogate has no grid: a down option that fits (`_down_ok`: inside the holes, clear of the
+        under-board supplies grown by the cable radius, the build's `down_available`) is taken as feasible, so the side options
+        are not kept as a fallback. The bend point must also lie in the under area (`_infeasible`, DC plugs)."""
         if end["down"]:
             x, y = st[0], st[1]
             ok = [o for o in end["down"] if self._down_ok(o["exit"][0] + x, o["exit"][1] + y, o["diam"])]
@@ -538,16 +550,18 @@ class Model:
         cands = self._cands(end, st)
         for o in cands:
             cost, hits, intr, nparts, ovsum = self._opt_clearance(end, o, st, n, obs, margin)
-            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost)
+            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost, self.board)
             rows.append(((bad, cost), cost, o, hits, intr, nparts, ovsum))
         return rows
 
     @staticmethod
-    def _infeasible(o, st, n, obs, area, cost):
+    def _infeasible(o, st, n, obs, area, cost, under=None):
         """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area or (only a plug with a clearance cost can
-        have it there) strictly inside another item's outline."""
+        have it there) strictly inside another item's outline. A plug pointing down continues under the board: its bend point is tested
+        against the under area `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
         px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
-        if not (area[0] <= px < area[2] and area[1] <= py < area[3]):
+        box = area if under is None or not o["down"] else under
+        if not (box[0] <= px < box[2] and box[1] <= py < box[3]):
             return True
         if cost <= 0:
             return False
@@ -598,11 +612,16 @@ class Model:
         out.sort(key=lambda it: it[0])
         return out
 
+    @staticmethod
+    def _is_box(o):
+        """Whether plug option `o` is a fixed box (the audio / power box of a jack without a plug model), not a plug."""
+        return o["bbox"] is not None and o["rects"][0][0] == "box"
+
     def _collisions(self, state, items, margin):
         """(cost, intrusion mm, [{"jack", "with", "depth_mm", "na", "nb"}]) of the plug footprints of different jacks that overlap
         (`_pair`; `na`, `nb` = the pedal / supply indices). Weights as the clearance (`_pair_cost`): the intrusion of every pair that comes
         within the margin counts, only those that really overlap are listed (as the build's `plug_collisions`). Candidate pairs
-        come from a sweep over the bounding boxes."""
+        come from a sweep over the bounding boxes. Two fixed boxes of the same pedal never count (the build skips them too)."""
         boxes = self._boxes(state, items, margin)
         cost = intrusion = 0.0
         found = []
@@ -611,7 +630,7 @@ class Model:
                 bx0, by0, bx1, by1, kb, nb, ob = boxes[j]
                 if bx0 >= ax1:
                     break
-                if by1 <= ay0 or by0 >= ay1:
+                if by1 <= ay0 or by0 >= ay1 or (na == nb and self._is_box(oa) and self._is_box(ob)):   # (two fixed boxes of one pedal: nothing moves them apart)
                     continue
                 real, pen = self._pair(oa, state[na], ob, state[nb], margin)
                 if pen > 0:
@@ -629,7 +648,7 @@ class Model:
         b = o["bbox"]
         bx0, by0, bx1, by1 = b[0] + x - margin, b[1] + y - margin, b[2] + x + margin, b[3] + y + margin
         cost = 0.0
-        for ox0, oy0, ox1, oy1, _, k, oo in others:
+        for ox0, oy0, ox1, oy1, _, k, oo, *_ in others:
             if ox0 < bx1 and ox1 > bx0 and oy0 < by1 and oy1 > by0:
                 real, pen = self._pair(o, state[n], oo, state[k], margin)
                 if pen > 0:
@@ -648,41 +667,47 @@ class Model:
         return items
 
     def _count(self, state, o, n, taken):
-        """The build's `collision_count`: how many (part of option `o` of pedal `n`, other plug) pairs overlap (`taken` = `_boxes`-like tuples of
-        the plugs decided so far)."""
+        """The build's `routing.collision_count` (the same function, on the option shifted to its candidate position and the footprints of
+        `taken` = `_resolve`'s boxes (`(x0, y0, x1, y1, key, n, option, parts)`, `parts` = [(part, rect)] at their candidate positions) whose
+        bounding box meets its own): how many (part of option `o` of pedal `n`, other plug) pairs overlap."""
         x, y = state[n][0], state[n][1]
-        tol, count = design.TOL_MM, 0
-        for _, r in o["rects"]:
-            r0, r1, r2, r3 = r[0] + x, r[1] + y, r[2] + x, r[3] + y
-            for tx0, ty0, tx1, ty1, _, k, oo in taken:
-                if tx0 < r2 and tx1 > r0 and ty0 < r3 and ty1 > r1:
-                    xk, yk = state[k][0], state[k][1]
-                    for _, q in oo["rects"]:
-                        q0, q1, q2, q3 = q[0] + xk, q[1] + yk, q[2] + xk, q[3] + yk
-                        if (r2 if r2 < q2 else q2) - (r0 if r0 > q0 else q0) > tol and (r3 if r3 < q3 else q3) - (r1 if r1 > q1 else q1) > tol:
-                            count += 1
-                            break
-        return count
+        rects = [(part, _shift(r, x, y)) for part, r in o["rects"]]
+        if not rects:
+            return 0
+        b0, b1, b2, b3 = _bbox([r for _, r in rects])
+        near = {key: parts for tx0, ty0, tx1, ty1, key, _, _, parts in taken if tx0 < b2 and tx1 > b0 and ty0 < b3 and ty1 > b1}
+        return routing.collision_count({"rects": rects}, None, near) if near else 0
 
-    def _resolve(self, state, recs, bad, margin):
+    def _resolve(self, state, recs, bad, margin, full=False):
         """Where plugs collide (`bad`: their jack keys), the choice of the ends involved is made again as the build makes it: signal cables in
-        chain order, then the DC plugs, each seeing only the plugs decided before it (and the fixed boxes), the options ranked by the number of
-        blocked parts + plug collisions (`_count`), then (signal) the shorter cable / (DC plug) the smaller overlap and the type's position in
-        the list. A choice without collision stays. Changes the picks in `recs`; returns whether any changed."""
+        chain order, then the DC plugs, the options ranked by the number of blocked parts + plug collisions (`_count`), then (signal) the
+        shorter cable / (DC plug) the smaller overlap and the type's position in the list. A choice without collision stays. Changes the
+        picks in `recs`; returns whether any changed. Which plugs an end sees: `full` False (the build's first pass) only the fixed boxes and
+        the plugs decided before it; `full` True (a later round of the build) a signal end every other plug, the DC plugs too, and a DC plug
+        every signal plug, the fixed boxes and the DC plugs decided before it in this round."""
         def box(key, n, o):
             x, y = state[n][0], state[n][1]
             b = o["bbox"]
-            return (b[0] + x - margin, b[1] + y - margin, b[2] + x + margin, b[3] + y + margin, key, n, o)
-
-        def fixed(o):
-            return o["bbox"] is not None and o["rects"][0][0] == "box"
+            return (b[0] + x - margin, b[1] + y - margin, b[2] + x + margin, b[3] + y + margin, key, n, o,
+                    [(part, _shift(r, x, y)) for part, r in o["rects"]])
+        fixed = self._is_box
         items = self._chosen(recs)
-        taken = [box(k, n, o) for k, n, o in items if fixed(o)]
+        boxes = {k: box(k, n, o) for k, n, o in items if o["bbox"] is not None}   # every plug's footprint as it stands now
+        fixed_keys = {k for k, _, o in items if fixed(o)}
+        signal_keys = {e["jack"] for rec in recs if rec[0] == "s" for e in (rec[4], rec[5])}
+        decided = set()   # the plugs (not fixed boxes) the recs before this one chose
+
+        def seen(own, signal):
+            if full:
+                return [b for k, b in boxes.items() if (k not in own if signal else k in fixed_keys or k in signal_keys or k in decided)]
+            return [b for k, b in boxes.items() if k in fixed_keys or k in decided]
         changed = False
         for rec in recs:
             if rec[0] == "s":
                 _, cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, cur = rec
-                if len(combos) > 1 and {ea["jack"], eb["jack"]} & bad:
+                own = {ea["jack"], eb["jack"]}
+                if len(combos) > 1 and own & bad:
+                    taken = seen(own, True)
                     if self._against(state, opa[cur[1]], ia, taken, margin) + self._against(state, opb[cur[2]], ib, taken, margin) + \
                             self._pair_cost(*self._pair(opa[cur[1]], state[ia], opb[cur[2]], state[ib], margin)) > 0:
                         ha = [ca[k][3] + self._count(state, opa[k], ia, taken) for k in range(len(opa))]
@@ -695,31 +720,28 @@ class Model:
                             changed = True
                 for e, n, o in ((ea, ia, opa[cur[1]]), (eb, ib, opb[cur[2]])):
                     if not fixed(o):
-                        taken.append(box(e["jack"], n, o))
+                        boxes[e["jack"]] = box(e["jack"], n, o)
+                        decided.add(e["jack"])
             else:
                 _, n, end, rows, cur = rec
                 o = cur[2]
                 if fixed(o):
                     continue
-                if len(rows) > 1 and end["jack"] in bad and self._against(state, o, n, taken, margin) > 0:
-                    best = min(rows, key=lambda r: (r[0][0], r[5] + self._count(state, r[2], n, taken), r[6], r[2]["tidx"]))
-                    if best is not cur:
-                        cur = rec[4] = best
-                        changed = True
-                taken.append(box(end["jack"], n, cur[2]))
+                if len(rows) > 1 and end["jack"] in bad:
+                    taken = seen({end["jack"]}, False)
+                    if self._against(state, o, n, taken, margin) > 0:
+                        best = min(rows, key=lambda r: (r[0][0], r[5] + self._count(state, r[2], n, taken), r[6], r[2]["tidx"]))
+                        if best is not cur:
+                            cur = rec[4] = best
+                            changed = True
+                boxes[end["jack"]] = box(end["jack"], n, cur[2])
+                decided.add(end["jack"])
         return changed
 
     @staticmethod
     def _parts(oa, sa, ob, sb):
-        """How many (part of `oa`, part of `ob`) pairs overlap (the build counts those between the two ends of a cable)."""
-        tol, count = design.TOL_MM, 0
-        for _, r in oa["rects"]:
-            for _, q in ob["rects"]:
-                a2, b2, a0, b0 = r[2] + sa[0], q[2] + sb[0], r[0] + sa[0], q[0] + sb[0]
-                a3, b3, a1, b1 = r[3] + sa[1], q[3] + sb[1], r[1] + sa[1], q[1] + sb[1]
-                if (a2 if a2 < b2 else b2) - (a0 if a0 > b0 else b0) > tol and (a3 if a3 < b3 else b3) - (a1 if a1 > b1 else b1) > tol:
-                    count += 1
-        return count
+        """How many (part of `oa`, part of `ob`) pairs overlap (the build counts those between the two ends of a cable: `routing.rect_pairs`)."""
+        return routing.rect_pairs([(p, _shift(r, sa[0], sa[1])) for p, r in oa["rects"]], [(p, _shift(r, sb[0], sb[1])) for p, r in ob["rects"]])
 
     def _obstacles(self, state, feet):
         """[(pedal index or None for a fixed item, title, footprint, outline rects at the candidate position)], once per
@@ -874,9 +896,13 @@ class Model:
         # involved may take another option, as the build chooses its sides
         items = self._chosen(recs)
         c_cost, c_intr, found = self._collisions(state, items, margin)
-        if found:
-            if self._resolve(state, recs, {k for c in found for k in (c["jack"], c["with"])}, margin):
-                c_cost, c_intr, found = self._collisions(state, self._chosen(recs), margin)
+        for rnd in range(min(ROUNDS, routing.SIDE_ROUNDS) if found else 0):   # the build's first pass, then its next round that sees every plug
+            changed = self._resolve(state, recs, {k for c in found for k in (c["jack"], c["with"])}, margin, full=bool(rnd))
+            if rnd and not changed:
+                break
+            c_cost, c_intr, found = self._collisions(state, self._chosen(recs), margin)
+            if not found:
+                break
         terms["clearance"] += c_cost
         raw["clearance"] += c_intr
         for c in found:
@@ -913,6 +939,10 @@ class Model:
                     power_opt[n] = o
                 elif "port" in end:
                     port_opt[(n, end["port"])] = o
+        # Power term. A cable at a side plug starts / ends at its measure point and pays, through the hole nearest it, the pass and the run
+        # on top (`power.hop_estimate`); a plug pointing down has none of that: its cable starts / ends UNDER the board at the bend point
+        # and pays only the extra cable a side plug does not have, the jack height + the deck (`drop_mm`), ONCE per plug (in the hop that
+        # ends at it, or the first hop that starts at a port's plug; the next hop of a serial chain starts there without it).
         for port, members, under, style in self.wiring:
             prev, lead = port, 0.0
             if isinstance(port, dict):   # a port of an on-board supply: where the candidate puts it (a plug pointing down: under the board)
@@ -920,16 +950,17 @@ class Model:
                 off = geo[port["inst"]]["port_pt"].get(port["port"]) if po is None else (po["exit"] if po["down"] else po["measure"])
                 prev = (off[0] + state[port["inst"]][0], off[1] + state[port["inst"]][1]) if off else None
                 if po is not None and po["down"]:
-                    under, lead = True, po["measure_mm"]
+                    under, lead = True, po["drop_mm"]
             for n in members:
                 po = power_opt.get(n)   # the DC plug the candidate puts on pedal n: its cable starts / ends at the plug's measure point,
                 dn = po is not None and po["down"]   # or under the board at the bend point of a plug pointing down
                 m = None if po is None else (po["exit"] if dn else po["measure"])
                 here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
                 if prev is not None and here is not None:
-                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near, dst_under=dn) + lead + (po["measure_mm"] if dn else 0.0)
+                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near, dst_under=dn) + lead + (po["drop_mm"] if dn else 0.0)
+                    lead = 0.0
                 if here is not None and style != routing.FORKED:   # forked: every cable starts at the port
-                    prev, under, lead = here, dn, (po["measure_mm"] if dn else 0.0)
+                    prev, under = here, dn
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
         if self.fs_known:

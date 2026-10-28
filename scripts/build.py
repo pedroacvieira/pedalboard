@@ -560,7 +560,7 @@ def routing_section(ctx):
                "also writes the git-ignored `routing.local.svg` with the pedal images.", ""]
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
-           "'~' marks a power cable that is not routed: a right-angle estimate between its jacks. A routed power cable's Under board "
+           "'~' marks a power cable that is not routed: a right-angle estimate between its jacks (with the project's default DC plug type). A routed power cable's Under board "
            "column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the "
            "DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).", "",
            "| Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
@@ -605,7 +605,7 @@ def dc_cable_table(ctx):
     md = ["", "### DC cables to buy", "",
           "A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the "
           "port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the "
-          "supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate, the "
+          "supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate with the default DC plug type, the "
           "cable is not routed).", "",
           "| DC cable | Style | Output | Route | Plugs |" + (" Plug types |" if several else "") + " Legs | Min length (mm) | Status |",
           "|---|---|---|---|--:|" + ("---|" if several else "") + "---|--:|---|"]

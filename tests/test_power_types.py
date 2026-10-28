@@ -78,6 +78,18 @@ def test_an_unknown_or_non_power_override_type_is_an_error():
     assert ctx["errors"] == [] and c["type_b"] == "dcs"
 
 
+def test_the_router_ignores_an_override_type_that_is_not_a_power_cable():
+    cfg = routing.settings({"cables": {"power_type": "dc", "power_types": ["dc", "dcs"]}}, TY)
+    assert routing.power_candidates(TY, cfg, "ra") == ["dc", "dcs"] and routing.power_candidates(TY, cfg, "nope") == ["dc", "dcs"]
+    assert routing.power_candidates(TY, cfg, "dcs") == ["dcs"] and not routing.is_power_type(TY, "ra") and routing.is_power_type(TY, "dc")
+    for k in ("type_a", "type_b"):
+        ctx, c = one(overrides={"P1": {k: "ra"}})
+        assert any(f"{k}=ra (not a power cable (role power))" in e for e in ctx["errors"])   # reported ...
+        assert (c["type_a"], c["type_b"], c["type"]) == ("dc", "dc", "dc")   # ... and not used
+        (h,) = [v for v in ctx["routing"]["heads"] if v["cable"] == "P1"]
+        assert dict(h["rects"])["head"] == pytest.approx((40, 50, 50, 60))            # the default DC plug's head (10 x 10), not the patch plug's
+
+
 # --- one plug: the ranking ----------------------------------------------------------------------------
 def test_without_power_types_nothing_changes():
     ctx, c = one(BOTH)                                    # the old test: blocked on both sides, the smaller overlap wins
@@ -359,3 +371,56 @@ def test_the_layout_model_reads_the_default_power_type_from_power_types():
         m = layout.Model(proj, items, LP, LS, {**JACKS, "s1": SUP_JACKS}, {}, {**LT, **dc}, outlines={})
         pts.append((m.ptype is not None, m.p_depth, m._geom[(1, 0)]["port_pt"]["F1"]))
     assert pts[0] == pts[1] and pts[0][0] and pts[0][1] == 10.0
+
+
+# --- a plug option that leaves its cable without a path --------------------------------------------------
+CUP = [mm_item("i-t", "T", 38.5, 15, 13, 9), mm_item("i-l", "L", 38.5, 15, 3.4, 44.9), mm_item("i-r", "R", 48.1, 15, 3.4, 44.9)]
+HOLE_D2 = (95.0, 45.0, 115.0, 65.0)
+
+
+def cup_ctx(power_types):
+    """A's power plug (45, 60) with an upside-down U of walls round the straight plug's exit (45, 27): the walls (x 38.5..41.9 / 48.1..51.5 down
+    to y 59.9 and a roof 15..24) touch neither its head (42..48) nor its cable run, so the straight plug has no hit and ranks first, but its
+    cable cannot get out. The right-angle plug's heads (40..50) reach 1.9 mm into both side walls (2 hits each side), its exits are outside."""
+    return pw_ctx(holes=(HOLE_D2,), extra=CUP, cables={"power_type": "dcs", "power_types": power_types})
+
+
+def test_a_plug_option_that_leaves_its_cable_without_a_path_is_replaced_by_one_that_routes(monkeypatch):
+    calls = []
+    real = routing.route_power
+    monkeypatch.setattr(routing, "route_power", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
+    ctx = cup_ctx(["dc"])
+    (c,) = routed(ctx).values()
+    assert (c["type_b"], c["exit_b"], c["status"]) == ("dc", "left", "routed") and len(calls) == 2
+    assert not any("no free path" in w for w in ctx["warnings"])                      # the first try's finding is dropped with it
+    assert [v["jack"] for v in ctx["violations"]] == ["a.power", "a.power"]            # the price: the head is blocked by both walls
+    assert [h["rects"][0][0] for h in ctx["routing"]["heads"] if h["cable"] == "P1"] == ["head"]
+
+
+def test_nothing_is_routed_again_when_the_plug_has_no_other_option_or_the_second_try_is_no_better(monkeypatch):
+    calls = []
+    real = routing.route_power
+    monkeypatch.setattr(routing, "route_power", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
+    ctx = cup_ctx([])                                                                    # only the straight type: no other option
+    (c,) = routed(ctx).values()
+    assert (c["type_b"], c["status"].startswith("unroutable"), len(calls)) == ("dcs", True, 1)
+    assert any("P1 (psu1.F1 -> a.power) has no free path" in w for w in ctx["warnings"])
+    calls.clear()
+    def nothing_routes(*a, **k):
+        real(*a, **k)
+        for c in a[1]:
+            if c["kind"] == "power":
+                c["status"] = "unroutable: test"
+        calls.append(1)
+    monkeypatch.setattr(routing, "route_power", nothing_routes)
+    ctx = cup_ctx(["dc"])
+    (c,) = routed(ctx).values()
+    assert len(calls) == 2 and (c["type_b"], c["status"]) == ("dcs", "unroutable: test")   # not better: the first choice stays
+
+
+def test_a_failed_option_loses_even_to_an_infeasible_one_that_was_not_tried():
+    mk = lambda **k: {"hits": [], "tidx": 0, **k}
+    tried, other = mk(ok=False, failed=True), mk(ok=False, hits=[("head", None, (1.0, 2.0))] * 3)   # (the gig's monk.power: every exit lies inside the Belle Epoch)
+    assert routing.plug_rank(other, "x", None) > routing.plug_rank(mk(ok=False), "x", None)
+    assert routing.plug_rank(tried, "x", None) > routing.plug_rank(other, "x", None)
+    assert routing.plug_rank(mk(ok=True, down=False), "x", None) < routing.plug_rank(other, "x", None)

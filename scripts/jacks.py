@@ -326,6 +326,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
     `outlines`: catalog/outlines.json (read if None), for the layout's "shapes"; `board_data`: usable
     catalog/boards.json (read if None), for the layout's "holes" (with the project's board.json edits).
+    The power cable lengths this makes (`estimate_mm`, the '~' lengths of the README, used where the cable is not routed) are an estimate that
+    always uses the project's DEFAULT DC plug type (`default_power_type`) for the plug depth, never the type a plug was chosen to take.
     """
     project, errors, warnings = ctx["project"], ctx["errors"], ctx["warnings"]
     jacks_data = usable(jacks_data)
