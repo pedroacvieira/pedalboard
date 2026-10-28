@@ -68,7 +68,7 @@ overlap + type list order (power); one pedal-end DC type per serial cable.
 `catalog/`, `projects/*/project.json`, `playground_design.json`, `projects/*/proposals/`, CLAUDE.md, docs/TODO.md, the plan.
 
 ## Status (2026-10-28, session stopped by the owner: out of tokens)
-- Committed on the branch: catalog step, phases 1-4 (`3e4ec49`, `bb.. phase 2`, `e65c347`, `c7d8e28`), CLAUDE.md update.
+- Committed on the branch: catalog step, phases 1-4 (`ffc8b8e`, `3e4ec49`, `e4ed354`, `e65c347`, `c7d8e28`), CLAUDE.md update.
 - This review-fix task was STOPPED mid-edit (it was rewriting a block of `route_project` around lines 1650-1760 for
   finding 1). Its partial, untested diff of `scripts/` and `tests/` is saved in
   `docs/handovers/plug-orientation-review-wip.patch`; the working tree was reset to the last commit. Next time:
