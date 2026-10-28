@@ -108,8 +108,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - [ ] U-turn plugs: when a right-angle plug cannot point to the side its cable has to go, point it the other way and
       turn the cable back; longer minimum length, the turned cable occupies both sides; the router considers it when
       the direct side is blocked or worse.
-- [ ] Plug pointing down into a hole: a jack above or next to a hole sends its cable straight down; it runs under the
-      board until it resurfaces (another hole / edge segment) or comes straight back up.
+- [ ] Plug pointing down into a hole, straight DC plugs, plug-to-plug collisions: planned in
+      `docs/plans/plug-orientation.md` (branch `feat/plug-orientation`, 2026-10-28).
 - [ ] Many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - [ ] Under-board fit (supply height vs space under the deck) is not checked (owner decision); a later branch if needed.
 - [ ] The saturated single-hole routing case (two cables forced through one one-cell hole) never converges and runs
