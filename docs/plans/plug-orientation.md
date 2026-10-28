@@ -1,6 +1,6 @@
 # Plan: `feat/plug-orientation`: plugs pointing down into a hole, straight DC plugs, plug-to-plug collisions
 
-Status: in progress (2026-10-28), branch `feat/plug-orientation` (created from `main` at the commit that adds this file).
+Status: done, awaiting merge (2026-10-28), branch `feat/plug-orientation` (created from `main` at the commit that adds this file).
 This file is the entry point for a new conversation: read it, then `CLAUDE.md`, then follow "How to run this".
 
 ## How to run this (for the agent that picks this up)
