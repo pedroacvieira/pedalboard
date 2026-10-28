@@ -54,6 +54,9 @@ an edge crossing (the owner draws them in the board editor as line segments alon
 `estimate_mm` keeps jacks.check's right-angle estimate. Their plugs are modelled for clearance: with
 `cables.power_type` (a DC plug type, role power) every power jack is checked with that plug's head on the less blocked
 exit side; without it jacks.py uses the smaller `jacks.power_clearance` box (and the cables stay unrouted).
+`cables.power_types` (several DC plug types, `power_type_list`) lets the router pick the type per plug too (`power_plug_choices`: down,
+blocked parts + collisions, overlap, list order); a serial cable's pedal plugs share one type, the supply-port plug may differ
+(`type_a` supply end, `type_b` pedal end; overrides `type_a` / `type_b`); the power grid is as wide as the widest type in use.
 """
 import heapq
 import itertools
@@ -66,6 +69,7 @@ import design
 DEFAULTS = {
     "type": None,                # default patch cable type (catalog/cables.json, role patch); None: no plug model
     "power_type": None,          # DC plug type for power-jack clearance (role power); None: the jacks.power_clearance box
+    "power_types": None,         # the DC plug types the router may pick per power plug (role power); None: [power_type] (`power_type_list`)
     "diameter_mm": 6.0,          # routing width of a signal cable; the type's diameter_mm (on-board width) when a type is set
     "max_stack": 2,              # cables allowed on top of each other in one cell
     "max_over_plug": 2,          # other cables allowed across one plug (head + barrel); the plug's own cable never counts
@@ -122,7 +126,20 @@ def settings(project, types=None):
     s.setdefault("overrides", {})
     if s.get("max_stack_under") is None:
         s["max_stack_under"] = s["max_stack"]
+    listed = [t for t in (s["power_types"] if isinstance(s["power_types"], list) else []) if isinstance(t, str)]
+    if not s.get("power_type") and listed:   # power_types without a default type: its first entry is the default
+        s["power_type"] = listed[0]
+    s["power_types"] = power_type_list(s)
     return s
+
+
+def power_type_list(cfg):
+    """The DC plug type ids a project offers, in ranking order: `cables.power_type` first (the default, used for estimates and
+    for the ports of under-board supplies), then the other entries of `cables.power_types` (duplicates dropped); `[power_type]`
+    without `power_types`, `[]` without either. Ids are not checked here (`validate_project_types`, `power_candidates`)."""
+    given = cfg.get("power_types")
+    out = [t for t in [cfg.get("power_type"), *(given if isinstance(given, list) else [])] if isinstance(t, str) and t]
+    return list(dict.fromkeys(out))
 
 
 def power_settings(project, cfg=None):
@@ -1283,6 +1300,15 @@ def validate_project_types(project, types):
         errs.append(f"cables.power_type: {pt} is not in catalog/cables.json")
     elif pt and role(pt) != "power":
         errs.append(f"cables.power_type: {pt} is a {role(pt)} cable, not a DC power cable (role power)")
+    pts = cfg.get("power_types")
+    if pts is not None and not (isinstance(pts, list) and all(isinstance(t, str) for t in pts)):
+        errs.append("cables.power_types must be a list of cable type ids")
+    else:
+        for t in pts or []:
+            if t not in types:
+                errs.append(f"cables.power_types: {t} is not in catalog/cables.json")
+            elif role(t) != "power":
+                errs.append(f"cables.power_types: {t} is a {role(t)} cable, not a DC power cable (role power)")
     for cid, o in (cfg.get("overrides") or {}).items():
         if (o or {}).get("type") in types and role(o["type"]) == "power" and not cid.startswith("P"):
             errs.append(f"cables.overrides.{cid}.type: {o['type']} is a DC power cable")
@@ -1523,6 +1549,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             inst = inst_by_id.get(hop["from"].split(".")[0])
             under = placement(inst if inst is not None else {}, project) != "on_board"
         cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
+                       "type_a": cfg["power_type"], "type_b": cfg["power_type"],
                        "cable": hop.get("cable") or spare_cable_id(), "style": hop.get("style") or SERIAL, "output": hop.get("output"),
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
                        "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
@@ -1532,10 +1559,16 @@ def route_project(ctx, cat_pedals, cable_types=None):
         for k, v in (over.get(c["id"]) or {}).items():
             if v is not None:              # null = keep the default (as cable_type_id does)
                 c[k] = v
+        if c["kind"] == "power":           # the owner's plug types, kept apart from the chosen ones (`power_plug_choices`)
+            c["_fix_a"], c["_fix_b"] = (over.get(c["id"]) or {}).get("type_a"), (over.get(c["id"]) or {}).get("type_b")
         bad = [f"{k}={c[k]}" for k in ("tip_a", "tip_b") if c[k] not in TIPS] + \
               ([f"polarity={c['polarity']}"] if c["kind"] == "power" and c["polarity"] not in (None, *POLARITIES) else [])
         if c["type"] is not None and c["type"] not in cable_types and not (c["kind"] == "power" and c["type"] == cfg["power_type"]):
             bad.append(f"type={c['type']} (not in catalog/cables.json)")
+        for k in ("type_a", "type_b"):     # power plug types: a power cable of the catalog
+            v = c.get("_fix_" + k[-1]) if c["kind"] == "power" else None
+            if v is not None and (v not in cable_types or cable_types[v].get("role") != "power"):
+                bad.append(f"{k}={v} ({'not in catalog/cables.json' if v not in cable_types else 'not a power cable (role power)'})")
         bad += [f"{k}={c[k]}" for k in ("exit_a", "exit_b") if k in c and c[k] not in (None, "auto", *design.EXITS)]
         if bad:
             errors.append(f"cables: {c['id']} has unknown {', '.join(bad)} (tips: {', '.join(TIPS)}; polarity: {', '.join(POLARITIES)}; "
@@ -1686,7 +1719,8 @@ def route_project(ctx, cat_pedals, cable_types=None):
         nets.append((c["id"], oa["cell"], ob["cell"], bool(mode)))
 
     # every plug of the layout (head + barrel): the power plugs' sides are chosen before routing, as the signal ones
-    power_choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken, down=down_any)   # avoids the signal plugs and fixed boxes
+    in_area = (lambda pt: grid.inside(grid.cell_of(*pt))) if grid is not None else None
+    power_choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken, down=down_any, inside=in_area)   # avoids the signal plugs and fixed boxes
     plug_rects, plug_owner = {}, {}   # "<pedal id>.<jack id>" -> [head / barrel rects], owner cable id
     if grid:
         for c in (x for x in cables if x["kind"] == "signal" and x["id"] in chosen):
@@ -1795,14 +1829,13 @@ def route_project(ctx, cat_pedals, cable_types=None):
         for c in (x for x in cables if x["kind"] == "power"):
             c["status"] = "not routed (no pedalboard in the layout)"
     checked |= power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, power_choices)
-    ptype = cable_types.get(cfg.get("power_type") or "")
     for cid, jk, pc, _, o in power_choices:
-        meta[f"{cid}.{jk['id']}"] = {"kind": "DC plug", "label": jk["label"], "cable": (pc or {}).get("id"), "cable_type": cfg["power_type"],
-                                     "side": o["side"], "how": f"{cfg['power_type']} {ptype['plug']['style'].replace('_', '-')} plug" + exit_how(o)}
+        meta[f"{cid}.{jk['id']}"] = {"kind": "DC plug", "label": jk["label"], "cable": (pc or {}).get("id"), "cable_type": o["type"],
+                                     "side": o["side"], "how": f"{o['type']} {cable_types[o['type']]['plug']['style'].replace('_', '-')} plug" + exit_how(o)}
     plug_collision_findings(ctx, {k: v for k, v in taken.items() if v}, meta, clear_sink)
     report_fixed_box(ctx, checked)
     for c in cables:
-        for k in ("_ends", "_sides", "_squeeze", "_stretches", "_own", "_leads"):
+        for k in ("_ends", "_sides", "_squeeze", "_stretches", "_own", "_leads", "_fix_a", "_fix_b"):
             c.pop(k, None)
     ctx["power_cable_summary"] = power_cable_summary(cables)
 
@@ -1831,7 +1864,8 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
             c["status"] = "not routed (no power cable type: set cables.power_type)" if not ptype else "not routed (cables.under_board is false)"
         return
     pcfg = pw["settings"]
-    pd = float(ptype["diameter_mm"])
+    used = {o["type"] for *_, o in choices} | {c.get(k) for c in pcables for k in ("type_a", "type_b")}
+    pd = max([float(cable_types[t]["diameter_mm"]) for t in used if t in cable_types] or [float(ptype["diameter_mm"])])   # the widest in use
     pc_cfg = {**cfg, "diameter_mm": pd}
     transit = cfg["hole_transit_mm"]
     edge_t, source = edge_transit(pcfg, layout, transit)
@@ -1847,7 +1881,6 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     by_key = {f"{cid}.{jk['id']}": (cid, jk, pc, facing, o) for cid, jk, pc, facing, o in choices}
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
     place = layout.get("inst_placement") or {}
-    depth = float(ptype["plug"]["head_depth_mm"])
     nets, ends = [], {}
     for c in pcables:
         c["status"] = "not routed"
@@ -1864,6 +1897,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
                 c["status"] = "not routed (supply port position unknown)"
                 continue
             pt = design.jack_point(it, jk["x"], jk["y"])
+            depth = float(cable_types[c.get("type_a") if c.get("type_a") in cable_types else cfg["power_type"]]["plug"]["head_depth_mm"])
             start_pt = design.stub(pt, design.jack_facing(it, jk["facing"]), depth / 2)
             cell = pgrid.cell_of(*start_pt)
             start, oa = (cell[0], cell[1], 1), None
@@ -1999,8 +2033,9 @@ def power_cable_summary(cables):
     """The physical DC cables of a cable list (`ctx["cable_list"]`), one entry per `cable` id (C1, C2... in order):
     {"id", "style", "output", "legs": [P#], "from": port, "to": [pedal power jacks], "plugs": DC plugs on the cable (serial:
     pedals + 1, forked: 2), "min_mm": sum of the legs' min_mm (None when any leg is not routed), "estimate_mm": sum of the
-    legs' right-angle estimates (None when any is unknown), "status": "routed" when every leg is, else the first leg's
-    status that is not}. A serial cable is one cable through every pedal of its output (its legs are the hops), a forked
+    legs' right-angle estimates (None when any is unknown), "plug_types": {"port": the DC type of the plug at the supply port
+    (`type_a` of the first leg), "pedals": [the type of the plug at each pedal, one per leg (`type_b`); a serial cable has one type]},
+    "status": "routed" when every leg is, else the first leg's status that is not}. A serial cable is one cable through every pedal of its output (its legs are the hops), a forked
     output has one cable per pedal."""
     groups = {}
     for c in cables:
@@ -2013,55 +2048,166 @@ def power_cable_summary(cables):
         out.append({"id": cid, "style": style, "output": legs[0].get("output"), "legs": [c["id"] for c in legs],
                     "from": legs[0]["from"], "to": [c["to"] for c in legs],
                     "plugs": len(legs) + 1 if style == SERIAL else 2,
+                    "plug_types": {"port": legs[0].get("type_a"), "pedals": [c.get("type_b") for c in legs]},
                     "min_mm": None if any(c["min_mm"] is None for c in legs) else sum(c["min_mm"] for c in legs),
                     "estimate_mm": None if any(c.get("estimate_mm") is None for c in legs) else sum(c["estimate_mm"] for c in legs),
                     "status": bad[0] if bad else "routed"})
     return out
 
 
-def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, down=None):
-    """The DC plug of every placed pedal's power jack (`cables.power_type`) with the exit side that has the fewest
-    blocked parts (then the least overlap; a power cable override `exit_b` fixes it): [(pedal id, jack, power cable
-    or None, facing, plug option)]. `taken` {"<id>.<jack id>": [(part, rect)]} = the signal plugs and fixed boxes: a part
-    overlapping one of them counts like a blocked part, and every chosen plug is added to it for the next ones (None: no
-    collision check). A plug pointing down into a hole (`end_options`, `down` = its availability callable) always wins
-    over the side exits (owner decision), unless an override fixes a side. Sets the power cable's `exit_b`. Also every used port of an on-board supply
-    ("<instance id>" instead of the pedal id; the cable starting at the port, its side is `exit_a`). Empty without a
-    power type."""
-    ptype = cable_types.get(cfg.get("power_type") or "")
+def power_candidates(cable_types, cfg, fixed=None):
+    """The DC plug type ids one plug may take, in ranking order: `[fixed]` when an override (`type_a` / `type_b`) names a known
+    type, else `cfg["power_types"]` (`power_type_list`, the default type first) that are in `cable_types`."""
+    if fixed in cable_types:
+        return [fixed]
+    return [t for t in cfg.get("power_types") or power_type_list(cfg) if t in cable_types]
+
+
+def plug_rank(o, key, taken):
+    """What a DC plug option is ranked by (smaller wins): infeasible (its exit lies inside another pedal's outline or outside the
+    routing area, `power_plug_pool`), not pointing down (down first), blocked parts + plug collisions (`collision_count`, none
+    without `taken`), the overlap sum, the position of its type in the project's list."""
+    return (not o.get("ok", True), not o.get("down"), len(o["hits"]) + (collision_count(o, key, taken) if taken is not None else 0),
+            sum(min(ov) for _, _, ov in o["hits"]), o["tidx"])
+
+
+def exit_feasible(o, own_id, obstacles, shapes=None, inside=None):
+    """Whether a plug option's cable can leave it: its exit point (for a plug pointing down the bend point) lies in the routing
+    area (`inside`: a callable on a point, None: no check) and strictly inside no other item's outline."""
+    x, y = o["exit"]
+    if inside is not None and not inside(o["exit"]):
+        return False
+    return not any(r[0] < x < r[2] and r[1] < y < r[3] for ob in obstacles if ob["id"] != own_id
+                   for r in design.item_shapes(shapes, ob))
+
+
+def power_plug_pool(it, jk, key, cands, cable_types, fixed, cfg, layout, obstacles, down, inside=None):
+    """(facing, options) of one DC plug: every exit of every candidate type (`end_options`, each option gets `type`, `tidx` =
+    its type's position in `cands` and `hits`). With a fixed exit (an override `exit_a` / `exit_b`, left / right / down) only the
+    options that honour it are returned; when none does (a straight plug has no side, down needs a hole) all of them are
+    and `honoured` is False."""
+    fixed = fixed if fixed in design.EXITS else None
+    opts, facing = [], None
+    for tidx, tid in enumerate(cands):
+        t = cable_types[tid]
+        run = {"exit_run_mm": float(t["diameter_mm"]), "jack_height_mm": cfg.get("jack_height_mm", DEFAULTS["jack_height_mm"]),
+               "hole_transit_mm": cfg.get("hole_transit_mm", 0.0)}
+        facing, ts = end_options(it, jk, t, fixed, run, layout.get("outward_mm", 0), down=down)
+        for o in ts:
+            o.update(type=tid, tidx=tidx, hits=blocked_parts(o, it["id"], obstacles, layout.get("shapes")),
+                     ok=exit_feasible(o, it["id"], obstacles, layout.get("shapes"), inside))
+        opts += ts
+    honour = [o for o in opts if o["side"] == fixed] if fixed else opts
+    return facing, (honour or opts), bool(honour) or fixed is None
+
+
+def fixed_exit_finding(cable_id, which, key, fixed, cands, cable_types):
+    """The message for an override `exit_a` / `exit_b` that none of the candidate DC types can do."""
+    if fixed == design.DOWN:
+        ctype = next((cable_types[t] for t in cands if cable_types[t]["plug"]["style"] != "straight"), cable_types[cands[0]])
+        return down_override_finding(cable_id, which, key, ctype)
+    return (f"routing: {cable_id} {which} is {fixed}, but the plug at {key} ({', '.join(cands)}) has no side exit (straight plug): "
+            f"its exit is chosen automatically")
+
+
+def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, down=None, inside=None):
+    """The DC plug of every placed pedal's power jack: its type (`cables.power_types`, `power_type_list`) and exit with the best
+    ranking (`plug_rank`: feasible first (the exit inside the routing area, `inside` = a callable on a point, and in no other
+    pedal's outline), then pointing down, then the fewest blocked parts + plug collisions, then the least overlap, then the
+    order of the types; a power cable override `exit_b` / `type_b` fixes the exit / the type). Returns [(pedal id, jack, power
+    cable or None, facing, plug option)], the option has `type`. `taken` {"<id>.<jack id>": [(part, rect)]} = the signal plugs
+    and fixed boxes: a part overlapping one of them counts like a blocked part, and every chosen plug is added to it for the
+    next ones (None: no collision check). A plug pointing down into a hole (`end_options`, `down` = its availability callable)
+    always wins over the side exits (owner decision), unless an override fixes a side; only a right-angle plug can.
+    One style per serial cable: all the pedal plugs of one SERIAL cable (`cable` id) share one type, the one whose plugs have
+    the best summed ranking (a conflicting override `type_b` on two of its legs: a warning, the first leg wins); the legs of a
+    FORKED output pick their own. Sets each power cable's `exit_b`, `type_b` (= `type`, the pedal end's plug) and `type_a` (the
+    supply end's plug: the port's, or for a daisy hop the previous pedal's plug, which is the same one). Also every used port of
+    an on-board supply ("<instance id>" instead of the pedal id; the cable starting at the port, its side is `exit_a`, its type
+    `type_a`: an override `type_a` fixes it; one plug for the legs of a forked output). The ports of under-board supplies get
+    `type_a` = the override, else the default type (nothing is placed there). Empty without a power type."""
     layout = ctx.get("layout") or {}
-    if not ptype or not layout.get("placed"):
+    if not cable_types.get(cfg.get("power_type") or "") or not layout.get("placed"):
         return []
     from jacks import default_jack
-    by_jack = {c["to"]: c for c in cables if c["kind"] == "power"}
-    run = {"exit_run_mm": float(ptype["diameter_mm"]), "jack_height_mm": cfg.get("jack_height_mm", DEFAULTS["jack_height_mm"]),
-           "hole_transit_mm": cfg.get("hole_transit_mm", 0.0)}
+    pcables = [c for c in cables if c["kind"] == "power"]
+    by_jack = {c["to"]: c for c in pcables}
     sink = ctx["errors"] if ctx["project"].get("validation", {}).get("strict_routing") else ctx["warnings"]
     out = []
+
+    # the pedal plugs, in the order of the layout
+    plugs = []   # (pedal id, item, jack, power cable or None, key)
     for cid, it in layout["placed"].items():
         jk = default_jack((layout.get("jacks") or {}).get(cid) or [], "power")
-        if not jk:
-            continue
-        pc = by_jack.get(f"{cid}.{jk['id']}")
-        facing, opts = end_options(it, jk, ptype, (pc or {}).get("exit_b"), run, layout.get("outward_mm", 0), down=down)
-        key = f"{cid}.{jk['id']}"
-        if (pc or {}).get("exit_b") == design.DOWN and not any(o["side"] == design.DOWN for o in opts):
-            sink.append(down_override_finding(pc["id"], "exit_b", key, ptype))
-        for o in opts:
-            o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
-        o = min(opts, key=lambda o: (not o.get("down"), len(o["hits"]) + (collision_count(o, key, taken) if taken is not None else 0),
-                                     sum(min(ov) for _, _, ov in o["hits"])))
-        if taken is not None:
-            taken[key] = list(o["rects"])
+        if jk:
+            plugs.append((cid, it, jk, by_jack.get(f"{cid}.{jk['id']}"), f"{cid}.{jk['id']}"))
+    serial = {}   # serial cable id -> its plugs
+    for pl in plugs:
+        if pl[3] is not None and pl[3].get("style") == SERIAL and pl[3].get("cable"):
+            serial.setdefault(pl[3]["cable"], []).append(pl)
+    cands = {}
+    for cab, members in serial.items():   # the first leg's type_b override fixes the whole cable
+        order = {id(c): n for n, c in enumerate(pcables)}
+        legs = sorted(members, key=lambda pl: order[id(pl[3])])
+        fix = [(pl[3].get("id"), pl[3].get("_fix_b")) for pl in legs if pl[3].get("_fix_b") in cable_types]
+        if len({f for _, f in fix}) > 1:
+            first = fix[0]
+            other = next(x for x in fix if x[1] != first[1])
+            sink.append(f"routing: {first[0]} type_b ({first[1]}) and {other[0]} type_b ({other[1]}) are on the same serial DC cable "
+                        f"{cab}, whose pedal plugs share one type: {first[1]} is used for all")
+        for pl in members:
+            cands[pl[4]] = power_candidates(cable_types, cfg, fix[0][1] if fix else None)
+    pools, decided = {}, {}
+    for cid, it, jk, pc, key in plugs:
+        if key not in cands:
+            cands[key] = power_candidates(cable_types, cfg, (pc or {}).get("_fix_b"))
+        fixed = (pc or {}).get("exit_b")
+        facing, pools[key], honoured = power_plug_pool(it, jk, key, cands[key], cable_types, fixed, cfg, layout, obstacles, down, inside)
+        if not honoured:
+            sink.append(fixed_exit_finding(pc.get("id"), "exit_b", key, fixed, cands[key], cable_types))
+
+    def decide_group(members):   # the type with the best summed ranking for all the pedal plugs of one serial cable
+        best = None
+        for tidx, tid in enumerate(cands[members[0][4]]):
+            local = dict(taken) if taken is not None else None
+            sel, score = [], [0, 0, 0, 0]
+            for m in members:
+                ts = [o for o in pools[m[4]] if o["type"] == tid]
+                if not ts:
+                    break
+                o = min(ts, key=lambda o: plug_rank(o, m[4], local))
+                score = [x + y for x, y in zip(score, plug_rank(o, m[4], local)[:4])]
+                if local is not None:
+                    local[m[4]] = list(o["rects"])
+                sel.append(o)
+            else:
+                if best is None or (score, tidx) < best[0]:
+                    best = ((score, tidx), sel)
+        return best
+    for cid, it, jk, pc, key in plugs:
+        if key not in decided:
+            members = serial.get(pc.get("cable")) if pc is not None and pc.get("style") == SERIAL else None
+            group = decide_group(members) if members and len(members) > 1 and len(cands[key]) > 1 else None
+            if group:
+                for m, o in zip(members, group[1]):
+                    decided[m[4]] = o
+                    if taken is not None:
+                        taken[m[4]] = list(o["rects"])
+            else:
+                decided[key] = min(pools[key], key=lambda o: plug_rank(o, key, taken))
+                if taken is not None:
+                    taken[key] = list(decided[key]["rects"])
+        o = decided[key]
         if pc is not None:
             pc["exit_b"] = o["side"]
-        out.append((cid, jk, pc, facing, o))
-    # the used ports of on-board supplies: the same DC plug at a power_out jack (the cable's supply end, `exit_a`)
+            pc["type_b"] = pc["type"] = o["type"]
+        out.append((cid, jk, pc, design.jack_facing(it, jk["facing"]), o))
+    # the used ports of on-board supplies: the same DC plugs at a power_out jack (the cable's supply end, `exit_a`, `type_a`)
     from jacks import _jack_by_id, placement
-    by_port = {}   # port -> its cables (a forked output has one per pedal: they share the port, so one plug side)
-    for c in cables:
-        if c["kind"] == "power":
-            by_port.setdefault(c["from"], []).append(c)
+    by_port = {}   # port -> its cables (a forked output has one per pedal: they share the port, so one plug side and type)
+    for c in pcables:
+        by_port.setdefault(c["from"], []).append(c)
+    ported = set()
     for s in ctx.get("supplies") or []:
         iid = s["inst"]["id"]
         it = (layout.get("inst_item") or {}).get(iid)
@@ -2079,24 +2225,33 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
                 first = next(c for c in pcs if c.get("exit_a"))
                 sink.append(f"routing: {first['id']} (exit_a {fixed}) and {clash[0]['id']} (exit_a {clash[0]['exit_a']}) leave the same "
                             f"port {iid}.{port}, which has one plug: {fixed} is used for both")
-            facing, opts = end_options(it, jk, ptype, fixed, run, layout.get("outward_mm", 0), down=down)
+            fix_t = [c for c in pcs if c.get("_fix_a") in cable_types]
+            clash_t = [c for c in fix_t if c["_fix_a"] != fix_t[0]["_fix_a"]]
+            if clash_t:
+                sink.append(f"routing: {fix_t[0].get('id')} type_a ({fix_t[0]['_fix_a']}) and {clash_t[0].get('id')} type_a ({clash_t[0]['_fix_a']}) "
+                            f"are at the same port {iid}.{port}, which has one plug: {fix_t[0]['_fix_a']} is used for both")
             key = f"{iid}.{port}"
-            if fixed == design.DOWN and not any(o["side"] == design.DOWN for o in opts):
-                sink.append(down_override_finding(next(c["id"] for c in pcs if c.get("exit_a") == fixed), "exit_a", key, ptype))
-            for o in opts:
-                o["hits"] = blocked_parts(o, it["id"], obstacles, layout.get("shapes"))
-            o = min(opts, key=lambda o: (not o.get("down"), len(o["hits"]) + (collision_count(o, key, taken) if taken is not None else 0),
-                                         sum(min(ov) for _, _, ov in o["hits"])))
+            cs = power_candidates(cable_types, cfg, fix_t[0]["_fix_a"] if fix_t else None)
+            facing, pool, honoured = power_plug_pool(it, jk, key, cs, cable_types, fixed, cfg, layout, obstacles, down, inside)
+            if not honoured:
+                sink.append(fixed_exit_finding(next(c.get("id") for c in pcs if c.get("exit_a") == fixed), "exit_a", key, fixed, cs, cable_types))
+            o = min(pool, key=lambda o: plug_rank(o, key, taken))
             if taken is not None:
                 taken[key] = list(o["rects"])
             for c in pcs:
-                c["exit_a"] = o["side"]
+                c["exit_a"], c["type_a"] = o["side"], o["type"]
+                ported.add(id(c))
             out.append((iid, jk, pc, facing, o))
+    # every other leg: a daisy hop starts at the previous pedal's plug (the same physical plug), an under-board port has no plug on top
+    type_b = {c["to"]: c["type_b"] for c in pcables if c.get("type_b")}
+    for c in pcables:
+        if id(c) not in ported:
+            c["type_a"] = type_b.get(c["from"]) or (c.get("_fix_a") if c.get("_fix_a") in cable_types else None) or cfg["power_type"]
     return out
 
 
 def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, choices=None):
-    """Clearance of every placed pedal's power jack with the project's DC plug (`cables.power_type`): head + barrel
+    """Clearance of every placed pedal's power jack with its DC plug (`cables.power_types`, the type `power_plug_choices` chose): head + barrel
     + the cable's first straight run (one power-cable diameter) on the exit side with the fewest blocked parts
     (`power_plug_choices`, pass its result as `choices` to avoid choosing twice). The power cable then drops under
     the board, so nothing is routed. Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
@@ -2106,10 +2261,10 @@ def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, c
     for cid, jk, pc, facing, o in choices:
         ctx["routing"]["heads"].append({"cable": (pc or {}).get("id"), "rects": o["rects"], **({"down": o["exit"]} if o.get("down") else {})})
         checked.add(f"{cid}.{jk['id']}")
-        how = f"{cfg['power_type']} {cable_types[cfg['power_type']]['plug']['style'].replace('_', '-')} plug" + exit_how(o)
+        how = f"{o['type']} {cable_types[o['type']]['plug']['style'].replace('_', '-')} plug" + exit_how(o)
         for part, ob, depth in deepest_hits(o, facing):
             ctx["violations"].append({"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth,
-                                      "cable": (pc or {}).get("id"), "cable_type": cfg["power_type"], "side": o["side"], "part": part})
+                                      "cable": (pc or {}).get("id"), "cable_type": o["type"], "side": o["side"], "part": part})
             clear_sink.append(f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}, {how}) is blocked by "
                               f"{ob['title']}: it reaches {depth:.1f} mm into the plug's {part}")
     return checked

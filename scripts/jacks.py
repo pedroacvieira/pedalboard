@@ -145,6 +145,13 @@ def validate_jacks_file(data, pedals, supplies):
 
 # --- project check (called from build.validate) -------------------------------------------------
 CLEARANCE_DEFAULT = {"outward_mm": 6.3, "side_mm": 7.0}          # audio jacks without a modelled plug
+def default_power_type(project):
+    """The project's default DC plug type as the router reads it (`routing.settings`): `cables.power_type`, else the first of
+    `cables.power_types`; None without either."""
+    import routing
+    return routing.settings(project)["power_type"]
+
+
 POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
@@ -328,7 +335,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     side = float(jset.get("clearance", {}).get("side_mm", CLEARANCE_DEFAULT["side_mm"]))
     p_out = float(jset.get("power_clearance", {}).get("outward_mm", POWER_CLEARANCE_DEFAULT["outward_mm"]))
     p_side = float(jset.get("power_clearance", {}).get("side_mm", POWER_CLEARANCE_DEFAULT["side_mm"]))
-    power_modelled = bool((project.get("cables") or {}).get("power_type"))
+    power_type_id = default_power_type(project)
+    power_modelled = bool(power_type_id)
     extra_used = jset.get("extra_used", {})
     supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
@@ -392,7 +400,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
                             board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings))
-    ptype = ((cable_types or {}).get((project.get("cables") or {}).get("power_type") or "") or {})
+    ptype = ((cable_types or {}).get(power_type_id or "") or {})
     errors.extend(layout_crossing_errors(ctx, lay, float(ptype.get("diameter_mm") or 0.0) / 2))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
@@ -448,7 +456,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         cable_types = load_cable_types()
 
     def depth(kind, cable_id=None):
-        tid = (project.get("cables") or {}).get("power_type") if kind == "power" else cable_type_id(project, cable_id)
+        tid = power_type_id if kind == "power" else cable_type_id(project, cable_id)
         if tid in cable_types:
             return float(cable_types[tid]["plug"]["head_depth_mm"])
         return p_out if kind == "power" else outward

@@ -220,7 +220,7 @@ class Model:
         self.p_out = float(jset.get("power_clearance", {}).get("outward_mm", jacks.POWER_CLEARANCE_DEFAULT["outward_mm"]))
         self.p_side = float(jset.get("power_clearance", {}).get("side_mm", jacks.POWER_CLEARANCE_DEFAULT["side_mm"]))
         self.extra_used = jset.get("extra_used", {})
-        ptype_id = (project.get("cables") or {}).get("power_type")
+        ptype_id = self.rcfg["power_type"]
         self.ptype = cable_types.get(ptype_id) if ptype_id else None
         self.p_depth = float(self.ptype["plug"]["head_depth_mm"]) if self.ptype else self.p_out
         # (a fixed power plug side (cables.overrides.<P#>.exit_b) belongs to its pedal: the owner's wiring)

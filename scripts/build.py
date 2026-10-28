@@ -468,16 +468,27 @@ def under_cell(c):
     return f"yes ({n} hole{'s' if n != 1 else ''}, {c['under_mm']:.0f} mm)"
 
 
+def power_types_text(cfg, noun=True):
+    """'plug `x`' for one DC type (`noun` False: just '`x`'), else 'plug types `a`, `b`, picked per plug: ...'."""
+    types = cfg.get("power_types") or [cfg["power_type"]]
+    if len(types) < 2:
+        return f"plug `{cfg['power_type']}`" if noun else f"`{cfg['power_type']}`"
+    return (f"plug types {', '.join(f'`{t}`' for t in types)}, picked per plug: pointing down first (right-angle plugs only), then the fewest blocked "
+            f"parts and plug collisions, then the least overlap, then the order of the list; all the pedal plugs of one serial cable share a type, "
+            f"the plug at the supply port may differ; `cables.overrides.<P#>.type_b` / `type_a` fix the pedal-end / port plug's type; the grid is as "
+            f"wide as the widest type in use")
+
+
 def power_text(ctx, cfg):
     """The README paragraph on the power cables: the routing model when they are routed, else why not."""
     pw = ctx["routing"].get("power") or {}
     power = [c for c in ctx.get("cable_list") or [] if c["kind"] == "power"]
     if not any(c["status"].startswith("routed") for c in power):
         return ("Power cables are listed, not routed" + (f" ({power[0]['status']})" if power and power[0]["status"].startswith("not routed (") else "")
-                + (f"; their plug at each pedal's power jack is modelled for clearance (`{cfg['power_type']}`, exit side in the Exits column)."
+                + (f"; their plug at each pedal's power jack is modelled for clearance ({power_types_text(cfg, False)}, exit side in the Exits column)."
                    if cfg.get("power_type") else "."))
     ps = pw["settings"]
-    return (f"Power cables are routed with the same router on their own grid ({pw['diameter_mm']:g} mm wide; plug `{cfg['power_type']}`, "
+    return (f"Power cables are routed with the same router on their own grid ({pw['diameter_mm']:g} mm wide; {power_types_text(cfg)}, "
             f"exit side in the Exits column) and count against each other only: at most {ps['max_stack']} stacked per cell and layer, "
             f"at most {cfg['max_over_plug']} across a power plug. They stay under the board as much as they can: a cable from an "
             f"under-board supply port starts under the board and comes up through the usable hole nearest its pedal's power jack "
@@ -557,7 +568,7 @@ def routing_section(ctx):
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
-        md.append(f"| {c['id']} | {c['kind']} | {c.get('cable') or '-'} | {c['from']} | {c['to']} | {c.get('type') or '-'} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
+        md.append(f"| {c['id']} | {c['kind']} | {c.get('cable') or '-'} | {c['from']} | {c['to']} | {type_cell(c)} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
                   f"{under_cell(c)} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
@@ -566,22 +577,42 @@ def routing_section(ctx):
     return md
 
 
+def type_cell(c):
+    """The Type column: the cable type, for a power cable `type_a / type_b` (supply end / pedal end) when the two plugs differ."""
+    if c["kind"] == "power" and c.get("type_a") and c.get("type_b") and c["type_a"] != c["type_b"]:
+        return f"{c['type_a']} / {c['type_b']}"
+    return c.get("type") or "-"
+
+
+def plug_text(cab):
+    """'1 x dc_ra (port) + 4 x dc_straight' for one DC cable of `power_cable_summary` (a single type: 'N x type')."""
+    pt = cab.get("plug_types") or {}
+    pedals = {}
+    for t in pt.get("pedals") or []:
+        pedals[t] = pedals.get(t, 0) + 1
+    if not pt.get("port") or set(pedals) == {pt["port"]} or not pedals:
+        return f"{cab['plugs']} x {pt.get('port') or '-'}"
+    return " + ".join([f"1 x {pt['port']} (port)", *(f"{n} x {t}" for t, n in pedals.items())])
+
+
 def dc_cable_table(ctx):
     """README lines: the physical DC cables to buy (`ctx["power_cable_summary"]`), one row per cable: a SERIAL output is one
     cable with a plug at the port and one at each pedal (its legs P# are the hops), a FORKED output has one cable per pedal."""
     summary = ctx.get("power_cable_summary") or []
     if not summary:
         return []
+    several = len((ctx.get("routing", {}).get("settings") or {}).get("power_types") or []) > 1   # the project offers several DC plug types
     md = ["", "### DC cables to buy", "",
           "A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the "
           "port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the "
           "supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate, the "
           "cable is not routed).", "",
-          "| DC cable | Style | Output | Route | Plugs | Legs | Min length (mm) | Status |", "|---|---|---|---|--:|---|--:|---|"]
+          "| DC cable | Style | Output | Route | Plugs |" + (" Plug types |" if several else "") + " Legs | Min length (mm) | Status |",
+          "|---|---|---|---|--:|" + ("---|" if several else "") + "---|--:|---|"]
     for c in summary:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         route = " -> ".join([c["from"], *(to.split(".")[0] for to in c["to"])])
-        md.append(f"| {c['id']} | {c['style']} | {c['output']} | {route} | {c['plugs']} | {', '.join(c['legs'])} | {length} | {c['status']} |")
+        md.append(f"| {c['id']} | {c['style']} | {c['output']} | {route} | {c['plugs']} | {plug_text(c) + ' | ' if several else ''}{', '.join(c['legs'])} | {length} | {c['status']} |")
     routed = [c for c in summary if c["min_mm"] is not None]
     if routed:
         md += ["", f"DC cable, minimum: {sum(c['min_mm'] for c in routed):.0f} mm over {len(routed)} cables "
@@ -943,7 +974,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "",
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
         "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
-        "power jacks against the DC plug type (`cables.power_type`) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
+        "power jacks against the DC plug type (`cables.power_type`; with `cables.power_types` the router picks the type per plug) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
         "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). "
         "Plugs and fixed zones of different jacks that overlap each other are reported as plug collisions (same severity as blocked space; the side choice avoids them where it can). All cable figures are in mm.",
         "",
