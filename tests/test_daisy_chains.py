@@ -339,7 +339,7 @@ def test_readme_lists_the_physical_dc_cables_and_keeps_the_per_leg_table():
     assert "### DC cables to buy" in md
     assert "| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 1002 | routed |" in md
     assert "| P7 | power | C6 | red_muck.power | beano.power |" in md                    # the per-leg table keeps every leg, with its cable
-    assert "DC cable, minimum: 3350 mm over 10 cables (10 serial, 0 forked)." in md
+    assert "DC cable, minimum: 3268 mm over 10 cables (10 serial, 0 forked)." in md
     assert "| S1 | signal | - | sun_face.out |" in md
 
 

@@ -454,9 +454,11 @@ def under_cell(c):
             return f"no ({c['top_mm']:.0f} mm on top)"
         n = c.get("holes_used") or 0
         passes = ([f"{n} hole{'s' if n != 1 else ''}"] if n else []) + [f"{side} edge" for side in c.get("edge_sides") or []]
-        return f"{', '.join(passes)}; {c['under_mm']:.0f} mm under, {c['top_mm']:.0f} mm on top"
+        return f"{', '.join(passes) or 'no pass'}; {c['under_mm']:.0f} mm under, {c['top_mm']:.0f} mm on top"   # (no pass: both plugs point down)
     if not c["under_board"]:
         return "no"
+    if c["kind"] == "signal" and c.get("under_mm") and not (c.get("holes_used") or c.get("edges_used")):
+        return f"yes (no pass, {c['under_mm']:.0f} mm)"   # both plugs point down into holes
     if c["kind"] != "signal" or not (c.get("holes_used") or c.get("edges_used")):
         return "yes"
     n = c["holes_used"]
@@ -487,6 +489,18 @@ def power_text(ctx, cfg):
             f"A power cable that runs more than {routing.POWER_TOP_WARN_MM:g} mm on top is reported.")
 
 
+def down_text(ctx, cfg):
+    """README sentence on right-angle plugs pointing down into a board hole (only when cables can go under the board)."""
+    routing_ = ctx["routing"]
+    if routing_.get("under") is None or not (ctx.get("layout") or {}).get("holes"):
+        return ""
+    return (f"A right-angle plug may also point straight down into a board hole (`down` in the Exits column; the square of one cable width "
+            f"at the plug's bend point must lie inside the holes and clear of the under-board supplies): where that is possible it is "
+            f"always chosen, even if the cable gets longer, and the cable continues under the board. The cable down to the hole is the "
+            f"jack height (`cables.jack_height_mm`, {cfg['jack_height_mm']:g} mm, an unverified estimate of the jack axis above the deck) "
+            f"plus the deck ({cfg.get('hole_transit_mm', 0):g} mm). `cables.overrides.<id>.exit_a` / `exit_b` accept `down`. ")
+
+
 def routing_section(ctx):
     """README section: routed signal cables (picture + table) and the power cable list."""
     cables = ctx.get("cable_list") or []
@@ -514,7 +528,7 @@ def routing_section(ctx):
              f"`cables.under_board: false` keeps every cable on top). " if under else "")
           + (f"Plugs are modelled (default cable type `{cfg['type']}`, catalog/cables.json): a right-angle plug's cable leaves the head to the "
              f"left or right of the jack's facing (chosen per end: fewest blocked plugs and plug collisions, then the shortest route), runs "
-             f"{cfg['exit_run_mm']:g} mm straight, then is routed. "
+             f"{cfg['exit_run_mm']:g} mm straight, then is routed. " + down_text(ctx, cfg)
              if cfg.get("type") else "No cable type is set (`cables.type`), so cables leave each jack straight out by the fixed clearance depth. ")
           + power_text(ctx, cfg), ""]
     if any(c["kind"] == "power" and c.get("stretches") for c in ctx.get("cable_list") or []):
@@ -579,7 +593,7 @@ def violation_where(v):
     """'3.2 mm into the power zone' or '3.2 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits left'."""
     if not v.get("cable_type"):
         return f"{v['depth_mm']:.1f} mm into the {v.get('zone', 'audio')} zone"
-    side = f", cable exits {v['side']}" if v.get("side") else ""
+    side = ", plug points down" if v.get("side") == "down" else f", cable exits {v['side']}" if v.get("side") else ""
     part = "cable run" if v["part"] == "cable" else v["part"]
     return f"{v['depth_mm']:.1f} mm into the {part} of the {v['cable_type']} plug{side}"
 
