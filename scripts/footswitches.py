@@ -217,8 +217,9 @@ def effective_distance(distance_mm, n_toppers, bonus_mm):
     return distance_mm + n_toppers * bonus_mm
 
 
-def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers=None, min_gain=TOPPER_MIN_GAIN):
-    """Greedy topper suggestions (pure; post-layout, never during the search).
+def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None):
+    """Greedy topper suggestions (pure; post-layout, never during the search). `max_toppers` default MAX_TOPPERS (None =
+    no cap), `min_gain` default TOPPER_MIN_GAIN, both read when called (one source with `topper_settings`).
 
     `pts` = points (key, type, y), `prs` = pairs (a, b, a_type, b_type, plain distance_mm), `existing` = keys that
     already have a topper (they count towards `max_toppers`). Each step tries a topper on every switch that is in at
@@ -227,6 +228,8 @@ def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppe
     y). Stops at the cap, when no crowding is left, or when the best gain < min_gain x the crowding before suggesting
     (fixed at the start). Returns {"before": crowding with `existing`, "after": crowding with all, "suggestions":
     [{key, type, gain, crowding_after}]}."""
+    max_toppers = MAX_TOPPERS if max_toppers == "default" else max_toppers
+    min_gain = TOPPER_MIN_GAIN if min_gain is None else min_gain
     have = set(existing)
     info = {p["key"]: p for p in pts}
     own = {}   # switch key -> [(pair, pair priority)]

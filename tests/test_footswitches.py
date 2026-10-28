@@ -451,8 +451,9 @@ def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path, old_topp
             "(effective with toppers, 76.2 mm plain) (min 90.0 mm)") in md
 
 
-def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, min_gain=0.05):
+def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, min_gain=None):
     """The straightforward greedy (whole-board crowding for every candidate): the reference for suggest_toppers."""
+    min_gain = fsw.TOPPER_MIN_GAIN if min_gain is None else min_gain
     have = set(existing)
     info = {p["key"]: p for p in pts}
 

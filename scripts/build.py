@@ -643,7 +643,7 @@ def footswitch_section(ctx, cat_pedals):
            + "Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), "
            "tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).", ""]
     md += ["Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. "
-           f"A topper adds {bonus:g} mm (`footswitches.topper_bonus_mm`, unverified) to the effective distance of every pair "
+           f"A topper adds {bonus:g} mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair "
            "its switch is in (both switches of a pair: twice); crowding uses the effective distance. "
            + (f"Toppers set (`footswitches.toppers`): {', '.join(toppers)}." if toppers else "No toppers are set."), ""]
     prs = ctx.get("footswitch_pairs") or []
@@ -916,7 +916,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "uv run pytest tests                       geometry and jack-check tests",
         "```",
         "",
-        f"Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default {footswitches.TOPPER_BONUS_MM:g} mm: the height a topper adds, a rough proxy) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.",
+        f"Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default {footswitches.TOPPER_BONUS_MM:g} mm: the height a topper adds, a rough proxy, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
