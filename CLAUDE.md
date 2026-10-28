@@ -182,10 +182,11 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   cables (plugs, min_mm = sum of legs, None if a leg is unrouted); README "DC cables to buy"; `power.assign` and the
   surrogate: forked = sum of port -> pedal estimates, serial = chain order. Constants `routing.SERIAL` / `FORKED`.
 - Footswitch toppers (owner, 2026-10-27): per project `footswitches.toppers` ["<pedal>.<switch>"], set by hand;
-  a pair's effective distance = d + `topper_bonus_mm` (10, unverified) per topper on it; the build's crowding and
+  a pair's effective distance = d + `topper_bonus_mm` per topper on it (default 4.5 mm = the height a topper
+  adds, RockBoard StomPete, retailer listing: a rough proxy, owner 2026-10-28); the build's crowding and
   `min_distance_mm` use the effective distance, the README also shows it without toppers. Post-layout suggestions
   (`footswitches.suggest_toppers`, greedy: largest crowding reduction, ties more crowded pairs > type priority > nearer
-  the front; stop at `max_toppers` or below `topper_min_gain` 0.05 of the crowding). The layout search, the proposal
+  the front; stop at `max_toppers` (default 5 per board, owner; null = no cap) or below `topper_min_gain` 0.02 of the crowding). The layout search, the proposal
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
