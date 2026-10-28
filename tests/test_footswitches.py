@@ -230,10 +230,29 @@ def test_svg_has_a_marker_style_per_type():
 
 
 # --- toppers ---------------------------------------------------------------------------------------
+@pytest.fixture
+def old_topper_defaults(monkeypatch):
+    """The defaults these hand-computed cases were written with (10 mm per topper, no cap, 5 % minimum gain)."""
+    monkeypatch.setattr(fsw, "TOPPER_BONUS_MM", 10.0)
+    monkeypatch.setattr(fsw, "MAX_TOPPERS", None)
+    monkeypatch.setattr(fsw, "TOPPER_MIN_GAIN", 0.05)
+
+
+def test_topper_defaults_are_the_added_height_and_a_cap_of_five(tmp_path):
+    assert (fsw.TOPPER_BONUS_MM, fsw.MAX_TOPPERS, fsw.TOPPER_MIN_GAIN) == (4.5, 5, 0.02)
+    st, problems, _ = fsw.topper_settings({}, set(), set())
+    assert not problems and (st["bonus_mm"], st["max_toppers"], st["min_gain"]) == (4.5, 5, 0.02)
+    st, problems, _ = fsw.topper_settings({"footswitches": {"max_toppers": None}}, set(), set())
+    assert not problems and st["max_toppers"] is None                    # explicit null: no cap
+    ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"toppers": ["a.bypass"]}})
+    (pair,) = ctx["footswitch_pairs"]
+    assert pair["effective_mm"] == pytest.approx(pair["distance_mm"] + 4.5)
+
+
 TOP = {"footswitches": {"toppers": ["a.bypass"]}}
 
 
-def test_effective_distance_and_crowding_with_zero_one_two_toppers(tmp_path):
+def test_effective_distance_and_crowding_with_zero_one_two_toppers(tmp_path, old_topper_defaults):
     """76.2 mm bypass pair, comfort 100, bonus 10: d_eff 76.2 / 86.2 / 96.2 -> crowding 23.8^2/100 = 5.6644,
     13.8^2/100 = 1.9044, 3.8^2/100 = 0.1444."""
     assert fsw.effective_distance(76.2, 0, 10) == 76.2 and fsw.effective_distance(76.2, 2, 10) == pytest.approx(96.2)
@@ -249,7 +268,7 @@ def test_effective_distance_and_crowding_with_zero_one_two_toppers(tmp_path):
     assert ctx["footswitch_pairs"][0]["effective_mm"] == pytest.approx(96.2)
 
 
-def test_minimum_distance_uses_the_effective_distance(tmp_path):
+def test_minimum_distance_uses_the_effective_distance(tmp_path, old_topper_defaults):
     proj = {"footswitches": {"min_distance_mm": 80, "toppers": ["a.bypass"]}}
     assert foot(run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"min_distance_mm": 80}}))   # 76.2 < 80
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)                                            # 86.2 >= 80
@@ -334,7 +353,7 @@ def test_cap_threshold_existing_and_none_needed():
     assert far["before"] == 0 and far["suggestions"] == []
 
 
-def test_readme_section_with_toppers_and_suggestions(tmp_path):
+def test_readme_section_with_toppers_and_suggestions(tmp_path, old_topper_defaults):
     import build
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=TOP)
     md = "\n".join(build.footswitch_section(ctx, PEDALS))
@@ -372,7 +391,7 @@ def test_svg_draws_rings_for_toppers_and_suggestions(tmp_path):
     assert 'class="topper"' not in plain and "solid ring" not in plain
 
 
-def test_duplicate_topper_is_a_warning_and_counted_once(tmp_path):
+def test_duplicate_topper_is_a_warning_and_counted_once(tmp_path, old_topper_defaults):
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project={"footswitches": {"toppers": ["a.bypass", "a.bypass"]}})
     assert ctx["errors"] == [] and any("a.bypass is listed twice" in w for w in ctx["warnings"])
     assert ctx["footswitch_settings"]["toppers"] == ["a.bypass"] and ctx["footswitch_pairs"][0]["toppers"] == 1
@@ -393,7 +412,7 @@ def test_topper_on_a_pedal_without_footswitch_data_is_a_warning(tmp_path):
     assert any("b.bypass is not a footswitch" in e for e in ctx["errors"])
 
 
-def test_pair_text_and_plain_flags(tmp_path):
+def test_pair_text_and_plain_flags(tmp_path, old_topper_defaults):
     proj = {"footswitches": {"min_distance_mm": 90, "toppers": ["a.bypass"]}}
     (pair,) = run(tmp_path, [A(), B()], ONE_EACH, project=proj)["footswitch_pairs"]
     assert fsw.pair_text(pair) == "86.2 mm apart (effective with toppers, 76.2 mm plain)"
@@ -405,7 +424,7 @@ def test_pair_text_and_plain_flags(tmp_path):
     assert fsw.pair_text(pair) == "76.2 mm apart"
 
 
-def test_empty_suggestion_messages_and_the_cap_note(tmp_path):
+def test_empty_suggestion_messages_and_the_cap_note(tmp_path, old_topper_defaults):
     import build
     two = [A(), B()]
     cfg = lambda **kw: {"footswitches": kw}
@@ -421,7 +440,7 @@ def test_empty_suggestion_messages_and_the_cap_note(tmp_path):
     assert "no cap (`footswitches.max_toppers`)" in md(run(tmp_path, two, ONE_EACH))
 
 
-def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path):
+def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path, old_topper_defaults):
     import build
     proj = {"footswitches": {"min_distance_mm": 90, "toppers": ["a.bypass"]}}
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)
