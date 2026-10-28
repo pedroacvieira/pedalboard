@@ -54,5 +54,5 @@
     "extra_used": {},
     "supplies_layer": "under"
   },
-  "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} }
+  "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {} }
 }

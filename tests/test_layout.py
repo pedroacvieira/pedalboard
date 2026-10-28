@@ -120,7 +120,7 @@ def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]}
     want = {(v["jack"], v["obstacle"], v["part"], round(v["depth_mm"], 1)) for v in ctx["violations"]}
-    assert got == want and len(got) == 2   # red_muck.power was blocked by the Analog Chorus box, not its outline
+    assert got == want and len(got) == 4   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm)
 
 
 # --- cable lengths --------------------------------------------------------------------------------
@@ -249,7 +249,8 @@ def gig_assignment():
     pedals, supplies, ctx = gig_build()   # (read only by every caller)
     lay, project = ctx["layout"], ctx["project"]
     insts = [{**i, "sup": supplies[i["supply"]]} for i in project["power"]["supplies"]]
-    pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, lay["jacks"], 11.0)
+    pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, lay["jacks"],
+                                     load_cable_types()[project["cables"]["power_type"]]["plug"]["head_depth_mm"])
     return pedals, supplies, ctx, project, insts, pts, ports
 
 

@@ -1,6 +1,6 @@
 # Plan: `feat/plug-orientation`: plugs pointing down into a hole, straight DC plugs, plug-to-plug collisions
 
-Status: plan (2026-10-28), branch `feat/plug-orientation` (created from `main` at the commit that adds this file).
+Status: in progress (2026-10-28), branch `feat/plug-orientation` (created from `main` at the commit that adds this file).
 This file is the entry point for a new conversation: read it, then `CLAUDE.md`, then follow "How to run this".
 
 ## How to run this (for the agent that picks this up)
@@ -133,8 +133,24 @@ How to use them (for the phase handovers):
   will change once the catalog is updated: list them before / after.
 
 ### Answers to "Decisions to confirm"
-(to be filled in by the agent that runs this plan; question 3 is partly answered by the measurements above: the
-straight plug's size is known, mixing plug styles on one cable is real)
+Owner, 2026-10-28:
+1. `jack_height_mm`: one project default `cables.jack_height_mm` = 12 (unverified estimate; per pedal later).
+2. Down preference: **always down when available**, even if longer (least 2D space). Ranking per end: feasible
+   first (inside the area, free path), then down before left/right, then blocked parts + collisions, then length.
+   (Down's footprint is the head only, a subset of a side exit's, so it never has more blocked parts.)
+3. Plug styles on one cable: **one style per serial cable**: all the pedal-end plugs of a serial daisy-chain cable
+   share one plug type; only the port plug (the supply end) may differ. A forked cable (one per pedal today) picks
+   its pedal-end type per cable. The straight DC size = the owner baseline above.
+4. Collisions with the fixed boxes of first input / last output (guitar / amp cables): **yes**, they count as plugs.
+5. Signal plugs down too: **yes** (same model as the power plugs).
+
+### Catalog step (done before phase 1, commit "plug-orientation: owner-measured DC plugs")
+New types `dc_ra_owner_baseline` (right-angle 12 x 8, body reach 19) and `dc_straight_owner_baseline` (straight
+34 x 10), both "owner baseline, may be smaller"; gig and practice `cables.power_type` = `dc_ra_owner_baseline` (a new
+type rather than editing `dc_ra_2_1_low_profile`, so the RockBoard reference data stays as published). Gig effect:
+every power cable a bit longer (P13 278 -> 287 mm, DC total 3231 -> 3344 mm), exits unchanged (all left); clearance
+findings 2 -> 4: monk.power 9.0 -> 15.0 mm (barrel), new red_muck.power / analog_chorus.power heads 1.0 / 1.3 mm
+(their 12 mm deep heads now reach each other's pedal).
 
 ## Acceptance
 - `uv run pytest tests -q` passes (+ hand-computed tests per phase: collision depth, down availability at a hole edge,

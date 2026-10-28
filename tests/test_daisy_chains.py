@@ -129,9 +129,9 @@ def test_serial_summary_on_the_gig_is_the_sum_of_the_legs():
     assert c6["min_mm"] == pytest.approx(sum(legs[p]["min_mm"] for p in c6["legs"]))
     assert c6["to"] == ["red_muck.power", "beano.power", "danelectro_3699.power", "sun_face.power"]
     assert all(legs[p]["cable"] == "C6" and legs[p]["style"] == "serial" for p in c6["legs"])
-    # the legs themselves are the routes and lengths of the owner's wiring from before the feature
-    assert [round(legs[p]["min_mm"]) for p in ("P6", "P7", "P8", "P9")] == [82, 383, 213, 258]
-    assert round(c6["min_mm"]) == 936
+    # the legs themselves are the routes and lengths of the owner's wiring (measured DC plug, dc_ra_owner_baseline)
+    assert [round(legs[p]["min_mm"]) for p in ("P6", "P7", "P8", "P9")] == [82, 386, 223, 267]
+    assert round(c6["min_mm"]) == 958
 
 
 def test_forked_cables_of_the_gig_route_from_the_port_and_each_has_its_own_length():
@@ -141,8 +141,8 @@ def test_forked_cables_of_the_gig_route_from_the_port_and_each_has_its_own_lengt
     assert len(summary) == 17 and all(c["plugs"] == 2 and len(c["legs"]) == 1 for c in summary.values())
     assert all(c["status"] == "routed" for c in summary.values())
     assert summary["C7"]["min_mm"] == pytest.approx(legs["P7"]["min_mm"])
-    # beano is fed from the port now, not from red_muck's plug: that cable is a port -> beano route (302 mm in the gig layout)
-    assert legs["P7"]["from"] == "psu2.F1" and round(legs["P7"]["min_mm"]) == 302
+    # beano is fed from the port now, not from red_muck's plug: that cable is a port -> beano route (304 mm in the gig layout)
+    assert legs["P7"]["from"] == "psu2.F1" and round(legs["P7"]["min_mm"]) == 304
     assert round(sum(c["min_mm"] for c in summary.values())) > 3231 - 1500                 # sanity: a real total, not zero
 
 
@@ -337,9 +337,9 @@ def test_readme_lists_the_physical_dc_cables_and_keeps_the_per_leg_table():
     pedals, supplies, ctx = gig_build()
     md = build.project_readme(ctx, pedals)
     assert "### DC cables to buy" in md
-    assert "| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 936 | routed |" in md
+    assert "| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 958 | routed |" in md
     assert "| P7 | power | C6 | red_muck.power | beano.power |" in md                    # the per-leg table keeps every leg, with its cable
-    assert "DC cable, minimum: 3231 mm over 10 cables (10 serial, 0 forked)." in md
+    assert "DC cable, minimum: 3344 mm over 10 cables (10 serial, 0 forked)." in md
     assert "| S1 | signal | - | sun_face.out |" in md
 
 
@@ -365,7 +365,7 @@ def test_power_picture_labels_physical_cables_and_tables_one_row_per_cable():
     names = {pid: pedals[pid]["name"] for pid in ctx["chain"]}
     svg = svgdraw.render_power(ctx, names)
     assert svg.count('class="legend-row"') == 10 and 'data-id="C6"' in svg and 'data-id="P6"' not in svg.split("legend-row")[-1]
-    assert "serial: " in svg and "936 mm" in svg
+    assert "serial: " in svg and "958 mm" in svg
 
 
 # --- review fixes -------------------------------------------------------------------------------------------

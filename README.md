@@ -35,7 +35,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 2 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 4 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -47,7 +47,9 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 ### Guitar gig board
 
 - Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits right); move one of the pedals apart
-- Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (9.0 mm into the barrel of the dc_ra_2_1_low_profile plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `analog_chorus.power` is blocked by Jam Pedals Red Muck (1.3 mm into the head of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
+- Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (15.0 mm into the barrel of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
 
 ### Guitar practice board
 
