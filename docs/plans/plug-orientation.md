@@ -107,7 +107,30 @@ The owner's two ways of solving it:
 5. Signal plugs down too (recommended: yes, same model; patch plugs are right-angle).
 
 ## Owner decisions, round 2
-(to be filled in by the agent that runs this plan)
+### Measurements (owner, 2026-10-28: one random power cable, one end straight, the other angled)
+Clearance needed around each plug, measured from the jack (mm):
+- **Right-angle DC plug**: 12 outwards (along the facing); on the side it bends to 19 (from the jack axis, where the
+  cable leaves the body); on the opposite side 4 (= the head's radius). Pointing DOWN it needs only 4 to each side
+  and the same 12 outwards.
+- **Straight DC plug**: 34 outwards; radius 5 (10 wide in all: 5 to each side).
+How to use them (for the phase handovers):
+- Update `catalog/cables.json` `dc_ra_2_1_low_profile` (or add a new measured type and make it the gig's
+  `cables.power_type`; say which and why): `head_depth_mm` 12, `head_width_mm` 8 (2 x 4), `body_reach_mm` 19;
+  `exit_offset_mm` stays the default (depth / 2) unless the owner gives it; `verified`: "owner measured a random DC
+  cable, 2026-10-28". Keep the RockBoard figures in the notes.
+- The down exit's footprint = the head only: 12 deep x 8 wide (4 to each side of the jack axis), exactly as measured.
+- Phase 3 straight DC type (role power, style straight): `head_depth_mm` 34, `head_width_mm` 10; cable diameter
+  unknown: keep the right-angle type's diameter and mark it unverified.
+- The measured cable has one straight and one angled end: a power cable may need a DIFFERENT plug type per end
+  (the plug at the supply port vs at the pedal). Phase 3 must allow a type per end (e.g. `type_a` / `type_b` in
+  `cables.overrides.<P#>`, or `power_types` per end), not one type per cable.
+- Effect to report: today's `dc_ra_2_1_low_profile` is 11 deep x 11 wide with the body reaching 14.5; the measured
+  plug is deeper (12), narrower (8) and reaches further on its bend side (19), so the gig's power clearance findings
+  will change once the catalog is updated: list them before / after.
+
+### Answers to "Decisions to confirm"
+(to be filled in by the agent that runs this plan; question 3 is partly answered by the measurements above: the
+straight plug's size is known, mixing plug styles on one cable is real)
 
 ## Acceptance
 - `uv run pytest tests -q` passes (+ hand-computed tests per phase: collision depth, down availability at a hole edge,

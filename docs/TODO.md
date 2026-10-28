@@ -16,7 +16,8 @@ ideas · 5 data · 6 done.
 - [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
       to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
       `verified` list.
-- [ ] **Ojai DC plug**: depth from the jack face, width, height, and the cable thickness. Today
+- [ ] **Ojai DC plug** (a random DC cable was measured by the owner 2026-10-28: right-angle 12 out / 19 bend side / 4
+      other side, straight 34 out / 5 radius; used in `docs/plans/plug-orientation.md`; the Ojai's own plug is still open): depth from the jack face, width, height, and the cable thickness. Today
       `dc_ra_2_1_low_profile` (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation, ~11 mm deep) is deeper than the
       Ernie Ball plug, against the owner's expectation; RockBoard's own page also gives 5/16 in height.
 - [ ] Confirm the power-jack fallback box `jacks.power_clearance` (5.5 x 5.5 mm, estimate; only used without a
