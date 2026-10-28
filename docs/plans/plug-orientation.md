@@ -113,6 +113,10 @@ Clearance needed around each plug, measured from the jack (mm):
   cable leaves the body); on the opposite side 4 (= the head's radius). Pointing DOWN it needs only 4 to each side
   and the same 12 outwards.
 - **Straight DC plug**: 34 outwards; radius 5 (10 wide in all: 5 to each side).
+Owner (2026-10-28): this cable is probably bigger than most of the owner's own; the straight plugs (and maybe the
+right-angle ones) are likely smaller. Use these values as the BASELINE; the owner updates them later. So: keep every
+plug dimension in `catalog/cables.json` (data, never hard-coded), mark them "owner baseline, may be smaller", and keep
+the code and tests independent of the exact values (tests use their own synthetic plug types).
 How to use them (for the phase handovers):
 - Update `catalog/cables.json` `dc_ra_2_1_low_profile` (or add a new measured type and make it the gig's
   `cables.power_type`; say which and why): `head_depth_mm` 12, `head_width_mm` 8 (2 x 4), `body_reach_mm` 19;
