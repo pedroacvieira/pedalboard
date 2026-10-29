@@ -87,6 +87,25 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - Open: drag pedals in the Board tab and save as a new layout file (never `playground_design.json` itself)?
 
 ## 4. Later / ideas
+- [ ] **Jack / footswitch templates per enclosure family** (owner, 2026-10-29): pedals of one brand and one enclosure
+      size usually share their in / out / power jack and footswitch positions (exceptions exist, so a template is a
+      proposal, never verified data). Families: EHX Pico / Nano / normal / double, MXR mini / normal / double, Boss
+      compact (all single pedals), 200-series and 500-series, also JHS, JAM, Wampler. Owner's examples: Wampler Mini Ego
+      and Ratsbane, Jam Red Muck and Monk, TC PolyTune 2 / 3 and Ditto look alike.
+      - Data: `catalog/templates.json` (or similar): per family the jacks and footswitches in image fractions (as
+        `catalog/jacks.json` / `footswitches.json`) and how to recognise members (brand + Pedal Playground size,
+        within a tolerance); a pedal may name its family by hand.
+      - Use: for a pedal without jack / footswitch data, propose the template (pedal editor: "apply template", then the
+        owner checks and saves; `--list-missing` names the matching template); never use unconfirmed template data
+        silently in the build (or only as a marked estimate: decide in the plan).
+      - Detection help: signal jacks often show as bumps on the outline (`catalog/outlines.json`): snap or suggest jack
+        positions from them.
+      - Footswitch shape: Boss compact pedals have one big rectangular pedal-style switch, not a small round one: add an
+        optional rectangular footswitch (`shape` round|rect, width x height) to `catalog/footswitches.json`, the
+        editor, the spacing model (distance between shapes, not centres) and the drawing.
+      - Test cases (owner): the candidate pedals added 2026-10-29 (section 5): boss_dd8 (Boss compact: template +
+        rectangular switch), boss_dd200 (200-series), ehx_pico_pog / ehx_pico_pitch_fork (EHX Pico pair), jhs_angry_charlie
+        / jhs_the_violet (JHS), against the owner's placed pedals of the same families.
 - Power-cable inventory (owned DC cable models, fit, automatic style / cable choice): PARKED by the owner (2026-10-29),
   plan kept in `docs/plans/power-cable-inventory.md`. DC cables are cheap and easy to get; not relevant for now.
 - DIY patch cables: when the owner builds a board with DIY patch cables, cut lengths (plug allowances on top of the
@@ -114,6 +133,15 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
       bonus of its own, a low one at the back a penalty).
 
 ## 5. Data
+- [ ] **Pedal Playground moved its images (found 2026-10-29)**: `common.fetch_image` (`app/images/pedals/<name>.png`,
+      `public/images/pedals/<name>.png`) now gets a 2886-byte HTML page with HTTP 200 for every pedal; the new site has
+      `https://pedalplayground.com/catalog/catalog.json` with `assets.pedals[<image name>].img` = a hashed `.webp` under
+      `/catalog/` (350 px wide, same aspect). Fix `fetch_image` (and check the DB cache refresh, `.cache/pedals.json`);
+      reject HTML responses. The six new pedals' images were fetched by hand that way into `.cache/images/`.
+- [ ] Candidate pedals added 2026-10-29 (catalog only, `owned: false`): boss_dd8, boss_dd200, jhs_angry_charlie (V3),
+      jhs_the_violet, ehx_pico_pog, ehx_pico_pitch_fork. Unverified: BOSS polarity (from the PSA-S adaptor) and DD-200
+      voltage; Angry Charlie 9-18 V (2016 JHS manual); every Violet figure (retailers only). Before moving one into a
+      project: jacks and footswitches with `scripts/pedal_editor.py <id>`.
 - [ ] Items in the generated README's "Data to verify" (power specs, Reticon, Protein, version assumptions).
 
 ## 6. Done (merged into main; details in the plans and handovers)

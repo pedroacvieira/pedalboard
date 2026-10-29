@@ -98,5 +98,5 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon
+JHS Double Dragon, BOSS DD-8 Digital Delay, BOSS DD-200 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
 
