@@ -68,13 +68,6 @@ ideas · 5 data · 6 done.
       both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
       cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
       signal plugs already do. The layout surrogate's power estimate should follow.
-- [ ] **Cable ids (owner, 2026-10-29)**: today S# = signal cable, P# = one power leg (jack to jack hop), C# = one
-      physical DC cable (a daisy chain of legs, "DC cables to buy"). Decided (owner, 2026-10-29): every power cable
-      you buy is **P#** (as every signal cable is S#); the legs of a daisy chain (plug to plug) are **P#.1, P#.2 ...**
-      in chain order (e.g. C10 -> P10 = P10.1 SW_B -> phase_95 + P10.2 phase_95 -> retrovibe); a single-leg cable is
-      just P#. No C# any more. `cables.overrides` keys move to the new ids (P# for a single leg, P#.n for a leg;
-      migrate the gig's overrides, old keys an error with a hint), `power.remap_overrides`, README tables ("DC cables
-      to buy" shows each leg's min length as the minimum plug spacing), SVG labels and tests follow.
 - Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
   S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.
 
