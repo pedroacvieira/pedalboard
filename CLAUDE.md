@@ -16,9 +16,9 @@ system; add a dependency with `uv add <pkg>` (dev-only: `uv add --dev`), run eve
 with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH (ROS) are not loaded.
 
 Focus (owner, 2026-10-29): be able to assemble the board and GUARANTEE that pedals, plugs and cables fit; model as many
-physical aspects as possible. Cable lengths are optimised as a feasibility guarantee (no huge cables), not for exact
-lengths: the owner's DC cables are cheap (a longer one gets folded and tied; no inventory of owned DC cables). Precise
-lengths matter later, for a board with DIY patch cables.
+physical aspects as possible. Every cable gets a PRECISE minimum required length (`min_mm`): the owner uses it to pick
+a cable that is long enough (a longer DC cable gets folded and tied). Lengths are optimised so no huge cables are
+needed, but the tool does not track or match the owner's own cables (no DC cable inventory, owner 2026-10-29).
 
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,

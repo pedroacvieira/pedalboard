@@ -58,8 +58,8 @@ ideas · 5 data · 6 done.
 Order (owner, 2026-10-29): pedal preferences -> web UI. Next: `feat/pedal-preferences` (no plan file yet: write
 `docs/plans/pedal-preferences.md` first, owner decisions, then handovers).
 Project focus (owner, 2026-10-29): be able to assemble the board and guarantee that pedals, plugs and cables FIT;
-model as many physical aspects as possible and keep optimising lengths, but as a feasibility guarantee (no huge
-cables), not for exact DC lengths. Precise lengths matter later for DIY patch cables.
+model as many physical aspects as possible; every cable gets a precise minimum required length, from which the owner
+picks a long-enough cable (no tracking of owned cables). Lengths are optimised so no huge cables are needed.
 
 ### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
 Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
@@ -89,8 +89,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 ## 4. Later / ideas
 - Power-cable inventory (owned DC cable models, fit, automatic style / cable choice): PARKED by the owner (2026-10-29),
   plan kept in `docs/plans/power-cable-inventory.md`. DC cables are cheap and easy to get; not relevant for now.
-- DIY patch cables: when the owner builds a board with DIY patch cables, precise per-cable lengths (cut lengths,
-  plug allowances) become the goal; today's `min_mm` is a feasibility minimum.
+- DIY patch cables: when the owner builds a board with DIY patch cables, cut lengths (plug allowances on top of the
+  precise `min_mm`) may be wanted.
 - [ ] Layouts for `guitar-practice` and `bass` (`playground_design.json`), so their cables and clearance are checked.
       The Harley Benton ISO-5 Pro has no Pedal Playground entry (`playground_title`), so it never appears in a layout
       and has no outline. Practice board: out of scope for now (owner, 2026-10-22); its Ojai R30 is still to buy.

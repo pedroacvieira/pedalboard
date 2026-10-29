@@ -3,8 +3,8 @@
 Status: **PARKED (owner, 2026-10-29)**: not planned now. Kept for reference only; do not start it without the owner.
 Owner: "Power cables are rather cheap and I can get them very easily. The most important focus of this project is to be
 able to assemble the pedalboard and to guarantee that cables and pedals can fit on it." A 10 cm or a 30 cm DC cable is
-almost the same (the longer one gets folded and tied); length optimisation is there to guarantee a feasible board, not
-to match owned cables. Precise lengths matter later, for a board with DIY patch cables.
+almost the same (the longer one gets folded and tied). The owner wants PRECISE minimum required lengths per cable and
+picks the cables from them; matching the owned cables is not the tool's job.
 
 ## How to run this (for the agent that picks this up)
 1. Read `CLAUDE.md` (conventions, working agreements) and this plan. Do not read old handovers.
