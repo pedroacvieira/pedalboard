@@ -197,18 +197,19 @@ def placement(inst, project):
 
 
 def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None, board_data=None,
-                      board_edits=None):
+                      board_edits=None, board_bounds=None):
     """Which layout item is which chain pedal / supply instance, the board and the obstacles.
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
     "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
-    "holes" [canvas rects], "edge_segments" [((x0, y0), (x1, y1), side) canvas segments], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
+    "holes" [canvas rects], "usable" (x0, y0, x1, y1) canvas mm: where pedals may sit, "edge_segments" [((x0, y0), (x1, y1), side) canvas segments], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
     instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
     "on_board"; the outline of every obstacle,
     placed item and under-board supply item, its box without an outline; `no_outline` lists the obstacles / placed items without one; the board's
     holes (the router's under-board layer uses them);
     `outlines`: catalog/outlines.json, read if None; `board_data`: usable catalog/boards.json entries, read if None;
-    `board_edits`: the project's board.json boxes, none if None); placement problems go to `warnings` / `clear_sink` (missing
+    `board_edits`: the project's board.json boxes, none if None; `board_bounds`: boards.load_bounds of the project, the image
+    edges if None: `usable` is the board footprint then, None without a board); placement problems go to `warnings` / `clear_sink` (missing
     chain pedal)."""
     supplies_layer = jset.get("supplies_layer", "under")
     by_title = items_by_title(items)
@@ -254,9 +255,44 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     entry = board_data.get((board or {}).get("image") or "") or {}
     holes = design.board_holes(board, entry.get("holes"), board_edits)
     edge_segments = design.board_edges(board, board_edits)
-    return {"board": board, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
+    usable = design.board_bounds(board, board_bounds)
+    return {"board": board, "usable": usable, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
             "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes,
             "edge_segments": edge_segments, "hole_transit_mm": entry.get("hole_transit_mm"), "edge_transit_mm": entry.get("edge_transit_mm")}
+
+
+OUTSIDE_MIN_MM = 0.05   # a box past the usable area by less than this is not reported (it would print as 0.0 mm)
+
+
+def outside_usable(lay):
+    """The items on top of the board whose Pedal Playground box (`design.footprint`) lies outside `lay["usable"]`: [(item,
+    side, mm)] in layout order, `side` = the worst side (back / front / left / right of the canvas), `mm` how far past it.
+    Items checked: `lay["obstacles"]` (chain pedals, other pedals, ON-BOARD supplies); under-board supplies never (owner
+    decision: their placement is kept even outside the bounds). [] without a board."""
+    usable = lay.get("usable")
+    if not usable:
+        return []
+    out = []
+    for it in lay["obstacles"]:
+        x0, y0, x1, y1 = design.footprint(it)
+        past = {"left": usable[0] - x0, "right": x1 - usable[2], "back": usable[1] - y0, "front": y1 - usable[3]}
+        side = max(past, key=past.get)
+        if past[side] > OUTSIDE_MIN_MM:
+            out.append((it, side, past[side]))
+    return out
+
+
+def report_outside_usable(ctx, lay, cat_pedals):
+    """One finding per item of `outside_usable`: a warning, an error with `validation.strict_bounds`. Fills
+    ctx["outside_usable"] (the items' ids)."""
+    sink = ctx["errors"] if ctx["project"].get("validation", {}).get("strict_bounds") else ctx["warnings"]
+    cid_of = {it["id"]: cid for cid, it in lay["placed"].items()}
+    ctx["outside_usable"] = []
+    for it, side, mm in outside_usable(lay):
+        cid = cid_of.get(it["id"])
+        name = pedal_name(cat_pedals[cid]) if cid in cat_pedals else it["title"]
+        ctx["outside_usable"].append(it["id"])
+        sink.append(f"layout: {name} is outside the usable board area by {mm:.1f} mm ({side})")
 
 
 def _project_name(ctx):
@@ -343,7 +379,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[],
+    ctx.update(outside_usable=[], jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[],
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
                               "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
@@ -401,12 +437,14 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         errors.extend(data_crossing_errors(ctx, boards_mod.load() if board_data is None else board_data, boards_mod.load_edits(ctx["dir"], warnings)))
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
-                            board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings))
+                            board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings),
+                            board_bounds=boards_mod.load_bounds(ctx["dir"], warnings))
     ptype = ((cable_types or {}).get(power_type_id or "") or {})
     errors.extend(layout_crossing_errors(ctx, lay, float(ptype.get("diameter_mm") or 0.0) / 2))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]
     # what the cable router needs: the parsed layout, which item is which pedal, and the jack data used here
     ctx["layout"] = {**lay, "jacks": jacks_data, "outward_mm": outward}
+    report_outside_usable(ctx, lay, cat_pedals)
 
     # 3) fixed clearance box in front of every used jack: power jacks (and on-board supply ports) the small
     #    `power_clearance` box, the rest the audio `clearance` box. Jacks that routing.route_project checks with a

@@ -34,7 +34,7 @@ ideas · 5 data · 6 done.
 - [x] Footswitch spacing (owner, 2026-10-29): the proposals spread the switches enough; keep `comfort_mm` 100 and
       weight 2.
 - [x] Layout proposals (owner, 2026-10-29, after `--max-change rearrange --seed 42`): the moves are "kind of ok"; the
-      remaining problem is pedals on the board's unusable rounded edges -> **Usable board area** (section 2).
+      remaining problem is pedals on the board's unusable rounded edges -> **Usable board area** (done 2026-10-29, `feat/board-bounds`).
 - [ ] Answer the open questions of `docs/plans/pedal-position.md`.
 
 ### Checks by eye
@@ -51,19 +51,11 @@ ideas · 5 data · 6 done.
       Retrovibe, red_muck / analog_chorus DC heads) and 7 plug collisions (mostly a patch plug vs the DC plug on the
       same pedal). All three layout proposals reach 0 / 0 (2026-10-28): load `projects/guitar-gig/proposals/1.json` in
       Pedal Playground (Load from File) and re-save `projects/guitar-gig/playground_design.json`, or move by hand.
-- [ ] **Usable board area (owner, 2026-10-29)**: the Fender Pro Medium has rounded edges at the back and front where
-      pedals cannot sit, but the proposals use them (pedals are only kept inside the board image box shrunk by
-      `layout.board_margin_mm`). Owner wants four boundary lines (back, front, left, right) set in
-      `scripts/board_editor.py`, each dragged independently (a line moves only along its own axis; select one and
-      adjust it without touching the others).
-      - Data: `projects/<name>/board.json` `bounds` {back, front, left, right} in fractions of the unrotated board
-        image (missing side = the image edge); written only by the board editor.
-      - Use: layout feasibility and moves (`layout.py`: inside the bounds, then `board_margin_mm`), a build warning when
-        a pedal of the owner's layout lies outside (strict flag?), drawn in `routing.svg` / proposal SVGs; part of
-        `proposal_inputs_sha1` (board.json already is?).
-      - Open: may cables still route over the rounded parts (routing area / `edge_margin_mm`, under-board footprint),
-        or do the bounds limit them too? Do edge segments stay relative to the image edge?
-      - Then re-run the gig proposals (the current rearrange set, seed 42, may put pedals on the rounded edges).
+- [ ] **Fix-mode proposals keep one plug collision (found 2026-10-29)**: with the gig bounds (back 11.0 mm, front 8.5 mm),
+      all three `--max-change fix` proposals reach 0 blocked plugs but keep the owner's collision belle_epoch.in vs
+      the Reticon's plugs (before the bounds: 0 / 0); `rearrange --seed 42` #1 is clean (0 / 0, signal 2568 mm, DC
+      3484 mm, crowding 186). Options: let fix mode swap the two neighbours or allow larger moves for the pedals in a
+      collision, weigh collisions more in the surrogate, or accept rearrange #1.
 - [ ] **Power plug side by route length (owner, 2026-10-29)**: a DC plug's exit side only matters for the length; when
       both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
       cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
@@ -185,5 +177,10 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - `feat/cable-ids` (2026-10-29, `docs/plans/cable-ids.md`): power cables are P# (the cable you buy), the legs of a daisy
   chain P#.1, P#.2...; no C# ids; unknown `cables.overrides` keys are errors with a hint; "DC cables to buy" lists each
   leg's min plug spacing. Lengths unchanged.
+- `feat/board-bounds` (2026-10-29, `docs/plans/board-bounds.md`): usable board area per project (`board.json`
+  `bounds`, board editor key B, lines moved independently); pedals and on-board supplies must sit inside (build warning,
+  `validation.strict_bounds`; layout search hard constraint; pre-processing pushes pedals of the owner's layout inside,
+  pinned ones too); routing area = usable area + `edge_margin_mm` (strips along edge segments); dashed outline in the
+  SVGs. Gig bounds: back 11.0 mm, front 8.5 mm (owner, approximate). Gig proposals regenerated (rearrange, seed 42).
 - Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
   gig chain: chorus before the Reticon (2026-10-27).
