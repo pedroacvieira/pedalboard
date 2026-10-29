@@ -96,24 +96,35 @@ def merge_18v_findings(rows, pedals):
     return out
 
 
-def cable_ids(supplies):
-    """{pedal id: power cable id} of a project-style wiring (`power.supplies`): P1, P2... in the order jacks.check
-    lists the power cables (supply, output, daisy chain), so `cables.overrides.<P#>` can follow its pedal."""
+def cable_ids(supplies, project=None):
+    """{pedal id: power leg id} of a project-style wiring (`power.supplies`): the ids `jacks.check` gives the power cables
+    (`routing.power_leg_id`): cables P1, P2... in the order supply, output, then per pedal for a forked output (a serial output
+    is one cable); a pedal's leg is P<n> when its cable has one leg, else P<n>.1, P<n>.2... in daisy order. The style of an
+    output is its own `style`, else the project's `power_routing.daisy_style` (`routing.daisy_style`), so `cables.overrides.<id>`
+    can follow its pedal."""
     ids, n = {}, 0
     for s in supplies:
         for o in s.get("outputs", []):
-            for pid in o.get("pedals", []):
+            pedals = o.get("pedals", [])
+            if not pedals:
+                continue
+            if routing.daisy_style(project or {}, o) == routing.FORKED:
+                for pid in pedals:
+                    n += 1
+                    ids.setdefault(pid, routing.power_leg_id(n, 1, 1))
+            else:
                 n += 1
-                ids.setdefault(pid, f"P{n}")
+                for j, pid in enumerate(pedals, 1):
+                    ids.setdefault(pid, routing.power_leg_id(n, j, len(pedals)))
     return ids
 
 
-def remap_overrides(overrides, old_supplies, new_supplies):
-    """`cables.overrides` with the power cable entries renumbered from one wiring to another (by pedal); a P# entry
-    that names no cable of the old wiring is dropped."""
-    old, new = cable_ids(old_supplies), cable_ids(new_supplies)
+def remap_overrides(overrides, old_supplies, new_supplies, project=None):
+    """`cables.overrides` with the power cable entries (P#, P#.n) renumbered from one wiring to another (by pedal); a P# entry
+    that names no cable of the old wiring is dropped. `project`: for the default daisy style (`cable_ids`)."""
+    old, new = cable_ids(old_supplies, project), cable_ids(new_supplies, project)
     by_old = {cid: pid for pid, cid in old.items()}
-    out = {k: v for k, v in overrides.items() if not re.fullmatch(r"P\d+", k)}   # signal (S#) overrides stay
+    out = {k: v for k, v in overrides.items() if not re.fullmatch(r"P\d+(\.\d+)?", k)}   # signal (S#) overrides stay
     for k, v in overrides.items():
         if k in by_old and by_old[k] in new:
             out[new[by_old[k]]] = v

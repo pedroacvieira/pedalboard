@@ -264,7 +264,7 @@ def test_a_power_override_down_that_no_hole_allows_is_reported_and_falls_back():
 def test_a_serial_chain_goes_through_a_down_plug_under_the_board_at_both_ends_of_a_hop():
     hops = (("psu1.F1", "d.power"), ("d.power", "a.power"))
     ctx = pw_ctx(holes=(HOLE_PW, HOLE_D), hops=hops, d_pedal=True)
-    ctx["cables"]["power"] = [{"from": f, "to": t, "cable": "C1", "style": "serial"} for f, t in hops]
+    ctx["cables"]["power"] = [{"from": f, "to": t, "cable": "P1", "style": "serial"} for f, t in hops]
     routing.route_project(ctx, {}, cable_types=TY)
     p1, p2 = (c for c in ctx["cable_list"] if c["kind"] == "power")
     assert (p1["exit_b"], p2["exit_b"]) == ("down", "down") and p1["status"] == p2["status"] == "routed"
@@ -302,7 +302,7 @@ def test_the_pictures_mark_a_down_plug_and_the_key_says_so():
 def test_the_readme_shows_down_in_the_exits_column_and_explains_it():
     ctx, c = signal([HOLE_A, HOLE_B])
     md = "\n".join(build.routing_section(ctx))
-    assert "| S1 | signal | - | a.out | b.in | ra | down / down |" in md
+    assert "| S1 | signal | a.out | b.in | ra | down / down |" in md
     assert "point straight down into a board hole" in md and "cables.jack_height_mm" in md and "12 mm" in md
     ctx, _ = signal([])
     assert "point straight down" not in "\n".join(build.routing_section(ctx))

@@ -224,7 +224,7 @@ def chain(style, hops=None, cables=None, extra=BOTH, holes=()):
     hops = hops or ((("psu1.F1", "d.power"), ("d.power", "a.power")) if style == "serial" else (("psu1.F1", "d.power"), ("psu1.F1", "a.power")))
     ctx = pw_ctx(holes=holes, hops=hops, d_pedal=True, extra=list(extra),
                  cables={"power_types": ["dcs"], **(cables or {})})
-    ctx["cables"]["power"] = [{"from": f, "to": t, "cable": f"C{1 if style == 'serial' else n}", "style": style}
+    ctx["cables"]["power"] = [{"from": f, "to": t, "cable": f"P{1 if style == 'serial' else n}", "style": style}
                               for n, (f, t) in enumerate(hops, 1)]
     return ctx, routed(ctx)
 
@@ -254,15 +254,15 @@ def test_a_forked_output_lets_each_leg_pick_its_own_type():
     assert [(c["type_b"], c["exit_b"]) for c in ps.values()] == [("dc", "left"), ("dcs", None)]
     assert [c["type_a"] for c in ps.values()] == ["dc", "dc"]                    # the port plug is shared: one type
     summary = {c["id"]: c for c in ctx["power_cable_summary"]}
-    assert summary["C1"]["plug_types"] == {"port": "dc", "pedals": ["dc"]} and summary["C2"]["plug_types"] == {"port": "dc", "pedals": ["dcs"]}
+    assert summary["P1"]["plug_types"] == {"port": "dc", "pedals": ["dc"]} and summary["P2"]["plug_types"] == {"port": "dc", "pedals": ["dcs"]}
 
 
 def test_conflicting_type_b_overrides_on_one_serial_cable_warn_and_the_first_leg_wins():
-    ctx, ps = chain("serial", extra=(), cables={"overrides": {"P1": {"type_b": "dc"}, "P2": {"type_b": "dcs"}}})
+    ctx, ps = chain("serial", extra=(), cables={"overrides": {"P1.1": {"type_b": "dc"}, "P1.2": {"type_b": "dcs"}}})
     assert {c["type_b"] for c in ps.values()} == {"dc"}
-    assert any("P1 type_b (dc) and P2 type_b (dcs) are on the same serial DC cable C1" in w and "dc is used for all" in w
+    assert any("P1.1 type_b (dc) and P1.2 type_b (dcs) are on the same serial DC cable P1" in w and "dc is used for all" in w
                for w in ctx["warnings"])
-    ctx, ps = chain("serial", extra=(), cables={"overrides": {"P2": {"type_b": "dcs"}}})   # one leg fixing it is enough for the cable
+    ctx, ps = chain("serial", extra=(), cables={"overrides": {"P1.2": {"type_b": "dcs"}}})   # one leg fixing it is enough for the cable
     assert {c["type_b"] for c in ps.values()} == {"dcs"} and not [w for w in ctx["warnings"] if "type_b" in w]
     ctx, ps = chain("forked", extra=(), cables={"overrides": {"P1": {"type_b": "dc"}, "P2": {"type_b": "dcs"}}})
     assert [c["type_b"] for c in ps.values()] == ["dc", "dcs"] and not [w for w in ctx["warnings"] if "type_b" in w]
@@ -315,13 +315,13 @@ def test_the_power_grid_is_as_wide_as_the_widest_type_in_use():
 def test_the_readme_shows_the_types_per_plug_and_describes_the_plugs_of_each_dc_cable():
     ctx, ps = chain("serial")
     md = "\n".join(build.routing_section(ctx))
-    assert "| P1 | power | C1 | psu1.F1 | d.power | dc / dcs |" in md and "| P2 | power | C1 | d.power | a.power | dcs |" in md
-    assert "| DC cable | Style | Output | Route | Plugs | Plug types | Legs |" in md
-    assert "| 3 | 1 x dc (port) + 2 x dcs | P1, P2 |" in md
+    assert "| P1.1 | power | psu1.F1 | d.power | dc / dcs |" in md and "| P1.2 | power | d.power | a.power | dcs |" in md
+    assert "| DC cable | Style | Output | Route | Plugs | Plug types | Min plug spacing per leg (mm) |" in md
+    assert "| 3 | 1 x dc (port) + 2 x dcs | P1.1 " in md and " / P1.2 " in md
     assert "plug types `dc`, `dcs`, picked per plug" in md and "type_b" in md
     ctx, ps = chain("forked")
     md = "\n".join(build.routing_section(ctx))
-    assert "| 2 | 1 x dc (port) + 1 x dcs | P2 |" in md and "| 2 | 2 x dc | P1 |" in md
+    assert "| 2 | 1 x dc (port) + 1 x dcs | - |" in md and "| 2 | 2 x dc | - |" in md
     plain = pw_ctx(holes=(HOLE_PW,))
     routed(plain)
     md = "\n".join(build.routing_section(plain))

@@ -51,8 +51,8 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   without a power type, extra_used, supplies_layer), `cables` (`type` = default patch type, must have role
   patch; `power_type` = default DC plug type, role power; `power_types` = the DC plug types the router may pick (default
   [power_type]); `jack_height_mm` (12, unverified: jack axis above the deck, for down plugs); routing parameters;
-  `overrides.<S#>` with `type`, `exit_a`, `exit_b` = left|right|down|auto, tips; `overrides.<P#>.exit_b` fixes a power
-  plug's exit, `type_a` / `type_b` its port / pedal plug type; `under_board`, `hole_transit_mm`,
+  `overrides.<S#>` with `type`, `exit_a`, `exit_b` = left|right|down|auto, tips; `overrides.<P#>` (a power cable id, see "Cable ids") `.exit_b` fixes a power
+  plug's exit, `type_a` / `type_b` its port / pedal plug type; an override key that is no cable id is a build error; `under_board`, `hole_transit_mm`,
   `hole_penalty`, `under_cost`, `max_stack_under` for the under-board layer; `route_in_front` default false = nothing in
   front of the lowest pedals, true = the routing area reaches the board front), `footswitches.comfort_mm`
   (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
@@ -196,11 +196,19 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   `layout.weights.footswitch` 2). An optional `footswitches.min_distance_mm` makes closer pairs warnings (strict:
   errors) and adds a steep penalty in the search; no default ("auto" was dropped). Missing data is one
   aggregated warning per project. `routing.svg` draws the switches (colour per type) and too-close lines.
+- Cable ids (owner, 2026-10-29): signal cables S1.. along the chain; every power cable you buy is **P#** (numbered over
+  supply instance, output, then per pedal for a forked output; a serial output is one cable); a cable with several legs
+  (serial daisy chain) names them **P#.1, P#.2...** in daisy order (P#.1 starts at the supply port), a one-leg cable is just
+  P#. No C# ids. `jacks.check` assigns both (hop `cable` = P#, `id` = leg id, `routing.power_leg_id`), `routing` uses the hop
+  `id` as the cable list id (hand-made ctx without ids: each hop its own P#); `power.cable_ids(supplies, project)` gives
+  the same leg ids per pedal (output `style`, else `power_routing.daisy_style`). `cables.overrides` keys must be a
+  cable list id (S#, one-leg P#, P#.n): else a build error with a hint (`routing.override_id_errors`). A leg is routed,
+  overridden and drawn (label) on its own; for buying, each leg's min length is the spacing between two plugs.
 - Power daisy chains (2026-10-27): per output `power.supplies[].outputs[].style` serial | forked (project default
   `power_routing.daisy_style`, default serial = one cable through every pedal, routed leg by leg); forked = one cable
   per pedal from the port (fork starts share the port cell without a stacking limit; every leg owns the port plug).
-  Legs keep their P# ids (overrides); each leg has `cable` (C#) and `style`; `ctx["power_cable_summary"]` = physical
-  cables (plugs, min_mm = sum of legs, None if a leg is unrouted); README "DC cables to buy"; `power.assign` and the
+  Each leg has `cable` (its P#) and `style`; `ctx["power_cable_summary"]` = physical cables (plugs, `leg_mm`, min_mm =
+  sum of legs, None if a leg is unrouted); README "DC cables to buy" (one row per P#, each leg's min spacing); `power.assign` and the
   surrogate: forked = sum of port -> pedal estimates, serial = chain order. Constants `routing.SERIAL` / `FORKED`.
 - Footswitch toppers (owner, 2026-10-27): per project `footswitches.toppers` ["<pedal>.<switch>"], set by hand;
   a pair's effective distance = d + `topper_bonus_mm` per topper on it (default 4.5 mm = the height a topper
@@ -219,7 +227,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). The surrogate checks the
   same jacks as the build (first input / last output: fixed audio box; power plug side overrides). `max_change` fix
   (default: max 40 mm, no swaps/rotations) / rearrange / free. Finalists AND the owner's layout get their own power
-  wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` follow their
+  wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` / `<P#.n>` follow their
   pedal, `power.remap_overrides`) and are checked with `build.validate(items=, project=)`; a proposal must not be
   worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs below a set minimum. Proposals never
   touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from

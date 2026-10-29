@@ -128,14 +128,14 @@ Jack data: 5 of 6 catalog items set up (pedals and supplies in this project).
 
 Signal cables are routed on the board surface between the pedals: never under the board, never in front of the lowest pedals, at most 3.5 mm beyond the back and sides, at most 2 cables stacked in one 2 mm cell (cable width on the board 3.5 mm). Plugs are modelled (default cable type `ernie_ball_flat_patch_ra`, catalog/cables.json): a right-angle plug's cable leaves the head to the left or right of the jack's facing (chosen per end: fewest blocked plugs and plug collisions, then the shortest route), runs 3.5 mm straight, then is routed. Power cables are listed, not routed; their plug at each pedal's power jack is modelled for clearance (`dc_ra_2_1_low_profile`, exit side in the Exits column).
 
-Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks (with the project's default DC plug type). A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).
+Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. '~' marks a power cable that is not routed: a right-angle estimate between its jacks (with the project's default DC plug type). A routed power cable's Under board column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable you buy is P#; a daisy chain with several plugs is one cable whose legs (plug to plug) are P#.1, P#.2... (see the table of DC cables to buy below).
 
-| Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
-|---|---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | - | polytune_2_mini.out | darkglass_hyper_luminal.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
-| S2 | signal | - | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
-| S3 | signal | - | mxr_bass_synth.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
-| S4 | signal | - | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
+|---|---|---|---|---|---|---|---|:-:|--:|---|
+| S1 | signal | polytune_2_mini.out | darkglass_hyper_luminal.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+| S2 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+| S3 | signal | mxr_bass_synth.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
+| S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / - | TS / TS | - | no | ? | not routed |
 
 ## Footswitches
 

@@ -330,12 +330,11 @@ def power_cables(cable_list):
 
 
 def power_labels(cable_list):
-    """The physical cable's id (C#) next to the pedal end of each routed power leg: the legs of one serial cable share it, a
-    forked output's cables each have their own."""
+    """The leg's id (P# for a one-leg cable, P#.n for a leg of a daisy chain) next to the pedal end of each routed power leg."""
     out = []
     for c in power_cable_list(cable_list):
         x, y = c.get("end_point") or c["draw_path"][-1]
-        out.append(text(x + 1.5, y - 1.5, c.get("cable") or c["id"], 2.6, "start", POWER_COLOUR, True, font_weight="bold",
+        out.append(text(x + 1.5, y - 1.5, c["id"], 2.6, "start", POWER_COLOUR, True, font_weight="bold",
                         class_="power-label"))
     return out
 
@@ -412,7 +411,7 @@ def key_entries(ctx, cable_list, max_stack):
         e.append(("squeezed", "dashed: squeezed through a gap narrower than the cable"))
     power = power_cable_list(cable_list)
     if power:
-        e.append(("power", "brown: DC power cable (C#: one label per physical cable), thinner than the patch cables"))
+        e.append(("power", "brown: DC power cable (P#, or P#.n for the legs of a daisy chain: one label per leg), thinner than the patch cables"))
         if any(any(x["layer"] == "under" for x in c["stretches"]) for c in power):
             e.append(("power_under", "dashed light brown: power cable under the board"))
         if any(c.get("hole_points") for c in power):

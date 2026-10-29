@@ -561,14 +561,14 @@ def routing_section(ctx):
     md += ["Min length = the shortest cable that reaches: measured from a point on each jack's axis half the clearance depth in front "
            "of the jack (half the plug head depth), along the plug's cable exit and the routed path. No slack or rounding is added. "
            "'~' marks a power cable that is not routed: a right-angle estimate between its jacks (with the project's default DC plug type). A routed power cable's Under board "
-           "column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable (P#) is one leg; the "
-           "DC cable column says which physical cable it belongs to (C#, see the table of DC cables to buy below).", "",
-           "| Cable | Kind | DC cable | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
-           "|---|---|---|---|---|---|---|---|---|:-:|--:|---|"]
+           "column gives its passes (holes, edges), the mm under the board and the mm on top. A power cable you buy is P#; a "
+           "daisy chain with several plugs is one cable whose legs (plug to plug) are P#.1, P#.2... (see the table of DC cables to buy below).", "",
+           "| Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |",
+           "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
-        md.append(f"| {c['id']} | {c['kind']} | {c.get('cable') or '-'} | {c['from']} | {c['to']} | {type_cell(c)} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
+        md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {type_cell(c)} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
                   f"{under_cell(c)} | {length} | {c['status']} |")
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
@@ -595,24 +595,36 @@ def plug_text(cab):
     return " + ".join([f"1 x {pt['port']} (port)", *(f"{n} x {t}" for t, n in pedals.items())])
 
 
+def leg_spacing(c):
+    """'P10.1 112 / P10.2 136' for a daisy chain of `power_cable_summary` (each leg's minimum length = the minimum spacing between
+    two consecutive plugs, '~' for an estimate, '?' unknown); '-' for a cable with one leg."""
+    if len(c["legs"]) < 2:
+        return "-"
+    def one(mm, est):
+        return fmt_mm(mm) if mm is not None else (f"~{fmt_mm(est)}" if est is not None else "?")
+    return " / ".join(f"{leg} {one(mm, est)}" for leg, mm, est in zip(c["legs"], c["leg_mm"], c["leg_estimate_mm"]))
+
+
 def dc_cable_table(ctx):
-    """README lines: the physical DC cables to buy (`ctx["power_cable_summary"]`), one row per cable: a SERIAL output is one
-    cable with a plug at the port and one at each pedal (its legs P# are the hops), a FORKED output has one cable per pedal."""
+    """README lines: the DC cables to buy (`ctx["power_cable_summary"]`), one row per cable P#: a SERIAL output is one cable with a
+    plug at the port and one at each pedal (its legs P#.1, P#.2... are the hops), a FORKED output has one cable per pedal."""
     summary = ctx.get("power_cable_summary") or []
     if not summary:
         return []
     several = len((ctx.get("routing", {}).get("settings") or {}).get("power_types") or []) > 1   # the project offers several DC plug types
     md = ["", "### DC cables to buy", "",
-          "A **serial** output is one cable that runs from the supply port to the first pedal and on to the next ones (a plug at the "
-          "port and one at each pedal; its length is the sum of its legs). A **forked** output has one cable per pedal, each from the "
-          "supply port (a splitter or several plugs at the port). Lengths are minimums, as above ('~': a right-angle estimate with the default DC plug type, the "
-          "cable is not routed).", "",
-          "| DC cable | Style | Output | Route | Plugs |" + (" Plug types |" if several else "") + " Legs | Min length (mm) | Status |",
+          "Each row is one DC cable P#. A **serial** output is one cable that runs from the supply port to the first pedal and on to the "
+          "next ones (a plug at the port and one at each pedal); its legs P#.1, P#.2... (in daisy order, P#.1 starts at the supply port) "
+          "are the stretches between two consecutive plugs, and the minimum spacing between those plugs is each leg's minimum length. "
+          "A cable with a single leg is just P#. A **forked** output has one cable per pedal, each from the supply port (a splitter or "
+          "several plugs at the port). The cable's minimum length is the sum of its legs; lengths are minimums, as above ('~': a right-angle "
+          "estimate with the default DC plug type, the cable is not routed).", "",
+          "| DC cable | Style | Output | Route | Plugs |" + (" Plug types |" if several else "") + " Min plug spacing per leg (mm) | Min length (mm) | Status |",
           "|---|---|---|---|--:|" + ("---|" if several else "") + "---|--:|---|"]
     for c in summary:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
         route = " -> ".join([c["from"], *(to.split(".")[0] for to in c["to"])])
-        md.append(f"| {c['id']} | {c['style']} | {c['output']} | {route} | {c['plugs']} | {plug_text(c) + ' | ' if several else ''}{', '.join(c['legs'])} | {length} | {c['status']} |")
+        md.append(f"| {c['id']} | {c['style']} | {c['output']} | {route} | {c['plugs']} | {plug_text(c) + ' | ' if several else ''}{leg_spacing(c)} | {length} | {c['status']} |")
     routed = [c for c in summary if c["min_mm"] is not None]
     if routed:
         md += ["", f"DC cable, minimum: {sum(c['min_mm'] for c in routed):.0f} mm over {len(routed)} cables "

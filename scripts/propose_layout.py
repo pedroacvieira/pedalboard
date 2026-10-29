@@ -130,7 +130,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_dat
         proj["power"] = {**proj.get("power", {}), "supplies": [{**x, **({"placement": place[x["id"]]} if x["id"] in place else {})}
                                                                for x in wiring["supplies"]]}
         cab = proj.setdefault("cables", {})
-        cab["overrides"] = power.remap_overrides(cab.get("overrides") or {}, old, wiring["supplies"])
+        cab["overrides"] = power.remap_overrides(cab.get("overrides") or {}, old, wiring["supplies"], project)
     except ValueError as e:   # keep the owner's wiring
         wiring, proj = {"supplies": project.get("power", {}).get("supplies", []), "error": str(e)}, project
     ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj,

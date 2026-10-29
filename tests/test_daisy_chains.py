@@ -1,8 +1,9 @@
 """Forked and serial power daisy chains (`outputs[].style`, `power_routing.daisy_style`): validation, the hops and the
-physical cables (C#), the DC cable summary, the power assignment and the layout surrogate. Hand-computed synthetic cases plus
+physical cables (P#, legs P#.n), the DC cable summary, the power assignment and the layout surrogate. Hand-computed synthetic cases plus
 the real guitar-gig (all outputs serial by default: its routes and lengths are the ones from before the feature)."""
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -86,8 +87,9 @@ def test_serial_is_the_default_and_the_hops_are_as_before():
     assert (by[7]["from"], by[7]["to"]) == ("red_muck.power", "beano.power")                 # then pedal -> next pedal
     assert (by[9]["from"], by[9]["to"]) == ("danelectro_3699.power", "sun_face.power")
     assert [h["under_board"] for h in hops[5:9]] == [True, False, False, False]              # only the first hop starts under the board
-    assert [h["cable"] for h in hops[5:9]] == ["C6"] * 4 and by[10]["cable"] == "C7"       # one cable per serial output
-    assert [c["id"] for c in ctx["power_cable_summary"]] == [f"C{n}" for n in range(1, 11)]
+    assert [h["cable"] for h in hops[5:9]] == ["P6"] * 4 and by[10]["cable"] == "P7"       # one cable per serial output
+    assert [h["id"] for h in hops[5:10]] == ["P6.1", "P6.2", "P6.3", "P6.4", "P7"]           # legs of a daisy chain are P#.n, a one-leg cable is P#
+    assert [c["id"] for c in ctx["power_cable_summary"]] == [f"P{n}" for n in range(1, 11)]
 
 
 def test_forked_hops_all_start_at_the_port_with_one_cable_each():
@@ -101,7 +103,8 @@ def test_forked_hops_all_start_at_the_port_with_one_cable_each():
     assert [h["from"] for h in outs["psu2_F1"]] == ["psu2.F1"] * 4                          # red_muck, beano, 3699, sun_face
     assert [h["to"] for h in outs["psu2_F1"]] == ["red_muck.power", "beano.power", "danelectro_3699.power", "sun_face.power"]
     assert all(h["under_board"] for h in hops)                                               # every cable leaves an under-board port
-    assert [h["cable"] for h in hops] == [f"C{n}" for n in range(1, 18)]                    # one physical cable per leg
+    assert [h["cable"] for h in hops] == [f"P{n}" for n in range(1, 18)]                    # one physical cable per leg
+    assert [h["id"] for h in hops] == [f"P{n}" for n in range(1, 18)]                       # ... and each is its own one-leg cable
     assert ctx["errors"] == []
 
 
@@ -115,22 +118,22 @@ def test_per_output_style_overrides_the_project_default():
     assert [h["style"] for h in f1] == ["serial"] * 4 and [h["from"] for h in f1][1] == "red_muck.power"
     assert {h["style"] for h in hops if h["output"] != "psu2_F1"} == {"forked"}
     summary = {c["id"]: c for c in ctx["power_cable_summary"]}
-    assert summary["C6"]["style"] == "serial" and summary["C6"]["legs"] == ["P6", "P7", "P8", "P9"] and summary["C6"]["plugs"] == 5
-    assert summary["C7"]["style"] == "forked" and summary["C7"]["plugs"] == 2
+    assert summary["P6"]["style"] == "serial" and summary["P6"]["legs"] == ["P6.1", "P6.2", "P6.3", "P6.4"] and summary["P6"]["plugs"] == 5
+    assert summary["P7"]["style"] == "forked" and summary["P7"]["plugs"] == 2
 
 
 def test_serial_summary_on_the_gig_is_the_sum_of_the_legs():
     pedals, supplies, ctx = gig_build()
     legs = {c["id"]: c for c in ctx["cable_list"] if c["kind"] == "power"}
     summary = {c["id"]: c for c in ctx["power_cable_summary"]}
-    c6 = summary["C6"]
+    c6 = summary["P6"]
     assert (c6["style"], c6["output"], c6["from"], c6["plugs"], c6["status"]) == ("serial", "psu2_F1", "psu2.F1", 5, "routed")
-    assert c6["legs"] == ["P6", "P7", "P8", "P9"]
+    assert c6["legs"] == ["P6.1", "P6.2", "P6.3", "P6.4"]
     assert c6["min_mm"] == pytest.approx(sum(legs[p]["min_mm"] for p in c6["legs"]))
     assert c6["to"] == ["red_muck.power", "beano.power", "danelectro_3699.power", "sun_face.power"]
-    assert all(legs[p]["cable"] == "C6" and legs[p]["style"] == "serial" for p in c6["legs"])
+    assert all(legs[p]["cable"] == "P6" and legs[p]["style"] == "serial" for p in c6["legs"])
     # the legs themselves are the routes and lengths of the owner's wiring (measured DC plug, dc_ra_owner_baseline)
-    assert [round(legs[p]["min_mm"]) for p in ("P6", "P7", "P8", "P9")] == [125, 430, 223, 311]   # P9 left -> right: the plug at sun_face.power avoids danelectro_3699.out (plug-orientation phase 1); P6 / P7 right / left: red_muck.power takes the right side once the signal plugs saw the DC plugs (review fix, rounds)
+    assert [round(legs[p]["min_mm"]) for p in ("P6.1", "P6.2", "P6.3", "P6.4")] == [125, 430, 223, 311]   # P9 left -> right: the plug at sun_face.power avoids danelectro_3699.out (plug-orientation phase 1); P6 / P7 right / left: red_muck.power takes the right side once the signal plugs saw the DC plugs (review fix, rounds)
     assert round(c6["min_mm"]) == 1090
 
 
@@ -140,7 +143,7 @@ def test_forked_cables_of_the_gig_route_from_the_port_and_each_has_its_own_lengt
     summary = {c["id"]: c for c in ctx["power_cable_summary"]}
     assert len(summary) == 17 and all(c["plugs"] == 2 and len(c["legs"]) == 1 for c in summary.values())
     assert all(c["status"] == "routed" for c in summary.values())
-    assert summary["C7"]["min_mm"] == pytest.approx(legs["P7"]["min_mm"])
+    assert summary["P7"]["min_mm"] == pytest.approx(legs["P7"]["min_mm"])
     # beano is fed from the port now, not from red_muck's plug: that cable is a port -> beano route (304 mm in the gig layout)
     assert legs["P7"]["from"] == "psu2.F1" and round(legs["P7"]["min_mm"]) == 304
     assert round(sum(c["min_mm"] for c in summary.values())) > 3231 - 1500                 # sanity: a real total, not zero
@@ -154,23 +157,24 @@ def leg(pid, cable, style, min_mm, est=None, status="routed", frm="psu1.F1", to=
 
 def test_power_cable_summary_groups_legs_into_cables_and_counts_plugs():
     cables = [{"id": "S1", "kind": "signal"},
-              leg("P1", "C1", "serial", 100.0, to="a.power"), leg("P2", "C1", "serial", 50.0, frm="a.power", to="b.power"),
-              leg("P3", "C1", "serial", 25.0, frm="b.power", to="c.power"),
-              leg("P4", "C2", "forked", 70.0, to="d.power"), leg("P5", "C3", "forked", 80.0, to="e.power")]
+              leg("P1.1", "P1", "serial", 100.0, to="a.power"), leg("P1.2", "P1", "serial", 50.0, frm="a.power", to="b.power"),
+              leg("P1.3", "P1", "serial", 25.0, frm="b.power", to="c.power"),
+              leg("P2", "P2", "forked", 70.0, to="d.power"), leg("P3", "P3", "forked", 80.0, to="e.power")]
     summary = routing.power_cable_summary(cables)
-    assert [c["id"] for c in summary] == ["C1", "C2", "C3"]
+    assert [c["id"] for c in summary] == ["P1", "P2", "P3"]
     c1, c2, c3 = summary
     assert (c1["style"], c1["legs"], c1["plugs"], c1["min_mm"], c1["from"], c1["to"]) == \
-        ("serial", ["P1", "P2", "P3"], 4, 175.0, "psu1.F1", ["a.power", "b.power", "c.power"])      # pedals + 1 plugs
-    assert (c2["legs"], c2["plugs"], c2["min_mm"]) == (["P4"], 2, 70.0) and (c3["legs"], c3["plugs"], c3["min_mm"]) == (["P5"], 2, 80.0)
+        ("serial", ["P1.1", "P1.2", "P1.3"], 4, 175.0, "psu1.F1", ["a.power", "b.power", "c.power"])      # pedals + 1 plugs
+    assert (c2["legs"], c2["plugs"], c2["min_mm"]) == (["P2"], 2, 70.0) and (c3["legs"], c3["plugs"], c3["min_mm"]) == (["P3"], 2, 80.0)
+    assert c1["leg_mm"] == [100.0, 50.0, 25.0] and c2["leg_mm"] == [70.0]               # each leg's min length: the spacing between two plugs
     assert c1["status"] == "routed"
 
 
 def test_summary_length_is_none_when_a_leg_is_not_routed_and_falls_back_to_the_estimate():
-    cables = [leg("P1", "C1", "serial", 100.0, est=90.0), leg("P2", "C1", "serial", None, est=40.0, status="unroutable: no free path")]
+    cables = [leg("P1.1", "P1", "serial", 100.0, est=90.0), leg("P1.2", "P1", "serial", None, est=40.0, status="unroutable: no free path")]
     (c,) = routing.power_cable_summary(cables)
     assert c["min_mm"] is None and c["estimate_mm"] == 130.0 and c["status"] == "unroutable: no free path"
-    (c,) = routing.power_cable_summary([leg("P1", "C1", "serial", 100.0, est=None), leg("P2", "C1", "serial", 5.0, est=3.0)])
+    (c,) = routing.power_cable_summary([leg("P1.1", "P1", "serial", 100.0, est=None), leg("P1.2", "P1", "serial", 5.0, est=3.0)])
     assert c["min_mm"] == 105.0 and c["estimate_mm"] is None
 
 
@@ -179,13 +183,13 @@ def test_the_summary_is_set_for_a_project_without_routing_too():
     ctx["cables"]["power"][0].update(min_mm=33.0)
     route(ctx)
     (c,) = ctx["power_cable_summary"]
-    assert c["id"] == "C1" and c["min_mm"] is None and c["estimate_mm"] == 33.0 and c["status"].startswith("not routed")
+    assert c["id"] == "P1" and c["min_mm"] is None and c["estimate_mm"] == 33.0 and c["status"].startswith("not routed")
 
 
 # --- routing of forked cables ------------------------------------------------------------------------
 def forked_ctx():
-    hops = [{"from": "psu1.F1", "to": "a.power", "style": "forked", "cable": "C1", "under_board": True},
-            {"from": "psu1.F1", "to": "d.power", "style": "forked", "cable": "C2", "under_board": True}]
+    hops = [{"from": "psu1.F1", "to": "a.power", "style": "forked", "cable": "P1", "under_board": True},
+            {"from": "psu1.F1", "to": "d.power", "style": "forked", "cable": "P2", "under_board": True}]
     ctx = pw_ctx(holes=((28.5, 38.5, 40.5, 48.5), (98.5, 38.5, 110.5, 48.5)), d_pedal=True)
     ctx["cables"] = {"power": hops}
     return ctx
@@ -198,18 +202,18 @@ def test_forked_cables_each_start_under_the_board_at_the_port_with_their_own_rou
     starts = {n: next(s["points"][0] for s in c["stretches"] if s["layer"] == "under") for n, c in legs.items()}
     assert starts["P1"] == pytest.approx((112.0, 145.0)) and starts["P2"] == pytest.approx((112.0, 145.0))
     assert legs["P1"]["end_point"] != legs["P2"]["end_point"]
-    assert [(c["cable"], c["style"]) for c in legs.values()] == [("C1", "forked"), ("C2", "forked")]
+    assert [(c["cable"], c["style"]) for c in legs.values()] == [("P1", "forked"), ("P2", "forked")]
     summary = {c["id"]: c for c in ctx["power_cable_summary"]}
-    assert summary["C1"]["min_mm"] == pytest.approx(legs["P1"]["min_mm"]) and summary["C2"]["min_mm"] == pytest.approx(legs["P2"]["min_mm"])
+    assert summary["P1"]["min_mm"] == pytest.approx(legs["P1"]["min_mm"]) and summary["P2"]["min_mm"] == pytest.approx(legs["P2"]["min_mm"])
 
 
 def test_a_serial_pair_from_the_same_port_is_one_cable_summed_over_two_legs():
     ctx = forked_ctx()
-    ctx["cables"]["power"] = [{"from": "psu1.F1", "to": "a.power", "style": "serial", "cable": "C1", "under_board": True},
-                              {"from": "a.power", "to": "d.power", "style": "serial", "cable": "C1", "under_board": False}]
+    ctx["cables"]["power"] = [{"from": "psu1.F1", "to": "a.power", "style": "serial", "cable": "P1", "under_board": True},
+                              {"from": "a.power", "to": "d.power", "style": "serial", "cable": "P1", "under_board": False}]
     legs = route(ctx)
     (c,) = ctx["power_cable_summary"]
-    assert c["legs"] == ["P1", "P2"] and c["plugs"] == 3 and c["min_mm"] == pytest.approx(legs["P1"]["min_mm"] + legs["P2"]["min_mm"])
+    assert c["legs"] == ["P1.1", "P1.2"] and c["plugs"] == 3 and c["min_mm"] == pytest.approx(legs["P1.1"]["min_mm"] + legs["P1.2"]["min_mm"])
 
 
 def test_cables_of_a_forked_port_share_its_start_cell_beyond_the_stacking_limit():
@@ -241,8 +245,8 @@ def test_route_power_exempts_only_the_start_cell_of_a_forked_port(monkeypatch):
     cell = ctx["routing"]["grid"].cell_of(112.0, 145.0)
     assert shared == {(cell[0], cell[1], 1)}                                           # the under-board start state of the port
     serial = forked_ctx()
-    serial["cables"]["power"] = [{"from": "psu1.F1", "to": "a.power", "style": "serial", "cable": "C1", "under_board": True},
-                                 {"from": "a.power", "to": "d.power", "style": "serial", "cable": "C1", "under_board": False}]
+    serial["cables"]["power"] = [{"from": "psu1.F1", "to": "a.power", "style": "serial", "cable": "P1", "under_board": True},
+                                 {"from": "a.power", "to": "d.power", "style": "serial", "cable": "P1", "under_board": False}]
     (none,) = captured_shared(serial, monkeypatch)
     assert not none                                                                      # serial: stacking counts everywhere as before
 
@@ -337,16 +341,19 @@ def test_readme_lists_the_physical_dc_cables_and_keeps_the_per_leg_table():
     pedals, supplies, ctx = gig_build()
     md = build.project_readme(ctx, pedals)
     assert "### DC cables to buy" in md
-    assert "| C6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6, P7, P8, P9 | 1090 | routed |" in md
-    assert "| P7 | power | C6 | red_muck.power | beano.power |" in md                    # the per-leg table keeps every leg, with its cable
+    assert "| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 125 / P6.2 430 / P6.3 223 / P6.4 311 | 1090 | routed |" in md
+    assert "| P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe | 3 | P10.1 97 / P10.2 151 | 248 | routed |" in md   # legs: min spacing between plugs
+    assert "| P7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | - | 287 | routed |" in md                  # a one-leg cable has no legs column
+    assert "| P6.2 | power | red_muck.power | beano.power |" in md                    # the per-leg table keeps every leg
+    assert "DC cable column" not in md and "| DC cable | Kind" not in md and "C6" not in md and "C#" not in md
     assert "DC cable, minimum: 3355 mm over 10 cables (10 serial, 0 forked)." in md
-    assert "| S1 | signal | - | sun_face.out |" in md
+    assert "| S1 | signal | sun_face.out |" in md
 
 
 def test_forked_readme_and_diagram():
     pedals, ctx = gig_with(edit=lambda p: p.update(power_routing={"daisy_style": "forked"}))
     md = build.project_readme(ctx, pedals)
-    assert "| C7 | forked | psu2_F1 | psu2.F1 -> beano | 2 | P7 |" in md and "(0 serial, 17 forked)" in md
+    assert "| P7 | forked | psu2_F1 | psu2.F1 -> beano | 2 | - |" in md and "(0 serial, 17 forked)" in md
     assert "**F1** (fixed, forked)" in md
     mmd = build.mermaid_power(ctx)
     assert "    psu2_F1 --> beano" in mmd and "    red_muck --> beano" not in mmd
@@ -361,10 +368,11 @@ def test_serial_diagram_still_chains_the_pedals():
 def test_power_picture_labels_physical_cables_and_tables_one_row_per_cable():
     pedals, supplies, ctx = gig_build()
     labels = svgdraw.power_labels(ctx["cable_list"])
-    assert len([x for x in labels if ">C6<" in x]) == 4 and not [x for x in labels if ">P6<" in x]   # the legs of a serial cable share its label
+    assert [x for x in labels if ">P6.1<" in x] and not [x for x in labels if ">P6<" in x]   # every leg has its own label (P#.n)
+    assert len([x for x in labels if re.search(r">P6\.\d<", x)]) == 4 and len([x for x in labels if ">P7<" in x]) == 1
     names = {pid: pedals[pid]["name"] for pid in ctx["chain"]}
     svg = svgdraw.render_power(ctx, names)
-    assert svg.count('class="legend-row"') == 10 and 'data-id="C6"' in svg and 'data-id="P6"' not in svg.split("legend-row")[-1]
+    assert svg.count('class="legend-row"') == 10 and 'data-id="P6"' in svg and 'data-id="P6.1"' in svg
     assert "serial: " in svg and "1090 mm" in svg
 
 
@@ -455,19 +463,51 @@ def test_conflicting_exit_a_overrides_on_one_forked_port_are_reported():
 
 def test_a_hop_without_a_cable_id_never_takes_a_real_cable_id():
     ctx = pw_ctx(hops=(("psu1.F1", "a.power"), ("a.power", "d.power")), d_pedal=True)
-    ctx["cables"]["power"][1]["cable"] = "C1"
+    ctx["cables"]["power"][1]["cable"] = "P1"
     legs = route(ctx)
-    assert legs["P2"]["cable"] == "C1" and legs["P1"]["cable"] == "C2"
-    assert [c["id"] for c in ctx["power_cable_summary"]] == ["C2", "C1"]
+    assert legs["P1"]["cable"] == "P1" and legs["P2"]["cable"] == "P2"   # the first hop's own cable skips the taken P1
+    assert [c["id"] for c in ctx["power_cable_summary"]] == ["P2", "P1"]
 
 
 def test_power_picture_shows_the_routed_part_of_a_cable_with_unrouted_legs_and_plural_edges():
     pedals, supplies, ctx = gig_build()
     legs = {c["id"]: c for c in ctx["cable_list"] if c["kind"] == "power"}
-    legs["P9"]["min_mm"], legs["P9"]["status"] = None, "unroutable: no free path"
+    legs["P6.4"]["min_mm"], legs["P6.4"]["status"] = None, "unroutable: no free path"
     legs["P3"]["edges_used"], legs["P4"]["edges_used"] = 2, 1
     ctx["power_cable_summary"] = routing.power_cable_summary(ctx["cable_list"])
     svg = svgdraw.render_power(ctx, {pid: pedals[pid]["name"] for pid in ctx["chain"]})
-    part = sum(legs[p]["min_mm"] for p in ("P6", "P7", "P8"))
+    part = sum(legs[p]["min_mm"] for p in ("P6.1", "P6.2", "P6.3"))
     assert f"&gt;= {part:.0f} mm, 1 leg unrouted" in svg   # (escaped in the SVG text)
     assert "2 edges<" in svg and "1 edge<" in svg and "1 edges" not in svg
+
+
+# --- cables.overrides keys must be cable ids -----------------------------------------------------------------
+def override_errors(overrides):
+    pedals, ctx = gig_with(edit=lambda p: p.setdefault("cables", {}).update(overrides=overrides))
+    return [e for e in ctx["errors"] if e.startswith("cables.overrides")]
+
+
+def test_an_override_for_a_leg_or_a_one_leg_cable_or_a_signal_cable_is_fine():
+    assert override_errors({"S1": {"exit_a": "left"}, "P6.2": {"exit_b": "left"}, "P7": {"exit_b": "left"}, "P10.1": {"type_b": None}}) == []
+
+
+def test_an_override_for_a_daisy_chain_cable_names_its_legs():
+    (e,) = override_errors({"P6": {"exit_b": "left"}})
+    assert e == "cables.overrides.P6: no such cable; P6 is a daisy chain with legs P6.1, P6.2, P6.3, P6.4: override a leg"
+
+
+def test_an_override_for_a_leg_of_a_one_leg_cable_names_the_cable():
+    (e,) = override_errors({"P7.1": {"exit_b": "left"}})
+    assert e == "cables.overrides.P7.1: no such cable; P7 has a single leg: override P7"
+
+
+def test_old_c_ids_and_unknown_ids_are_errors_with_a_hint():
+    es = override_errors({"C3": {"exit_b": "left"}, "S99": {"exit_a": "left"}})
+    assert "cables.overrides.C3: no such cable; C# ids were renamed to P# (see the cable table)" in es
+    assert any(e.startswith("cables.overrides.S99: no such cable; ids are S# ") for e in es) and len(es) == 2
+
+
+def test_the_overrides_of_a_forked_project_are_checked_against_its_own_ids():
+    pedals, ctx = gig_with(edit=lambda p: p.update(power_routing={"daisy_style": "forked"}, cables={**p.get("cables", {}), "overrides": {"P8": {"exit_b": "left"}, "P6.1": {"exit_b": "left"}}}))
+    es = [e for e in ctx["errors"] if e.startswith("cables.overrides")]
+    assert len(es) == 1 and es[0].startswith("cables.overrides.P6.1: no such cable; P6 has a single leg")
