@@ -55,27 +55,13 @@ ideas · 5 data · 6 done.
   S15 / S16 ends, P1, P11, P13); one owner-drawn edge crossing at the back (handle area), unused.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
-Order (owner, 2026-10-23, updated): power-cable inventory -> pedal preferences -> web UI.
+Order (owner, 2026-10-29): pedal preferences -> web UI. Next: `feat/pedal-preferences` (no plan file yet: write
+`docs/plans/pedal-preferences.md` first, owner decisions, then handovers).
+Project focus (owner, 2026-10-29): be able to assemble the board and guarantee that pedals, plugs and cables FIT;
+model as many physical aspects as possible and keep optimising lengths, but as a feasibility guarantee (no huge
+cables), not for exact DC lengths. Precise lengths matter later for DIY patch cables.
 
-### 3.1 `feat/power-cable-inventory`: plan the power wiring with the owner's own daisy-chain cables
-Owner (2026-10-28): real forked power cables are OFF-THE-SHELF: one input plug, several output cables coming out of it,
-no modularity beyond that (fixed number of outputs, fixed lengths). The owner has a bunch of daisy-chain cables and
-uses them according to necessity, so whether an output is forked or serial (and which cable) is part of the planning.
-Serial chains stay as wired today: leg by leg, above or below the board, whichever is easier / better (owner, confirmed).
-Today `power.supplies[].outputs[].style` (serial | forked, default serial) sets it by hand; forked = one cable per pedal
-from the port, lengths free.
-- [ ] Data: the owner's power cables (catalog or project inventory): per cable the kind (forked / serial daisy chain /
-      single), number of output plugs, the length of each branch (forked) or the plug spacing (serial), plug types
-      (straight / angled, 2.1 / 2.5 mm, polarity), quantity owned. Owner to list them.
-- [ ] Model: a forked cable = one input plug at the supply port + N branches of fixed length; it fits an output when
-      every branch reaches its pedal (routed length <= branch length) and N >= pedals on the output.
-- [ ] Planning (`power.assign` / build): choose per output the style and an owned cable that fits (or report the
-      shortfall, e.g. "needs a 4-way forked cable with branches >= 300 mm"); a way to fix it per output in the project
-      (keep `style`, add the chosen cable id); README / power.svg / shopping list show the cable used.
-- Open: what the inventory looks like (the owner's cable list), whether unused owned cables matter (spares), and
-  whether the layout search should consider cable fit.
-
-### 3.2 `feat/pedal-preferences`: one preference profile per pedal in a project
+### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
 Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
 - [ ] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
       order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
@@ -86,7 +72,7 @@ Every per-pedal wish in one place, editable with values, drop-downs and toggles 
       each proposal); the layout search and `power.assign` read it.
 - [ ] Until the web UI: edit project.json by hand (documented schema).
 
-### 3.3 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
+### 3.2 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
 Replaces the Tkinter editors and the README-only views with a local browser app.
 - Owner (2026-10-23): new dependencies are fine with a reason each; Python ones via uv, anything else (npm, system
   packages) only after asking.
@@ -101,6 +87,10 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - Open: drag pedals in the Board tab and save as a new layout file (never `playground_design.json` itself)?
 
 ## 4. Later / ideas
+- Power-cable inventory (owned DC cable models, fit, automatic style / cable choice): PARKED by the owner (2026-10-29),
+  plan kept in `docs/plans/power-cable-inventory.md`. DC cables are cheap and easy to get; not relevant for now.
+- DIY patch cables: when the owner builds a board with DIY patch cables, precise per-cable lengths (cut lengths,
+  plug allowances) become the goal; today's `min_mm` is a feasibility minimum.
 - [ ] Layouts for `guitar-practice` and `bass` (`playground_design.json`), so their cables and clearance are checked.
       The Harley Benton ISO-5 Pro has no Pedal Playground entry (`playground_title`), so it never appears in a layout
       and has no outline. Practice board: out of scope for now (owner, 2026-10-22); its Ojai R30 is still to buy.

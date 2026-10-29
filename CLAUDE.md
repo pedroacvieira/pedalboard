@@ -15,6 +15,11 @@ Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.ven
 system; add a dependency with `uv add <pkg>` (dev-only: `uv add --dev`), run everything with `uv run`. pytest runs
 with `--disable-plugin-autoload` (pyproject) so plugins from a global PYTHONPATH (ROS) are not loaded.
 
+Focus (owner, 2026-10-29): be able to assemble the board and GUARANTEE that pedals, plugs and cables fit; model as many
+physical aspects as possible. Cable lengths are optimised as a feasibility guarantee (no huge cables), not for exact
+lengths: the owner's DC cables are cheap (a longer one gets folded and tied; no inventory of owned DC cables). Precise
+lengths matter later, for a board with DIY patch cables.
+
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
   `power_consumption` {current_ma (worst case), min_voltage_v, max_voltage_v, needs_isolated_output}, prices,
