@@ -25,7 +25,7 @@ def main():
         "name": args.name.replace("-", " ").title(),
         "instrument": args.instrument,
         "validation": {"no_unknown": True, "require_jacks": False, "strict_clearance": False,
-                       "require_footswitches": False, "strict_footswitches": False},
+                       "require_footswitches": False, "strict_footswitches": False, "strict_bounds": False},
         "jacks": {"clearance": {"outward_mm": 6.3, "side_mm": 7}, "power_clearance": {"outward_mm": 5.5, "side_mm": 5.5}, "extra_used": {}, "supplies_layer": "under"},
         "cables": {"type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {}},
         "footswitches": {"comfort_mm": 100},

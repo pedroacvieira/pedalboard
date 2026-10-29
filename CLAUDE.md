@@ -58,14 +58,15 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
   weight per switch type), `layout` (optional: pins,
   rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
-  (`require_footswitches`, `strict_footswitches` among them).
+  (`require_footswitches`, `strict_footswitches`, `strict_bounds` among them).
 - `projects/<name>/board.json` (optional): the owner's hole corrections, `boxes` [{type hole|filled, x0..y1 fractions of the
   board image}] applied in order on the derived holes (filled closes, hole opens, later wins; `design.board_holes`),
   and edge crossings `{type edge, side left|right|back|front, from, to}` (fractions along that side of the unrotated
   image; `design.board_edges`, `layout["edge_segments"]`; the editor snaps a drawn line to the nearest side).
   Optional `bounds` {back, front, left, right} = four lines (fractions of the unrotated image, back / front from its top edge,
   left / right from its left edge, a missing side = the image edge; `boards.load_bounds`, editor mode B): pedals must stay
-  inside (read by the build / layout search in a later step; cables and under-board supplies are not limited by it).
+  inside (`design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
+  layout search and the drawings; cables may still run over the edges, under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
   Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `power.svg` (power wiring only,
@@ -179,8 +180,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   one-cable-width run is checked in `routing.power_plug_clearance`; without a power type `jacks.power_clearance`
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
-  diameter is a corridor); area = board + `edge_margin_mm` (default one diameter, 6 mm) at back and sides,
-  nothing in front of the lowest pedals unless `cables.route_in_front`; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
+  diameter is a corridor); area = the usable board area (`layout["usable"]`, board.json `bounds`; the board without them)
+  + `edge_margin_mm` (default one diameter, 6 mm) at back and sides, nothing in front of the lowest pedals unless
+  `cables.route_in_front` (then the usable front + margin). `routing.build_grid` keeps the grid extent (board + margin: the cell
+  indices match the under layer) and blocks the cells outside the grown usable area (`area_limits`, only on sides where a bound
+  lies inside the board), except a strip along each usable edge segment out to the border + margin (so `edge_links` still finds
+  its top cell); signal and power grids alike, the under grid stays the whole board. Without bounds the grid is today's; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
   cables across one plug (head + barrel, signal and power plugs; its own cable excluded); signal cables only.
   The grid path is then smoothed (`routing.smooth`: string pulling to any-angle segments, never closer to a pedal
   than the grid path, no new plug crossings); `min_mm` and `path` follow it. Stacking is counted on the grid paths.
@@ -224,7 +229,9 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   the front; stop at `max_toppers` (default 5 per board, owner; null = no cap) or below `topper_min_gain` 0.02 of the crowding). The layout search, the proposal
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
-  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never overhang the board, no
+  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never outside the usable board area
+  (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; a pinned pedal
+  stays where it is), no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
   penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
   crossed pedals), power 0.1/mm, footswitch crowding by type priority, first input to the right edge, last output
@@ -238,7 +245,11 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs below a set minimum. Proposals never
   touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
   `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
-  project's catalog entries incl. jacks and footswitches) or the chain changed.
+  project's catalog entries incl. jacks and footswitches) or the chain changed. A pedal of the owner's layout outside the usable
+  area is moved to the nearest feasible spot first (`layout.repair_start`, a move for the move cost; `CannotPlace` -> the CLI
+  stops naming the pedals); the build warns about every item outside (`jacks.outside_usable`: `layout: <pedal> is outside the
+  usable board area by N mm (back)`, an error with `validation.strict_bounds`; under-board supplies never); the proposal
+  table has a row "Outside the usable area" (proposals: 0).
 - Pictures (`svgdraw.render`): sized in mm (prints 1:1 from a browser); committed SVGs have outlines only, pedal
   images only in git-ignored `routing.local.svg` (data URIs from `.cache/images`, `common.fetch_image`).
 - Pedal outlines (`design.outline_rects`, `layout["shapes"]` {item id: [rects]}): the router (grid, smoothing, lanes),

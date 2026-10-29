@@ -157,6 +157,30 @@ def board_holes(board_item, holes, edits=None):
     return out
 
 
+def board_bounds(board_item, bounds):
+    """The usable area of a board (where pedals may sit) as a canvas rectangle (x0, y0, x1, y1) in mm.
+
+    `bounds`: boards.load_bounds ({"back", "front", "left", "right"}: fractions of the UNROTATED board image, back / front
+    from its top edge, left / right from its left edge; None or a missing side = the image edge). Two opposite corners go
+    through `jack_point` like `board_holes`, so 0/90/180/270 are all right. None without a board."""
+    if not board_item:
+        return None
+    b = bounds or {}
+    (xa, ya) = jack_point(board_item, b.get("left", 0.0), b.get("back", 0.0))
+    (xb, yb) = jack_point(board_item, b.get("right", 1.0), b.get("front", 1.0))
+    return (min(xa, xb), min(ya, yb), max(xa, xb), max(ya, yb))
+
+
+def has_bounds(layout):
+    """Whether the layout's usable area (`layout["usable"]`) is smaller than the board footprint: the project has bounds
+    (`board.json`) that differ from the board edges."""
+    usable = (layout or {}).get("usable")
+    if not usable or not layout.get("board"):
+        return False
+    board = footprint(layout["board"])
+    return any(abs(a - b) > 1e-6 for a, b in zip(usable, board))
+
+
 def board_edges(board_item, edits=None):
     """The edge segments of a board (`edits` as in `board_holes`, only the type "edge": {"side", "from", "to"} along a side of the
     unrotated image) as canvas segments ((x0, y0), (x1, y1), side) in mm, x0 <= x1 and y0 <= y1; `side` is the canvas side of

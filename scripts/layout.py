@@ -9,8 +9,8 @@ footprint half-sizes, plug options (signal: both exit sides of a right-angle plu
 power: every exit of every DC plug type of `cables.power_types`; extra jacks: the fixed box), measure and exit points, footswitch points.
 Moving a pedal translates cached rectangles.
 
-Hard constraints (a candidate that breaks one is never scored): inside the board shrunk by `board_margin_mm`
-(never overhang), no overlap beyond design.TOL_MM between pedals (touching allowed; `min_gap_mm` adds a gap), pins
+Hard constraints (a candidate that breaks one is never scored): inside the usable board area (board.json `bounds`; the
+board without them) shrunk by `board_margin_mm` (never overhang), no overlap beyond design.TOL_MM between pedals (touching allowed; `min_gap_mm` adds a gap), pins
 fixed, rotation within the allowed set, at most `max_move_mm` from the owner's position.
 
 Surrogate score (lower is better, "mm-equivalent"), weights in project.json `layout.weights`:
@@ -197,7 +197,7 @@ class Model:
     [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None, board_data=None, board_edits=None):
+                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -209,10 +209,11 @@ class Model:
         jset = project.get("jacks", {})
         self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
         lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines,
-                                      board_data=board_data, board_edits=board_edits)
+                                      board_data=board_data, board_edits=board_edits, board_bounds=board_bounds)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
         self.board = design.footprint(lay["board"])
+        self.usable = lay["usable"]   # where pedals and on-board supplies may sit (the board footprint without bounds)
         self.placed = lay["placed"]
         self.inst_item, self.insts = lay["inst_item"], insts
         self.ids = [p for p in chain if p in self.placed]          # movable pedals, chain order
@@ -278,6 +279,9 @@ class Model:
         self.sup_ports = {iid: sorted({r["port"] for r in sup_of[iid]["rows"] if r["pedals"]}) for iid in on_board}
         self.sup_id = {iid: sup_of[iid]["sup"]["id"] for iid in on_board}
         self.owner = [self._state_of(self.mitem[p]) for p in self.ids]
+        self.pin_at = {}     # n -> where a pinned pedal must stay when pre-processing moved it into the usable area (`repair_start`; None
+        #                      while it is being moved); a pin without an entry stays at the owner's position
+        self.start = None    # the pre-processed owner's state (`repair_start`), the search's start; None: computed by `search`
         self.names = {p: cat_pedals[p].get("name", p) for p in self.ids[:self.n_ped]}
         for iid in on_board:
             sup = sup_of[iid]["sup"]
@@ -471,16 +475,16 @@ class Model:
         if st[2] not in self.allowed[n]:
             return False
         own = self.owner[n]
-        if self.ids[n] in self.pins and (abs(st[0] - own[0]) > 1e-6 or abs(st[1] - own[1]) > 1e-6 or st[2] != own[2]):
+        pin = self.pin_at.get(n, own)
+        if self.ids[n] in self.pins and pin is not None and (abs(st[0] - pin[0]) > 1e-6 or abs(st[1] - pin[1]) > 1e-6 or st[2] != pin[2]):
             return False
         mm = self.max_move
         if mm is not None and math.hypot(st[0] - own[0], st[1] - own[1]) > mm + 0.5:   # 0.5: px snapping
             return False
         f = self.footprint(st, n)
-        m, b = float(self.cfg["board_margin_mm"]), self.board
         tol = self.overlap_tol if tol is None else tol
-        if f[0] < b[0] + m - 1e-6 or f[1] < b[1] + m - 1e-6 or f[2] > b[2] - m + 1e-6 or f[3] > b[3] - m + 1e-6:
-            return False
+        if not self.inside_usable(f) and not (self.ids[n] in self.pins and pin is not None):
+            return False   # (a pin is held at `pin`: the owner's spot, or where the pre-processing moved it inside)
         gap = float(self.cfg["min_gap_mm"])
         g = (f[0] - gap, f[1] - gap, f[2] + gap, f[3] + gap) if gap else f
         for k in range(len(state)):
@@ -492,6 +496,11 @@ class Model:
             if min(g[2], o[2]) - max(g[0], o[0]) > tol and min(g[3], o[3]) - max(g[1], o[1]) > tol:
                 return False
         return True
+
+    def inside_usable(self, f):
+        """Whether the footprint `f` (x0, y0, x1, y1) lies inside the usable board area shrunk by `board_margin_mm`."""
+        m, b = float(self.cfg["board_margin_mm"]), self.usable
+        return not (f[0] < b[0] + m - 1e-6 or f[1] < b[1] + m - 1e-6 or f[2] > b[2] - m + 1e-6 or f[3] > b[3] - m + 1e-6)
 
     max_move = None             # set by the search level (hard limit, mm)
     overlap_tol = design.TOL_MM  # the search uses ~0 (strict touching) so that snapping to px stays within TOL_MM
@@ -804,11 +813,10 @@ class Model:
         feet = [self.footprint(st, n) for n, st in enumerate(state)]
         geo = [self._geom[(n, st[2])] for n, st in enumerate(state)]
         b = self.board
-        em = self.rcfg["edge_margin_mm"]
         obs = self._obstacles(state, feet)
         # as the build: nothing in front of the lowest pedal OUTLINE (detour estimate: boxes, an approximation)
-        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg)
-        area = (b[0] - em, b[1] - em, b[2] + em, front_y)
+        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg, self.usable)
+        area = routing.area_box(b, self.usable, front_y, self.rcfg)   # the grown usable area (an estimate: the edge-segment strips are ignored)
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
                 [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for _, f in self.fixed_feet]
@@ -1097,6 +1105,71 @@ def level_settings(model, level, max_move_mm="level"):
     return lv
 
 
+class CannotPlace(ValueError):
+    """Pedals (or on-board supplies) of the owner's layout that lie outside the usable board area and have no feasible position
+    inside it; `names` = ["<name> (<id>)", ...]."""
+
+    def __init__(self, names):
+        super().__init__(f"no feasible position inside the usable board area for: {', '.join(names)}")
+        self.names = names
+
+
+def repair_start(model, state, max_radius_mm=200.0):
+    """Pre-processing of the input (owner, 2026-10-29): `state` (the owner's layout) with every pedal / on-board supply whose box lies
+    outside the usable board area pushed the least distance inside it (same rotation: the centre clamped into the area first, e.g. a
+    pedal 0.7 mm past the back line moves 0.7 mm forward; if that spot is taken, rings of growing radius around the original centre,
+    the feasible point nearest to it on the first ring that has one; feasible_one: no overlap, max move), snapped to whole px. Pinned
+    pedals are pushed in too and then stay pinned at their new spot (`model.pin_at`). The moves count in the move cost (the score
+    measures them from the owner's layout). Raises `CannotPlace` naming the pedals that cannot be placed. Pedals that are inside
+    keep their state (overlaps the owner already has are left alone: the search treats them as it always did)."""
+    state = list(state)
+    bad = [n for n in range(len(state)) if not model.inside_usable(model.footprint(state[n], n))]
+    if not bad:
+        return state
+    pinned = [n for n in bad if model.ids[n] in model.pins]
+    for n in pinned:
+        model.pin_at[n] = None   # free while it is moved in
+    failed = []
+    for n in bad:
+        cx, cy, rot = state[n]
+        f = model.footprint(state[n], n)
+        hw, hh = (f[2] - f[0]) / 2, (f[3] - f[1]) / 2
+        m, b = float(model.cfg["board_margin_mm"]), model.usable
+        lo_x, hi_x, lo_y, hi_y = b[0] + m + hw, b[2] - m - hw, b[1] + m + hh, b[3] - m - hh
+        found = None
+        if lo_x <= hi_x and lo_y <= hi_y:
+            def clamp(x, y):
+                return (min(max(x, lo_x), hi_x), min(max(y, lo_y), hi_y), rot)
+            tries = [[clamp(cx, cy)]]
+            for k in range(1, int(max_radius_mm) + 1):
+                tries.append([clamp(cx + k * math.cos(a), cy + k * math.sin(a)) for a in (i * math.pi / 18 for i in range(36))])
+            for ring in tries:
+                ok = []
+                for pt in ring:
+                    cand = list(state)
+                    cand[n] = pt
+                    if model.feasible_one(cand, n):
+                        ok.append((math.hypot(pt[0] - cx, pt[1] - cy), pt))
+                if ok:
+                    found = min(ok)[1]
+                    break
+        if found is None:
+            failed.append(n)
+            continue
+        state[n] = found
+    if not failed:
+        snapped = model.snapped(state)   # whole px, still inside (a rounding that stays feasible)
+        if snapped is None:
+            failed = bad
+        else:
+            state = snapped
+    for n in pinned:
+        model.pin_at[n] = tuple(state[n])
+    if failed:
+        raise CannotPlace([f"{model.names.get(model.ids[n], model.ids[n])} ({model.ids[n]})" for n in failed])
+    return state
+
+
 def search(model, level="fix", seed=1, iterations=None, restarts=None, max_move_mm="level", time_limit_s=None,
            log=None):
     """Simulated annealing from the owner's layout (or a shuffled start for `free`) plus a greedy polish, per
@@ -1118,7 +1191,9 @@ def _search(model, lv, seed, iterations, restarts, time_limit_s, log):
     mf = lv["move_factor"]
     t_end = time.monotonic() + time_limit_s if time_limit_s else None
     movable = [n for n, p in enumerate(model.ids) if p not in model.pins]
-    owner = [tuple(s) for s in model.owner]
+    if model.start is None:   # pre-processing: a pedal of the owner's layout outside the usable area moves in first
+        model.start = [tuple(s) for s in repair_start(model, model.owner)]
+    owner = list(model.start)
     results = []
     for r in range(restarts):
         rng = random.Random(seed + r)
@@ -1233,7 +1308,7 @@ def propose(model, state, rng, lv, sigma, issues, movable):
 def free_distance(model, state, n, axis):
     """How far pedal n can slide along `axis` before it touches another item or the board edge (mm)."""
     f = model.footprint(state[n], n)
-    b, m = model.board, float(model.cfg["board_margin_mm"])
+    b, m = model.usable, float(model.cfg["board_margin_mm"])
     dist = {(1, 0): b[2] - m - f[2], (-1, 0): f[0] - (b[0] + m), (0, 1): b[3] - m - f[3], (0, -1): f[1] - (b[1] + m)}[axis]
     others = [model.footprint(st, k) for k, st in enumerate(state) if k != n] + [o for _, o in model.fixed_feet]
     for o in others:

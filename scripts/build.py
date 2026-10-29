@@ -11,6 +11,7 @@ import argparse
 import sys
 
 import boards
+import design
 import footswitches
 import jacks
 import outlines
@@ -524,7 +525,8 @@ def routing_section(ctx):
     where = ("" if under else "never under the board, ")
     md = ["", "## Cable routing", "",
           f"Signal cables are routed on the board surface between the pedals: {where}{front}"
-          f"{cfg['edge_margin_mm']:g} mm beyond the back and sides{' and the front' if cfg.get('route_in_front') else ''}, at most {cfg['max_stack']} cables stacked in one "
+          f"{cfg['edge_margin_mm']:g} mm beyond the {'usable board area (the dashed teal line: where pedals may sit, `board.json` `bounds`) at the ' if design.has_bounds(ctx.get('layout')) else ''}"
+          f"back and sides{' and the front' if cfg.get('route_in_front') else ''}, at most {cfg['max_stack']} cables stacked in one "
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
           + (f"A cable may also pass under the board when that is shorter or less crowded: it goes down "
              f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers)"
@@ -781,7 +783,8 @@ def proposals_section(ctx, cat_pedals):
     md += [f"Made by `{meta['command']}` (max_change `{meta['max_change']}`, max move "
            f"{'none' if meta.get('max_move_mm') is None else format(meta['max_move_mm'], 'g') + ' mm'}, seed {meta['seed']}, "
            f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is a Pedal "
-           "Playground file (Load from File: the owner's layout with only the moved pedals changed); load it, adjust, save it as "
+           "Playground file (Load from File: the owner's layout with only the moved pedals changed; pedals stay inside the usable board area, "
+           "`board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first); load it, adjust, save it as "
            "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
@@ -791,7 +794,8 @@ def proposals_section(ctx, cat_pedals):
     if not props:
         return md + [f"No better layout found ({meta.get('finalists', 0)} finalist(s) checked against the owner's layout).", ""]
 
-    rows = [("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
+    rows = [("Outside the usable area", lambda m: "?" if m.get("outside") is None else f"{m['outside']}"),
+            ("Blocked plugs", lambda m: f"{m['blocked']} ({m['blocked_mm']:.1f} mm)"),
             ("Plug collisions", lambda m: f"{m.get('collisions', 0)}"),
             ("Unroutable / squeezed / over the stacking or plug limit", lambda m: f"{m['unroutable']} / {m['squeezed']} / {m['overflow']}"),
             ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
@@ -985,6 +989,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
+        "A pedal or on-board supply whose box lies outside the usable board area (the four lines of `board.json` `bounds`, drawn in the board editor; the board edges without them) is a warning, an error with `validation.strict_bounds`; under-board supplies are never checked. "
         "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
         "power jacks against the DC plug type (`cables.power_type`; with `cables.power_types` the router picks the type per plug) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
         "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). "

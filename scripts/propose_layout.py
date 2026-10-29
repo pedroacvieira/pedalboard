@@ -11,7 +11,8 @@ The search (scripts/layout.py: simulated annealing + greedy polish on a surrogat
 and iteration budget) yields distinct finalists. Each finalist gets its own power wiring (power.assign: supply
 outputs and daisy chains for the shortest DC cable under the power policy) and is checked with the real pipeline
 (build.validate with the injected layout: plug clearance, routed cables, footswitch spacing). A finalist becomes a
-proposal only if it is not worse than the owner's layout on blocked plugs, plug collisions, routing problems (unroutable, squeezed,
+proposal only if nothing of it lies outside the usable board area (board.json `bounds`; the search never puts a pedal there,
+a pedal of the owner's layout that is outside moves in first; only a pinned pedal stays) and it is not worse than the owner's layout on blocked plugs, plug collisions, routing problems (unroutable, squeezed,
 over the stacking or plug limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
 blocked mm, plug collisions, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
 penalties).
@@ -23,6 +24,7 @@ meta.json (scores, moved pedals, power wiring, command, seed; read by build.py f
 import argparse
 import copy
 import json
+import math
 import sys
 import time
 
@@ -53,6 +55,7 @@ def metrics(ctx, model, state, move_factor):
         "blocked": len(ctx["violations"]), "blocked_mm": round(sum(v["depth_mm"] for v in ctx["violations"]), 1),
         "blocked_jacks": sorted({v["jack"] for v in ctx["violations"]}),
         "collisions": len(ctx.get("plug_collisions") or []),
+        "outside": len(ctx.get("outside_usable") or []),   # items outside the usable board area (a proposal: always 0)
         "unroutable": sum(s.startswith("unroutable") for s in status), "squeezed": sum("squeezed" in s for s in status),
         "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         # toppers are a finishing step the search ignores: proposals are compared on the PLAIN distances
@@ -82,12 +85,13 @@ def routing_problems(m):
 
 
 def rank_key(m):
-    return (m["errors"], m["blocked"], m["blocked_mm"], m.get("collisions", 0), routing_problems(m), m["fs_close"], m["score"])
+    return (m["errors"], m.get("outside", 0), m["blocked"], m["blocked_mm"], m.get("collisions", 0), routing_problems(m), m["fs_close"], m["score"])
 
 
 def acceptable(m, owner):
-    """Not worse than the owner's layout on errors, blocked plugs, routing and footswitch pairs; better overall."""
-    return (m["errors"] <= owner["errors"] and m["blocked"] <= owner["blocked"]
+    """No item outside the usable board area (the pre-processing moves every pedal of the owner's layout inside, pinned ones too);
+    not worse than the owner's layout on errors, blocked plugs, routing and footswitch pairs; better overall."""
+    return (m["errors"] <= owner["errors"] and not m.get("outside") and m["blocked"] <= owner["blocked"]
             and m.get("collisions", 0) <= owner.get("collisions", 0)
             and routing_problems(m) <= routing_problems(owner) and m["fs_close"] <= owner["fs_close"]
             and rank_key(m) < rank_key(owner))
@@ -103,13 +107,14 @@ def moved_list(model, state):
     return out
 
 
-def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_data=None, board_edits=None):
+def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_data=None, board_edits=None, board_bounds=None):
     """(metrics, ctx, wiring) of a candidate: its own power wiring, then build.validate with the injected layout.
-    `board_data` / `board_edits`: catalog/boards.json and the project's board.json, read once by the caller."""
+    `board_data` / `board_edits` / `board_bounds`: catalog/boards.json and the project's board.json (boxes, bounds), read once by the caller."""
     cat_pedals, cat_supplies, jacks_data, fs_data, outl = cat
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
-                                  project.get("jacks", {}), [], [], outlines=outl, board_data=board_data, board_edits=board_edits)
+                                  project.get("jacks", {}), [], [], outlines=outl, board_data=board_data, board_edits=board_edits,
+                                  board_bounds=board_bounds)
     insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"],
               "under": lay["inst_placement"].get(s["inst"]["id"]) != "on_board"} for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
@@ -216,6 +221,7 @@ def main(argv=None):
     jacks_data, fs_data = jacks.read_file()["jacks"], footswitches.read_file()["footswitches"]
     outl = outlines.load()   # read once: the owner's layout, the model and every finalist use it
     board_data, board_edits = boards.load(), boards.load_edits(pdir)   # likewise (catalog/boards.json, the project's board.json)
+    board_bounds = boards.load_bounds(pdir)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
     project = load_json(pdir / "project.json")
     if args.pin:
@@ -227,7 +233,7 @@ def main(argv=None):
                                outline_data=outl, board_data=board_data)
     try:
         model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl,
-                             board_data=board_data, board_edits=board_edits)
+                             board_data=board_data, board_edits=board_edits, board_bounds=board_bounds)
     except ValueError as e:
         sys.exit(f"{pdir.name}: {e}")
     if args.score:
@@ -244,17 +250,26 @@ def main(argv=None):
     lv = layout.level_settings(model, level, mm)
     print(f"== {pdir.name}: max_change {level}, max move {lv['max_move_mm'] if lv['max_move_mm'] is not None else 'none'} mm, "
           f"seed {seed}, {iterations or lv['iterations']} iterations x {restarts or lv['restarts']} restarts")
-    found = layout.search(model, level, seed=seed, iterations=iterations, restarts=restarts, max_move_mm=mm,
-                          time_limit_s=cfg["search"].get("time_limit_s"), log=print)
+    try:
+        found = layout.search(model, level, seed=seed, iterations=iterations, restarts=restarts, max_move_mm=mm,
+                              time_limit_s=cfg["search"].get("time_limit_s"), log=print)
+    except layout.CannotPlace as e:
+        sys.exit(f"{pdir.name}: cannot start the search: these pedals of the layout lie outside the usable board area and no free "
+                 f"position inside it was found ({'; '.join(e.names)}). Move them inside in Pedal Playground, raise --max-move-mm, "
+                 f"or adjust the bounds in the board editor.")
+    for n, (st, own) in enumerate(zip(model.start or [], model.owner)):   # what the pre-processing did (pedals outside the bounds)
+        if tuple(st) != tuple(own):
+            print(f"pre-processing: {model.ids[n]} moved {math.hypot(st[0] - own[0], st[1] - own[1]):.1f} mm (dx {st[0] - own[0]:+.1f}, "
+                  f"dy {st[1] - own[1]:+.1f}) into the usable board area{' (pinned: stays there)' if model.ids[n] in model.pins else ''}")
     mf = lv["move_factor"]
     # the owner's layout is compared with its own computed wiring, as every finalist: a proposal must win on positions
-    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf, board_data, board_edits)
+    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf, board_data, board_edits, board_bounds)
     finals = []
     for _, state in found:
         moved = moved_list(model, state)
         if not moved:
             continue
-        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf, board_data, board_edits)
+        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf, board_data, board_edits, board_bounds)
         finals.append({"state": state, "metrics": m, "ctx": ctx, "wiring": wiring, "moved": moved, "ok": acceptable(m, owner_m)})
     finals.sort(key=lambda f: rank_key(f["metrics"]))
     chosen = [f for f in finals if f["ok"]][:top]
@@ -311,7 +326,7 @@ def report(pdir, meta, owner):
     def line(label, m):
         fs = ("no footswitch data" if not m["fs_known"] else
               f"crowding {m['fs_crowding']:.0f}, closest {m['fs_closest_mm']} mm, {m['fs_close']} below the minimum")
-        return (f"  {label:9} blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; plug collisions "
+        return (f"  {label:9} outside the usable area {m.get('outside', '?')}; blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; plug collisions "
                 f"{m.get('collisions', 0)}; routing problems "
                 f"{routing_problems(m)}; signal {m['signal_mm']:.0f} mm ({m['signal_routed']}/{m['signal_cables']} routed); "
                 f"power {m['power_mm']:.0f} mm routed{unrouted(m)}; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
