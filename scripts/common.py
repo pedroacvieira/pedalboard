@@ -1,4 +1,5 @@
 """Shared paths and loaders for the pedalboard scripts."""
+import io
 import json
 import os
 import sys
@@ -12,9 +13,11 @@ CACHE = ROOT / ".cache"
 JACKS_FILE = CATALOG / "jacks.json"
 FOOTSWITCHES_FILE = CATALOG / "footswitches.json"
 CABLES_FILE = CATALOG / "cables.json"
-SITE = "https://pedalplayground.com/public/data/"
-IMAGE_URLS = ("https://pedalplayground.com/app/images/pedals/{}", "https://pedalplayground.com/public/images/pedals/{}")
-BOARD_IMAGE_URLS = ("https://pedalplayground.com/public/images/pedalboards/{}", "https://pedalplayground.com/app/images/pedalboards/{}")
+# Pedal Playground moved (2026-10-29): one catalog file holds the pedals, the boards and the image assets; the old
+# /public/data and /app/images URLs answer 200 with an HTML page and are gone.
+CATALOG_BASE = "https://pedalplayground.com/catalog/"
+CATALOG_URL = CATALOG_BASE + "catalog.json"
+CATALOG_CACHE_NAME = "catalog.json"
 IMAGE_DIR = CACHE / "images"
 IN_MM = 25.4  # Pedal Playground files hold inches/px; everything we compute and show is mm
 
@@ -104,14 +107,79 @@ def effective_quantity(p):
     return 1 if p["owned"] else 0
 
 
+def _write_atomic(path, data):
+    """Write bytes (or str) to `path` through a `.part` file."""
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_bytes(data if isinstance(data, bytes) else data.encode())
+    os.replace(tmp, path)
+
+
+def _http_get(url):
+    """GET `url`; returns (bytes, content type). Raises RuntimeError naming the URL on any failure."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.read(), (r.headers.get("Content-Type") or "")
+    except Exception as e:  # noqa: BLE001  (callers only need the message)
+        raise RuntimeError(f"Could not download {url}: {e}") from e
+
+
+def _parse_catalog(data, source):
+    """Parse Pedal Playground's catalog.json bytes; RuntimeError when it is not the expected JSON (e.g. an HTML page)."""
+    try:
+        doc = json.loads(data)
+    except ValueError as e:
+        raise RuntimeError(f"{source} is not JSON (an HTML page?): {e}") from e
+    if not (isinstance(doc, dict) and isinstance(doc.get("pedals"), list) and isinstance(doc.get("pedalboards"), list)
+            and isinstance(doc.get("assets"), dict)):
+        raise RuntimeError(f"{source} is not a Pedal Playground catalog (expected pedals, pedalboards, assets)")
+    return doc
+
+
+def catalog_json(refresh=False):
+    """Pedal Playground's catalog.json, cached in .cache/catalog.json (downloaded once; `refresh` downloads again).
+    A cached file that does not parse is replaced."""
+    path = CACHE / CATALOG_CACHE_NAME
+    if path.exists() and not refresh:
+        try:
+            return _parse_catalog(path.read_bytes(), str(path))
+        except RuntimeError:
+            pass  # damaged cache: download again
+    data, _ctype = _http_get(CATALOG_URL)
+    doc = _parse_catalog(data, CATALOG_URL)  # never cache what is not the catalog
+    CACHE.mkdir(exist_ok=True)
+    _write_atomic(path, data)
+    return doc
+
+
+def _legacy_entries(doc, name):
+    """catalog.json -> the legacy list shape [{"Brand", "Name", "Width", "Height", "Image": "<image>.png"}]."""
+    key = {"pedals.json": "pedals", "pedalboards.json": "pedalboards"}.get(name)
+    if key is None:
+        raise RuntimeError(f"Unknown Pedal Playground database {name!r} (pedals.json or pedalboards.json)")
+    return [{"Brand": e["brand"], "Name": e["name"], "Width": e["width"], "Height": e["height"],
+             "Image": e["image"] + ".png"} for e in doc[key]]
+
+
 def database(name):
-    """Pedal Playground's public database (pedals.json / pedalboards.json), cached in .cache/, keyed by "Brand Name"."""
+    """Pedal Playground's database (pedals.json / pedalboards.json) keyed by "Brand Name", entries in the legacy shape
+    {"Brand", "Name", "Width", "Height", "Image": "<image>.png"}. An existing .cache/<name> (the legacy file) is used
+    as is; else it is built from catalog.json and cached under that name. A cached file that is not a JSON list is
+    ignored and rebuilt."""
     CACHE.mkdir(exist_ok=True)
     path = CACHE / name
-    if not path.exists():
-        with urllib.request.urlopen(SITE + name, timeout=30) as r:
-            path.write_bytes(r.read())
-    return {f"{e['Brand']} {e['Name']}": e for e in json.loads(path.read_text())}
+    entries = None
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text())
+            if isinstance(loaded, list):
+                entries = loaded
+        except ValueError:
+            pass
+    if entries is None:
+        entries = _legacy_entries(catalog_json(), name)
+        _write_atomic(path, json.dumps(entries, indent="\t", ensure_ascii=False) + "\n")
+    return {f"{e['Brand']} {e['Name']}": e for e in entries}
 
 
 def px_to_mm(px, scale):
@@ -148,24 +216,42 @@ def dumps_per_line(doc, key, mapping, key_order):
     return "\n".join(lines) + "\n"
 
 
+def _to_png(data, source):
+    """Image bytes (WebP / PNG / JPEG ...) -> PNG bytes, alpha kept. RuntimeError when the bytes are not an image."""
+    from PIL import Image  # lazy: only the image code needs Pillow
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im.load()
+            if im.mode not in ("RGBA", "RGB", "L", "LA"):
+                im = im.convert("RGBA")
+            out = io.BytesIO()
+            im.save(out, "PNG")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"{source} did not answer an image ({len(data)} bytes, not readable: {e})") from e
+    return out.getvalue()
+
+
 def fetch_image(image_name, refresh=False, kind="pedals"):
-    """Download a Pedal Playground pedal PNG (`kind="pedalboards"`: a board PNG) into .cache/images/ (larger version
-    first); returns the cached path. Raises RuntimeError with every failure when none of the URLs works."""
+    """Pedal Playground pedal image (`kind="pedalboards"`: a board image) as a PNG in .cache/images/<image_name>
+    (`image_name` = the legacy name with .png); returns the cached path. The image URL comes from catalog.json's
+    assets (a WebP, converted with Pillow, alpha kept); an unknown name (after one refresh of a cached catalog), a
+    failed download or a non-image answer raises RuntimeError and nothing is cached."""
+    if kind not in ("pedals", "pedalboards"):
+        raise ValueError(f"kind must be 'pedals' or 'pedalboards', not {kind!r}")
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     path = IMAGE_DIR / image_name
     if path.exists() and not refresh:
         return path
-    errors = []
-    for url in (BOARD_IMAGE_URLS if kind == "pedalboards" else IMAGE_URLS):
-        url = url.format(image_name)
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "pedalboard-pedal-editor"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                data = r.read()
-            tmp = path.with_suffix(".part")
-            tmp.write_bytes(data)
-            os.replace(tmp, path)
-            return path
-        except Exception as e:  # noqa: BLE001  (report every failure, then give up)
-            errors.append(f"{url}: {e}")
-    raise RuntimeError("Could not download the image:\n  " + "\n  ".join(errors))
+    key = image_name[:-4] if image_name.lower().endswith(".png") else image_name
+    cached = (CACHE / CATALOG_CACHE_NAME).exists()
+    asset = catalog_json().get("assets", {}).get(kind, {}).get(key)
+    if asset is None and cached:
+        asset = catalog_json(refresh=True).get("assets", {}).get(kind, {}).get(key)  # the cached copy may be older
+    if not asset or not asset.get("img"):
+        raise RuntimeError(f"No {kind} image named {key!r} in Pedal Playground's catalog.json ({CATALOG_URL})")
+    url = CATALOG_BASE + asset["img"]
+    data, ctype = _http_get(url)
+    if ctype and not ctype.lower().startswith(("image/", "application/octet-stream", "binary/")):
+        raise RuntimeError(f"{url} answered {ctype!r}, not an image")
+    _write_atomic(path, _to_png(data, url))
+    return path

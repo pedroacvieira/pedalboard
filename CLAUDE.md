@@ -105,7 +105,10 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
 - **Units: mm** for everything we compute, store and show. Pedal Playground files only hold inches (data-width/
   height) and px (left/top at data-scale px/in); convert at the boundary (`design.py`, `common.px_to_mm`).
 - **No pedal images in the repo.** Images are fetched on demand into git-ignored `.cache/images/` (the site sends
-  no CORS headers, so fetch server-side with urllib).
+  no CORS headers, so fetch server-side with urllib). Source (since 2026-10-29): `https://pedalplayground.com/catalog/catalog.json`
+  (cached in `.cache/catalog.json`; `assets.<kind>[<image>].img` = a WebP, converted to PNG with Pillow, alpha kept);
+  `common.fetch_image` / `database` reject anything that is not an image / JSON (the old URLs answer an HTML page).
+  An existing legacy `.cache/pedals.json` / `pedalboards.json` is used as is; else it is built from catalog.json.
 - Unknown values are `null`; `validation.no_unknown` makes them errors. Never invent specs or prices: research
   with sources (maker > retailer > forum) and say "unverified" when needed.
 - Findings start as **warnings**; projects promote them with `validation.require_jacks`, `strict_clearance`,

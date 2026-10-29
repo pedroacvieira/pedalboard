@@ -133,7 +133,7 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
       bonus of its own, a low one at the back a penalty).
 
 ## 5. Data
-- [ ] **Pedal Playground moved its images (found 2026-10-29)**: `common.fetch_image` (`app/images/pedals/<name>.png`,
+- [x] **Pedal Playground moved its images (found 2026-10-29; fixed on `fix/image-download`: images and database now come from catalog.json, HTML answers are rejected, `tests/test_downloads.py`)**: `common.fetch_image` (`app/images/pedals/<name>.png`,
       `public/images/pedals/<name>.png`) now gets a 2886-byte HTML page with HTTP 200 for every pedal; the new site has
       `https://pedalplayground.com/catalog/catalog.json` with `assets.pedals[<image name>].img` = a hashed `.webp` under
       `/catalog/` (350 px wide, same aspect). Fix `fetch_image` (and check the DB cache refresh, `.cache/pedals.json`);
