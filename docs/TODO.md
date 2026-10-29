@@ -27,19 +27,19 @@ ideas · 5 data · 6 done.
       `cables.power_type`).
 
 ### Decisions
-- [ ] Power plug side: when neither side is blocked the tool reports "left". Does the side matter?
-- [ ] Power routes on top: P2 / P12 / P17 run 111-140 mm on top of the gig board (on-top mm cost 3 x,
-      `power_routing.top_cost`). Acceptable, or tune it?
-- [ ] Footswitch spacing: do the proposals spread the switches enough? Else tune `footswitches.comfort_mm` (100) or
-      `layout.weights.footswitch` (2).
-- [ ] Layout proposals: are the moves acceptable (else tune `layout.weights` / `max_move_mm`)? Try
-      `--max-change rearrange` (bigger moves, swaps, rotations) once and judge it.
+- [x] Power plug side (owner, 2026-10-29): it only matters for the cable length. Take the side whose routed cable is
+      shorter, not "left" on a tie. -> task below (**Power plug side by route length**).
+- [x] Power routes on top (owner, 2026-10-29): P2 / P12 / P17 running 111-140 mm on top are fine, even wanted (they
+      save cable elsewhere). Keep `power_routing.top_cost` 3; the "> 150 mm on top" warning stays.
+- [x] Footswitch spacing (owner, 2026-10-29): the proposals spread the switches enough; keep `comfort_mm` 100 and
+      weight 2.
+- [x] Layout proposals (owner, 2026-10-29, after `--max-change rearrange --seed 42`): the moves are "kind of ok"; the
+      remaining problem is pedals on the board's unusable rounded edges -> **Usable board area** (section 2).
 - [ ] Answer the open questions of `docs/plans/pedal-position.md`.
 
 ### Checks by eye
-- [ ] `projects/guitar-gig/routing.svg` and `power.svg` (and `uv run scripts/build.py --images` for
-      `routing.local.svg`): label placement is basic (some S# labels on short segments or overlapping in lanes).
-- [ ] Pedal editor GUI: footswitch mode, J/F, the no-footswitch box, the four-way switch type.
+- [x] `routing.svg` / `power.svg` label placement: ok for now (owner, 2026-10-29).
+- [x] Pedal editor GUI footswitch mode: ok for now (owner, 2026-10-29).
 - [ ] Duo 2.1 holes (practice / bass have no layout yet): `uv run scripts/board_editor.py bass`.
 
 ### Later, when it happens
@@ -51,6 +51,30 @@ ideas · 5 data · 6 done.
       Retrovibe, red_muck / analog_chorus DC heads) and 7 plug collisions (mostly a patch plug vs the DC plug on the
       same pedal). All three layout proposals reach 0 / 0 (2026-10-28): load `projects/guitar-gig/proposals/1.json` in
       Pedal Playground (Load from File) and re-save `projects/guitar-gig/playground_design.json`, or move by hand.
+- [ ] **Usable board area (owner, 2026-10-29)**: the Fender Pro Medium has rounded edges at the back and front where
+      pedals cannot sit, but the proposals use them (pedals are only kept inside the board image box shrunk by
+      `layout.board_margin_mm`). Owner wants four boundary lines (back, front, left, right) set in
+      `scripts/board_editor.py`, each dragged independently (a line moves only along its own axis; select one and
+      adjust it without touching the others).
+      - Data: `projects/<name>/board.json` `bounds` {back, front, left, right} in fractions of the unrotated board
+        image (missing side = the image edge); written only by the board editor.
+      - Use: layout feasibility and moves (`layout.py`: inside the bounds, then `board_margin_mm`), a build warning when
+        a pedal of the owner's layout lies outside (strict flag?), drawn in `routing.svg` / proposal SVGs; part of
+        `proposal_inputs_sha1` (board.json already is?).
+      - Open: may cables still route over the rounded parts (routing area / `edge_margin_mm`, under-board footprint),
+        or do the bounds limit them too? Do edge segments stay relative to the image edge?
+      - Then re-run the gig proposals (the current rearrange set, seed 42, may put pedals on the rounded edges).
+- [ ] **Power plug side by route length (owner, 2026-10-29)**: a DC plug's exit side only matters for the length; when
+      both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
+      cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
+      signal plugs already do. The layout surrogate's power estimate should follow.
+- [ ] **Cable ids (owner, 2026-10-29)**: today S# = signal cable, P# = one power leg (jack to jack hop), C# = one
+      physical DC cable (a daisy chain of legs, "DC cables to buy"). Decided (owner, 2026-10-29): every power cable
+      you buy is **P#** (as every signal cable is S#); the legs of a daisy chain (plug to plug) are **P#.1, P#.2 ...**
+      in chain order (e.g. C10 -> P10 = P10.1 SW_B -> phase_95 + P10.2 phase_95 -> retrovibe); a single-leg cable is
+      just P#. No C# any more. `cables.overrides` keys move to the new ids (P# for a single leg, P#.n for a leg;
+      migrate the gig's overrides, old keys an error with a hint), `power.remap_overrides`, README tables ("DC cables
+      to buy" shows each leg's min length as the minimum plug spacing), SVG labels and tests follow.
 - Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
   S15 / S16 ends, P1, P11, P13); one owner-drawn edge crossing at the back (handle area), unused.
 
