@@ -291,3 +291,61 @@ def test_holes_are_drawn_after_the_board_with_a_key_entry():
     assert ("hole", "Board hole") in svgdraw.key_entries(ctx, [], 2)
     assert ("hole", "Board hole") not in svgdraw.key_entries({"layout": {"holes": []}}, [], 2)
     assert "<rect" in svgdraw.key_sample("hole", 0, 0)
+
+
+# --- the bounds ----------------------------------------------------------------------------------
+EDGE = {"back": 0.0, "front": 1.0, "left": 0.0, "right": 1.0}
+
+
+def write_bounds(tmp_path, bounds):
+    (tmp_path / "board.json").write_text(json.dumps({"bounds": bounds, "boxes": []}))
+
+
+def test_load_bounds_defaults_are_the_image_edges(tmp_path):
+    w = []
+    assert boards.load_bounds(None, w) == EDGE                       # no project folder
+    assert boards.load_bounds(tmp_path, w) == EDGE                   # no file
+    (tmp_path / "board.json").write_text(json.dumps({"boxes": []}))
+    assert boards.load_bounds(tmp_path, w) == EDGE                   # no bounds key
+    write_bounds(tmp_path, {})
+    assert boards.load_bounds(tmp_path, w) == EDGE and w == []
+
+
+def test_load_bounds_valid_full_and_partial(tmp_path):
+    write_bounds(tmp_path, {"back": 0.06, "front": 0.95, "left": 0.01, "right": 0.99})
+    w = []
+    assert boards.load_bounds(tmp_path, w) == {"back": 0.06, "front": 0.95, "left": 0.01, "right": 0.99} and w == []
+    write_bounds(tmp_path, {"front": 0.9})                             # missing sides = the image edge
+    assert boards.load_bounds(tmp_path, w) == {**EDGE, "front": 0.9} and w == []
+    write_bounds(tmp_path, {"back": 0, "right": 1})                    # integers are numbers
+    assert boards.load_bounds(tmp_path, w) == EDGE and w == []
+
+
+@pytest.mark.parametrize("bounds", [
+    {"back": "a"}, {"back": None}, {"left": True}, {"front": 1.5}, {"right": -0.1}, {"back": float("nan")},
+    {"back": 0.5, "front": 0.5}, {"back": 0.7, "front": 0.3}, {"back": 1.0},          # back >= front
+    {"left": 0.5, "right": 0.5}, {"left": 0.9, "right": 0.1}, {"right": 0.0},         # left >= right
+    {"top": 0.1}, [0.1, 0.9], "x", 3])
+def test_load_bounds_invalid_values_warn_and_give_the_defaults(tmp_path, bounds):
+    # a half-valid set is not trusted: every side comes back as the image edge
+    (tmp_path / "board.json").write_text(json.dumps({"bounds": bounds, "boxes": []}).replace("NaN", "NaN"))
+    w = []
+    assert boards.load_bounds(tmp_path, w) == EDGE
+    assert len(w) == 1 and w[0].startswith(f"{tmp_path.name}/board.json: bounds ignored (")
+    assert boards.load_bounds(tmp_path) == EDGE                      # no warnings list: no crash
+
+
+def test_load_bounds_valid_sides_are_not_kept_next_to_an_invalid_one(tmp_path):
+    write_bounds(tmp_path, {"back": 0.1, "front": "x"})
+    w = []
+    assert boards.load_bounds(tmp_path, w) == EDGE and len(w) == 1
+
+
+def test_load_bounds_survives_a_broken_file_and_load_edits_ignores_bounds(tmp_path):
+    (tmp_path / "board.json").write_text("{not json")
+    w = []
+    assert boards.load_bounds(tmp_path, w) == EDGE and len(w) == 1 and "unreadable" in w[0]
+    box = {"type": "hole", "x0": 0.1, "y0": 0.2, "x1": 0.3, "y1": 0.4}
+    (tmp_path / "board.json").write_text(json.dumps({"bounds": {"back": 0.1}, "boxes": [box]}))
+    w = []
+    assert boards.load_edits(tmp_path, w) == [box] and w == []

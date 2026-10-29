@@ -63,6 +63,9 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   board image}] applied in order on the derived holes (filled closes, hole opens, later wins; `design.board_holes`),
   and edge crossings `{type edge, side left|right|back|front, from, to}` (fractions along that side of the unrotated
   image; `design.board_edges`, `layout["edge_segments"]`; the editor snaps a drawn line to the nearest side).
+  Optional `bounds` {back, front, left, right} = four lines (fractions of the unrotated image, back / front from its top edge,
+  left / right from its left edge, a missing side = the image edge; `boards.load_bounds`, editor mode B): pedals must stay
+  inside (read by the build / layout search in a later step; cables and under-board supplies are not limited by it).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
   Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `power.svg` (power wiring only,

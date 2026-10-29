@@ -315,6 +315,48 @@ def load_edits(project_dir, warnings=None):
     return boxes
 
 
+BOUND_SIDES = ("back", "front", "left", "right")
+BOUNDS_EDGE = {"back": 0.0, "front": 1.0, "left": 0.0, "right": 1.0}   # no bound = the image edge
+
+
+def load_bounds(project_dir, warnings=None):
+    """The four boundary lines of projects/<name>/board.json `bounds` as {"back", "front", "left", "right"}: fractions of
+    the unrotated board image (back / front from its TOP edge, left / right from its LEFT edge; where pedals may sit). A
+    missing side, no `bounds` key, no file or no project folder = the image edge (back 0, front 1, left 0, right 1). Invalid
+    values (not numbers, outside 0..1, unknown side, back >= front, left >= right) are described in `warnings` (a list, if
+    given) and the defaults are returned (all four sides: a half-valid set is not trusted)."""
+    out = dict(BOUNDS_EDGE)
+    if project_dir is None:
+        return out
+    path = Path(project_dir) / EDITS_FILE
+    if not path.exists():
+        return out
+
+    def warn(msg):
+        if warnings is not None:
+            warnings.append(f"{path.parent.name}/{EDITS_FILE}: bounds ignored ({msg})")
+        return dict(BOUNDS_EDGE)
+    try:
+        raw = load_json(path).get("bounds")
+    except (ValueError, AttributeError, OSError) as e:
+        return warn(f"file unreadable: {e}")
+    if raw is None:
+        return out
+    if not isinstance(raw, dict):
+        return warn("not an object with back / front / left / right")
+    for side, v in raw.items():
+        if side not in BOUNDS_EDGE:
+            return warn(f"unknown side {side!r}, expected back, front, left or right")
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1:   # NaN fails the range test too
+            return warn(f"{side} must be a number between 0 and 1, got {v!r}")
+        out[side] = float(v)
+    if out["back"] >= out["front"]:
+        return warn(f"back {out['back']} must be smaller than front {out['front']}")
+    if out["left"] >= out["right"]:
+        return warn(f"left {out['left']} must be smaller than right {out['right']}")
+    return out
+
+
 # --- the CLI -------------------------------------------------------------------------------------
 def wanted(project_names, extra_images, db):
     """{image name: (w_mm, h_mm)}: the board of each project (its layout's pedalboard item, else the board of
