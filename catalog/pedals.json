@@ -514,7 +514,7 @@
     },
     {
       "id": "danelectro_3699",
-      "owned": false,
+      "owned": true,
       "instruments": ["guitar"],
       "brand": "Danelectro",
       "name": "3699 Fuzz",

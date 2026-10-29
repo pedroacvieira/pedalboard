@@ -63,7 +63,7 @@ flowchart TB
 | # | Pedal | Owned | Accepts | Runs at | Draw | Bypass | Digital | Powered from |
 |--:|---|:-:|---|---|--:|---|:-:|---|
 | 1 | AnalogMan Sun Face BC183 | Yes | 9V | 9V | 1 mA | True | No | Ojai R30 · F1 |
-| 2 | Danelectro 3699 Fuzz | No | 9V | 9V | 9 mA | True | No | Ojai R30 · F1 |
+| 2 | Danelectro 3699 Fuzz | Yes | 9V | 9V | 9 mA | True | No | Ojai R30 · F1 |
 | 3 | AnalogMan Beano Boost | Yes | 9V | 9V | 5 mA | True | No | Ojai R30 · F1 |
 | 4 | TC Electronic PolyTune 3 | Yes | 9V | 9V | 100 mA | Buffered (switchable) | Yes | Ojai R30 · F2 |
 | 5 | Wampler Mini Ego Compressor | Yes | 9-18V | 18V | 22 mA | True | No | Ojai R30 · SW_A |
@@ -80,7 +80,7 @@ flowchart TB
 | 16 | JHS Flight Delay | No | 9V | 9V | 85 mA | Buffered (switchable) | Yes | Ojai R30 · F1 |
 | 17 | Wampler Tumnus Deluxe | Yes | 9V | 9V | 70 mA | Buffered (switchable) | No | Ojai R30 · F3 |
 
-**To buy:** Danelectro 3699 Fuzz, JHS Flight Delay
+**To buy:** JHS Flight Delay
 
 ### Ordering rules
 
@@ -398,6 +398,8 @@ Stopped at the cap `footswitches.max_toppers` (5).
 ## Layout proposals
 
 Made by `uv run scripts/propose_layout.py guitar-gig --max-change rearrange --seed 42` (max_change `rearrange`, max move none, seed 42, 12000 iterations x 4 restarts, 45.8 s). Each proposal is a Pedal Playground file (Load from File: the owner's layout with only the moved pedals changed; pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first); load it, adjust, save it as playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+
+**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, outlines, cables, specs) or the board's holes (catalog/boards.json, board.json) changed since these proposals were made; rerun the command above.
 
 | | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
 |---|--:|--:|--:|--:|

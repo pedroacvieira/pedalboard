@@ -87,14 +87,13 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
 | MXR Bass Synth | 1 | bass | 329 EUR |
-| Danelectro 3699 Fuzz | 1 | guitar-gig | 199 EUR |
 | JHS Flight Delay | 1 | guitar-gig | 244 EUR |
 | JHS Pulp 'N' Peel V4 | 1 | guitar-practice | 238 EUR |
 | JHS Hard Drive | 1 | guitar-practice | 207 EUR |
 | Strymon Ojai R30 (power supply) | 1 | guitar-gig, guitar-practice | 177 EUR |
 | Rockboard by Warwick Duo 2.1 (board) | 1 | guitar-practice | 74 EUR |
 
-**Known total:** 1468 EUR
+**Known total:** 1269 EUR
 
 ## Catalog pedals not in any project
 
