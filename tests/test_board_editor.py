@@ -199,3 +199,177 @@ def test_hit_box_can_skip_the_boxes_so_edge_mode_draws_over_them():
     assert be.hit_box(boxes, 0.1, 0.1, 100.0, 50.0) == 0                       # a click in the hole box
     assert be.hit_box(boxes, 0.1, 0.1, 100.0, 50.0, types=("edge",)) is None  # edge mode: free to draw
     assert be.hit_box(boxes, 0.01, 0.2, 100.0, 50.0, types=("edge",)) == 1    # 1 mm from the left segment
+
+
+# --- the bounds ----------------------------------------------------------------------------------
+EDGE = {"back": 0.0, "front": 1.0, "left": 0.0, "right": 1.0}
+B = {"back": 0.1, "front": 0.9, "left": 0.2, "right": 0.8}   # on 200 x 100 mm: back 10, front 90, left 40, right 160 mm
+
+
+def test_bound_lines_span_the_whole_image_in_mm():
+    lines = be.bound_lines(B, W, H)
+    assert lines["back"] == ((0.0, 10.0), (200.0, 10.0)) and lines["front"] == ((0.0, 90.0), (200.0, 90.0))
+    assert lines["left"] == ((40.0, 0.0), (40.0, 100.0)) and lines["right"] == ((160.0, 0.0), (160.0, 100.0))
+    assert be.bound_lines({}, W, H)["right"] == ((200.0, 0.0), (200.0, 100.0))        # missing = image edge
+
+
+def test_hit_bound_picks_the_nearest_line_within_the_tolerance():
+    assert be.hit_bound(B, 0.5, 0.11, W, H) == "back"            # 1 mm below the back line (anywhere along x)
+    assert be.hit_bound(B, 0.5, 0.89, W, H) == "front"
+    assert be.hit_bound(B, 0.205, 0.5, W, H) == "left"           # 0.005 * 200 = 1 mm
+    assert be.hit_bound(B, 0.795, 0.5, W, H) == "right"
+    assert be.hit_bound(B, 0.5, 0.5, W, H) is None               # nowhere near a line
+    assert be.hit_bound(B, 0.5, 0.13, W, H) is None              # 3 mm > HIT_MM
+    assert be.hit_bound(B, 0.5, 0.13, W, H, tol_mm=3.5) == "back"
+    # back / front use the vertical distance only, left / right the horizontal one
+    assert be.hit_bound(B, 0.2, 0.5, W, H) == "left" and be.hit_bound(B, 0.05, 0.1, W, H) == "back"
+    # near a corner: the nearer of the two lines wins (left 1 mm away, back 0.5 mm)
+    assert be.hit_bound(B, 0.205, 0.105, W, H) == "back"
+    assert be.hit_bound(B, 0.195, 0.115, W, H) == "left"
+    assert be.hit_bound(EDGE, 0.0, 0.5, W, H) == "left"          # lines on the image edge can be hit
+
+
+def test_move_bound_changes_only_its_own_side():
+    for side in be.BOUND_SIDES:
+        got = be.move_bound(B, side, 0.5, W, H) if side in ("front", "right") else be.move_bound(B, side, 0.15, W, H)
+        assert {k: v for k, v in got.items() if k != side} == {k: v for k, v in B.items() if k != side}
+        assert got[side] != B[side]
+    assert be.move_bound(B, "back", 0.25, W, H)["back"] == 0.25
+    assert B == {"back": 0.1, "front": 0.9, "left": 0.2, "right": 0.8}                 # the input is not modified
+    assert be.move_bound({}, "back", 0.3, W, H) == {**EDGE, "back": 0.3}
+
+
+def test_move_bound_clamps_to_the_image_and_to_ten_mm_from_the_opposite_line():
+    assert be.move_bound(B, "back", -0.5, W, H)["back"] == 0.0
+    assert be.move_bound(B, "front", 1.5, W, H)["front"] == 1.0
+    assert be.move_bound(B, "left", -1, W, H)["left"] == 0.0
+    assert be.move_bound(B, "right", 2, W, H)["right"] == 1.0
+    assert be.move_bound(B, "back", 0.99, W, H)["back"] == pytest.approx(0.8)          # front 90 mm - 10 mm = 80 mm
+    assert be.move_bound(B, "front", 0.0, W, H)["front"] == pytest.approx(0.2)         # back 10 mm + 10 mm
+    assert be.move_bound(B, "left", 0.99, W, H)["left"] == pytest.approx(0.75)         # right 160 - 10 = 150 mm of 200
+    assert be.move_bound(B, "right", 0.0, W, H)["right"] == pytest.approx(0.25)        # left 40 + 10 = 50 mm
+
+
+def test_nudge_bound_moves_along_its_own_axis_in_mm_and_clamps():
+    assert be.nudge_bound(B, "back", 5.0, W, H)["back"] == pytest.approx(0.15)          # 5 mm of 100
+    assert be.nudge_bound(B, "left", 5.0, W, H)["left"] == pytest.approx(0.225)         # 5 mm of 200
+    assert be.nudge_bound(B, "front", -0.5, W, H)["front"] == pytest.approx(0.895)
+    assert be.nudge_bound(B, "right", 2.0, W, H)["right"] == pytest.approx(0.81)
+    for side in be.BOUND_SIDES:                                                          # independence
+        got = be.nudge_bound(B, side, 1.0, W, H)
+        assert {k: v for k, v in got.items() if k != side} == {k: v for k, v in B.items() if k != side}
+    assert be.nudge_bound(B, "back", -50, W, H)["back"] == 0.0
+    assert be.nudge_bound(B, "front", 50, W, H)["front"] == 1.0
+    assert be.nudge_bound(B, "back", 500, W, H)["back"] == pytest.approx(0.8)
+    assert be.nudge_bound(B, "right", -500, W, H)["right"] == pytest.approx(0.25)
+
+
+def test_reset_bound_puts_only_that_side_back_on_the_edge():
+    for side in be.BOUND_SIDES:
+        got = be.reset_bound(B, side)
+        assert got[side] == EDGE[side]
+        assert {k: v for k, v in got.items() if k != side} == {k: v for k, v in B.items() if k != side}
+    assert be.reset_bound(EDGE, "back") == EDGE and be.reset_bound({}, "left") == EDGE
+
+
+def test_bound_rows_are_distances_from_each_own_image_edge():
+    assert be.bound_rows({"back": 0.125, **{k: v for k, v in B.items() if k != "back"}}, W, H)[0] == "back   12.5 mm from the top edge"
+    assert be.bound_rows(B, W, H) == ["back   10.0 mm from the top edge", "front  10.0 mm from the bottom edge",
+                                      "left   40.0 mm from the left edge", "right  40.0 mm from the right edge"]
+    assert be.bound_rows(EDGE, W, H)[3] == "right   0.0 mm from the right edge"
+
+
+def test_bounds_set_lists_the_sides_off_the_edge():
+    assert be.bounds_set(EDGE) == [] and be.bounds_set({}) == []
+    assert be.bounds_set({**EDGE, "front": 0.9, "back": 0.1}) == ["back", "front"]
+    assert be.bounds_set({**EDGE, "left": 0.00001}) == []        # rounds to the edge at 4 decimals
+
+
+def test_dumps_edits_writes_only_the_bounds_off_the_edge_between_doc_and_boxes():
+    text = be.dumps_edits([box()], {"back": 0.06, "front": 0.95123456, "left": 0.0, "right": 1.0})
+    lines = text.splitlines()
+    assert lines[1].startswith('  "_doc": ') and lines[2] == '  "bounds": {"back": 0.06, "front": 0.9512},'
+    assert lines[3] == '  "boxes": [' and list(json.loads(text)) == ["_doc", "bounds", "boxes"]
+    assert json.loads(text)["bounds"] == {"back": 0.06, "front": 0.9512}
+    assert be.dumps_edits([box()], {"left": 0.1}).splitlines()[2] == '  "bounds": {"left": 0.1},'
+    # all four on the edge (or none given): no key at all, the file is as before
+    assert be.dumps_edits([box()], EDGE) == be.dumps_edits([box()]) == be.dumps_edits([box()], {})
+    assert "bounds" not in json.loads(be.dumps_edits([box()]))
+
+
+def test_save_then_load_bounds_round_trips(tmp_path):
+    bounds = {"back": 0.06, "front": 0.95, "left": 0.0, "right": 0.975}
+    be.save_edits(tmp_path, [box()], bounds)
+    w = []
+    assert boards.load_bounds(tmp_path, w) == bounds and w == []
+    assert boards.load_edits(tmp_path, w) == [box()] and w == []
+    be.save_edits(tmp_path, [box()])                             # saved without: back to the edges, no key
+    assert boards.load_bounds(tmp_path) == EDGE and "bounds" not in json.loads((tmp_path / "board.json").read_text())
+
+
+@pytest.mark.parametrize("project", ["guitar-gig", "guitar-practice", "bass"])
+def test_existing_board_files_are_dumped_byte_identical(project):
+    path = ROOT / "projects" / project / "board.json"
+    if not path.exists():
+        pytest.skip("no board.json")
+    if "bounds" in json.loads(path.read_text()):
+        pytest.skip("the owner has set bounds")
+    # the `_doc` sentence about bounds is new, so the first save rewrites that one line; everything else stays as it was
+    def without_doc(text):
+        return [line for line in text.splitlines() if not line.startswith('  "_doc": ')]
+    dumped = be.dumps_edits(boards.load_edits(path.parent), boards.load_bounds(path.parent))
+    assert without_doc(dumped) == without_doc(path.read_text())
+
+
+def test_project_rows_report_the_bounds(tmp_path, monkeypatch):
+    p = tmp_path / "demo"
+    p.mkdir()
+    (p / "project.json").write_text(json.dumps({"board": {"brand": "Rock", "model": "Duo"}}))
+    monkeypatch.setattr(be, "project_dirs", lambda names: [p])
+    db = {"Rock Duo": {"Image": "rock-duo.png", "Width": 1, "Height": 1}}
+    (row,) = be.project_rows(None, db, {})
+    assert row.endswith("no bounds")
+    be.save_edits(p, [], {"back": 0.06, "front": 0.95})
+    (row,) = be.project_rows(None, db, {})
+    assert row.endswith("bounds set: back, front")
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_app_bounds_mode_edits_only_the_selected_line(tmp_path):
+    from PIL import Image
+    img = tmp_path / "board.png"
+    Image.new("RGBA", (200, 100), (10, 10, 10, 255)).save(img)
+    try:
+        app = be.make_app(tmp_path, img, "board.png", W, H, None)
+    except Exception as e:  # noqa: BLE001
+        pytest.skip(f"no usable display: {e}")
+    try:
+        app.update()
+        assert not app.dirty
+        app.boxes.append(box())
+        app.sel = 0
+        app._set_type("bounds")
+        assert app.bounds_mode and app.sel is None and app.bsel is None
+        app._nudge((0, 1), 2.0)                                   # nothing selected: nothing happens
+        assert app.bounds == EDGE
+        app.bsel = "left"
+        app._nudge((0, 1), 2.0)                                   # Up / Down do not move a left line
+        assert app.bounds == EDGE
+        app._nudge((1, 0), 2.0)
+        assert app.bounds == {**EDGE, "left": pytest.approx(0.01)} and app.dirty
+        app.bsel = "back"
+        app._nudge((1, 0), 2.0)
+        app._nudge((0, 1), 0.5)
+        assert app.bounds == {**EDGE, "left": pytest.approx(0.01), "back": pytest.approx(0.005)}
+        app._toggle_type()                                        # T does nothing in bounds mode
+        assert app.default_type == "bounds"
+        app._delete()                                             # resets the selected line only
+        assert app.bounds == {**EDGE, "left": pytest.approx(0.01)}
+        app._deselect()
+        assert app.bsel is None
+        app._save()
+        assert boards.load_bounds(tmp_path) == {**EDGE, "left": pytest.approx(0.01)} and not app.dirty
+        app._set_type("hole")                                     # lines stay drawn, but are no longer selectable
+        app.update()
+    finally:
+        app.destroy()

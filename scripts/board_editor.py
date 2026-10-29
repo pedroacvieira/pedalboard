@@ -3,7 +3,7 @@
 
     uv run scripts/board_editor.py <project>                open the editor on the project's board
     uv run scripts/board_editor.py <project> --image FILE   use a local PNG instead of the cached / downloaded one
-    uv run scripts/board_editor.py --list                   every project: board image, derived hole rects, edit boxes
+    uv run scripts/board_editor.py --list                   every project: board image, derived hole rects, edit boxes, bounds
 
 The holes derived from the image (catalog/boards.json, `uv run scripts/boards.py <project>`) are drawn as blue
 outlines. The project's boxes are saved to projects/<name>/board.json (fractions 0..1 of the image, one entry per line)
@@ -14,8 +14,16 @@ of the unrotated image; back = its top edge, front = its bottom edge): the cable
 board edge only where such a segment lies (and through the holes). The image is fetched on demand into .cache/images/ and
 never copied into the repo.
 
+Besides the boxes, board.json holds four BOUNDS (key `bounds`: back, front, left, right; fractions of the unrotated image, back /
+front from its top edge, left / right from its left edge; a side that is missing = the image edge): the area where pedals may
+sit (cables and under-board supplies are not limited by it). Bounds mode (B): click near a line to select it, drag it (only
+along its own axis: back / front follow the mouse's y, left / right its x) or nudge it with the arrow keys along that axis
+(Up / Down for back / front, Left / Right for left / right; 0.5 mm, Shift 2 mm); Delete puts the selected line back on the image
+edge; Esc deselects. The four lines move independently (at least 10 mm apart from their opposite). In the other modes the
+lines are drawn (dashed teal, the area outside shaded) but not selectable.
+
 In the editor: pick the type of the next entry with the buttons in the panel or the keys 1 (hole), 2 (filled), 3 (edge),
-shown in the status bar; drag on empty space draws a box; in edge mode (a drag starting on a box still draws) you drag a LINE (rubber band)
+shown in the status bar (B: bounds mode, see above); drag on empty space draws a box; in edge mode (a drag starting on a box still draws) you drag a LINE (rubber band)
 that snaps to the nearest board side on release (`project_edge`: both ends are projected on the side nearest to the line's
 middle and clamped to the board; shorter than 1 mm along the side: rejected); a small margin round the image lets you draw
 just outside the border. Click selects an entry (an edge segment within 2 mm of the click), drag a selected one moves it
@@ -42,13 +50,19 @@ SIDES = boards.EDGE_SIDES
 MIN_BOX_MM = 1.0           # a box smaller than this on a side (an edge segment: along its side) is a stray click, not a box
 HIT_MM = 2.0               # a click this close to an edge segment selects it
 DECIMALS = 4
+BOUND_SIDES = boards.BOUND_SIDES
+BOUNDS_EDGE = boards.BOUNDS_EDGE
+MIN_BOUNDS_GAP_MM = 10.0   # a bounds line stays at least this far from its opposite line
+BOUNDS_COLOUR = "#00897b"
 DOC = ("Corrections of the board holes of this project and the places where cables may go round the board edge. Boxes in "
        "fractions (0..1) of the Pedal Playground board image (unrotated, origin top-left, 4 decimals), applied in order on "
        "the holes derived in catalog/boards.json: type 'filled' closes the area, type 'hole' opens it; a later box wins. "
        "type 'edge' is a line segment along one side of the image (side left|right|back|front, back = the image's top edge, "
        "front = its bottom edge; from < to = fractions along that side: of the height from the top for left / right, of the "
        "width from the left for back / front): cables may go from under the board round the board edge only along such a "
-       "segment (and through the holes). Written ONLY by scripts/board_editor.py.")
+       "segment (and through the holes). 'bounds' = four lines (back, front, left, right; fractions of the same image, back / front "
+       "from its top edge, left / right from its left edge; a side that is missing is the image edge): where pedals may sit "
+       "(cables and under-board supplies are not limited by it). Written ONLY by scripts/board_editor.py.")
 
 
 # --- which board, which image (pure) -------------------------------------------------------------
@@ -211,9 +225,83 @@ def effective_holes(derived, boxes, w_mm, h_mm):
     return design.board_holes(item, derived, boxes)
 
 
+# --- bounds (pure) -------------------------------------------------------------------------------
+def full_bounds(bounds=None):
+    """All four sides as a new dict; a missing side = the image edge."""
+    return {side: (bounds or {}).get(side, BOUNDS_EDGE[side]) for side in BOUND_SIDES}
+
+
+def _horizontal(side):
+    return side in ("back", "front")      # back / front are horizontal lines (a y position), left / right vertical (an x position)
+
+
+def bound_lines(bounds, w_mm, h_mm):
+    """Per side the line across the whole unrotated image in mm: {side: ((x0, y0), (x1, y1))} (back / front horizontal at
+    their y, left / right vertical at their x)."""
+    b = full_bounds(bounds)
+    return {side: (((0.0, b[side] * h_mm), (w_mm, b[side] * h_mm)) if _horizontal(side)
+                   else ((b[side] * w_mm, 0.0), (b[side] * w_mm, h_mm))) for side in BOUND_SIDES}
+
+
+def hit_bound(bounds, fx, fy, w_mm, h_mm, tol_mm=HIT_MM):
+    """The side whose line is nearest to the point (fractions of the image) within `tol_mm`, else None; back / front count the
+    vertical distance, left / right the horizontal one."""
+    b = full_bounds(bounds)
+    best = None
+    for side in BOUND_SIDES:
+        d = abs(fy - b[side]) * h_mm if _horizontal(side) else abs(fx - b[side]) * w_mm
+        if d <= tol_mm and (best is None or d < best[0]):
+            best = (d, side)
+    return None if best is None else best[1]
+
+
+def move_bound(bounds, side, f, w_mm, h_mm):
+    """New bounds with ONLY `side` set to the fraction `f`, clamped to 0..1 and to at least MIN_BOUNDS_GAP_MM from the opposite line."""
+    b = full_bounds(bounds)
+    size = h_mm if _horizontal(side) else w_mm
+    gap = MIN_BOUNDS_GAP_MM / size
+    lo, hi = {"back": (0.0, b["front"] - gap), "front": (b["back"] + gap, 1.0),
+              "left": (0.0, b["right"] - gap), "right": (b["left"] + gap, 1.0)}[side]
+    b[side] = min(hi, max(lo, f))
+    return b
+
+
+def nudge_bound(bounds, side, d_mm, w_mm, h_mm):
+    """New bounds with `side` moved by `d_mm` along its own axis (down for back / front, right for left / right), same clamping."""
+    b = full_bounds(bounds)
+    return move_bound(b, side, b[side] + d_mm / (h_mm if _horizontal(side) else w_mm), w_mm, h_mm)
+
+
+def reset_bound(bounds, side):
+    """New bounds with `side` back on the image edge."""
+    b = full_bounds(bounds)
+    b[side] = BOUNDS_EDGE[side]
+    return b
+
+
+def bound_rows(bounds, w_mm, h_mm):
+    """One line per side, its distance from the image edge it belongs to: 'back   12.5 mm from the top edge' (back from the
+    top, front from the bottom, left from the left, right from the right edge)."""
+    b = full_bounds(bounds)
+    rows = []
+    for side in BOUND_SIDES:
+        size = h_mm if _horizontal(side) else w_mm
+        d = (b[side] if side in ("back", "left") else 1.0 - b[side]) * size
+        edge = {"back": "top", "front": "bottom", "left": "left", "right": "right"}[side]
+        rows.append(f"{side:<5} {d:>5.1f} mm from the {edge} edge")
+    return rows
+
+
+def bounds_set(bounds):
+    """The sides that differ from the image edge, in the order back, front, left, right."""
+    b = full_bounds(bounds)
+    return [side for side in BOUND_SIDES if round(b[side], DECIMALS) != BOUNDS_EDGE[side]]
+
+
 # --- the file (pure) -----------------------------------------------------------------------------
-def dumps_edits(boxes):
-    """board.json text: a `_doc`, then one entry per line with 4 decimals (like catalog/outlines.json)."""
+def dumps_edits(boxes, bounds=None):
+    """board.json text: a `_doc`, the `bounds` (only the sides that differ from the image edge; no key when none does), then
+    one entry per line with 4 decimals (like catalog/outlines.json)."""
     lines = []
     for b in boxes:
         if b["type"] == "edge":
@@ -222,21 +310,24 @@ def dumps_edits(boxes):
         v = [round(b[k], DECIMALS) for k in ("x0", "y0", "x1", "y1")]
         lines.append(f'    {{"type": {json.dumps(b["type"])}, "x0": {v[0]}, "y0": {v[1]}, "x1": {v[2]}, "y1": {v[3]}}}')
     body = "[\n" + ",\n".join(lines) + "\n  ]" if lines else "[]"
-    return "{\n" + f'  "_doc": {json.dumps(DOC, ensure_ascii=False)},\n  "boxes": {body}\n' + "}\n"
+    full = full_bounds(bounds)
+    sides = bounds_set(full)
+    bounds_line = ('  "bounds": {' + ", ".join(f'"{side}": {round(full[side], DECIMALS)}' for side in sides) + "},\n") if sides else ""
+    return "{\n" + f'  "_doc": {json.dumps(DOC, ensure_ascii=False)},\n{bounds_line}  "boxes": {body}\n' + "}\n"
 
 
-def save_edits(project_dir, boxes):
+def save_edits(project_dir, boxes, bounds=None):
     """Write projects/<name>/board.json atomically (.tmp + os.replace); returns the path."""
     path = Path(project_dir) / EDITS_FILE
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(dumps_edits(boxes))
+    tmp.write_text(dumps_edits(boxes, bounds))
     os.replace(tmp, path)
     return path
 
 
 def project_rows(names, db, boards_data):
     """Lines for --list: project, board image, derived hole count (? without a boards.json entry), edit boxes (hole / filled),
-    edge segments."""
+    edge segments, bounds (the sides that differ from the image edge)."""
     rows = []
     for pdir in project_dirs(names or None):
         project = load_json(pdir / "project.json")
@@ -249,7 +340,9 @@ def project_rows(names, db, boards_data):
         holes = "?" if entry is None else str(len(entry["holes"]))
         edits = boards.load_edits(pdir)
         n_edge = sum(1 for b in edits if b["type"] == "edge")
-        rows.append(f"{pdir.name:<16} {image:<28} hole rects {holes:>2}   edit boxes {len(edits) - n_edge}   edge segments {n_edge}")
+        set_ = bounds_set(boards.load_bounds(pdir))
+        rows.append(f"{pdir.name:<16} {image:<28} hole rects {holes:>2}   edit boxes {len(edits) - n_edge}   edge segments {n_edge}"
+                    f"   {'bounds set: ' + ', '.join(set_) if set_ else 'no bounds'}")
     return rows
 
 
@@ -272,8 +365,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.img = Image.open(image_path).convert("RGBA")
             self.boxes = [dict(b) for b in boards.load_edits(pdir)]
             self.saved = [dict(b) for b in self.boxes]
-            self.sel, self.default_type, self.show_effective = None, "hole", False
-            self.drag = None          # ("draw", fx, fy) | ("move", fx, fy) while the button is down
+            self.bounds = boards.load_bounds(pdir)
+            self.saved_bounds = dict(self.bounds)
+            self.bsel = None          # the selected bounds line (a side), bounds mode only
+            self.sel, self.default_type, self.show_effective = None, "hole", False   # default_type "bounds" = bounds mode
+            self.drag = None          # ("draw" | "move" | "bound", fx, fy) while the button is down
             self.zoom = min(860 / w_mm, 520 / h_mm)  # px per mm
             self.photo, self._busy = None, False
             self.title(f"{pdir.name}: {image_name} - {w_mm:.1f} x {h_mm:.1f} mm")
@@ -283,7 +379,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
 
         @property
         def dirty(self):
-            return self.boxes != self.saved
+            return self.boxes != self.saved or self.bounds != self.saved_bounds
+
+        @property
+        def bounds_mode(self):
+            return self.default_type == "bounds"
 
         # -- layout --
         def _build_widgets(self):
@@ -305,13 +405,16 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.type_var = tk.StringVar(value=self.default_type)
             kinds = ttk.Frame(panel)
             kinds.pack(fill="x", pady=(0, 8))
-            for n, (t, label) in enumerate((("hole", "Hole box"), ("filled", "Filled box"), ("edge", "Edge line")), 1):
-                ttk.Radiobutton(kinds, text=f"{label} ({n})", value=t, variable=self.type_var,
+            for n, (t, label) in enumerate((("hole", "Hole box"), ("filled", "Filled box"), ("edge", "Edge line"),
+                                              ("bounds", "Bounds")), 1):
+                ttk.Radiobutton(kinds, text=f"{label} ({'B' if t == 'bounds' else n})", value=t, variable=self.type_var,
                                 command=lambda: self._set_type(self.type_var.get())).pack(anchor="w")
             ttk.Label(panel, text="Entries in order (a later one wins)").pack(anchor="w")
             self.listbox = tk.Listbox(panel, height=14, width=30, exportselection=False, font=("TkFixedFont", 9))
             self.listbox.pack(fill="x")
             self.listbox.bind("<<ListboxSelect>>", self._on_list_select)
+            self.bounds_label = ttk.Label(panel, justify="left", font=("TkFixedFont", 9))
+            self.bounds_label.pack(anchor="w", pady=(6, 0))
             btns = ttk.Frame(panel)
             btns.pack(fill="x", pady=6)
             ttk.Button(btns, text="Delete", command=self._delete).pack(side="left")
@@ -320,6 +423,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             legend.pack(fill="x", pady=(6, 0))
             for text, colour in (("derived hole", "#1f77b4"), ("hole box", COLOURS["hole"]),
                                  ("filled box", COLOURS["filled"]), ("edge segment: cables may go round the board edge here", COLOURS["edge"]),
+                                 ("bounds: pedals may sit inside the 4 lines (B)", BOUNDS_COLOUR),
                                  ("effective (E)", "#ff7f0e")):
                 row = ttk.Frame(legend)
                 row.pack(anchor="w")
@@ -334,6 +438,8 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 "Drag a selected entry: move (an edge segment along its side). 1 / 2 / 3 or the buttons above: type of the next entry "
                 "(in edge mode a drag starting on a box still draws a line). T: toggle the selected box hole / filled. "
                 "Esc: deselect. Delete: remove. "
+                "Bounds mode (B): click near a line, drag it or use the arrows along its own axis (back / front: Up / Down, "
+                "left / right: Left / Right); Delete puts it back on the image edge; Esc: deselect. "
                 "Arrows: nudge 0.5 mm (Shift 2). [ ]: order. E: effective holes. +/- or wheel: zoom.")).pack(anchor="w", pady=8)
 
             c = self.canvas
@@ -349,6 +455,8 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.bind("<plus>", lambda e: self._guard(lambda: self._zoom(1.15)))
             self.bind("<equal>", lambda e: self._guard(lambda: self._zoom(1.15)))
             self.bind("<minus>", lambda e: self._guard(lambda: self._zoom(1 / 1.15)))
+            for key in ("b", "B"):
+                self.bind(f"<Key-{key}>", lambda e: self._guard(lambda: self._set_type("bounds")))
             for key in ("t", "T"):
                 self.bind(f"<Key-{key}>", lambda e: self._guard(self._toggle_type))
             for n, t in enumerate(TYPES, 1):
@@ -382,6 +490,12 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                     if (gx // 12 + gy // 12) % 2:
                         d.rectangle([gx, gy, gx + 11, gy + 11], fill="#d9d9d9")
             base.alpha_composite(self.img.resize((wp, hp), Image.LANCZOS))
+            if bounds_set(self.bounds):          # the area outside the bounds, lightly shaded
+                shade = Image.new("RGBA", (wp, hp), (0, 0, 0, 70))
+                ImageDraw.Draw(shade).rectangle([round(self.bounds["left"] * wp), round(self.bounds["back"] * hp),
+                                                 round(self.bounds["right"] * wp) - 1, round(self.bounds["front"] * hp) - 1],
+                                                fill=(0, 0, 0, 0))
+                base.alpha_composite(shade)
             self.photo = ImageTk.PhotoImage(base)
             c = self.canvas
             c.delete("all")
@@ -416,6 +530,13 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 c.create_text(xa + 3, ya + 2, text=str(i + 1), anchor="nw", fill=colour, font=("TkDefaultFont", 8, "bold"))
                 if i == self.sel:
                     c.create_rectangle(xa - 2, ya - 2, xb + 2, yb + 2, outline="#000", dash=(4, 3))
+            for side, ((xa, ya), (xb, yb)) in bound_lines(self.bounds, w_mm, h_mm).items():
+                (xa, ya), (xb, yb) = (MARGIN + xa * self.zoom, MARGIN + ya * self.zoom), (MARGIN + xb * self.zoom, MARGIN + yb * self.zoom)
+                c.create_line(xa, ya, xb, yb, fill=BOUNDS_COLOUR, dash=(8, 4), width=4 if side == self.bsel else 2)
+                label = dict(zip(BOUND_SIDES, (dict(x=xa + 4, y=ya - 3, anchor="sw"), dict(x=xa + 4, y=ya + 3, anchor="nw"),
+                                               dict(x=xa - 3, y=ya + 4, anchor="ne"), dict(x=xa + 3, y=ya + 4, anchor="nw"))))[side]
+                c.create_text(label["x"], label["y"], text=side, anchor=label["anchor"], fill=BOUNDS_COLOUR,
+                              font=("TkDefaultFont", 8, "bold"))
             if self.show_effective:
                 for x0, y0, x1, y1 in effective_holes(derived or [], self.boxes, w_mm, h_mm):
                     c.create_rectangle(MARGIN + x0 * self.zoom, MARGIN + y0 * self.zoom, MARGIN + x1 * self.zoom,
@@ -424,6 +545,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
         def _refresh(self):
             self._redraw()
             self._fill_list()
+            self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, w_mm, h_mm)))
             self._status()
 
         def _fill_list(self):
@@ -439,13 +561,23 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
         def _status(self, cursor=None):
             where = "" if cursor is None else f"x {cursor[0] * w_mm:.1f} mm  y {cursor[1] * h_mm:.1f} mm   "
             effective = "  |  effective holes shown" if self.show_effective else ""
-            self.status.config(text=f"{where}new: {self.default_type} (T){effective}"
+            if self.bounds_mode:
+                mode = "bounds mode (B)" + ("" if self.bsel is None else
+                                            f": {bound_rows(self.bounds, w_mm, h_mm)[BOUND_SIDES.index(self.bsel)]} selected")
+            else:
+                mode = f"new: {self.default_type} (T)"
+            self.status.config(text=f"{where}{mode}{effective}"
                                     f"  |  {len(self.boxes)} box(es){'  |  UNSAVED' if self.dirty else ''}")
 
         # -- mouse --
         def _on_down(self, event):
             self.canvas.focus_set()
             fx, fy = self._frac(event)
+            if self.bounds_mode:          # only the four lines are selectable; dragging on empty space draws nothing
+                self.bsel = hit_bound(self.bounds, fx, fy, w_mm, h_mm)
+                self.drag = None if self.bsel is None else ("bound", fx, fy)
+                self._refresh()
+                return
             i = hit_box(self.boxes, fx, fy, w_mm, h_mm, types=("edge",) if self.default_type == "edge" else None)
             if i is not None and i == self.sel:
                 self.drag = ("move", fx, fy)
@@ -464,6 +596,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             fx, fy = self._frac(event, clamp=not (self.drag[0] == "draw" and self.default_type == "edge"))
             self._status(self._frac(event))
             mode, x0, y0 = self.drag
+            if mode == "bound":          # the line follows the mouse along its own axis only
+                self.bounds = move_bound(self.bounds, self.bsel, fy if self.bsel in ("back", "front") else fx, w_mm, h_mm)
+                self._redraw()
+                self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, w_mm, h_mm)))
+                return
             if mode == "move":
                 self.boxes[self.sel] = move_box(self.boxes[self.sel], fx - x0, fy - y0)
                 self.drag = ("move", fx, fy)
@@ -496,7 +633,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._status(self._frac(event))
 
         def _on_list_select(self, event):
-            if self._busy:
+            if self._busy or self.bounds_mode:
                 return
             picked = self.listbox.curselection()
             if picked:
@@ -510,16 +647,19 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._redraw()
 
         def _set_type(self, type_):
-            """The type of the next drawn entry (radio buttons, keys 1 / 2 / 3); drawing starts from no selection."""
-            self.default_type, self.sel = type_, None
+            """The type of the next drawn entry (radio buttons, keys 1 / 2 / 3) or "bounds" (B): bounds mode; no box and no
+            bounds line stays selected."""
+            self.default_type, self.sel, self.bsel = type_, None, None
             self.type_var.set(type_)
             self._refresh()
 
         def _deselect(self):
-            self.sel = None
+            self.sel, self.bsel = None, None
             self._refresh()
 
         def _toggle_type(self):
+            if self.bounds_mode:
+                return
             if self.sel is None or self.boxes[self.sel]["type"] == "edge":
                 self.default_type = next_type(self.default_type)
                 self.type_var.set(self.default_type)
@@ -532,6 +672,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._refresh()
 
         def _delete(self):
+            if self.bounds_mode:          # puts the selected line back on the image edge
+                if self.bsel is not None:
+                    self.bounds = reset_bound(self.bounds, self.bsel)
+                    self._refresh()
+                return
             if self.sel is None:
                 return
             del self.boxes[self.sel]
@@ -539,6 +684,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._refresh()
 
         def _nudge(self, d, step_mm):
+            if self.bounds_mode:          # only along the line's own axis: Up / Down for back / front, Left / Right for left / right
+                if self.bsel is not None and (d[1] != 0) == (self.bsel in ("back", "front")):
+                    self.bounds = nudge_bound(self.bounds, self.bsel, d[0] * step_mm + d[1] * step_mm, w_mm, h_mm)
+                    self._refresh()
+                return
             if self.sel is None:
                 return
             self.boxes[self.sel] = nudge_box(self.boxes[self.sel], d[0] * step_mm, d[1] * step_mm, w_mm, h_mm)
@@ -555,11 +705,12 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 self.status.config(text=f"No changes: {EDITS_FILE} is up to date.")
                 return True
             try:
-                path = save_edits(pdir, self.boxes)
+                path = save_edits(pdir, self.boxes, self.bounds)
             except OSError as e:
                 messagebox.showerror("Save failed", str(e))
                 return False
             self.saved = [dict(b) for b in self.boxes]
+            self.saved_bounds = dict(self.bounds)
             self._status()
             self.status.config(text=f"Saved {path} ({len(self.boxes)} box(es)). Run uv run scripts/build.py to apply.")
             return True
