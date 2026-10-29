@@ -264,11 +264,11 @@ class Model:
         self.inst_under = {iid: pl != "on_board" for iid, pl in lay["inst_placement"].items()}
         over = self.rcfg["overrides"]
         self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
-                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", [])).items()}
+                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", []), project).items()}
         self.p_type = {pid: (over.get(cid) or {}).get("type_b")
-                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", [])).items()}
+                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", []), project).items()}
         # an on-board supply's power cables start at its used ports: the cable's `exit_a` override (the first pedal's cable)
-        pids = power.cable_ids((project.get("power") or {}).get("supplies", []))
+        pids = power.cable_ids((project.get("power") or {}).get("supplies", []), project)
         self.s_exit, self.s_type = {}, {}
         for iid in on_board:
             for r in sup_of[iid]["rows"]:

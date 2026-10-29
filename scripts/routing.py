@@ -168,6 +168,37 @@ def daisy_style(project, output=None):
     return default if default in DAISY_STYLES else SERIAL
 
 
+def override_id_errors(overrides, cables):
+    """Errors for `cables.overrides` keys that are not the id of a cable of the project (`cables`: the cable list: S#, a one-leg
+    power cable P#, a leg P#.n of a daisy chain), each with a hint."""
+    ids = {c["id"] for c in cables}
+    legs = {}
+    for c in cables:
+        if c["kind"] == "power":
+            legs.setdefault(c["cable"], []).append(c["id"])
+    out = []
+    for key in overrides:
+        if key in ids:
+            continue
+        if re.fullmatch(r"C\d+", key):
+            hint = "C# ids were renamed to P# (see the cable table)"
+        elif key in legs:
+            hint = f"{key} is a daisy chain with legs {', '.join(legs[key])}: override a leg"
+        elif re.fullmatch(r"P\d+\.\d+", key) and key.split(".")[0] in legs:
+            base = key.split(".")[0]
+            hint = f"{base} has legs {', '.join(legs[base])}" if len(legs[base]) > 1 else f"{base} has a single leg: override {base}"
+        else:
+            hint = "ids are S# (signal cable), P# (power cable) or P#.n (a leg of a daisy chain), see the cable table"
+        out.append(f"cables.overrides.{key}: no such cable; {hint}")
+    return out
+
+
+def power_leg_id(cable_no, leg, legs):
+    """The id of leg `leg` (1..) of power cable number `cable_no` that has `legs` legs: "P<n>" for a one-leg cable (the leg is the
+    cable), else "P<n>.<leg>". The one place that spells power cable ids (`jacks.check`, `power.cable_ids`)."""
+    return f"P{cable_no}" if legs == 1 else f"P{cable_no}.{leg}"
+
+
 def validate_power_routing(project):
     """Problems in the project's `power_routing`, as strings."""
     given = project.get("power_routing")
@@ -1571,27 +1602,41 @@ def route_project(ctx, cat_pedals, cable_types=None):
     # power cables: model and estimate only (they run under the board)
     from jacks import placement
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
-    taken = {h["cable"] for h in (ctx.get("cables") or {}).get("power", []) if h.get("cable")}
+    # jacks.check gives every hop its cable (P#) and leg id (P# or P#.n); a hop without them (hand-made ctx) is its own one-leg cable
+    # with the next unused P number
+    taken = {h[k] for h in (ctx.get("cables") or {}).get("power", []) for k in ("cable", "id") if h.get(k)}
     spare = iter(range(1, 10 ** 6))
 
-    def spare_cable_id():   # a hop without a cable id (hand-made ctx): its own cable, never one of the real ids
+    def spare_cable_id():
         while True:
-            cid = f"C{next(spare)}"
+            cid = f"P{next(spare)}"
             if cid not in taken:
                 taken.add(cid)
                 return cid
-    for n, hop in enumerate((ctx.get("cables") or {}).get("power", []), 1):
+    hops = (ctx.get("cables") or {}).get("power", [])
+    n_legs = {}   # a hand-made hop with a cable but no id: the legs of that cable are named P#.1, P#.2... (one leg: the cable's id)
+    for hop in hops:
+        if hop.get("cable") and not hop.get("id"):
+            n_legs[hop["cable"]] = n_legs.get(hop["cable"], 0) + 1
+    seen = {}
+    for hop in hops:
         under = hop.get("under_board")   # jacks.check sets it per hop; else the placement of the instance the cable starts at
         if under is None:
             inst = inst_by_id.get(hop["from"].split(".")[0])
             under = placement(inst if inst is not None else {}, project) != "on_board"
-        cables.append({"id": f"P{n}", "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
+        cable_id = hop.get("cable") or hop.get("id") or spare_cable_id()
+        leg_id = hop.get("id")
+        if not leg_id:
+            seen[cable_id] = seen.get(cable_id, 0) + 1
+            leg_id = cable_id if n_legs.get(cable_id, 1) == 1 else f"{cable_id}.{seen[cable_id]}"
+        cables.append({"id": leg_id, "kind": "power", "from": hop["from"], "to": hop["to"], "type": cfg["power_type"], "exit_b": None,
                        "type_a": cfg["power_type"], "type_b": cfg["power_type"],
-                       "cable": hop.get("cable") or spare_cable_id(), "style": hop.get("style") or SERIAL, "output": hop.get("output"),
+                       "cable": cable_id, "style": hop.get("style") or SERIAL, "output": hop.get("output"),
                        "tip_a": cfg["power_tip"], "tip_b": cfg["power_tip"],
                        "polarity": pedal_polarity(hop["to"]), "under_board": under, "min_mm": None,
                        "estimate_mm": hop.get("min_mm"), "path": None,
                        "status": "not routed"})
+    errors += [e for e in override_id_errors(over, cables) if e not in errors]
     for c in cables:
         for k, v in (over.get(c["id"]) or {}).items():
             if v is not None:              # null = keep the default (as cable_type_id does)
@@ -2183,9 +2228,10 @@ def deepest_hits(opt, facing):
 
 
 def power_cable_summary(cables):
-    """The physical DC cables of a cable list (`ctx["cable_list"]`), one entry per `cable` id (C1, C2... in order):
-    {"id", "style", "output", "legs": [P#], "from": port, "to": [pedal power jacks], "plugs": DC plugs on the cable (serial:
-    pedals + 1, forked: 2), "min_mm": sum of the legs' min_mm (None when any leg is not routed), "estimate_mm": sum of the
+    """The physical DC cables of a cable list (`ctx["cable_list"]`), one entry per `cable` id (P1, P2... in order):
+    {"id", "style", "output", "legs": [leg ids: the cable's own id for a one-leg cable, else P#.1, P#.2...], "from": port, "to": [pedal power jacks], "plugs": DC plugs on the cable (serial:
+    pedals + 1, forked: 2), "leg_mm": [each leg's min_mm: the minimum spacing between consecutive plugs, None when not routed], "leg_estimate_mm": [each leg's
+    right-angle estimate], "min_mm": sum of the legs' min_mm (None when any leg is not routed), "estimate_mm": sum of the
     legs' right-angle estimates (None when any is unknown), "plug_types": {"port": the DC type of the plug at the supply port
     (`type_a` of the first leg), "pedals": [the type of the plug at each pedal, one per leg (`type_b`); a serial cable has one type]},
     "status": "routed" when every leg is, else the first leg's status that is not}. A serial cable is one cable through every pedal of its output (its legs are the hops), a forked
@@ -2200,6 +2246,7 @@ def power_cable_summary(cables):
         bad = [c["status"] for c in legs if not c["status"].startswith("routed")]
         out.append({"id": cid, "style": style, "output": legs[0].get("output"), "legs": [c["id"] for c in legs],
                     "from": legs[0]["from"], "to": [c["to"] for c in legs],
+                    "leg_mm": [c["min_mm"] for c in legs], "leg_estimate_mm": [c.get("estimate_mm") for c in legs],
                     "plugs": len(legs) + 1 if style == SERIAL else 2,
                     "plug_types": {"port": legs[0].get("type_a"), "pedals": [c.get("type_b") for c in legs]},
                     "min_mm": None if any(c["min_mm"] is None for c in legs) else sum(c["min_mm"] for c in legs),

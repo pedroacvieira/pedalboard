@@ -76,7 +76,7 @@ ideas · 5 data · 6 done.
       migrate the gig's overrides, old keys an error with a hint), `power.remap_overrides`, README tables ("DC cables
       to buy" shows each leg's min length as the minimum plug spacing), SVG labels and tests follow.
 - Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
-  S15 / S16 ends, P1, P11, P13); one owner-drawn edge crossing at the back (handle area), unused.
+  S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
 Order (owner, 2026-10-29): pedal preferences -> web UI. Next: `feat/pedal-preferences` (no plan file yet: write
@@ -181,7 +181,7 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
   edge crossings as owner-drawn segments, `cables.route_in_front`, on-board supplies movable in the search.
 - `feat/routing-speed` (2026-10-27, results identical): gig check 1.2 -> 0.7 s, layout search ~47 -> 15 s, tests
   73 -> 30 s; side-choice searches reused by `route_all`.
-- `feat/daisy-chains` (2026-10-27): serial / forked per output, physical DC cables (C#) and "DC cables to buy";
+- `feat/daisy-chains` (2026-10-27): serial / forked per output, physical DC cables and "DC cables to buy";
   gig unchanged (all serial).
 - `feat/footswitch-toppers` (2026-10-27, defaults 2026-10-28): `footswitches.toppers`, effective distance (+4.5 mm per
   topper = its added height), cap 5 per board, post-layout suggestions (gig: ratsbane, belle_epoch, fulldrive_2 boost,
@@ -189,5 +189,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - `feat/plug-orientation` (2026-10-28, `docs/plans/plug-orientation.md`): plug-to-plug collisions, right-angle plugs
   pointing down into a hole (always when available), several DC plug types per project (`cables.power_types`, one
   pedal-end type per serial cable), owner-measured DC plugs, the layout surrogate mirrors all three.
+- `feat/cable-ids` (2026-10-29, `docs/plans/cable-ids.md`): power cables are P# (the cable you buy), the legs of a daisy
+  chain P#.1, P#.2...; no C# ids; unknown `cables.overrides` keys are errors with a hint; "DC cables to buy" lists each
+  leg's min plug spacing. Lengths unchanged.
 - Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
   gig chain: chorus before the Reticon (2026-10-27).

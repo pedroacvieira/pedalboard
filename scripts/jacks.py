@@ -490,7 +490,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
                        **cable(pedal_end(a, "output", d), pedal_end(b, "input", d))})
     import routing   # late: routing imports jacks lazily the other way round
     p_depth = depth("power")
-    n_cable = 0   # physical DC cables, numbered C1.. over the outputs: a serial output is one cable, a forked one has one per pedal
+    n_cable = 0   # physical DC cables, numbered P1.. over the outputs: a serial output is one cable, a forked one has one per pedal
     for s in insts:
         it = inst_item.get(s["inst"]["id"])
         under = placement(s["inst"], project) != "on_board"
@@ -505,14 +505,17 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
             hop_under = under   # serial: only the first hop (supply port -> first pedal) starts under the board; the daisy hops start on top
             if style == routing.SERIAL:
                 n_cable += 1
-            for pid in row["pedals"]:
+            for j, pid in enumerate(row["pedals"], 1):
                 here = pedal_end(pid, "power", p_depth)
                 to_name = jack_name(pid, "power", "power")
                 forked = style == routing.FORKED   # one cable per pedal, each from the supply port
                 if forked:
                     n_cable += 1
+                # cable id P<n>; a serial cable with several legs names them P<n>.1, P<n>.2 ... (a one-leg cable: the leg is the cable)
+                legs = len(row["pedals"]) if not forked else 1
                 power.append({"output": row["id"], "from": port_name if forked else prev_name, "to": to_name,
-                              "under_board": hop_under, "style": style, "cable": f"C{n_cable}",
+                              "under_board": hop_under, "style": style, "cable": f"P{n_cable}",
+                              "id": routing.power_leg_id(n_cable, j if not forked else 1, legs),
                               **cable(port if forked else prev, here)})
                 if not forked:
                     prev, prev_name, hop_under = here, to_name, False

@@ -300,3 +300,24 @@ def test_footswitch_metrics_use_the_plain_distances():
            "footswitch_settings": {"crowding": 3.2, "crowding_plain": 12.34}}
     out = pl.metrics(ctx, m, m.owner, 1.0)
     assert out["fs_closest_mm"] == 60.0 and out["fs_close"] == 2 and out["fs_crowding"] == 12.3
+
+
+def test_a_proposal_keeps_the_owners_power_overrides_under_valid_cable_ids(tmp_path):
+    """`power.remap_overrides` renames the owner's P# / P#.n overrides to the candidate's wiring: the build must not report them as unknown cables."""
+    peds = {k: {**v, "digital": False, "clocked_noise": False,
+                "power_consumption": {"current_ma": 50, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": False,
+                                      "polarity": "center_negative"}} for k, v in PEDALS.items()}
+    sups = {"s1": {**SUPPLIES["s1"], "outputs": [{"port": "F1", "options": [{"voltage_v": 9, "max_ma": 500}], "polarity": "center_negative"}]}}
+    specs = [ped("T A", 0), sup(200), ped("T B", 295)]
+    (tmp_path / "playground_design.json").write_text(json.dumps({"source": "pedalplayground.com", "version": "1.0",
+                                                                 "canvas": canvas(BOARD, *specs)}))
+    proj = {"signal_chain": ["a"], "cables": {"type": "t", "overrides": {"P1": {"exit_b": "left"}}}, "jacks": {}, "layout": QUIET["layout"],
+            "power": {"supplies": [{"id": "psu1", "supply": "s1", "placement": "on_board",
+                                    "outputs": [{"port": "F1", "pedals": ["a"], "voltage_v": 9}]}]}}
+    jd = {**JACKS, "s1": SUP_JACKS}
+    ctx = build.validate(tmp_path, peds, sups, jd, project=proj, outline_data={})
+    assert not [e for e in ctx["errors"] if e.startswith("cables.overrides")]
+    m = layout.Model(proj, design.parse_canvas(canvas(BOARD, *specs)), peds, sups, jd, {}, TYPES, outlines={})
+    _, new_ctx, wiring = pl.evaluate(tmp_path, proj, m, m.owner, ctx, (peds, sups, jd, {}, {}), 1.0, board_data={}, board_edits=[])
+    assert not [e for e in new_ctx["errors"] if e.startswith("cables.overrides")]
+    assert new_ctx["project"]["cables"]["overrides"] == {"P1": {"exit_b": "left"}}

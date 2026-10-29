@@ -377,11 +377,31 @@ def test_power_plug_side_override_follows_its_pedal():
 def test_power_cable_ids_and_override_remap():
     old = [{"outputs": [{"pedals": ["x", "y"]}, {"pedals": []}, {"pedals": ["z"]}]}]
     new = [{"outputs": [{"pedals": ["z"]}, {"pedals": ["y", "x"]}]}]
-    assert power.cable_ids(old) == {"x": "P1", "y": "P2", "z": "P3"}
-    over = {"P1": {"exit_b": "left"}, "P3": {"exit_b": "right"}, "S2": {"exit_a": "left"}}
-    assert power.remap_overrides(over, old, new) == {"P3": {"exit_b": "left"}, "P1": {"exit_b": "right"},
+    assert power.cable_ids(old) == {"x": "P1.1", "y": "P1.2", "z": "P2"}   # a serial daisy chain: one cable P1 with legs P1.1, P1.2
+    assert power.cable_ids(new) == {"z": "P1", "y": "P2.1", "x": "P2.2"}
+    over = {"P1.1": {"exit_b": "left"}, "P2": {"exit_b": "right"}, "S2": {"exit_a": "left"}}
+    assert power.remap_overrides(over, old, new) == {"P2.2": {"exit_b": "left"}, "P1": {"exit_b": "right"},
                                                      "S2": {"exit_a": "left"}}
     assert power.remap_overrides({"P4": {"exit_b": "left"}}, old, new + [{"outputs": [{"pedals": ["w"]}]}]) == {}   # stale
+    forked = [{"outputs": [{"pedals": ["x", "y"], "style": "forked"}, {"pedals": ["z"]}]}]
+    assert power.cable_ids(forked) == {"x": "P1", "y": "P2", "z": "P3"}      # forked: one cable per pedal
+    assert power.cable_ids(old, {"power_routing": {"daisy_style": "forked"}}) == {"x": "P1", "y": "P2", "z": "P3"}   # the project default
+    assert power.cable_ids([{"outputs": [{"pedals": ["x", "y"], "style": "serial"}]}], {"power_routing": {"daisy_style": "forked"}}) == \
+        {"x": "P1.1", "y": "P1.2"}
+
+
+def test_power_cable_ids_agree_with_the_leg_ids_jacks_check_gives_on_the_gig():
+    _, _, ctx = gig_build()
+    from_check = {h["to"].split(".")[0]: h["id"] for h in ctx["cables"]["power"]}
+    from_wiring = power.cable_ids(ctx["project"]["power"]["supplies"], ctx["project"])
+    assert from_wiring == from_check and len(from_check) == 17
+    assert {c["id"] for c in ctx["cable_list"] if c["kind"] == "power"} == set(from_check.values())
+    assert from_check["beano"] == "P6.2" and from_check["retrovibe"] == "P10.2" and from_check["polytune_3"] == "P7"
+    # the same with every output forked
+    forked = copy.deepcopy(ctx["project"])
+    forked["power_routing"] = {"daisy_style": "forked"}
+    forked_ctx = build.validate(GIG, *load_catalog(), project=forked)
+    assert power.cable_ids(forked["power"]["supplies"], forked) == {h["to"].split(".")[0]: h["id"] for h in forked_ctx["cables"]["power"]}
 
 
 def test_isolated_need_and_unknown_max_ma_are_one_policy_for_build_and_assign():
@@ -811,7 +831,7 @@ def test_a_hop_whose_target_sits_over_a_hole_costs_at_most_the_jack_height_more_
     state = at((60.0, 94.8, 0), (160.0, 94.8, 0))
     down = chain_hole_model()
     down.set_wiring([((20.0, 100.0), ["a"], True)])
-    side = chain_hole_model({"P1": {"exit_b": "left"}})                                   # the plug has to be a side plug: up through the hole
+    side = chain_hole_model({"P1.1": {"exit_b": "left"}})                                   # the plug has to be a side plug: up through the hole
     side.set_wiring([((20.0, 100.0), ["a"], True)])
     _, dd = down.score(state, detail=True)
     _, ds = side.score(state, detail=True)
