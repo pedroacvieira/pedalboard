@@ -169,7 +169,7 @@ def test_a_pedal_whose_body_is_past_the_line_is_pushed_the_least_distance_by_the
 
 # --- the routing area --------------------------------------------------------------------------------
 def test_in_area_counts_the_own_footprint_only_for_an_overhanging_jack_and_never_in_front():
-    area = (-6.0, -6.0, 106.0, 80.0)                      # the grown usable area; the usable area itself is (0, 0, 100, 80)
+    area = (-6.0, -6.0, 106.0, 80.0)                      # the board + margin; the usable area is the board (0, 0, 100, 80)
     usable = (0.0, 0.0, 100.0, 80.0)
     rects = [("head", (-20.0, 10.0, 0.0, 30.0)), ("cable", (-12.0, 30.0, -8.0, 36.0))]
     inner = {"exit": (-10.0, 20.0), "rects": rects, "jack": (0.0, 20.0)}                    # the jack point (0, 20) is on the usable edge: not overhanging
@@ -265,13 +265,13 @@ def test_without_zones_the_grid_is_the_plain_one_even_with_a_fractional_extent()
         g = routing.build_grid(board, pedals, 31.0, CFG, zones)
         assert (g.x0, g.y0, g.nx, g.ny) == (-4.0, -4.0, 35, 18) == (ref.x0, ref.y0, ref.nx, ref.ny)
         assert g.blocked == ref.blocked and g.body == ref.body                                  # no wall from rounding
-    assert routing.area_rect(ref, board, 31.0, CFG) == (-4.0, -4.0, 66.0, 31.0)
+    assert routing.area_rect(board, 31.0, CFG) == (-4.0, -4.0, 66.0, 31.0)
 
 
 def test_the_area_rect_ignores_the_cells_the_zones_added():
     g = routing.build_grid(BRD, [], 30.0, CFG, [(-12.0, 12.0, -2.0, 16.0)])
     assert g.x0 < -4.0
-    assert routing.area_rect(g, BRD, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
+    assert routing.area_rect(BRD, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
 
 
 def test_a_caller_with_its_own_outlines_and_no_bodies_gets_no_bodies():

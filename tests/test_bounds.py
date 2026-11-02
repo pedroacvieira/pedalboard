@@ -1,5 +1,5 @@
 """Usable board area (board.json `bounds`): the canvas rectangle (design.board_bounds), the build warning (jacks.check), the routing
-area of the signal / power grids (routing.build_grid, area_limits, edge strips), the layout search (feasible_one, free_distance,
+routing area (never cut by the bounds: routing.build_grid, area_box, front_limit, route_project), the layout search (feasible_one, free_distance,
 repair_start), the proposal table row and the drawing. Hand-computed on small synthetic boards; all lengths in mm."""
 import json
 import shutil
@@ -20,6 +20,7 @@ import svgdraw  # noqa: E402
 from test_boards import board  # noqa: E402
 from test_check import PDATA, PEDALS, SUPPLIES, insts, project  # noqa: E402
 from test_layout import BOARD, JACKS, TYPES, canvas, ped  # noqa: E402
+from test_routing import TYPES as RA_TYPES, mm_item, plug_ctx  # noqa: E402
 
 PX = 25.4 / 45   # one Pedal Playground px in mm
 
@@ -125,7 +126,7 @@ def test_the_bounds_never_cut_the_routing_area():
     # owner, 2026-11-02: the usable area limits the pedals only; cables may run anywhere in the board + margin
     assert routing.area_box(BRD, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
     g = routing.build_grid(BRD, [(20.0, 10.0, 30.0, 20.0)], 30.0, CFG)
-    assert routing.area_rect(g, BRD, 30.0, CFG) == (g.x0, g.y0, g.x0 + g.nx * g.cell, 30.0)
+    assert routing.area_rect(BRD, 30.0, CFG) == (g.x0, g.y0, g.x0 + g.nx * g.cell, 30.0)
     for x, y in ((5, 5), (7, 3), (55, 29), (-3, -3)):                    # the board edge + margin: free (a bound plays no part)
         assert g.cell_of(x, y) not in g.blocked
 
@@ -143,6 +144,23 @@ def test_an_edge_segment_link_finds_its_top_cell_outside_the_border():
     ug = routing.under_grid(g, BRD, [], CFG)
     links = routing.edge_links(g, ug, BRD, [seg], 30.0)
     assert len(links) == 10 and all(sd == "back" and 20 <= ug.centre(u)[0] <= 40 and t == (u[0], u[1] - 1) for u, t, _, sd in links)
+
+
+def test_a_cable_is_routed_between_the_usable_line_and_the_board_edge():
+    # a wall C (x 120..160, y 30..200) leaves A -> B only the way round its back (y < 30); the back line of the usable area lies at
+    # y 40: the cable must run between it and the board edge, exactly as without bounds (owner, 2026-11-02: the bounds limit pedals only)
+    def run(usable):
+        ctx = plug_ctx({"type": "ra"}, extra_obstacles=[mm_item("i-c", "C", 120, 30, 40, 170)])
+        if usable:
+            ctx["layout"]["usable"] = usable
+        routing.route_project(ctx, {}, cable_types=RA_TYPES)
+        (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+        return ctx, c
+    ctx, c = run((10.0, 40.0, 290.0, 200.0))
+    assert c["status"] == "routed" and min(p[1] for p in c["path"]) < 30.0
+    assert ctx["routing"]["plug_zones"] == [] and not [w for w in ctx["warnings"] if w.startswith("routing:")]
+    _, plain = run(None)
+    assert c["path"] == plain["path"] and c["min_mm"] == pytest.approx(plain["min_mm"])
 
 
 # --- the layout search -------------------------------------------------------------------------------

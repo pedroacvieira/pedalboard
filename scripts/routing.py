@@ -376,7 +376,7 @@ def front_limit(board_rect, foot_bottoms, cfg):
     return min(front, max(foot_bottoms, default=front))
 
 
-def area_rect(grid, board_rect, front_y, cfg):
+def area_rect(board_rect, front_y, cfg):
     """The top routing area as a rectangle (x0, y0, x1, y1), what lanes and the pictures use: the board + margin at the back and sides
     (the grid's extent without the cells the plug zones add), the front at `front_y`."""
     m, cell = cfg["edge_margin_mm"], cfg["grid_mm"]
@@ -2028,7 +2028,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         for k in tops:
             eid = c["id"] if len(c["_stretches"]) == 1 else f"{c['id']}#{k}"
             routed[eid], entry[eid] = (c["_stretches"][k]["points"], c["_own"]), (c["id"], k)
-    laned = lanes(routed, pedal_rects, plug_rects, area_rect(grid, board, front_y, cfg),
+    laned = lanes(routed, pedal_rects, plug_rects, area_rect(board, front_y, cfg),
                   cfg["diameter_mm"]) if routed else {}
     drawn = {}   # cable id -> {stretch index: lane result}
     for eid, res in laned.items():
