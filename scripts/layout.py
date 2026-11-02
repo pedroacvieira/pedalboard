@@ -483,6 +483,20 @@ class Model:
                 start = {"inst": self.index[w[3][0]], "port": w[3][1]}
             self.wiring.append((start, [self.index[p] for p in w[1] if p in self.index and self.index[p] < self.n_ped],
                                 w[2] if len(w) > 2 else True, w[4] if len(w) > 4 and w[4] in routing.DAISY_STYLES else routing.SERIAL))
+        # the legs that touch each DC plug, for the choice of its side (`_dc_length`): ("p", pedal index) / ("s", supply index, port id) ->
+        # [(the other end: a pedal index, {"inst", "port"} or a point (an under-board port, None: unknown), whether the leg starts under the
+        # board, whether this plug ends the leg)]
+        self.dc_legs = {}
+        for start, members, under, style in self.wiring:
+            prev, prev_under = start, under
+            for n in members:
+                self.dc_legs.setdefault(("p", n), []).append((prev, prev_under, True))
+                if isinstance(prev, int):
+                    self.dc_legs.setdefault(("p", prev), []).append((n, False, False))
+                elif isinstance(prev, dict):
+                    self.dc_legs.setdefault(("s", prev["inst"], prev["port"]), []).append((n, False, False))
+                if style != routing.FORKED:
+                    prev, prev_under = n, False
 
     # --- candidates --------------------------------------------------------------------------------
     def footprint(self, st, n):
@@ -694,6 +708,34 @@ class Model:
                     cost += self._pair_cost(real, pen)
         return cost
 
+    def _anchor(self, ref, state, geo):
+        """Where the cable of a leg meets its other end (the measure point of a pedal's power jack or of a supply's port, canvas mm), or None."""
+        if isinstance(ref, int):
+            g = geo[ref]["power"]
+            m = g["opts"][0]["measure"] if g and g["opts"] else None
+            return (m[0] + state[ref][0], m[1] + state[ref][1]) if m else None
+        if isinstance(ref, dict):
+            m = geo[ref["inst"]]["port_pt"].get(ref["port"])
+            return (m[0] + state[ref["inst"]][0], m[1] + state[ref["inst"]][1]) if m else None
+        return ref
+
+    def _dc_length(self, o, plug, n, state, geo, holes, pw_cfg, pw_near):
+        """The estimated cable of the DC plug `plug` (("p", pedal index) / ("s", supply index, port id), see `set_wiring`) of item `n` with
+        option `o`: per leg that touches it, the option's own measure + `power.hop_estimate` from / to the other end (the build's estimate
+        stage, `routing.dc_estimator`); 0 for a plug no wired cable touches. A plug pointing down starts / ends under the board."""
+        total = 0.0
+        x, y = state[n][0], state[n][1]
+        here = (o["exit"][0] + x, o["exit"][1] + y)
+        for other, other_under, ends_here in self.dc_legs.get(plug, ()):
+            a = self._anchor(other, state, geo)
+            if a is None:
+                continue
+            dn = bool(o["down"])
+            span = (power.hop_estimate(a, here, other_under, holes, pw_cfg, pw_near, dst_under=dn) if ends_here else
+                    power.hop_estimate(here, a, dn, holes, pw_cfg, pw_near))
+            total += o["measure_mm"] + span
+        return total
+
     @staticmethod
     def _chosen(recs):
         """[(jack key, pedal / supply index, option)] of the choice the recs (`score`, phase A) hold."""
@@ -720,7 +762,7 @@ class Model:
     def _resolve(self, state, recs, bad, margin, full=False):
         """Where plugs collide (`bad`: their jack keys), the choice of the ends involved is made again as the build makes it: signal cables in
         chain order, then the DC plugs, the options ranked by the number of blocked parts + plug collisions (`_count`), then (signal) the
-        shorter cable / (DC plug) the smaller overlap and the type's position in the list. A choice without collision stays. Changes the
+        shorter cable / (DC plug) the shorter estimated cable (`_dc_length`), the smaller overlap and the type's position in the list. A choice without collision stays. Changes the
         picks in `recs`; returns whether any changed. Which plugs an end sees: `full` False (the build's first pass) only the fixed boxes and
         the plugs decided before it; `full` True (a later round of the build) a signal end every other plug, the DC plugs too, and a DC plug
         every signal plug, the fixed boxes and the DC plugs decided before it in this round."""
@@ -762,14 +804,15 @@ class Model:
                         boxes[e["jack"]] = box(e["jack"], n, o)
                         decided.add(e["jack"])
             else:
-                _, n, end, rows, cur = rec
+                _, n, end, rows, cur, lens = rec
                 o = cur[2]
                 if fixed(o):
                     continue
                 if len(rows) > 1 and end["jack"] in bad:
                     taken = seen({end["jack"]}, False)
                     if self._against(state, o, n, taken, margin) > 0:
-                        best = min(rows, key=lambda r: (r[0][0], r[5] + self._count(state, r[2], n, taken), r[6], r[2]["tidx"]))
+                        best = min(rows, key=lambda r: (r[0][0], r[5] + self._count(state, r[2], n, taken), round(lens.get(id(r[2]), 0.0), 2), r[6],
+                                                        r[2]["tidx"]))
                         if best is not cur:
                             cur = rec[4] = best
                             changed = True
@@ -896,7 +939,7 @@ class Model:
             pw_cfg = self.power_setup["cfg"]
         # phase A: every plug end's options and costs, the best choice (a plug that fits into a hole points down)
         chain = self.project["signal_chain"]
-        recs = []   # signal cables: ["s", cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, pick]; other plug ends: ["p", n, end, rows, pick]
+        recs = []   # signal cables: ["s", cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, pick]; other plug ends: ["p", n, end, rows, pick, {id(option): estimated DC cable}]
         for n_hop in range(1, len(chain)):
             cid = f"S{n_hop}"
             a, bb = chain[n_hop - 1], chain[n_hop]
@@ -926,10 +969,19 @@ class Model:
             recs.append(["s", cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, min(combos, key=lambda c: c[0])])
         # power plugs and extra jacks: clearance only (feasible, then down, then the lowest clearance cost; power: feasible = its exit inside
         # the routing area and in no other pedal's outline)
+        # (a DC plug whose options tie on that takes the one with the shorter estimated cable: `routing.plug_rank`'s length)
         for n, g in enumerate(geo):
             for end in ([g["power"]] if g["power"] else []) + g["extra"] + g["ports"]:
                 rows = self._clearance(end, state[n], n, obs, margin, area)
-                recs.append(["p", n, end, rows, min(rows, key=lambda r: r[0])])
+                plug = ("p", n) if end is g["power"] else (("s", n, end["port"]) if "port" in end else None)
+                lens = {}
+                if plug is not None and len(rows) > 1 and plug in self.dc_legs:
+                    lens = {id(r[2]): self._dc_length(r[2], plug, n, state, geo, holes, pw_cfg, pw_near) for r in rows}
+                    least = {}   # only sides are told apart (as `routing.rank_pool`): less the least of the same type and cost
+                    for r in rows:
+                        least[(r[2].get("type"), r[0])] = min(least.get((r[2].get("type"), r[0]), math.inf), lens[id(r[2])])
+                    lens = {id(r[2]): lens[id(r[2])] - least[(r[2].get("type"), r[0])] for r in rows}
+                recs.append(["p", n, end, rows, min(rows, key=lambda r: (r[0], round(lens.get(id(r[2]), 0.0), 2))), lens])
         # phase B: plugs of different jacks must not overlap (footprints: head, barrel, cable run, or the fixed box); where they do, the plugs
         # involved may take another option, as the build chooses its sides
         items = self._chosen(recs)
@@ -969,7 +1021,7 @@ class Model:
                 note_hits(ea["jack"], ia, opa[ka]["side"], ca[ka][1])
                 note_hits(eb["jack"], ib, opb[kb]["side"], cb[kb][1])
             else:
-                _, n, end, _, (_, cost, o, hits, intr, _, _) = rec
+                _, n, end, _, (_, cost, o, hits, intr, _, _), _ = rec
                 terms["clearance"] += cost
                 raw["clearance"] += intr
                 note_hits(end["jack"], n, o["side"], hits)
@@ -977,28 +1029,36 @@ class Model:
                     power_opt[n] = o
                 elif "port" in end:
                     port_opt[(n, end["port"])] = o
-        # Power term. A cable at a side plug starts / ends at its measure point and pays, through the hole nearest it, the pass and the run
-        # on top (`power.hop_estimate`); a plug pointing down has none of that: its cable starts / ends UNDER the board at the bend point
-        # and pays only the extra cable a side plug does not have, the jack height + the deck (`drop_mm`), ONCE per plug (in the hop that
-        # ends at it, or the first hop that starts at a port's plug; the next hop of a serial chain starts there without it).
+        # Power term. A cable leaves its plug at the chosen option's exit (the side the plug takes counts), pays the option's measure (the
+        # plug's own cable: `measure_mm`) and, through the hole nearest the exit, the pass and the run on top (`power.hop_estimate`); a
+        # plug pointing down has no measure and no pass: its cable starts / ends UNDER the board at the bend point and pays only the
+        # extra cable a side plug does not have, the jack height + the deck (`drop_mm`), ONCE per plug (in the hop that ends at it, or the
+        # first hop that starts at a port's plug; the next hop of a serial chain starts there without it). Without a DC plug type the
+        # fixed box has no exit: its measure point stands in.
+        def end_of(po, n):   # (point, measure mm) of the DC plug option `po` of item `n`
+            m = po["measure"] if po.get("type") is None else po["exit"]
+            return (m[0] + state[n][0], m[1] + state[n][1]) if m else None, 0.0 if po["down"] else po["measure_mm"]
         for port, members, under, style in self.wiring:
-            prev, lead = port, 0.0
+            prev, lead, prev_mm = port, 0.0, 0.0
             if isinstance(port, dict):   # a port of an on-board supply: where the candidate puts it (a plug pointing down: under the board)
                 po = port_opt.get((port["inst"], port["port"]))
-                off = geo[port["inst"]]["port_pt"].get(port["port"]) if po is None else (po["exit"] if po["down"] else po["measure"])
-                prev = (off[0] + state[port["inst"]][0], off[1] + state[port["inst"]][1]) if off else None
-                if po is not None and po["down"]:
-                    under, lead = True, po["drop_mm"]
+                if po is None:
+                    off = geo[port["inst"]]["port_pt"].get(port["port"])
+                    prev = (off[0] + state[port["inst"]][0], off[1] + state[port["inst"]][1]) if off else None
+                else:
+                    prev, prev_mm = end_of(po, port["inst"])
+                    if po["down"]:
+                        under, lead = True, po["drop_mm"]
             for n in members:
-                po = power_opt.get(n)   # the DC plug the candidate puts on pedal n: its cable starts / ends at the plug's measure point,
-                dn = po is not None and po["down"]   # or under the board at the bend point of a plug pointing down
-                m = None if po is None else (po["exit"] if dn else po["measure"])
-                here = (m[0] + state[n][0], m[1] + state[n][1]) if m else None
+                po = power_opt.get(n)   # the DC plug the candidate puts on pedal n
+                dn = po is not None and po["down"]
+                here, here_mm = end_of(po, n) if po is not None else (None, 0.0)
                 if prev is not None and here is not None:
-                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near, dst_under=dn) + lead + (po["drop_mm"] if dn else 0.0)
+                    raw["power"] += power.hop_estimate(prev, here, under, holes, pw_cfg, pw_near, dst_under=dn) + lead + prev_mm + here_mm + \
+                        (po["drop_mm"] if dn else 0.0)
                     lead = 0.0
                 if here is not None and style != routing.FORKED:   # forked: every cable starts at the port
-                    prev, under = here, dn
+                    prev, under, prev_mm = here, dn, here_mm
         terms["power"] = w["power"] * raw["power"]
         # footswitch spacing
         if self.fs_known:

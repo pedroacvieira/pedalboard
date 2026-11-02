@@ -1147,6 +1147,9 @@ def main():
             print(f"  {inst_label(s)}")
             for r in s["rows"]:
                 print(f"    {r['id']:12} {r['voltage_v']:>2}V {r['load']:>4}/{r['limit'] or '?'} mA  {', '.join(r['pedals']) or '(spare)'}")
+        saving = ((c.get("routing") or {}).get("power") or {}).get("side_savings")
+        if saving and any(x["kind"] == "power" for x in c.get("cable_list") or []):
+            print(f"  power: {saving['plugs']} DC plugs took the shorter side (saved {saving['saved_mm']:.0f} mm)")
         for m in c["warnings"]:
             print("  WARN ", m)
         for m in c["errors"]:
