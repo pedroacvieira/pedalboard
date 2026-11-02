@@ -21,9 +21,10 @@ import layout  # noqa: E402
 import power  # noqa: E402
 import routing  # noqa: E402
 from common import load_cable_types, load_catalog, load_json  # noqa: E402
+from conftest import GIG_FIXTURE  # noqa: E402
 from test_check import canvas, pedal_jacks  # noqa: E402
 
-GIG = ROOT / "projects" / "guitar-gig"
+GIG = GIG_FIXTURE   # the frozen copy of the owner's gig (tests/fixtures), not the live project
 PEDALS = {
     "a": {"brand": "T", "name": "A", "playground_title": "T A", "tags": ["gain", "overdrive"]},
     "b": {"brand": "T", "name": "B", "playground_title": "T B", "tags": ["modulation"]},

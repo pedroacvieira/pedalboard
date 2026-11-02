@@ -287,9 +287,8 @@ def test_the_proposal_metrics_count_items_outside_and_gate_on_them():
 
 def test_the_readme_table_has_the_row_and_old_meta_shows_a_question_mark(tmp_path, monkeypatch):
     import common
-    from test_propose import gig_copy
-    pdir = gig_copy(tmp_path, monkeypatch)
-    shutil.copytree(ROOT / "projects" / "guitar-gig" / "proposals", pdir / "proposals")   # the committed one: made before the field existed
+    from conftest import gig_copy
+    pdir = gig_copy(tmp_path, monkeypatch, proposals=True)   # the committed proposals: made before the field existed
     pedals, supplies = common.load_catalog()
     ctx = build.validate(pdir, pedals, supplies)
     meta_path = pdir / "proposals" / "meta.json"

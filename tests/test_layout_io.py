@@ -15,8 +15,9 @@ import build  # noqa: E402
 import design  # noqa: E402
 import jacks  # noqa: E402
 from common import load_catalog, load_json  # noqa: E402
+from conftest import GIG_FIXTURE  # noqa: E402
 
-GIG = ROOT / "projects" / "guitar-gig"
+GIG = GIG_FIXTURE   # the frozen copy of the owner's gig (tests/fixtures), not the live project
 
 CANVAS = ('<div id="item-1" class="item pedalboard undefined" title="Board" data-width="10" data-height="5" data-scale="45" '
           'style="touch-action: none; left: 10px; top: 20px;"><div class="artwork" style="width: 450px;"></div></div>'
@@ -43,21 +44,26 @@ def _plain(obj):
     return sorted(obj) if isinstance(obj, (set, frozenset)) else repr(obj)
 
 
+def project_dir(name):
+    """The real project's folder; the gig is the frozen fixture (the live one changes with every new layout)."""
+    return GIG if name == "guitar-gig" else ROOT / "projects" / name
+
+
 @functools.lru_cache(maxsize=None)
 def _default_build(name):
     pedals, supplies = load_catalog()
-    return build.validate(ROOT / "projects" / name, pedals, supplies)
+    return build.validate(project_dir(name), pedals, supplies)
 
 
 def default_build(name):
-    """build.validate of a real project as it is on disk: built once per project, every caller gets its own deep copy (a test may
+    """build.validate of a real project as it is on disk (the gig: the frozen fixture): built once per project, every caller gets its own deep copy (a test may
     change what it gets without touching the others)."""
     return copy.deepcopy(_default_build(name))
 
 
 def test_validate_with_injected_items_equals_the_file():
     pedals, supplies = load_catalog()
-    from_file = default_build("guitar-gig")
+    from_file = build.validate(GIG, *load_catalog())
     items = design.parse_design(GIG / "playground_design.json")
     injected = build.validate(GIG, pedals, supplies, items=items)
     assert from_file["layout_source"] == "file" and injected["layout_source"] == "injected"
@@ -103,7 +109,7 @@ def test_real_projects_keep_every_supply_under_the_board():
     supply is an obstacle, every power cable is under the board, and an explicit "under" changes nothing."""
     pedals, supplies = load_catalog()
     for name in ("guitar-gig", "guitar-practice", "bass"):
-        pdir = ROOT / "projects" / name
+        pdir = project_dir(name)
         base = default_build(name)
         titles = {t for t in (supplies[s["sup"]["id"]].get("playground_title") for s in base["supplies"]) if t}
         assert all("placement" not in s["inst"] for s in base["supplies"])

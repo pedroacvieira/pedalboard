@@ -18,9 +18,9 @@ import design  # noqa: E402
 import layout  # noqa: E402
 import propose_layout as pl  # noqa: E402
 from common import load_catalog, proposal_inputs_sha1  # noqa: E402
+from conftest import gig_copy  # noqa: E402
 from test_layout import JACKS, PEDALS, SUP_JACKS, SUPPLIES, TYPES, at, canvas, model, ped, sup, sw, BOARD  # noqa: E402
 
-GIG = ROOT / "projects" / "guitar-gig"
 QUIET = {"layout": {"weights": {"io": 0, "flow": 0, "access": 0}}}   # isolate the terms a test looks at
 
 
@@ -90,13 +90,6 @@ def test_gating():
     assert pl.acceptable({**owner, "score": 3990}, owner)               # same tiers, lower score
 
 
-def gig_copy(tmp_path, monkeypatch):
-    root = tmp_path / "projects"
-    shutil.copytree(GIG, root / "guitar-gig", ignore=shutil.ignore_patterns("proposals"))
-    monkeypatch.setattr(common, "PROJECTS", root)
-    return root / "guitar-gig"
-
-
 def test_propose_writes_loadable_proposals_and_the_readme_section(tmp_path, monkeypatch, capsys):
     pdir = gig_copy(tmp_path, monkeypatch)
     design_before = (pdir / "playground_design.json").read_bytes()
@@ -125,13 +118,15 @@ def test_no_better_layout_writes_no_proposal(tmp_path, monkeypatch):
     assert meta["proposals"] == [] and not list((pdir / "proposals").glob("1.*"))
 
 
-def test_score_prints_the_breakdown(capsys):
+def test_score_prints_the_breakdown(tmp_path, monkeypatch, capsys):
+    gig_copy(tmp_path, monkeypatch)
     assert pl.main(["guitar-gig", "--score"]) == 0
     out = capsys.readouterr().out
     assert "Blocked plugs (no margin, as the build): 5" in out and "footswitch" in out and "clearance" in out
 
 
-def test_the_board_data_and_the_projects_edits_are_read_once(monkeypatch, capsys):
+def test_the_board_data_and_the_projects_edits_are_read_once(tmp_path, monkeypatch, capsys):
+    gig_copy(tmp_path, monkeypatch)
     reads = []
     real_read, real_edits = boards.read_file, boards.load_edits
     monkeypatch.setattr(boards, "read_file", lambda *a, **k: reads.append("boards.json") or real_read(*a, **k))

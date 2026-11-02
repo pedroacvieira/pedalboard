@@ -19,7 +19,7 @@ import build  # noqa: E402
 import design  # noqa: E402
 import routing  # noqa: E402
 import test_plug_collisions as pc  # noqa: E402
-from test_layout import gig_build  # noqa: E402
+from test_layout import GIG, gig_build  # noqa: E402
 from test_power_routing import pw_ctx  # noqa: E402
 from test_routing import DC, TYPES, mm_item, power_ctx  # noqa: E402
 
@@ -334,7 +334,7 @@ def test_one_listed_type_is_the_gig_as_before():
     proj = copy.deepcopy(ctx["project"])
     assert "power_types" not in proj["cables"]
     proj["cables"]["power_types"] = [proj["cables"]["power_type"]]
-    other = build.validate(ROOT / "projects" / "guitar-gig", pedals, supplies, project=proj)
+    other = build.validate(GIG, pedals, supplies, project=proj)
     keys = ("from", "to", "exit_a", "exit_b", "min_mm", "status", "type", "type_a", "type_b")
     pick = lambda c: [{k: x.get(k) for k in keys} for x in c["cable_list"]]
     assert pick(other) == pick(ctx) and other["warnings"] == ctx["warnings"] and other["errors"] == ctx["errors"]

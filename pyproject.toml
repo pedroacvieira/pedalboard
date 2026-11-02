@@ -8,8 +8,16 @@ dependencies = [
     "pillow>=13.0.0",
 ]
 
-[tool.uv]
-package = false
+[project.scripts]
+pb = "pb:main"   # uv run pb <command>: one entry point for the scripts (pb/__init__.py)
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "pb"
+module-root = ""
 
 [dependency-groups]
 dev = [

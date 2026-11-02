@@ -107,10 +107,11 @@ def test_list_rows_show_unknown_and_verified_none():
         ["c", "pedal", "0", "jack(s)", "?", "footswitch(es)"], ["s", "supply", "0", "jack(s)", "-", "footswitch(es)"]]
 
 
-def test_list_missing_footswitches_for_the_gig_board():
+def test_list_missing_footswitches_for_the_gig_board(tmp_path, monkeypatch):
+    from conftest import gig_copy
     pedals, supplies = load_catalog()
     import json
-    chain = json.loads((ROOT / "projects" / "guitar-gig" / "project.json").read_text())["signal_chain"]
+    chain = json.loads((gig_copy(tmp_path, monkeypatch) / "project.json").read_text())["signal_chain"]
     lines = pe.missing_lines(["guitar-gig"], pedals, supplies, "footswitches", fs_data={})
     assert lines == [f"uv run scripts/pedal_editor.py {c} --footswitches    # guitar-gig" for c in chain]
     some = pe.missing_lines(["guitar-gig"], pedals, supplies, "footswitches", fs_data={c: [] for c in chain[1:]})
@@ -140,8 +141,10 @@ def test_switch_drawing_is_a_10_mm_cap_in_an_18_mm_ring():
     assert pe.switch_diameters_mm({"type": "tap", "diameter_mm": 12}) == (10.0, 18.0)
 
 
-def test_list_missing_does_not_run_the_router(monkeypatch):
+def test_list_missing_does_not_run_the_router(tmp_path, monkeypatch):
     import routing
+    from conftest import gig_copy
+    gig_copy(tmp_path, monkeypatch)
     monkeypatch.setattr(routing, "route_project", lambda *a, **k: (_ for _ in ()).throw(AssertionError("routed")))
     pedals, supplies = load_catalog()
     assert pe.missing_lines(["guitar-gig"], pedals, supplies, only="footswitches")

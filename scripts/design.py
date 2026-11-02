@@ -1,8 +1,9 @@
-"""Read a Pedal Playground save file and do the jack geometry. Pure: no network, no GUI.
+"""Read a Pedal Playground layout and do the jack geometry. Pure: no network, no GUI.
 
-Pedal Playground files hold inches and pixels (`data-width`, `data-height` in inches,
-`left`/`top` in px at `data-scale` px per inch). Everything here is converted to mm on
-read; all geometry is in mm in the canvas frame (x right, y down).
+Layouts are the v2 site's documents (schema 3: sizes and x / y in inches, rotation in degrees; `parse_doc`,
+fetched by scripts/fetch_playground.py) or legacy v1 saves (`parse_canvas`: `data-width` / `data-height` in
+inches, `left` / `top` in px at `data-scale` px per inch). Everything is converted to mm on read; all geometry
+is in mm in the canvas frame (x right, y down).
 
 A jack is stored as fractions (fx, fy) of the pedal image. The site stretches the image
 over the pedal's Width x Height box and rotates only the artwork, clockwise, about the
@@ -79,9 +80,49 @@ def parse_canvas(canvas_html):
     return items
 
 
+V3_SCALE = 45.0   # px per inch given to schema 3 items: their px are a virtual grid (the site stores inches as floats)
+
+
+def parse_doc(doc):
+    """A Pedal Playground v2 document (schema 3: {"schemaVersion": 3, "name", "items": [{"id", "kind", "label", "image",
+    "width", "height" (in), "x", "y" (in: the unrotated box's top-left on the canvas), "rotation" (deg, clockwise about the
+    centre), "flipX", "custom", "color"}]}) -> items as `parse_canvas` gives them (title = the label, which is the site's
+    "Brand Name"; image with ".png" as the catalog keys use; px on a virtual `V3_SCALE` grid). Items without a size are
+    dropped (as the site does)."""
+    items = []
+    for it in doc.get("items") or []:
+        w, h = float(it.get("width") or 0), float(it.get("height") or 0)
+        if w <= 0 or h <= 0:
+            continue
+        image = it.get("image")
+        if image and not image.lower().endswith((".png", ".webp", ".jpg")):
+            image += ".png"
+        rot = int(round(float(it.get("rotation") or 0))) % 360
+        x, y = float(it.get("x") or 0), float(it.get("y") or 0)
+        items.append({"id": it.get("id"), "kind": "pedalboard" if it.get("kind") == "pedalboard" else "pedal",
+                      "title": it.get("label"), "rot": rot, "scale": V3_SCALE, "w_in": w, "h_in": h,
+                      "left_px": x * V3_SCALE, "top_px": y * V3_SCALE, "image": image,
+                      "w_mm": w * IN_MM, "h_mm": h * IN_MM, "left_mm": x * IN_MM, "top_mm": y * IN_MM})
+    return items
+
+
+def is_doc(data):
+    """Whether `data` (a parsed JSON file) is a v2 document (schema 3)."""
+    return isinstance(data, dict) and data.get("schemaVersion") == 3 and isinstance(data.get("items"), list)
+
+
+def parse_data(data):
+    """Items of a parsed layout file: a v2 document (schema 3, `parse_doc`), or a legacy v1 save ({"canvas": html})."""
+    if is_doc(data):
+        return parse_doc(data)
+    if isinstance(data, dict) and isinstance(data.get("canvas"), str):
+        return parse_canvas(data["canvas"])
+    raise ValueError("not a Pedal Playground layout (neither a schema 3 document nor a legacy canvas save)")
+
+
 def parse_design(path):
-    """A Pedal Playground save file -> list of items (pedals, supplies, boards) with mm geometry."""
-    return parse_canvas(json.loads(Path(path).read_text())["canvas"])
+    """A Pedal Playground layout file -> list of items (pedals, supplies, boards) with mm geometry."""
+    return parse_data(json.loads(Path(path).read_text()))
 
 
 # --- geometry (mm) ----------------------------------------------------------------------------
@@ -360,6 +401,36 @@ def move(item, cx, cy, rot=None, snap=True):
         left_px, top_px = float(round(left_px)), float(round(top_px))
     return {**item, "rot": rot, "left_px": left_px, "top_px": top_px,
             "left_mm": px_to_mm(left_px, s), "top_mm": px_to_mm(top_px, s)}
+
+
+def write_doc(doc, items, name=None):
+    """A copy of the v2 document `doc` with the position (x, y in inches from left_px / top_px on the `V3_SCALE` grid) and
+    rotation of the given items rewritten (matched by id), `savedAt` now and `name` if given; everything else kept.
+    Raises KeyError if an item id is not in the document."""
+    from datetime import datetime, timezone
+    want = {it["id"]: it for it in items}
+    out = json.loads(json.dumps(doc))
+    done = set()
+    for it in out["items"]:
+        new = want.get(it.get("id"))
+        if new is None:
+            continue
+        it["x"], it["y"], it["rotation"] = new["left_px"] / new["scale"], new["top_px"] / new["scale"], new["rot"]
+        done.add(it["id"])
+    missing = set(want) - done
+    if missing:
+        raise KeyError(f"not in the document: {', '.join(sorted(missing))}")
+    out["savedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    if name is not None:
+        out["name"] = name
+    return out
+
+
+def write_design(data, items, name=None):
+    """`data` (a parsed layout file: v2 document or legacy canvas save) with the given items moved / rotated."""
+    if is_doc(data):
+        return write_doc(data, items, name)
+    return {**data, "canvas": write_canvas(data["canvas"], items)}
 
 
 def _px(v):

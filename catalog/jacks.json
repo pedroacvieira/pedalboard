@@ -18,6 +18,14 @@
       {"id": "power", "label": "Power", "function": "power", "x": 0.2237, "y": 0.0426, "facing": "top"},
       {"id": "jack_4", "label": "Exp", "function": "other", "x": 0.4124, "y": 0.0074, "facing": "top"}
     ],
+    "boss_dd8": [
+      {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.4059, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.4044, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.4955, "y": 0.0, "facing": "top"},
+      {"id": "jack_4", "label": "Input Stereo", "function": "input", "x": 1.0, "y": 0.275, "facing": "right"},
+      {"id": "jack_5", "label": "Output Stereo", "function": "output", "x": 0.0, "y": 0.2779, "facing": "left"},
+      {"id": "jack_6", "label": "Exp", "function": "other", "x": 1.0, "y": 0.5221, "facing": "right"}
+    ],
     "carbon_copy": [
       {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.4721, "facing": "right"},
       {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.4721, "facing": "left"},
@@ -57,6 +65,11 @@
       {"id": "in", "label": "Input", "function": "input", "x": 0.9903, "y": 0.5074, "facing": "right"},
       {"id": "out", "label": "Output", "function": "output", "x": 0.007, "y": 0.5059, "facing": "left"},
       {"id": "power", "label": "Power", "function": "power", "x": 0.5022, "y": 0.0, "facing": "top"}
+    ],
+    "ehx_pico_pitch_fork": [
+      {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.5382, "facing": "right"},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.75, "facing": "left"},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.499, "y": 0.0, "facing": "top"}
     ],
     "flight_delay": [
       {"id": "in", "label": "Input", "function": "input", "x": 0.8243, "y": 0.0029, "facing": "top"},

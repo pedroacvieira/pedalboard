@@ -187,7 +187,7 @@ def test_gig_build_with_switch_data_has_no_findings_without_a_minimum():
     import routing
     from common import load_catalog
     pedals, supplies = load_catalog()
-    gig = ROOT / "projects" / "guitar-gig"
+    from conftest import GIG_FIXTURE as gig
     chain = json.loads((gig / "project.json").read_text())["signal_chain"]
     ctx = build.validate(gig, pedals, supplies, footswitch_data={c: [sw()] for c in chain})
     prs = ctx["footswitch_pairs"]
@@ -378,7 +378,7 @@ def test_svg_draws_rings_for_toppers_and_suggestions(tmp_path):
     import build
     from common import load_catalog
     pedals, supplies = load_catalog()
-    gig = ROOT / "projects" / "guitar-gig"
+    from conftest import GIG_FIXTURE as gig
     project = json.loads((gig / "project.json").read_text())
     chain = project["signal_chain"]
     project["footswitches"] = {"toppers": [f"{chain[0]}.bypass"]}
