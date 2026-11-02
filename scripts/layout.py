@@ -184,8 +184,8 @@ def _shift(r, dx, dy):
 
 
 def in_area(area, o, st, radius, usable):
-    """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the grown usable
-    area). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
+    """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the board +
+    margin). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
     `o["jack"]`, relative to the pedal's centre) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
     parts grown by the cable radius (`o["diam"]` of a DC plug, else `radius`) counts as inside. Every other plug: the plain area test."""
     px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
@@ -888,8 +888,8 @@ class Model:
         b = self.board
         obs = self._obstacles(state, feet)
         # as the build: nothing in front of the lowest pedal OUTLINE (detour estimate: boxes, an approximation)
-        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg, self.usable)
-        area = routing.area_box(b, self.usable, front_y, self.rcfg)   # the grown usable area (an estimate: the edge-segment strips are ignored)
+        front_y = routing.front_limit(b, [q[3] for k, _, _, shp in obs if k is not None for q in shp] if feet else [], self.rcfg)
+        area = routing.area_box(b, front_y, self.rcfg)   # the board + margin (the bounds limit the pedals only)
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
                 [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for _, f in self.fixed_feet]

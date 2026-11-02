@@ -525,8 +525,9 @@ def routing_section(ctx):
     where = ("" if under else "never under the board, ")
     md = ["", "## Cable routing", "",
           f"Signal cables are routed on the board surface between the pedals: {where}{front}"
-          f"{cfg['edge_margin_mm']:g} mm beyond the {'usable board area (the dashed teal line: where pedals may sit, `board.json` `bounds`) at the ' if design.has_bounds(ctx.get('layout')) else ''}"
-          f"back and sides{' and the front' if cfg.get('route_in_front') else ''}, at most {cfg['max_stack']} cables stacked in one "
+          f"{cfg['edge_margin_mm']:g} mm beyond the board edges at the "
+          f"back and sides{' and the front' if cfg.get('route_in_front') else ''}"
+          f"{' (the usable board area, the dashed teal line of `board.json` `bounds`, limits the pedals only, not the cables)' if design.has_bounds(ctx.get('layout')) else ''}, at most {cfg['max_stack']} cables stacked in one "
           f"{cfg['grid_mm']:g} mm cell (cable width on the board {cfg['diameter_mm']:g} mm). "
           + (f"A cable may also pass under the board when that is shorter or less crowded: it goes down "
              f"in a hole cell (a grid cell whose centre lies in a hole that no pedal covers)"
