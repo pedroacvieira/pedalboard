@@ -601,7 +601,7 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     colours, ends = cable_colours(cable_list), jack_ends(layout, cable_list)
 
     body = [board(bx)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + usable_area(layout)
-    ax0, ay0, ax1, ay1 = routing.area_rect(grid, bx, layout.get("usable"), r.get("front_y") or bx[3], cfg) if cfg else (ax0, ay0, ax1, r.get("front_y") or bx[3])
+    ax0, ay0, ax1, ay1 = routing.area_rect(grid, bx, r.get("front_y") or bx[3], cfg) if cfg else (ax0, ay0, ax1, r.get("front_y") or bx[3])
     body.append(routing_area(ax0, ay0, ax1, ay1))
     for o in layout["obstacles"]:
         cid = cid_of.get(o["id"])

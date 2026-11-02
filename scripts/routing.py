@@ -366,73 +366,48 @@ def rect_cells(grid, r, grow=0.0):
     return out
 
 
-def front_limit(board_rect, foot_bottoms, cfg, usable=None):
-    """Where the routing area ends at the front: the lowest pedal's outline (nothing in front of it, never beyond the usable
-    area's front edge), or with `cables.route_in_front` the usable area's front edge + `edge_margin_mm` (like the back and
-    sides). `usable`: `layout["usable"]` (where pedals may sit), the board footprint `board_rect` if None."""
-    front = (usable or board_rect)[3]
+def front_limit(board_rect, foot_bottoms, cfg):
+    """Where the routing area ends at the front: the lowest pedal's outline (nothing in front of it, never beyond the board's front
+    edge), or with `cables.route_in_front` the board's front edge + `edge_margin_mm` (like the back and sides). The usable board area
+    (board.json `bounds`) limits the pedals only, never the cables (owner, 2026-11-02)."""
+    front = board_rect[3]
     if cfg.get("route_in_front"):
         return front + cfg["edge_margin_mm"]
     return min(front, max(foot_bottoms, default=front))
 
 
-def area_limits(board_rect, usable, front_y, cfg):
-    """The sides where the top routing area is cut inside the board footprint + margin because the usable area (`layout["usable"]`)
-    is smaller than the board: (x0, y0, x1, y1), each a canvas coordinate (the usable edge grown by `edge_margin_mm` at the back and
-    the sides, `front_y` at the front) or None where the area keeps today's extent (no bound on that side; the front is cut at
-    `front_y` by the grid itself unless `cables.route_in_front`)."""
-    if not usable:
-        return (None, None, None, None)
-    m, eps = cfg["edge_margin_mm"], 1e-6
-    return (usable[0] - m if usable[0] > board_rect[0] + eps else None,
-            usable[1] - m if usable[1] > board_rect[1] + eps else None,
-            usable[2] + m if usable[2] < board_rect[2] - eps else None,
-            front_y if cfg.get("route_in_front") and usable[3] < board_rect[3] - eps else None)
-
-
-def area_rect(grid, board_rect, usable, front_y, cfg):
-    """The top routing area as a rectangle (x0, y0, x1, y1), what lanes and the pictures use: today's grid extent (the board + margin; the
-    cells the plug zones add are not part of it), cut at the sides `area_limits` cuts (the usable area grown by the margin), the front at `front_y`. Without bounds = today's area."""
-    lx0, ly0, lx1, _ = area_limits(board_rect, usable, front_y, cfg)
+def area_rect(grid, board_rect, front_y, cfg):
+    """The top routing area as a rectangle (x0, y0, x1, y1), what lanes and the pictures use: the board + margin at the back and sides
+    (the grid's extent without the cells the plug zones add), the front at `front_y`."""
     m, cell = cfg["edge_margin_mm"], cfg["grid_mm"]
-    x0, y0, x1 = board_rect[0] - m, board_rect[1] - m, board_rect[2] + m   # today's extent (the zones' extra cells are not routing area)
-    return (x0 if lx0 is None else lx0, y0 if ly0 is None else ly0,
-            x0 + max(1, math.ceil((x1 - x0) / cell)) * cell if lx1 is None else lx1, front_y)
+    x0, y0, x1 = board_rect[0] - m, board_rect[1] - m, board_rect[2] + m
+    return (x0, y0, x0 + max(1, math.ceil((x1 - x0) / cell)) * cell, front_y)
 
 
-def area_box(board_rect, usable, front_y, cfg):
+def area_box(board_rect, front_y, cfg):
     """The top routing area as an estimate without a grid (the layout search's surrogate): (x0, y0, x1, y1) = the board footprint
-    + margin at the back and sides, cut at the sides `area_limits` cuts (the usable area grown by the margin) and at `front_y`.
-    The edge-segment strips of `build_grid` are ignored (an estimate)."""
+    + margin at the back and sides, cut at `front_y`."""
     m = cfg["edge_margin_mm"]
-    lx0, ly0, lx1, _ = area_limits(board_rect, usable, front_y, cfg)
-    return (board_rect[0] - m if lx0 is None else lx0, board_rect[1] - m if ly0 is None else ly0,
-            board_rect[2] + m if lx1 is None else lx1, front_y)
+    return (board_rect[0] - m, board_rect[1] - m, board_rect[2] + m, front_y)
 
 
 ZONE_PAD_MM = 6.0   # how far past a plug footprint `build_grid` extends its extent (room for the cable radius and the exit cell)
 
 
-def build_grid(board_rect, obstacle_rects, front_y, cfg, usable=None, segments=(), zones=()):
+def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=()):
     """Routing area = board + margin at the back and sides, cut off at `front_y` (`front_limit`).
+
+    The usable board area (board.json `bounds`) limits the pedals only: cables may run anywhere in the board + margin (owner,
+    2026-11-02).
 
     `zones` (`plug_zones`: canvas rects, the footprint parts and exits of the plug options of the jacks that lie OUTSIDE the usable
     area): a side jack of a pedal at the edge of the usable area (pedals only have to hold their BODY inside it) lets its plug reach past
-    it, so the cells within the cable radius of a zone are routing area wherever they lie, even outside the grown usable area, the board
-    + margin or beyond (the extent grows at the back and the sides by whole cells, so the cells keep their positions; the cells of that
+    it, so the cells within the cable radius of a zone are routing area wherever they lie, even beyond the board
+    + margin (the extent grows at the back and the sides by whole cells, so the cells keep their positions; the cells of that
     growth are walls except the zone cells; nothing changes in front: the area ends at `front_y`). Pedals still block as usual. Without
-    zones the grid is today's, cell for cell.
-
-    `usable` (`layout["usable"]`): the cells whose centre lies outside the usable area grown by the margin (`area_limits`) are
-    walls (blocked and body: not even squeezing passes), except in a strip along each of `segments` (the edge segments a cable
-    can use, `usable_edge_segments`): there the cells from the grown usable edge out to the board border + margin stay as they
-    are, so `edge_links` finds its free top cell just outside the border. The grid's extent stays today's (board + margin), so
-    its cells match the under layer's. Without `usable` (or with it at the board edges) the grid is the plain one."""
+    zones the grid is today's, cell for cell."""
     m = cfg["edge_margin_mm"]
     x0, y0, x1 = board_rect[0] - m, board_rect[1] - m, board_rect[2] + m
-    y_end = front_y
-    if usable is not None and cfg.get("route_in_front"):
-        y_end = max(front_y, board_rect[3] + m)   # the strips of a front segment reach the border + margin
     cell = cfg["grid_mm"]
     n_cols = max(1, math.ceil((x1 - x0) / cell))   # today's number of columns: the cells the zones add lie left of / right of / above them
     left = back = 0                                 # cells added at the left / back for the zones (whole cells: the others keep their positions)
@@ -442,31 +417,16 @@ def build_grid(board_rect, obstacle_rects, front_y, cfg, usable=None, segments=(
         left, back = math.ceil(max(0.0, x0 - zx0) / cell - 1e-9), math.ceil(max(0.0, y0 - zy0) / cell - 1e-9)
         x0, y0 = x0 - left * cell, y0 - back * cell
         x1 += math.ceil(max(0.0, zx1 - x1) / cell - 1e-9) * cell
-    g = Grid(x0, y0, x1, y_end, cell)
+    g = Grid(x0, y0, x1, front_y, cell)
     # a gap narrower than one cable diameter may still pass by up to half a cell: grid accuracy
     grow = grow_of(cfg)
     for r in obstacle_rects:
         g.block_rect(r, grow=grow)
-    limits = area_limits(board_rect, usable, front_y, cfg)
-    added = [(i, j) for i in range(g.nx) for j in range(g.ny) if i < left or i >= left + n_cols or j < back] if zones else []
-    if added or any(v is not None for v in limits):
-        lx0, ly0, lx1, ly1 = limits
-        spans = {side: [(min(a[axis], b[axis]), max(a[axis], b[axis])) for a, b, sd in segments if sd == side]
-                 for side, axis in (("left", 1), ("right", 1), ("back", 0), ("front", 0))}   # along the side
-
-        def strip(side, t):
-            return any(lo <= t <= hi for lo, hi in spans[side])
-        cut = set(added)   # (the cells the zone growth added are walls; the zone cells are opened again below)
-        for i in range(g.nx):
-            cx = g.x0 + (i + 0.5) * g.cell
-            for j in range(g.ny):
-                cy = g.y0 + (j + 0.5) * g.cell
-                if ((lx0 is not None and cx < lx0 and not strip("left", cy)) or (lx1 is not None and cx > lx1 and not strip("right", cy))
-                        or (ly0 is not None and cy < ly0 and not strip("back", cx)) or (ly1 is not None and cy > ly1 and not strip("front", cx))):
-                    cut.add((i, j))
-        if zones:   # the plug footprints of the overhanging jacks are routing area: their cells are no walls (a pedal over them still blocks)
-            reach = cfg["diameter_mm"] / 2 + g.cell / 2
-            cut -= set().union(*(rect_cells(g, z, reach) for z in zones))
+    if zones:
+        # the cells the zone growth added are walls, except the zone cells (a pedal over them still blocks)
+        cut = {(i, j) for i in range(g.nx) for j in range(g.ny) if i < left or i >= left + n_cols or j < back}
+        reach = cfg["diameter_mm"] / 2 + g.cell / 2
+        cut -= set().union(*(rect_cells(g, z, reach) for z in zones))
         g.blocked |= cut
         g.body |= cut
     return g
@@ -1592,7 +1552,7 @@ def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable):
     board footprint: a jack of a pedal at the edge of the usable area that lies outside it): the footprint parts (head, barrel, cable run) and the exit point (a zero-size rect) of
     EVERY option the router may pick (both exit sides of each right-angle signal plug, of every DC plug type of `cables.power_types`
     and the types overridden on a cable; down options have the same head). `build_grid` makes the cells around them routing area, so the
-    cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the grown usable area): the plugs
+    cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the board + margin): the plugs
     of the jacks inside the usable area have no zones. Fixed boxes (first input, last output, extra jacks: no routed cable) need none. [] without
     a layout or an overhanging jack."""
     layout = ctx.get("layout") or {}
@@ -1810,12 +1770,11 @@ def route_project(ctx, cat_pedals, cable_types=None):
         board = design.footprint(layout["board"])
         feet = [r for it in placed.values() for r in shapes_of(it)]
         usable = layout.get("usable")
-        front_y = front_limit(board, [f[3] for f in feet], cfg, usable)   # nothing in front of the lowest pedals (unless cables.route_in_front)
+        front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
         zones = plug_zones(ctx, cables, cable_types, cfg, "exit_run_mm" in (project.get("cables") or {}), outward,
                            usable or board)
         ctx["routing"]["plug_zones"] = zones   # the power grid takes the same ones (`route_power`)
-        grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, usable,
-                          usable_edge_segments(layout, cfg) if cfg["under_board"] else (), zones)
+        grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones)
         ctx["routing"].update(grid=grid, front_y=front_y)
         if cfg["under_board"]:
             place = layout.get("inst_placement") or {}
@@ -2069,7 +2028,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         for k in tops:
             eid = c["id"] if len(c["_stretches"]) == 1 else f"{c['id']}#{k}"
             routed[eid], entry[eid] = (c["_stretches"][k]["points"], c["_own"]), (c["id"], k)
-    laned = lanes(routed, pedal_rects, plug_rects, area_rect(grid, board, layout.get("usable"), front_y, cfg),
+    laned = lanes(routed, pedal_rects, plug_rects, area_rect(grid, board, front_y, cfg),
                   cfg["diameter_mm"]) if routed else {}
     drawn = {}   # cable id -> {stretch index: lane result}
     for eid, res in laned.items():
@@ -2211,8 +2170,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     transit = cfg["hole_transit_mm"]
     edge_t, source = edge_transit(pcfg, layout, transit)
     pw.update(edge_transit_mm=edge_t, edge_transit_source=source, hole_transit_mm=float(transit), diameter_mm=pd)
-    pgrid = build_grid(board, pedal_rects, front_y, pc_cfg, layout.get("usable"), usable_edge_segments(layout, cfg),
-                       ctx["routing"].get("plug_zones") or ())
+    pgrid = build_grid(board, pedal_rects, front_y, pc_cfg, ctx["routing"].get("plug_zones") or ())
     ug = under_grid(pgrid, board, under_rects, pc_cfg)
     holes = hole_cells(pgrid, ug, layout.get("holes"))
     links = edge_links(pgrid, ug, board, usable_edge_segments(layout, cfg), edge_t)

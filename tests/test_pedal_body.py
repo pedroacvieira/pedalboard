@@ -192,30 +192,27 @@ BRD = (0.0, 0.0, 60.0, 30.0)
 
 def test_zone_cells_are_no_walls_and_the_extent_grows_by_whole_cells():
     plain = routing.build_grid(BRD, [], 30.0, CFG)
-    same = routing.build_grid(BRD, [], 30.0, CFG, None, (), [(10.0, 10.0, 20.0, 20.0)])      # a zone inside the area: nothing changes
+    same = routing.build_grid(BRD, [], 30.0, CFG, [(10.0, 10.0, 20.0, 20.0)])      # a zone inside the area: nothing changes
     assert (same.x0, same.y0, same.nx, same.ny) == (plain.x0, plain.y0, plain.nx, plain.ny) and same.blocked == plain.blocked
-    usable = (10.0, 8.0, 50.0, 30.0)                                                          # the grown area: x 6..54, y 4..
-    zone = (-3.0, 12.0, 5.0, 16.0)                                                            # a plug past the left cut and the board edge
-    cut = routing.build_grid(BRD, [], 30.0, CFG, usable)
-    g = routing.build_grid(BRD, [], 30.0, CFG, usable, (), [zone])
-    assert g.x0 < cut.x0 and (cut.x0 - g.x0) % g.cell == pytest.approx(0) and g.y0 == cut.y0 and g.ny == cut.ny   # grew left by whole cells
-    assert g.cell_of(1, 13) not in g.blocked and cut.cell_of(1, 13) in cut.blocked          # a zone cell inside the board: open
-    assert g.cell_of(-3, 13) not in g.blocked                                                # ... and beyond the board + margin
-    assert g.cell_of(1, 25) in g.blocked and g.cell_of(-5, 25) in g.blocked                   # everything else outside the grown area stays a wall
-    assert g.cell_of(20, 10) not in g.blocked                                                # (inside: open as before)
-    wall = routing.build_grid(BRD, [(0.0, 10.0, 8.0, 20.0)], 30.0, CFG, usable, (), [zone])
-    assert wall.cell_of(1, 13) in wall.blocked                                                # a pedal over a zone cell still blocks
+    zone = (-12.0, 12.0, -2.0, 16.0)                                                # a plug past the board edge + margin (x -4)
+    g = routing.build_grid(BRD, [], 30.0, CFG, [zone])
+    assert g.x0 < plain.x0 and (plain.x0 - g.x0) % g.cell == pytest.approx(0) and g.y0 == plain.y0 and g.ny == plain.ny   # grew left by whole cells
+    assert g.cell_of(-9, 13) not in g.blocked                                       # a zone cell beyond the board + margin: open
+    assert g.cell_of(-9, 25) in g.blocked                                           # the other added cells are walls
+    assert g.cell_of(-3, 25) not in g.blocked and g.cell_of(20, 10) not in g.blocked   # the board + margin: open as before
+    wall = routing.build_grid(BRD, [(-12.0, 10.0, -6.0, 20.0)], 30.0, CFG, [zone])
+    assert wall.cell_of(-9, 13) in wall.blocked                                     # a pedal over a zone cell still blocks
 
 
 def overhang_ctx():
-    """plug_ctx with A moved to x 50..100 and its output at the top left corner (50, 60) facing left; the usable area starts at x 60 (A's
-    body: its box overhangs by 10 mm), the grown area (margin 6) at 54: the jack lies outside it, and the plug's head (x 30..50), its
-    cable run and the exit (40, 46) with it."""
+    """plug_ctx with A moved to x -10..40 (past the board's left edge: its body is inside, its box overhangs) and its output at the top
+    left corner (-10, 60) facing left: the jack lies outside the usable area (the board), the plug's head (x -30..-10), its cable run
+    and the exit (-20, 46) lie beyond the board + margin (x -6)."""
     ctx = plug_ctx({"type": "ra"})
     lay = ctx["layout"]
-    lay["placed"]["a"]["left_mm"] = 50.0
+    lay["placed"]["a"]["left_mm"] = -10.0
     lay["jacks"]["a"][0].update(x=0.0, y=0.0, facing="left")
-    lay["usable"] = (60.0, 0.0, 300.0, 200.0)
+    lay["usable"] = (0.0, 0.0, 300.0, 200.0)
     return ctx
 
 
@@ -223,11 +220,11 @@ def test_an_overhanging_side_jack_still_gets_its_cable_routed():
     ctx = overhang_ctx()
     routing.route_project(ctx, {}, cable_types=TYPES)
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
-    assert c["status"] == "routed" and c["path"][0] == (50.0, 60.0)
+    assert c["status"] == "routed" and c["path"][0] == (-10.0, 60.0)
     assert ctx["errors"] == [] and not [w for w in ctx["warnings"] if w.startswith("routing:")]
-    assert min(p[0] for p in c["path"]) < 50.0 - 5                                          # the cable really leaves over the overhang
+    assert min(p[0] for p in c["path"]) < -10.0 - 5                                         # the cable really leaves over the overhang
     zones = ctx["routing"]["plug_zones"]
-    assert (40.0, 46.0, 40.0, 46.0) in zones and (30.0, 52.0, 50.0, 68.0) in zones         # the exit point and the head
+    assert (-20.0, 46.0, -20.0, 46.0) in zones and (-30.0, 52.0, -10.0, 68.0) in zones     # the exit point and the head
 
 
 def test_without_the_plug_zones_the_same_cable_has_no_place_to_start(monkeypatch):
@@ -243,7 +240,7 @@ def test_plug_zones_cover_every_option_of_an_overhanging_jack_and_nothing_else()
     ctx = overhang_ctx()
     routing.route_project(ctx, {}, cable_types=TYPES)
     zones = [tuple(z) for z in ctx["routing"]["plug_zones"]]
-    assert (40.0, 46.0, 40.0, 46.0) in zones and (40.0, 74.0, 40.0, 74.0) in zones             # both exit sides of A's plug
+    assert (-20.0, 46.0, -20.0, 46.0) in zones and (-20.0, 74.0, -20.0, 74.0) in zones         # both exit sides of A's plug
     assert not [z for z in zones if z[0] > 100]                                                  # B's plug (x ~190, inside the area): none
 
 
@@ -258,25 +255,23 @@ def test_an_interior_plug_whose_exit_is_beyond_the_area_is_still_unroutable_and_
     assert any(w.startswith("routing: S1") and "outside the routing area" in w for w in ctx["warnings"])
 
 
-def test_no_bounds_and_no_zones_the_grid_is_the_plain_one_even_with_a_fractional_extent():
+def test_without_zones_the_grid_is_the_plain_one_even_with_a_fractional_extent():
     board = (0.0, 0.0, 61.0, 31.0)                                  # the extent 69 x 39 mm is no whole number of 2 mm cells (35 x 20)
     pedals = [(20.0, 10.0, 30.0, 20.0)]
     ref = routing.Grid(-4.0, -4.0, 65.0, 31.0, 2.0)
     for r in pedals:
         ref.block_rect(r, grow=routing.grow_of(CFG))
-    for usable, zones in ((None, ()), (board, ()), (None, [(10.0, 10.0, 20.0, 20.0)]), (board, [(10.0, 10.0, 20.0, 20.0)])):
-        g = routing.build_grid(board, pedals, 31.0, CFG, usable, (), zones)
+    for zones in ((), [(10.0, 10.0, 20.0, 20.0)]):
+        g = routing.build_grid(board, pedals, 31.0, CFG, zones)
         assert (g.x0, g.y0, g.nx, g.ny) == (-4.0, -4.0, 35, 18) == (ref.x0, ref.y0, ref.nx, ref.ny)
         assert g.blocked == ref.blocked and g.body == ref.body                                  # no wall from rounding
-    assert routing.area_rect(ref, board, None, 31.0, CFG) == (-4.0, -4.0, 66.0, 31.0)
+    assert routing.area_rect(ref, board, 31.0, CFG) == (-4.0, -4.0, 66.0, 31.0)
 
 
 def test_the_area_rect_ignores_the_cells_the_zones_added():
-    usable = (10.0, 8.0, 50.0, 30.0)
-    g = routing.build_grid(BRD, [], 30.0, CFG, usable, (), [(-3.0, 12.0, 5.0, 16.0)])
+    g = routing.build_grid(BRD, [], 30.0, CFG, [(-12.0, 12.0, -2.0, 16.0)])
     assert g.x0 < -4.0
-    assert routing.area_rect(g, BRD, usable, 30.0, CFG) == (6.0, 4.0, 54.0, 30.0)
-    assert routing.area_rect(g, BRD, None, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
+    assert routing.area_rect(g, BRD, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
 
 
 def test_a_caller_with_its_own_outlines_and_no_bodies_gets_no_bodies():

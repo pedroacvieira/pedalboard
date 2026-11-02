@@ -71,7 +71,9 @@ ideas · 5 data · 6 done.
       rearrange 42: #1 2004 / 3482 / 205, #2 2018 / 3413 / 205, #3 2156 / 3482 / 205. NOT the bodies' doing: main (boxes as bounds) with the same
       layout and data also gives 0 collisions in all fix proposals (fix 1: 2577 / 3476 / 207, 2588 / 3556 / 200, 2642 / 3512 / 201), so the
       layout / data change fixed it.
-- [ ] **Fix proposals with an unrouted DC cable (found 2026-11-02, `feat/pedal-body`)**: the proposals marked (u) above move the Pico Pitch
+- [x] **Fix proposals with an unrouted DC cable (found 2026-11-02, `feat/pedal-body`; FIXED 2026-11-02 `fix/cable-area`: the cause was the
+      routing area cut at the bounds + margin, but the bounds limit the pedals only: the area is the board + margin again; fix 1/2/3 and
+      rearrange 42 re-run on the scratch copy: 12 proposals, all cables routed, 0 collisions)**: the proposals marked (u) above move the Pico Pitch
       Fork ~16 mm to the back edge (its body is inside the usable area now); its top DC jack's plug exit then lies beyond the back margin and
       the build reports "P8 (psu2.F3 -> ehx_pico_pitch_fork.power) has no free path". The surrogate has no routing-area penalty for a DC plug
       (only a feasible-first choice). Gate fixed (2026-11-02): `power_unrouted` counts as a routing problem (gate, rank, +1000 score), so
