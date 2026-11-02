@@ -44,14 +44,14 @@ def dig(d, path):
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
-def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None, board_data=None):
+def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footswitch_data=None, project=None, route=True, outline_data=None, board_data=None, body_data=None):
     """Return a context dict (project data, derived power/rule info, errors, warnings).
 
     `items`: a parsed layout (design.parse_canvas) checked instead of the project's playground_design.json, so a
     candidate layout can be scored without writing a file. `project`: a project dict used instead of the folder's
     project.json (e.g. with a proposal's power wiring). `route=False` skips the cable router (plug clearance of
     signal and power jacks falls back to the fixed boxes): for callers that only need the data findings.
-    `outline_data`: usable catalog/outlines.json entries (read if None). `board_data`: usable catalog/boards.json
+    `outline_data` / `body_data`: usable catalog/outlines.json entries (outlines, bodies; read if None). `board_data`: usable catalog/boards.json
     entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
     errors, warnings = [], []
@@ -287,7 +287,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
     jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
-                cable_types=cable_types, defer=True, items=items, outlines=outline_data, board_data=board_data)
+                cable_types=cable_types, defer=True, items=items, outlines=outline_data, board_data=board_data, bodies=body_data)
     if route:
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
@@ -989,7 +989,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",
         "Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. "
-        "A pedal or on-board supply whose box lies outside the usable board area (the four lines of `board.json` `bounds`, drawn in the board editor; the board edges without them) is a warning, an error with `validation.strict_bounds`; under-board supplies are never checked. "
+        "A pedal or on-board supply whose body (the enclosure from its image, `catalog/outlines.json` `bodies`; jacks may overhang; the box without body data) lies outside the usable board area (the four lines of `board.json` `bounds`, drawn in the board editor; the board edges without them) is a warning, an error with `validation.strict_bounds`; under-board supplies are never checked. "
         "Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, "
         "power jacks against the DC plug type (`cables.power_type`; with `cables.power_types` the router picks the type per plug) on the less blocked side (or the small `jacks.power_clearance` zone without one); "
         "other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). "
@@ -1104,10 +1104,11 @@ def main():
     jacks_file = jacks.read_file()
     fs_file = footswitches.read_file()
     outl = outlines.usable(outlines.read_file()["outlines"])
+    bodies = outlines.load_bodies()
     board_data = boards.load()
     ctxs = []
     for pdir in project_dirs(args.projects or None):
-        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
+        ctx = validate(pdir, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data, body_data=bodies)
         (pdir / "README.md").write_text(project_readme(ctx, cat_pedals))
         (pdir / "signal-chain.mmd").write_text("\n".join(mermaid_signal(ctx)) + "\n")
         (pdir / "power.mmd").write_text("\n".join(mermaid_power(ctx)) + "\n")
@@ -1132,7 +1133,7 @@ def main():
         (pdir / "diagram.mmd").unlink(missing_ok=True)
         ctxs.append(ctx)
     if args.projects:  # keep the root index complete when building a subset
-        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data)
+        ctxs = [validate(d, cat_pedals, cat_supplies, jacks_file["jacks"], footswitch_data=fs_file["footswitches"], outline_data=outl, board_data=board_data, body_data=bodies)
                 for d in project_dirs()]
     text, global_warn = root_readme(ctxs, cat_pedals, cat_supplies, jacks_file["jacks"])
     (ROOT / "README.md").write_text(text)

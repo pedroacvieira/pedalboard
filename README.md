@@ -28,14 +28,14 @@ Footswitches: spacing is comfort, so the layout proposals push switches of diffe
 
 Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.
 
-Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. A pedal or on-board supply whose box lies outside the usable board area (the four lines of `board.json` `bounds`, drawn in the board editor; the board edges without them) is a warning, an error with `validation.strict_bounds`; under-board supplies are never checked. Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, power jacks against the DC plug type (`cables.power_type`; with `cables.power_types` the router picks the type per plug) on the less blocked side (or the small `jacks.power_clearance` zone without one); other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). Plugs and fixed zones of different jacks that overlap each other are reported as plug collisions (same severity as blocked space; the side choice avoids them where it can). All cable figures are in mm.
+Jacks: pedals with no jack setup, and cable space blocked in `playground_design.json`, are warnings by default; set `validation.require_jacks` / `validation.strict_clearance` to make them errors. A pedal or on-board supply whose body (the enclosure from its image, `catalog/outlines.json` `bodies`; jacks may overhang; the box without body data) lies outside the usable board area (the four lines of `board.json` `bounds`, drawn in the board editor; the board edges without them) is a warning, an error with `validation.strict_bounds`; under-board supplies are never checked. Signal jacks are checked against the plug head of the project's patch cable type (`cables.type`, catalog/cables.json) on the exit side the router chose, power jacks against the DC plug type (`cables.power_type`; with `cables.power_types` the router picks the type per plug) on the less blocked side (or the small `jacks.power_clearance` zone without one); other jacks use the fixed zone `jacks.clearance.outward_mm` / `side_mm` (default 6.3 / 7 mm). Plugs and fixed zones of different jacks that overlap each other are reported as plug collisions (same severity as blocked space; the side choice avoids them where it can). All cable figures are in mm.
 
 ## Projects
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 11 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 8 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -46,11 +46,10 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Jacks not set up for `boss_dd8`: `uv run scripts/pedal_editor.py boss_dd8`
 - Plug collision: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
 - Plug collision: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
 - Plug collision: ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
-- Footswitches not placed for 1 pedal(s): `uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 

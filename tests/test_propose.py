@@ -93,10 +93,10 @@ def test_gating():
 def test_propose_writes_loadable_proposals_and_the_readme_section(tmp_path, monkeypatch, capsys):
     pdir = gig_copy(tmp_path, monkeypatch)
     design_before = (pdir / "playground_design.json").read_bytes()
-    assert pl.main(["guitar-gig", "--iterations", "150", "--restarts", "1", "--top", "2"]) == 0
+    assert pl.main(["guitar-gig", "--iterations", "150", "--restarts", "2", "--top", "2"]) == 0
     assert (pdir / "playground_design.json").read_bytes() == design_before   # never written
     meta = json.loads((pdir / "proposals" / "meta.json").read_text())
-    assert meta["command"].endswith("--iterations 150 --restarts 1 --top 2") and 1 <= len(meta["proposals"]) <= 2
+    assert meta["command"].endswith("--iterations 150 --restarts 2 --top 2") and 1 <= len(meta["proposals"]) <= 2
     owner_items = {i["id"]: i for i in design.parse_design(pdir / "playground_design.json")}
     for p in meta["proposals"]:
         items = design.parse_design(pdir / "proposals" / p["file"])

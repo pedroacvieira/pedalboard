@@ -15,6 +15,7 @@ import argparse
 import json
 import math
 import os
+import statistics
 import sys
 from pathlib import Path
 
@@ -25,7 +26,10 @@ OUTLINES_FILE = CATALOG / "outlines.json"
 DOC = ("Pedal outlines per Pedal Playground IMAGE file name (e.g. mxr-m290.png): a list of rectangles [x0, y0, x1, y1], "
        "fractions (0..1) of the UNROTATED image, origin top-left, 4 decimals, that together cover every opaque pixel "
        "(alpha > 128) of the pedal image: the pedal's real top-view shape, smaller than Pedal Playground's box (which "
-       "includes the protruding jacks). Written ONLY by scripts/outlines.py. No image is stored.")
+       "includes the protruding jacks). \"bodies\": per image the pedal's BODY (enclosure) [x0, y0, x1, y1], same fractions: the "
+       "median first / last opaque x over the rows that have an opaque pixel and the median first / last opaque y over the columns "
+       "that have one, so jacks, screws and knobs (few rows / columns) are ignored; the usable board area is tested against the body, "
+       "not the box. Written ONLY by scripts/outlines.py. No image is stored.")
 ALPHA_MIN = 128   # a pixel is part of the pedal when its alpha is above this
 
 
@@ -137,32 +141,68 @@ def outline_from_alpha(alpha, w_mm, h_mm, cell_mm=1.0, gap_mm=2.0, tol_mm=1.0, m
             for r0, r1, runs in bands for s, e in runs]
 
 
+def body_from_alpha(alpha):
+    """The pedal's BODY [x0, y0, x1, y1] (fractions of the image, 4 decimals): over the rows that have an opaque pixel (alpha > 128) the
+    MEDIAN first and the MEDIAN last opaque x, over the columns that have one the MEDIAN first and last opaque y (the last as the
+    pixel's far edge). Jacks, screws and knobs cover few rows / columns, so the medians ignore them. `alpha`: a Pillow image or a
+    2D list, like `outline_from_alpha`. An empty image gives [0, 0, 1, 1]."""
+    from PIL import Image
+    img = _as_image(alpha)
+    binary = img.point(lambda a: 255 if a > ALPHA_MIN else 0)
+    w, h = binary.size
+
+    def spans(im, n_lines, length):   # [(first, last)] of the lines of `im` that have an opaque pixel
+        data, out = im.tobytes(), []
+        for k in range(n_lines):
+            line = data[k * length:(k + 1) * length]
+            a = line.find(b"\xff")
+            if a >= 0:
+                out.append((a, line.rfind(b"\xff")))
+        return out
+    rows = spans(binary, h, w)
+    cols = spans(binary.transpose(Image.Transpose.TRANSPOSE), w, h)
+    if not rows or not cols:
+        return [0, 0, 1, 1]
+    x0, x1 = statistics.median(a for a, _ in rows), statistics.median(b for _, b in rows) + 1
+    y0, y1 = statistics.median(a for a, _ in cols), statistics.median(b for _, b in cols) + 1
+    return [round(x0 / w, 4), round(y0 / h, 4), round(x1 / w, 4), round(y1 / h, 4)]
+
+
 # --- the file ------------------------------------------------------------------------------------
 def read_file(path=OUTLINES_FILE):
-    """The whole file as a dict {"_doc", "outlines"}; a fresh one if it does not exist."""
+    """The whole file as a dict {"_doc", "outlines", "bodies"}; a fresh one if it does not exist."""
     p = Path(path)
     if not p.exists():
-        return {"_doc": DOC, "outlines": {}}
+        return {"_doc": DOC, "outlines": {}, "bodies": {}}
     data = json.loads(p.read_text())
     data.setdefault("_doc", DOC)
     data.setdefault("outlines", {})
+    data.setdefault("bodies", {})
     return data
 
 
 def dumps(data):
-    """Compact, diff-friendly JSON: one image per line, image names sorted."""
-    names = sorted(data["outlines"])
-    head = "{\n" + f'  "_doc": {json.dumps(data.get("_doc", DOC), ensure_ascii=False)},\n  "outlines": {{'
-    if not names:
-        return head + "}\n}\n"
-    lines = [f"    {json.dumps(n)}: {json.dumps(data['outlines'][n])}{',' if i < len(names) - 1 else ''}" for i, n in enumerate(names)]
-    return head + "\n" + "\n".join(lines) + "\n  }\n}\n"
+    """Compact, diff-friendly JSON: one image per line, image names sorted, "outlines" then "bodies"."""
+    out = "{\n" + f'  "_doc": {json.dumps(data.get("_doc", DOC), ensure_ascii=False)},\n'
+    for n, key in enumerate(("outlines", "bodies")):
+        entries = data.get(key) or {}
+        names = sorted(entries)
+        tail = "," if n == 0 else ""
+        if not names:
+            out += f'  "{key}": {{}}{tail}\n'
+            continue
+        lines = [f"    {json.dumps(k)}: {json.dumps(entries[k])}{',' if i < len(names) - 1 else ''}" for i, k in enumerate(names)]
+        out += f'  "{key}": {{\n' + "\n".join(lines) + f"\n  }}{tail}\n"
+    return out + "}\n"
 
 
-def save(updates, path=OUTLINES_FILE):
-    """Merge {image name: rects} into the file (re-read first, so other entries are never lost)."""
+def save(updates=None, path=OUTLINES_FILE, bodies=None):
+    """Merge {image name: rects} (`updates`) and {image name: body} (`bodies`) into the file (re-read first, so other entries are
+    never lost)."""
     data = read_file(path)
-    data["outlines"].update(updates)
+    data["_doc"] = DOC   # (generated file: its description always follows the code)
+    data["outlines"].update(updates or {})
+    data["bodies"].update(bodies or {})
     tmp = Path(str(path) + ".tmp")
     tmp.write_text(dumps(data))
     os.replace(tmp, path)
@@ -184,6 +224,21 @@ def usable(outlines):
 def load():
     """The usable outlines of catalog/outlines.json ({} if missing)."""
     return usable(read_file()["outlines"])
+
+
+def usable_bodies(bodies):
+    """Only well-formed bodies {image name: [x0, y0, x1, y1]} (fractions, 0 <= x0 < x1 <= 1, 0 <= y0 < y1 <= 1), so a hand-edited file
+    cannot crash a build. Accepts the whole file dict or just its "bodies" part."""
+    if isinstance(bodies, dict) and isinstance(bodies.get("bodies"), dict):
+        bodies = bodies["bodies"]
+    return {n: list(b) for n, b in (bodies or {}).items()
+            if isinstance(b, (list, tuple)) and len(b) == 4
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1 for v in b) and b[2] > b[0] and b[3] > b[1]}
+
+
+def load_bodies():
+    """The usable bodies of catalog/outlines.json ({} if missing)."""
+    return usable_bodies(read_file()["bodies"])
 
 
 def coverage(rects):
@@ -241,23 +296,32 @@ def main():
     args = ap.parse_args()
 
     from PIL import Image
-    have = read_file()["outlines"]
+    data = read_file()
+    have, have_bodies = usable(data["outlines"]), usable_bodies(data["bodies"])
     every = wanted(args.projects, args.image, database("pedals.json"))
-    todo = {n: s for n, s in every.items() if args.refresh or n not in usable(have)}   # malformed entries: recomputed
-    new, failed = {}, []
+    todo = {n: s for n, s in every.items() if args.refresh or n not in have or n not in have_bodies}   # malformed entries: recomputed
+    new, new_bodies, failed = {}, {}, []
     for name, (w, h) in sorted(todo.items()):
         try:
             with Image.open(fetch_image(name)) as im:
                 alpha = im.convert("RGBA").getchannel("A")
         except (RuntimeError, OSError) as e:
-            failed.append(name)
-            print(f"  {name}: FAILED ({str(e).splitlines()[0]})")
+            if name in have and not args.refresh:   # only the body is missing: the outline works as before, the box stands in for the body
+                print(f"  {name}: WARNING no body ({str(e).splitlines()[0]}); the box is used until the image can be fetched")
+            else:
+                failed.append(name)
+                print(f"  {name}: FAILED ({str(e).splitlines()[0]})")
             continue
-        new[name] = outline_from_alpha(alpha, w, h)
-        print(f"  {name}: {len(new[name])} rects, covers {coverage(new[name]) * 100:.0f}% of the box")
-    if new:
-        save(new)
-    print(f"{len(new)} outline(s) written, {len(every) - len(todo)} kept, {len(failed)} failed")
+        if args.refresh or name not in have:
+            new[name] = outline_from_alpha(alpha, w, h)
+            print(f"  {name}: {len(new[name])} rects, covers {coverage(new[name]) * 100:.0f}% of the box")
+        if args.refresh or name not in have_bodies:
+            new_bodies[name] = body_from_alpha(alpha)
+            b = new_bodies[name]
+            print(f"  {name}: body L{b[0] * w:.1f} T{b[1] * h:.1f} R{(1 - b[2]) * w:.1f} B{(1 - b[3]) * h:.1f} mm from the box edge")
+    if new or new_bodies:
+        save(new, bodies=new_bodies)
+    print(f"{len(new)} outline(s), {len(new_bodies)} body(ies) written, {len(every) - len(todo)} complete entries kept, {len(failed)} failed")
     return 1 if failed else 0
 
 

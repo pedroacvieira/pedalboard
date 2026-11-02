@@ -197,17 +197,20 @@ def placement(inst, project):
 
 
 def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=None, board_data=None,
-                      board_edits=None, board_bounds=None):
+                      board_edits=None, board_bounds=None, bodies=None):
     """Which layout item is which chain pedal / supply instance, the board and the obstacles.
 
     Returns {"board", "placed" {pedal id: item}, "obstacles" [items], "inst_item" {supply instance id: item},
-    "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "no_outline" [titles],
+    "inst_placement" {supply instance id: placement}, "shapes" {item id: [canvas rects]}, "bodies" {item id: canvas rect}, "no_outline" [titles],
     "holes" [canvas rects], "usable" (x0, y0, x1, y1) canvas mm: where pedals may sit, "edge_segments" [((x0, y0), (x1, y1), side) canvas segments], "hole_transit_mm" and "edge_transit_mm" (the board data's, None without)} (obstacles: every pedal item that is not a supply, plus the items of on-board supply
     instances (`placement`); a supply-titled item that matches no instance is one only when `jacks.supplies_layer` is
     "on_board"; the outline of every obstacle,
     placed item and under-board supply item, its box without an outline; `no_outline` lists the obstacles / placed items without one; the board's
     holes (the router's under-board layer uses them);
-    `outlines`: catalog/outlines.json, read if None; `board_data`: usable catalog/boards.json entries, read if None;
+    `bodies` = the enclosure of every obstacle / placed item / under-board supply item (`design.body_rect`: what the usable area is
+    tested against; its box without a body); `outlines` / `bodies`: catalog/outlines.json (`outlines.load` / `load_bodies`), both read if `outlines` is None (a caller that passes its
+    own `outlines` and no `bodies` gets no bodies: the boxes);
+    `board_data`: usable catalog/boards.json entries, read if None;
     `board_edits`: the project's board.json boxes, none if None; `board_bounds`: boards.load_bounds of the project, the image
     edges if None: `usable` is the board footprint then, None without a board); placement problems go to `warnings` / `clear_sink` (missing
     chain pedal)."""
@@ -243,12 +246,15 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
                  if (inst_placement[matched[i["id"]]] == "on_board" if i["id"] in matched
                      else (i["title"] not in supply_titles or supplies_layer == "on_board"))]
     boards = [i for i in items if i["kind"] == "pedalboard"]
+    if bodies is None:   # the catalog's bodies only when the outlines come from the catalog too (a caller with its own outlines gets none)
+        bodies = outlines_mod.load_bodies() if outlines is None else {}
     outlines = outlines_mod.load() if outlines is None else outlines
     shown = list(obstacles) + list(placed.values())
     shapes = {i["id"]: design.outline_rects(i, outlines) for i in shown}
     for iid, item in inst_item.items():   # the under-board supplies' outlines: the obstacles of the under-board cable layer
         if inst_placement[iid] != "on_board":
             shapes.setdefault(item["id"], design.outline_rects(item, outlines))
+    body_of = {i["id"]: design.body_rect(i, bodies) for i in shapes_items(shown, inst_item)}
     no_outline = sorted({i["title"] for i in shown if not outlines.get(i.get("image") or "")})
     board = boards[0] if boards else None
     board_data = boards_mod.load() if board_data is None else board_data
@@ -257,15 +263,22 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     edge_segments = design.board_edges(board, board_edits)
     usable = design.board_bounds(board, board_bounds)
     return {"board": board, "usable": usable, "placed": placed, "obstacles": obstacles, "inst_item": inst_item,
-            "inst_placement": inst_placement, "shapes": shapes, "no_outline": no_outline, "holes": holes,
+            "inst_placement": inst_placement, "shapes": shapes, "bodies": body_of, "no_outline": no_outline, "holes": holes,
             "edge_segments": edge_segments, "hole_transit_mm": entry.get("hole_transit_mm"), "edge_transit_mm": entry.get("edge_transit_mm")}
+
+
+def shapes_items(shown, inst_item):
+    """`shown` plus the supply items of `inst_item` not in it (each once): the items `layout_from_items` gives a shape and a body."""
+    seen = {i["id"] for i in shown}
+    return list(shown) + [i for i in inst_item.values() if i["id"] not in seen]
 
 
 OUTSIDE_MIN_MM = 0.05   # a box past the usable area by less than this is not reported (it would print as 0.0 mm)
 
 
 def outside_usable(lay):
-    """The items on top of the board whose Pedal Playground box (`design.footprint`) lies outside `lay["usable"]`: [(item,
+    """The items on top of the board whose BODY (`lay["bodies"]`, `design.body_rect`: the enclosure without jacks, screws and knobs; the
+    Pedal Playground box `design.footprint` where there is no body data) lies outside `lay["usable"]`: [(item,
     side, mm)] in layout order, `side` = the worst side (back / front / left / right of the canvas), `mm` how far past it.
     Items checked: `lay["obstacles"]` (chain pedals, other pedals, ON-BOARD supplies); under-board supplies never (owner
     decision: their placement is kept even outside the bounds). [] without a board."""
@@ -274,7 +287,7 @@ def outside_usable(lay):
         return []
     out = []
     for it in lay["obstacles"]:
-        x0, y0, x1, y1 = design.footprint(it)
+        x0, y0, x1, y1 = (lay.get("bodies") or {}).get(it["id"]) or design.footprint(it)
         past = {"left": usable[0] - x0, "right": x1 - usable[2], "back": usable[1] - y0, "front": y1 - usable[3]}
         side = max(past, key=past.get)
         if past[side] > OUTSIDE_MIN_MM:
@@ -348,7 +361,7 @@ def data_crossing_errors(ctx, board_data, edits):
     return crossing_errors(ctx["project"], ctx.get("supplies", []), holes, edge, ctx["dir"].name)
 
 
-def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None):
+def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=False, items=None, outlines=None, board_data=None, bodies=None):
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
@@ -360,7 +373,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
     if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_canvas) to
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
-    `outlines`: catalog/outlines.json (read if None), for the layout's "shapes"; `board_data`: usable
+    `outlines`: catalog/outlines.json (read if None), for the layout's "shapes", `bodies` (read if `outlines` is None too, else none) for its "bodies"; `board_data`: usable
     catalog/boards.json (read if None), for the layout's "holes" (with the project's board.json edits).
     The power cable lengths this makes (`estimate_mm`, the '~' lengths of the README, used where the cable is not routed) are an estimate that
     always uses the project's DEFAULT DC plug type (`default_power_type`) for the plug depth, never the type a plug was chosen to take.
@@ -438,7 +451,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
                             board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings),
-                            board_bounds=boards_mod.load_bounds(ctx["dir"], warnings))
+                            board_bounds=boards_mod.load_bounds(ctx["dir"], warnings), bodies=bodies)
     ptype = ((cable_types or {}).get(power_type_id or "") or {})
     errors.extend(layout_crossing_errors(ctx, lay, float(ptype.get("diameter_mm") or 0.0) / 2))
     placed, inst_item, obstacles = lay["placed"], lay["inst_item"], lay["obstacles"]

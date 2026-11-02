@@ -154,12 +154,14 @@ def test_outline_rects_fall_back_to_the_box():
 
 # --- the file ---------------------------------------------------------------------------------
 def test_dumps_one_entry_per_line_sorted_and_round_trips(tmp_path):
-    data = {"_doc": "doc", "outlines": {"b.png": [[0, 0, 1, 1]], "a.png": [[0.1, 0.0, 0.5, 0.25], [0.0, 0.25, 1.0, 1.0]]}}
+    data = {"_doc": "doc", "outlines": {"b.png": [[0, 0, 1, 1]], "a.png": [[0.1, 0.0, 0.5, 0.25], [0.0, 0.25, 1.0, 1.0]]},
+            "bodies": {"b.png": [0.0, 0.0, 1.0, 1.0], "a.png": [0.1, 0.0, 0.9, 1.0]}}
     text = outlines.dumps(data)
     lines = text.splitlines()
     assert lines[1] == '  "_doc": "doc",' and lines[2] == '  "outlines": {'
     assert lines[3].startswith('    "a.png": [[0.1, 0.0, 0.5, 0.25], [0.0, 0.25, 1.0, 1.0]],')
-    assert lines[4] == '    "b.png": [[0, 0, 1, 1]]' and lines[5:] == ["  }", "}"]
+    assert lines[4] == '    "b.png": [[0, 0, 1, 1]]' and lines[5:] == [
+        "  },", '  "bodies": {', '    "a.png": [0.1, 0.0, 0.9, 1.0],', '    "b.png": [0.0, 0.0, 1.0, 1.0]', "  }", "}"]
     path = tmp_path / "outlines.json"
     path.write_text(text)
     assert outlines.read_file(path) == data

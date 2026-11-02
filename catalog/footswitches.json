@@ -36,6 +36,9 @@
     "ehx_bass_big_muff_2": [
       {"id": "bypass", "label": "Bypass", "x": 0.5022, "y": 0.6882, "type": "bypass"}
     ],
+    "ehx_pico_pitch_fork": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4936, "y": 0.8912, "type": "bypass"}
+    ],
     "flight_delay": [
       {"id": "bypass", "label": "Bypass", "x": 0.1298, "y": 0.8765, "type": "bypass"},
       {"id": "switch_2", "label": "Tap", "x": 0.8676, "y": 0.8765, "type": "tap"}
