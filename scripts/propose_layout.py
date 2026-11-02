@@ -214,8 +214,8 @@ def main(argv=None):
 
     (pdir,) = project_dirs([args.project])
     if not (pdir / "playground_design.json").exists():
-        sys.exit(f"{pdir.name} has no playground_design.json: make a layout in Pedal Playground first "
-                 f"(scripts/to_playground.py gives a starting file), save it there, then rerun")
+        sys.exit(f"{pdir.name} has no playground_design.json: make a layout in Pedal Playground, share it, then "
+                 f"uv run scripts/fetch_playground.py {pdir.name} --share <link>")
     t0 = time.monotonic()
     cat_pedals, cat_supplies = load_catalog()
     jacks_data, fs_data = jacks.read_file()["jacks"], footswitches.read_file()["footswitches"]
@@ -227,7 +227,7 @@ def main(argv=None):
     if args.pin:
         project.setdefault("layout", {})["pins"] = sorted(set(project.get("layout", {}).get("pins", [])) | set(args.pin))
     design_doc = load_json(pdir / "playground_design.json")
-    items = design.parse_canvas(design_doc["canvas"])
+    items = design.parse_data(design_doc)
     cable_types = load_cable_types()
     owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project,
                                outline_data=outl, board_data=board_data)
@@ -306,8 +306,9 @@ def main(argv=None):
     for f, pm in zip(chosen, meta["proposals"]):
         items_new = model.items_for(f["state"])
         moved_ids = {model.mitem[mv["pedal"]]["id"] for mv in f["moved"]}
-        canvas = design.write_canvas(design_doc["canvas"], [i for i in items_new if i["id"] in moved_ids])
-        (out / pm["file"]).write_text(json.dumps({**design_doc, "canvas": canvas}))
+        doc = design.write_design(design_doc, [i for i in items_new if i["id"] in moved_ids],
+                                  name=f"{design_doc.get('name') or pdir.name} - proposal {pm['n']}" if design.is_doc(design_doc) else None)
+        (out / pm["file"]).write_text(json.dumps(doc, indent=1 if design.is_doc(doc) else None, ensure_ascii=False))
         picture = svgdraw.render(f["ctx"], names, overlay=overlay(model, f["state"], f["moved"]),
                               legend="orange: moved pedals (dashed grey: the owner's position, arrow: the move)")
         if picture:

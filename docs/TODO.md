@@ -47,10 +47,18 @@ ideas · 5 data · 6 done.
       center-positive pedal arrives.
 
 ## 2. Gig board
-- [ ] The owner's layout has 5 blocked plugs (monk.out / monk.power by the Belle Epoch, danelectro_3699.out by the
-      Retrovibe, red_muck / analog_chorus DC heads) and 7 plug collisions (mostly a patch plug vs the DC plug on the
-      same pedal). All three layout proposals reach 0 / 0 (2026-10-28): load `projects/guitar-gig/proposals/1.json` in
-      Pedal Playground (Load from File) and re-save `projects/guitar-gig/playground_design.json`, or move by hand.
+- [ ] **New gig layout from Pedal Playground 2.0 (fetched 2026-11-02, "Gig Board", saved 2026-10-29)**: chain updated
+      (owner, 2026-11-02): BOSS DD-8 replaces the JHS Flight Delay (same rules, `psu1` F1 alone); EHX Pico Pitch Fork after
+      the compressor (tuner -> Mini Ego -> Pitch Fork: "after compression, before drives"; not first: buffered bypass and
+      the Sun Face rule; `psu1` SW_B alone, the Analog Chorus moved to `psu2` SW_B with Phase 95 / Retrovibe); the MXR
+      Carbon Copy is not part of the board. Still to do (owner): jacks / footswitches of boss_dd8 and
+      ehx_pico_pitch_fork (`uv run pb pedal-editor <id>`); delete the parked Carbon Copy in Pedal Playground and
+      `uv run pb fetch guitar-gig`; small overhangs (Sun Face, Belle Epoch, Tumnus 0.5 mm front, Beano 0.2 mm right, DD-8
+      1.0 mm left); then a proposals run on the new layout.
+- [ ] **Load a proposal into Pedal Playground 2.0**: the site has no file load (a hidden importer, no button) and no save
+      to file. It loads the browser's `localStorage["pp:playground:v3"]` on start (not logged in), so a proposal could be
+      loaded from the console (untested); or write the proposal into the owner's account as a new playground (needs the
+      owner's login: decide). Until then: move the pedals by hand (README move list / proposal SVG).
 - [ ] **Fix-mode proposals keep one plug collision (found 2026-10-29)**: with the gig bounds (back 11.0 mm, front 8.5 mm),
       all three `--max-change fix` proposals reach 0 blocked plugs but keep the owner's collision belle_epoch.in vs
       the Reticon's plugs (before the bounds: 0 / 0); `rearrange --seed 42` #1 is clean (0 / 0, signal 2568 mm, DC

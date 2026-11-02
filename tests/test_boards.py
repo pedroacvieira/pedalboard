@@ -274,7 +274,7 @@ def test_edit_order_later_box_wins():
 # --- layout and drawing ---------------------------------------------------------------------------
 def test_gig_layout_has_the_board_holes_inside_the_board():
     pedals, supplies = load_catalog()
-    gig = ROOT / "projects" / "guitar-gig"
+    from conftest import GIG_FIXTURE as gig
     ctx = build.validate(gig, pedals, supplies, route=False)
     holes = ctx["layout"]["holes"]
     x0, y0, x1, y1 = design.footprint(ctx["layout"]["board"])

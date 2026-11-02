@@ -68,14 +68,20 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   inside (`design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
   layout search and the drawings; cables may still run over the edges, under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
-- `projects/<name>/playground_design.json`: the owner's hand-made Pedal Playground layout (only guitar-gig so far).
+- `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
+  document (schema 3: items with image, width / height / x / y in inches, rotation in degrees; `design.parse_doc`; legacy v1
+  saves `{"canvas": html}` still parse). Written ONLY by `scripts/fetch_playground.py` from the project's public share link
+  (`project.json` `playground.share`); the version it replaces goes to the git-ignored `projects/<name>/playground_history/`
+  (`<savedAt>_<name>.json`; the owner iterates over many versions). Pedal Playground 2.0 (2026-11) has no file load or save:
+  the old `to_playground.py` / `playground.json` are gone.
   Generated per project: `README.md`, `signal-chain.mmd`, `power.mmd`, `routing.svg`, `power.svg` (power wiring only,
-  supplies as translucent red silhouettes; `svgdraw.render_power`), `playground.json` (and the
+  supplies as translucent red silhouettes; `svgdraw.render_power`) (and the
   git-ignored `routing.local.svg` with pedal images, `build.py --images`);
-  `proposals/` (`<n>.json` Pedal Playground layouts, `<n>.svg`, `meta.json`) by `scripts/propose_layout.py`.
+  `proposals/` (`<n>.json` = the owner's document with the moved pedals changed, `design.write_design`; `<n>.svg`,
+  `meta.json`) by `scripts/propose_layout.py`.
 - `scripts/`: `build.py` (validate all projects, write READMEs/diagrams; exit 1 on errors), `common.py` (paths,
   loaders, Pedal Playground DB cache, mm helpers, one-item-per-line JSON dump), `design.py` (parse Pedal Playground
-  saves, jack geometry in mm, `move` / `write_canvas` to edit a layout in place),
+  layouts: v2 documents `parse_doc` / legacy `parse_canvas`, jack geometry in mm, `move` / `write_design` to edit a layout),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
   `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `boards.py` (board
   holes from the board images + CLI, `load_edits`), `board_editor.py` (GUI: hole / filled boxes per project), `routing.py` (cable model, plug
@@ -83,13 +89,20 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
-  `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `to_playground.py` (write Pedal Playground layouts), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pytest tests`), ~565 tests, ~60 s, hand-computed geometry cases (`PEDALBOARD_SLOW=1` adds the
-  full guitar-gig search).
+  `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `fetch_playground.py` (the shared layout from
+  Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold).
+- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~670 tests, ~100 s, hand-computed geometry cases
+  (`PEDALBOARD_SLOW=1` adds the full guitar-gig search). Tests that depend on the gig's layout, wiring or proposals use the
+  FROZEN copy `tests/fixtures/guitar-gig/` (`conftest.gig_copy` / `GIG_FIXTURE`), never the live project (the owner fetches
+  new layouts all the time); update the fixture only deliberately.
+- `pb/__init__.py`: `uv run pb <command>` = one entry point for the scripts (`pb --help` lists them: build, fetch,
+  propose, new, pedal-editor, board-editor, outlines, boards, test); it runs the script's `main()`, the scripts stay
+  runnable as `uv run scripts/<name>.py`. pyproject `[project.scripts]` + `uv_build` (package `pb` only).
 
 ## Commands
+`uv run pb <command> ...` runs the same scripts (`uv run pb --help`); the long forms:
 ```
-uv sync                                        # once: create .venv (Pillow, pytest)
+uv sync                                        # once: create .venv (Pillow, pytest) and the `pb` command
 uv run scripts/build.py [project...] [--images]   # validate + regenerate (fast, no network after the DB cache;
                                                # --images: also routing.local.svg with pedal images, git-ignored)
 uv run pytest tests -q                     # all tests
@@ -99,15 +112,16 @@ uv run scripts/pedal_editor.py --list         # jack and footswitch counts per i
 uv run scripts/outlines.py [project...] [--image NAME] [--refresh]   # pedal outlines from the images
 uv run scripts/boards.py [project...] [--image NAME] [--refresh]     # board holes from the board images
 uv run scripts/board_editor.py <project> | --list   # holes and edge crossings (drag; T hole/filled/edge; E effective)
-uv run scripts/to_playground.py [project...]  # Pedal Playground "Load from File" layouts
+uv run scripts/fetch_playground.py <project> [--share LINK] [--dry-run]   # the shared layout -> playground_design.json
+                                               # (--share: saved in project.json when it has none; new_project.py --share too)
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
 uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
 ```
 
 ## Conventions and decisions (keep them)
-- **Units: mm** for everything we compute, store and show. Pedal Playground files only hold inches (data-width/
-  height) and px (left/top at data-scale px/in); convert at the boundary (`design.py`, `common.px_to_mm`).
+- **Units: mm** for everything we compute, store and show. Pedal Playground layouts hold inches (v2: width / height /
+  x / y; legacy: data-width / height and px at data-scale px/in); convert at the boundary (`design.py`, `common.px_to_mm`).
 - **No pedal images in the repo.** Images are fetched on demand into git-ignored `.cache/images/` (the site sends
   no CORS headers, so fetch server-side with urllib). Source (since 2026-10-29): `https://pedalplayground.com/catalog/catalog.json`
   (cached in `.cache/catalog.json`; `assets.<kind>[<image>].img` = a WebP, converted to PNG with Pillow, alpha kept);
@@ -197,9 +211,9 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   the old right-angle estimate for comparison. Goal is an approximation, not a real 3D simulation: all cables bend
   the same (no bend radius, flat or round), routes are not hand-tuned.
 - Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
-- Generated files (READMEs, .mmd, .svg, playground.json) are never edited by hand; change the generator/data.
+- Generated files (READMEs, .mmd, .svg) are never edited by hand; change the generator/data.
 - Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
-  (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's file and never written by tools.
+  (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's layout: only `fetch_playground.py` writes it.
 - Footswitch spacing is comfort, not a hard rule (owner, 2026-10-23: no real minimum; maximise the distance against
   the other goals). Crowding of a pair of switches on DIFFERENT pedals = priority x max(0, comfort - d)^2 / comfort
   (`footswitches.crowding`, comfort `footswitches.comfort_mm` default 100 mm): the closest pairs count most. The
@@ -230,8 +244,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never outside the usable board area
-  (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; a pinned pedal
-  stays where it is), no
+  (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; pre-processing
+  pushes a pedal outside the least distance inside, a pinned one too, which then stays pinned there), no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
   penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
   crossed pedals), power 0.1/mm, footswitch crowding by type priority, first input to the right edge, last output

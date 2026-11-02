@@ -11,6 +11,9 @@
       {"id": "bypass", "label": "Bypass", "x": 0.8128, "y": 0.85, "type": "bypass"},
       {"id": "switch_2", "label": "Echo Osc.", "x": 0.1829, "y": 0.85, "type": "function"}
     ],
+    "boss_dd8": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5007, "y": 0.7706, "type": "bypass"}
+    ],
     "carbon_copy": [
       {"id": "bypass", "label": "Bypass", "x": 0.5031, "y": 0.7132, "type": "bypass"}
     ],

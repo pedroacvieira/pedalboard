@@ -312,8 +312,6 @@ def test_existing_board_files_are_dumped_byte_identical(project):
     path = ROOT / "projects" / project / "board.json"
     if not path.exists():
         pytest.skip("no board.json")
-    if "bounds" in json.loads(path.read_text()):
-        pytest.skip("the owner has set bounds")
     # the `_doc` sentence about bounds is new, so the first save rewrites that one line; everything else stays as it was
     def without_doc(text):
         return [line for line in text.splitlines() if not line.startswith('  "_doc": ')]

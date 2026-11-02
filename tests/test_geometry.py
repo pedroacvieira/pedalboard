@@ -132,7 +132,8 @@ def test_parser_is_tolerant():
 
 
 def test_real_design_file_parses():
-    path = ROOT / "projects" / "guitar-gig" / "playground_design.json"
+    from conftest import GIG_FIXTURE
+    path = GIG_FIXTURE / "playground_design.json"
     if not path.exists():
         pytest.skip("no design file")
     items = design.parse_design(path)

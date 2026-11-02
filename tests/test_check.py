@@ -317,7 +317,7 @@ def test_unknown_placement_is_an_error():
     import build
     from common import load_catalog, load_json
     pedals, supplies = load_catalog()
-    gig = ROOT / "projects" / "guitar-gig"
+    from conftest import GIG_FIXTURE as gig
     proj = load_json(gig / "project.json")
     proj["power"]["supplies"][0]["placement"] = "sideways"
     ctx = build.validate(gig, pedals, supplies, project=proj)

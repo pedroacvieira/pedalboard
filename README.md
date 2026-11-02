@@ -11,13 +11,13 @@ catalog/jacks.json           jack positions per pedal/supply (fractions of the P
 catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)
 projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring
 projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary
-projects/<name>/playground.json   generated Pedal Playground layout (scripts/to_playground.py)
+projects/<name>/playground_design.json   the owner's Pedal Playground layout (scripts/fetch_playground.py; older versions in playground_history/, git-ignored)
 ```
 
 ```
 uv sync                                      once: .venv with the dependencies (pyproject.toml, uv.lock)
 uv run scripts/build.py [project...]        validate + regenerate docs
-uv run scripts/to_playground.py [project...] write projects/<name>/playground.json
+uv run scripts/fetch_playground.py <project> [--share LINK] [--dry-run]   fetch the shared layout from Pedal Playground
 uv run scripts/new_project.py <name> --instrument guitar|bass
 uv run scripts/pedal_editor.py <catalog id> [--footswitches]   place a pedal's jacks / footswitches on its image (--list-missing [--only jacks|footswitches] shows what is left)
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free]   layout proposals (projects/<name>/proposals/, shown in the README)
@@ -35,7 +35,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 12 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 11 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -46,18 +46,11 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Blocked cable space: `danelectro_3699.out` is blocked by Jam Pedals Retrovibe (7.2 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left); move one of the pedals apart
-- Blocked cable space: `monk.out` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (12.7 mm into the barrel of the ernie_ball_flat_patch_ra plug, cable exits left); move one of the pedals apart
-- Blocked cable space: `red_muck.power` is blocked by MXR Analog Chorus (1.0 mm into the head of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
-- Blocked cable space: `analog_chorus.power` is blocked by Jam Pedals Red Muck (1.3 mm into the head of the dc_ra_owner_baseline plug, cable exits left); move one of the pedals apart
-- Blocked cable space: `monk.power` is blocked by Catalinbread Belle Epoch Deluxe (Black Edition) (15.0 mm into the barrel of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
-- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at analog_chorus.power (DC plug): 3.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: analog_chorus.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 3.1 mm (its head into the cable run); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: analog_chorus.power (Power, dc_ra_owner_baseline right-angle plug, cable exits left) collides with the plug at red_muck.power (DC plug): 5.4 mm (its barrel into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 1.6 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: belle_epoch.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 4.3 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: belle_epoch.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at reticon.out (ernie_ball_flat_patch_ra plug): 2.7 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Jacks not set up for `boss_dd8`: `uv run scripts/pedal_editor.py boss_dd8`
+- Plug collision: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
 - Plug collision: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
+- Footswitches not placed for 1 pedal(s): `uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 
@@ -87,15 +80,16 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
 | MXR Bass Synth | 1 | bass | 329 EUR |
-| JHS Flight Delay | 1 | guitar-gig | 244 EUR |
+| Electro-Harmonix Pico Pitch Fork | 1 | guitar-gig | 196 EUR |
+| BOSS DD-8 Digital Delay | 1 | guitar-gig | 179 EUR |
 | JHS Pulp 'N' Peel V4 | 1 | guitar-practice | 238 EUR |
 | JHS Hard Drive | 1 | guitar-practice | 207 EUR |
 | Strymon Ojai R30 (power supply) | 1 | guitar-gig, guitar-practice | 177 EUR |
 | Rockboard by Warwick Duo 2.1 (board) | 1 | guitar-practice | 74 EUR |
 
-**Known total:** 1269 EUR
+**Known total:** 1400 EUR
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, BOSS DD-8 Digital Delay, BOSS DD-200 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
+JHS Double Dragon, JHS Flight Delay, BOSS DD-200 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG
 
