@@ -70,7 +70,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   Optional `bounds` {back, front, left, right} = four lines (fractions of the unrotated image, back / front from its top edge,
   left / right from its left edge, a missing side = the image edge; `boards.load_bounds`, editor mode B): the pedals' BODIES
   must stay inside (their jacks may overhang; `design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
-  layout search and the drawings; cables may still run over the edges, under-board supplies are never checked).
+  layout search and the drawings; the bounds never limit the cables (routing area = board + margin), under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
   document (schema 3: items with image, width / height / x / y in inches, rotation in degrees; `design.parse_doc`; legacy v1
@@ -198,12 +198,10 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   one-cable-width run is checked in `routing.power_plug_clearance`; without a power type `jacks.power_clearance`
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
-  diameter is a corridor); area = the usable board area (`layout["usable"]`, board.json `bounds`; the board without them)
-  + `edge_margin_mm` (default one diameter, 6 mm) at back and sides, nothing in front of the lowest pedals unless
-  `cables.route_in_front` (then the usable front + margin). `routing.build_grid` keeps the grid extent (board + margin: the cell
-  indices match the under layer) and blocks the cells outside the grown usable area (`area_limits`, only on sides where a bound
-  lies inside the board), except a strip along each usable edge segment out to the border + margin (so `edge_links` still finds
-  its top cell); signal and power grids alike, the under grid stays the whole board. Without bounds the grid is today's; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
+  diameter is a corridor); area = the board footprint + `edge_margin_mm` (default one diameter, 6 mm) at back and sides,
+  nothing in front of the lowest pedals unless `cables.route_in_front` (then the board front + margin). The usable board area
+  (board.json `bounds`) limits the PEDALS only, never the cables (owner, 2026-11-02: `fix/cable-area`); signal and power grids
+  alike, the under grid stays the whole board; at most `max_stack` (2) cables per cell; at most `max_over_plug` (2) other
   cables across one plug (head + barrel, signal and power plugs; its own cable excluded); signal cables only.
   The grid path is then smoothed (`routing.smooth`: string pulling to any-angle segments, never closer to a pedal
   than the grid path, no new plug crossings); `min_mm` and `path` follow it. Stacking is counted on the grid paths.
@@ -281,8 +279,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   exit; kept in `ctx["routing"]["plug_zones"]`) -> `build_grid(..., zones)` opens the cells within the cable radius of a zone (the
   extent grows at the back / sides by whole cells, only the added cells are walls, so without zones the grid is main's; `area_rect`
   ignores them; pedals still block; nothing in front); the layout surrogate counts an exit inside its own plug's footprint as inside
-  for such a jack only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the usable area grown by the
-  margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
+  for such a jack only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
   `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
   includes the bodies.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).

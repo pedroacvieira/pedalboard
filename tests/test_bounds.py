@@ -1,5 +1,5 @@
 """Usable board area (board.json `bounds`): the canvas rectangle (design.board_bounds), the build warning (jacks.check), the routing
-area of the signal / power grids (routing.build_grid, area_limits, edge strips), the layout search (feasible_one, free_distance,
+routing area (never cut by the bounds: routing.build_grid, area_box, front_limit, route_project), the layout search (feasible_one, free_distance,
 repair_start), the proposal table row and the drawing. Hand-computed on small synthetic boards; all lengths in mm."""
 import json
 import shutil
@@ -20,6 +20,7 @@ import svgdraw  # noqa: E402
 from test_boards import board  # noqa: E402
 from test_check import PDATA, PEDALS, SUPPLIES, insts, project  # noqa: E402
 from test_layout import BOARD, JACKS, TYPES, canvas, ped  # noqa: E402
+from test_routing import TYPES as RA_TYPES, mm_item, plug_ctx  # noqa: E402
 
 PX = 25.4 / 45   # one Pedal Playground px in mm
 
@@ -121,75 +122,45 @@ def centre_cell(g, x, y):
     return g.cell_of(x, y)
 
 
-def test_without_bounds_the_grid_is_cell_for_cell_the_plain_one():
-    pedal = [(20.0, 10.0, 30.0, 20.0)]
-    plain = routing.build_grid(BRD, pedal, 30.0, CFG)
-    for usable in (BRD, (0.0, 0.0, 60.0, 30.0)):
-        g = routing.build_grid(BRD, pedal, 30.0, CFG, usable, [((20, 0), (40, 0), "back")])
-        assert (g.x0, g.y0, g.nx, g.ny) == (plain.x0, plain.y0, plain.nx, plain.ny)
-        assert g.blocked == plain.blocked and g.body == plain.body
-    assert routing.area_limits(BRD, None, 30.0, CFG) == (None, None, None, None)
-    assert routing.area_limits(BRD, BRD, 30.0, CFG) == (None, None, None, None)
-    assert routing.area_rect(plain, BRD, None, 30.0, CFG) == (plain.x0, plain.y0, plain.x0 + plain.nx * plain.cell, 30.0)
-    assert routing.area_rect(plain, BRD, BRD, 30.0, CFG) == routing.area_rect(plain, BRD, None, 30.0, CFG)
+def test_the_bounds_never_cut_the_routing_area():
+    # owner, 2026-11-02: the usable area limits the pedals only; cables may run anywhere in the board + margin
+    assert routing.area_box(BRD, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
+    g = routing.build_grid(BRD, [(20.0, 10.0, 30.0, 20.0)], 30.0, CFG)
+    assert routing.area_rect(BRD, 30.0, CFG) == (g.x0, g.y0, g.x0 + g.nx * g.cell, 30.0)
+    for x, y in ((5, 5), (7, 3), (55, 29), (-3, -3)):                    # the board edge + margin: free (a bound plays no part)
+        assert g.cell_of(x, y) not in g.blocked
 
 
-def test_cells_outside_the_grown_usable_area_are_walls():
-    usable = (10.0, 8.0, 50.0, 30.0)      # back 8 mm and sides 10 mm in; the grown area: x 6..54, y 4..
-    assert routing.area_limits(BRD, usable, 30.0, CFG) == (6.0, 4.0, 54.0, None)
-    g = routing.build_grid(BRD, [], 30.0, CFG, usable)
-    plain = routing.build_grid(BRD, [], 30.0, CFG)
-    assert (g.nx, g.ny) == (plain.nx, plain.ny)                      # the extent (and so the cell indices) stay today's
-    for x, y, free in ((7, 5, True), (5, 5, False), (7, 3, False), (53, 29, True), (55, 29, False), (64 - 1, 29, False)):
-        c = g.cell_of(x, y)
-        assert (c not in g.blocked) is free and (c not in g.body) is free
-    assert routing.area_rect(g, BRD, usable, 30.0, CFG) == (6.0, 4.0, 54.0, 30.0)
-    assert g.blocked > plain.blocked
+def test_front_limit_ignores_the_bounds():
+    assert routing.front_limit(BRD, [], CFG) == 30.0
+    assert routing.front_limit(BRD, [14.0, 18.0], CFG) == 18.0 and routing.front_limit(BRD, [35.0], CFG) == 30.0
+    on = {**CFG, "route_in_front": True}
+    assert routing.front_limit(BRD, [14.0], on) == 34.0                 # the board front + the margin
 
 
-def test_an_edge_segment_strip_stays_open_up_to_the_border_and_edge_links_find_it():
-    usable = (10.0, 8.0, 50.0, 30.0)
+def test_an_edge_segment_link_finds_its_top_cell_outside_the_border():
     seg = ((20.0, 0.0), (40.0, 0.0), "back")
-    g = routing.build_grid(BRD, [], 30.0, CFG, usable, [seg])
-    assert g.cell_of(25, 1) not in g.blocked and g.cell_of(25, -3) not in g.blocked           # in the strip: from the border + margin
-    assert g.cell_of(15, 1) in g.blocked and g.cell_of(45, -3) in g.blocked                  # beside it: cut
-    assert g.cell_of(25, -3) not in g.blocked and g.cell_of(5, 25) in g.blocked              # (the left cut still holds in the strip's row range)
+    g = routing.build_grid(BRD, [], 30.0, CFG)
     ug = routing.under_grid(g, BRD, [], CFG)
     links = routing.edge_links(g, ug, BRD, [seg], 30.0)
     assert len(links) == 10 and all(sd == "back" and 20 <= ug.centre(u)[0] <= 40 and t == (u[0], u[1] - 1) for u, t, _, sd in links)
-    no_strip = routing.build_grid(BRD, [], 30.0, CFG, usable)
-    assert routing.edge_links(no_strip, routing.under_grid(no_strip, BRD, [], CFG), BRD, [seg], 30.0) == []   # without the strip: no free cell
 
 
-def test_the_strip_of_a_side_segment_and_the_corner_with_another_cut():
-    usable = (10.0, 8.0, 50.0, 30.0)
-    seg = ((0.0, 14.0), (0.0, 20.0), "left")
-    g = routing.build_grid(BRD, [], 30.0, CFG, usable, [seg])
-    assert g.cell_of(1, 15) not in g.blocked and g.cell_of(-3, 17) not in g.blocked           # left strip
-    assert g.cell_of(1, 11) in g.blocked                                                     # above the span
-    plain_back = routing.build_grid(BRD, [], 30.0, CFG, usable, [((0.0, 0.0), (60.0, 0.0), "back")])
-    assert plain_back.cell_of(1, 1) in plain_back.blocked                                    # a back strip does not open the left cut (corner)
-
-
-def test_front_limit_and_the_front_cut_with_route_in_front():
-    usable = (0.0, 0.0, 60.0, 20.0)
-    assert routing.front_limit(BRD, [], CFG) == 30.0 and routing.front_limit(BRD, [], CFG, usable) == 20.0
-    assert routing.front_limit(BRD, [14.0, 18.0], CFG, usable) == 18.0 and routing.front_limit(BRD, [25.0], CFG, usable) == 20.0
-    on = {**CFG, "route_in_front": True}
-    assert routing.front_limit(BRD, [], on) == 34.0 and routing.front_limit(BRD, [], on, usable) == 24.0   # the usable front + the margin
-    y = routing.front_limit(BRD, [], on, usable)
-    plain = routing.build_grid(BRD, [], routing.front_limit(BRD, [], on), on)
-    g = routing.build_grid(BRD, [], y, on, usable, [((20.0, 30.0), (40.0, 30.0), "front")])
-    assert g.ny == plain.ny and g.cell_of(10, 26) in g.blocked and g.cell_of(10, 23) not in g.blocked
-    assert g.cell_of(25, 26) not in g.blocked and g.cell_of(25, 33) not in g.blocked          # the strip of a front segment to the border + margin
-    assert routing.area_rect(g, BRD, usable, y, on)[3] == 24.0
-
-
-def test_area_box_follows_the_grown_usable_area():
-    usable = (10.0, 8.0, 50.0, 30.0)
-    assert routing.area_box(BRD, None, 30.0, CFG) == (-4.0, -4.0, 64.0, 30.0)
-    assert routing.area_box(BRD, usable, 30.0, CFG) == (6.0, 4.0, 54.0, 30.0)
-    assert routing.area_box(BRD, (0.0, 8.0, 60.0, 30.0), 30.0, CFG) == (-4.0, 4.0, 64.0, 30.0)
+def test_a_cable_is_routed_between_the_usable_line_and_the_board_edge():
+    # a wall C (x 120..160, y 30..200) leaves A -> B only the way round its back (y < 30); the back line of the usable area lies at
+    # y 40: the cable must run between it and the board edge, exactly as without bounds (owner, 2026-11-02: the bounds limit pedals only)
+    def run(usable):
+        ctx = plug_ctx({"type": "ra"}, extra_obstacles=[mm_item("i-c", "C", 120, 30, 40, 170)])
+        if usable:
+            ctx["layout"]["usable"] = usable
+        routing.route_project(ctx, {}, cable_types=RA_TYPES)
+        (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
+        return ctx, c
+    ctx, c = run((10.0, 40.0, 290.0, 200.0))
+    assert c["status"] == "routed" and min(p[1] for p in c["path"]) < 30.0
+    assert ctx["routing"]["plug_zones"] == [] and not [w for w in ctx["warnings"] if w.startswith("routing:")]
+    _, plain = run(None)
+    assert c["path"] == plain["path"] and c["min_mm"] == pytest.approx(plain["min_mm"])
 
 
 # --- the layout search -------------------------------------------------------------------------------
