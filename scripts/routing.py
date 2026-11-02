@@ -1906,6 +1906,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     # the DC plugs' exits and types are read from the power cables (overrides): keep the owner's, `power_plug_choices` overwrites them
     owner_exits = {id(c): {k: c[k] for k in ("exit_a", "exit_b") if k in c} for c in pcables}
     avoid = {}   # DC plug options that left a power cable without a path (see below)
+    dc_setup = []   # the DC plug estimate's sample of the holes (`dc_estimator`), made once by the first choice that needs it
 
     def choose_dc(report):
         """The DC plugs against the footprints taken so far (fixed boxes + signal plugs); their own earlier footprints are replaced."""
@@ -1917,7 +1918,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
                     c.pop(k, None)
         dtaken = {k: v for k, v in taken.items() if k not in dc_keys}
         res = power_plug_choices(ctx, cables, cable_types, cfg, obstacles, dtaken, down=down_any, inside=in_area, inside_under=in_under,
-                                 avoid=avoid, report=report)
+                                 avoid=avoid, report=report, setup=dc_setup)
         taken.update({k: v for k, v in dtaken.items() if k in dc_keys})
         return res
 
@@ -2162,8 +2163,9 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
     one only when its routed cable is shorter by more than `SWITCH_MM`. After the changes the cables are routed once more; the result
     stands when no leg became unroutable and the total cable did not grow, else the first routing does. `grids` = what `route_power`
     returned (None: nothing to refine); `sink` = the findings of the routing that stands (the second routing's replace them). Sets
-    `ctx["routing"]["power"]["side_savings"]` {"plugs": the DC plugs that took another side than the old tie-break, "saved_mm": the
-    routed cable they save}. Returns (choices, grids, findings)."""
+    `ctx["routing"]["power"]["side_savings"]` {"plugs": the DC plugs that took another side than the old tie-break, "saved_mm": what their
+    legs save by the A* lengths above (grid paths, no smoothing: an estimate, the old sides are not routed again)}. Returns (choices,
+    grids, findings)."""
     pcables = [c for c in cables if c["kind"] == "power"]
     pw = ctx["routing"]["power"]
     pw["side_savings"] = {"plugs": 0, "saved_mm": 0.0}
@@ -2194,7 +2196,7 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
         return total
 
     first_taken = dict(taken)
-    old_side, changes = {}, []   # key -> the option the old ranking takes, [(key, was, now)]
+    old_side, changes, measured = {}, [], {}   # key -> the option the old ranking takes, [(key, was, now)], key -> {id(option): A* mm}
     for key, entry in chosen.items():
         o = entry[4]
         if key not in legs:
@@ -2207,7 +2209,7 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
         cands = [x for x in cands if plug_rank(x, key, taken)[:4] == best_fit]
         if len(cands) < 2:
             continue
-        mm = {id(x): routed_mm(key, x) for x in cands}
+        mm = measured[key] = {id(x): routed_mm(key, x) for x in cands}
         start_at = o["legacy"] if any(o.get("legacy") is x for x in cands) else (o if any(o is x for x in cands) else cands[0])
         old_side[key] = start_at
         pick = min(cands, key=lambda x: (mm[id(x)], x is not start_at))
@@ -2218,14 +2220,15 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
             taken[key] = list(now["rects"])
     snap = lambda: [dict(c) for c in pcables]
     total = lambda: sum(c["min_mm"] for c in pcables if c.get("min_mm") is not None)
-    stuck = lambda: sum(1 for c in pcables if c["status"].startswith("unroutable"))
+    stuck = lambda: {c["id"] for c in pcables if c["status"].startswith("unroutable")}
+    inst_ids = {s["inst"]["id"] for s in ctx.get("supplies") or []}
 
     def set_sides(picks):
         """Point the power cables at the given plug options ({key: option}); returns the choices list that holds them."""
         for key, now in picks.items():
             for c in pcables:
-                if c["from"] == key and c["to"] != key:   # a supply port's plug: the cables that start there
-                    c["exit_a"] = now["side"]
+                if c["from"] == key and key.split(".")[0] in inst_ids:   # an on-board supply port's plug: the cables that start there (a daisy
+                    c["exit_a"] = now["side"]                          # hop from a pedal has no exit_a: its plug is the previous leg's exit_b)
                 if c["to"] == key:
                     c["exit_b"] = now["side"]
         return [(cid, jk, pc, facing, picks.get(f"{cid}.{jk['id']}", chosen[f"{cid}.{jk['id']}"][4])) for cid, jk, pc, facing, _ in choices]
@@ -2236,7 +2239,7 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
         new_choices = set_sides({key: now for key, _, now in changes})
         second = []
         grids2 = route_power(ctx, cables, cable_types, cfg, *area, new_choices, second)
-        if grids2 is not None and stuck() <= stuck_before and total() <= before + 1e-6:
+        if grids2 is not None and stuck() <= stuck_before and total() <= before + 1e-6:   # (no leg that routed before is unroutable)
             result = (new_choices, grids2, second)
         else:
             for c, sh in zip(pcables, first):
@@ -2246,24 +2249,11 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
             pw.update(first_pw)
             taken.clear()
             taken.update(first_taken)
-    # the report: the plugs that took another side than the old tie-break, and what the cables save against the old sides (all of
-    # them put back, routed once more)
+    # the report: the plugs that took another side than the old tie-break, and what their legs save by the A* lengths measured above
     kept = {f"{cid}.{jk['id']}": o for cid, jk, _, _, o in result[0]}
-    diff = {key: old_side[key] for key, o in kept.items() if key in old_side and old_side[key]["side"] != o["side"]}
-    saved = 0.0
-    if diff:
-        now_total, now_stuck, now_state, now_pw = total(), stuck(), snap(), dict(pw)
-        set_sides(diff)
-        old_choices = [(cid, jk, pc, facing, diff.get(f"{cid}.{jk['id']}", o)) for cid, jk, pc, facing, o in result[0]]
-        grids3 = route_power(ctx, cables, cable_types, cfg, *area, old_choices, [])
-        if grids3 is not None and stuck() <= now_stuck:
-            saved = total() - now_total
-        for c, sh in zip(pcables, now_state):
-            c.clear()
-            c.update(sh)
-        pw.clear()
-        pw.update(now_pw)
-    pw["side_savings"] = {"plugs": len(diff), "saved_mm": saved}
+    diff = [key for key, o in kept.items() if key in old_side and old_side[key]["side"] != o["side"]]
+    gains = [measured[k].get(id(old_side[k]), math.inf) - measured[k].get(id(kept[k]), math.inf) for k in diff]
+    pw["side_savings"] = {"plugs": len(diff), "saved_mm": sum(g for g in gains if math.isfinite(g))}
     return result
 
 
@@ -2573,25 +2563,20 @@ def fixed_exit_finding(cable_id, which, key, fixed, cands, cable_types):
             f"its exit is chosen automatically")
 
 
-_DC_SETUP = []   # [ctx["routing"], `power.estimate_setup`] of the last route_project (`dc_estimator`)
-
-
-def dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports):
+def dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports, setup=None):
     """`length(o, key)`: the estimated cable of the DC plug at `key` (a pedal's power jack or an on-board supply's port) when it takes option
     `o`: per power cable leg that touches the plug, the option's own measure + `power.hop_estimate` from / to the OTHER end (its measure
     point, `pools` [key -> options] for a pedal, the port's jack for a supply, the port of an under-board supply UNDER the board) with
     the nearest-crossing estimate (`power.Crossings`, the hole points no pedal covers; the same function as the layout surrogate). The
-    option's exit is its end (a plug pointing down: under the board). None-free: a leg whose other end is unknown counts 0."""
+    option's exit is its end (a plug pointing down: under the board). None-free: a leg whose other end is unknown counts 0. `setup`: a
+    list the caller keeps to make `power.estimate_setup` (a sample of the board's holes) once for several calls (filled by the first)."""
     import power
     from jacks import _jack_by_id
     layout = ctx.get("layout") or {}
-    anchor = ctx.get("routing")   # the setup is a sample of the board's holes: made once per route_project (kept out of ctx, which is compared)
-    if anchor is not None and _DC_SETUP and _DC_SETUP[0] is anchor:
-        setup = _DC_SETUP[1]
-    else:
-        setup = power.estimate_setup(ctx["project"], layout, cable_types)
-        if anchor is not None:
-            _DC_SETUP[:] = [anchor, setup]
+    setup = [] if setup is None else setup
+    if not setup:
+        setup.append(power.estimate_setup(ctx["project"], layout, cable_types))
+    setup = setup[0]
     rects = [r for it in [*(layout.get("placed") or {}).values(), *obstacles] for r in design.item_shapes(layout.get("shapes"), it)]
     crossings = power.usable_holes(setup, rects) if setup else None
     pcfg = setup["cfg"] if setup else {}
@@ -2634,7 +2619,7 @@ def dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports):
 
 
 def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, down=None, inside=None, inside_under=None, avoid=None,
-                       report=True):
+                       report=True, setup=None):
     """The DC plug of every placed pedal's power jack: its type (`cables.power_types`, `power_type_list`) and exit with the best
     ranking (`plug_rank`: feasible first (the exit inside the routing area, `inside` = a callable on a point, and in no other
     pedal's outline; a plug pointing down is tested with `inside_under`, the under area, instead: `exit_feasible`), then pointing
@@ -2647,7 +2632,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
     `avoid` {key: {(type, side)}}: options that count as infeasible (the router found no path for the cable they start / end).
     `report` False: the findings about overrides are not sent again (a repeated call). Each chosen option also gets `alts` (the options of
     its type and fit within `TIE_MM` of its estimated cable) and `legacy` (the option the old ranking, no length, takes, if another one) for
-    `refine_dc_sides`.
+    `refine_dc_sides`. `setup`: `dc_estimator`'s, a list a repeated caller keeps.
     One style per serial cable: all the pedal plugs of one SERIAL cable (`cable` id) share one type, the one whose plugs have
     the best summed ranking (a conflicting override `type_b` on two of its legs: a warning, the first leg wins); the legs of a
     FORKED output pick their own. Sets each power cable's `exit_b`, `type_b` (= `type`, the pedal end's plug) and `type_a` (the
@@ -2696,7 +2681,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
 
     def estimate(o, key):   # the estimator is made when the first plug with a choice needs it
         if not built:
-            built.append(dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports))
+            built.append(dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports, setup))
         return built[0](o, key)
     for key, pool in pools.items():
         if len(pool) > 1:

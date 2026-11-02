@@ -142,15 +142,14 @@ def test_surrogate_plug_collisions_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in det["collisions"]}
     want = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in ctx["plug_collisions"]}
-    # (the build decides the DC plugs' sides between near-equal estimates by the routed length, `routing.refine_dc_sides`, which the surrogate's
-    # `_dc_length` estimate cannot: the pairs that involve a plug whose side differs may differ; at least 4 of the 7 agree)
-    assert len(set(got.items()) & set(want.items())) >= 4 and abs(len(got) - len(want)) <= 1 and len(want) == 7
+    assert got == want and len(got) == 7
 
 
 def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
     """The same plugs point down (hole under the bend point, owner rule: always down where available). The exits of the other plugs agree
     too except where two exits are about equally good (the surrogate's length is an estimate, and it re-chooses only the ends that still collide;
-    the build's DC sides also follow the routed length, `routing.refine_dc_sides`): at most 6 of the 49 differ."""
+    the build's DC sides also follow the routed length, `routing.refine_dc_sides`, which the surrogate cannot see: phase_95 / retrovibe): at
+    most 5 of the 49 differ."""
     pedals, supplies, ctx = gig_build()
     m = gig_model(pedals, supplies)
     _, det = m.score(m.owner, margin=0, detail=True)
@@ -162,7 +161,7 @@ def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
             want[c["to"]] = c["exit_b"]
     got = {k: v["side"] for k, v in det["plugs"].items() if k in want}
     assert {k for k, v in want.items() if v == "down"} == {k for k, v in got.items() if v == "down"} and len(want) == 49
-    assert sum(1 for k in want if got[k] != want[k]) <= 6
+    assert sum(1 for k in want if got[k] != want[k]) <= 5
 
 
 # --- cable lengths --------------------------------------------------------------------------------

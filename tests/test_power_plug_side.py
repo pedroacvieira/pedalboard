@@ -108,3 +108,5 @@ def test_the_gig_fixture_needs_less_dc_cable_than_with_the_old_tie_break_and_no_
     assert len([w for w in ctx["warnings"] if w.startswith("clearance")]) == 12 and ctx["errors"] == []   # as many findings as before
     saving = ctx["routing"]["power"]["side_savings"]
     assert saving["plugs"] == 3 and saving["saved_mm"] > 100
+    # a daisy hop that starts at a pedal has no exit_a (its plug is the previous leg's exit_b), also after the refinement changed phase_95's side
+    assert [c["id"] for c in ctx["cable_list"] if c["kind"] == "power" and c.get("exit_a") and not c["from"].startswith("psu")] == []

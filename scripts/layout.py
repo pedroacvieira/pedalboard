@@ -737,6 +737,21 @@ class Model:
         return total
 
     @staticmethod
+    def _dc_rel(rows, fit, length):
+        """{id(option): its estimated cable (`length`, `_dc_length`; None: no DC plug with legs) less the least of the rows of the same
+        type and `fit(row)`}, only for the rows that share both with another (the length only tells SIDES apart, as `routing.rank_pool`)."""
+        rel, groups = {}, {}
+        if length is None:
+            return rel
+        for r in rows:
+            groups.setdefault((r[2].get("type"), fit(r)), []).append(r[2])
+        for opts in groups.values():
+            if len(opts) > 1:
+                mm = [length(o) for o in opts]
+                rel.update({id(o): v - min(mm) for o, v in zip(opts, mm)})
+        return rel
+
+    @staticmethod
     def _chosen(recs):
         """[(jack key, pedal / supply index, option)] of the choice the recs (`score`, phase A) hold."""
         items = []
@@ -804,15 +819,16 @@ class Model:
                         boxes[e["jack"]] = box(e["jack"], n, o)
                         decided.add(e["jack"])
             else:
-                _, n, end, rows, cur, lens = rec
+                _, n, end, rows, cur, length = rec
                 o = cur[2]
                 if fixed(o):
                     continue
                 if len(rows) > 1 and end["jack"] in bad:
                     taken = seen({end["jack"]}, False)
                     if self._against(state, o, n, taken, margin) > 0:
-                        best = min(rows, key=lambda r: (r[0][0], r[5] + self._count(state, r[2], n, taken), round(lens.get(id(r[2]), 0.0), 2), r[6],
-                                                        r[2]["tidx"]))
+                        fit = {id(r[2]): (r[0][0], r[5] + self._count(state, r[2], n, taken)) for r in rows}
+                        rel = self._dc_rel(rows, lambda r: fit[id(r[2])], length)
+                        best = min(rows, key=lambda r: (fit[id(r[2])], round(rel.get(id(r[2]), 0.0), 2), r[6], r[2]["tidx"]))
                         if best is not cur:
                             cur = rec[4] = best
                             changed = True
@@ -903,16 +919,16 @@ class Model:
                 blocked.append({"jack": jack, "obstacle": title, "part": part, "depth_mm": d, "side": side})
                 issues.append((n, title, d))
 
-        # crossings (holes, edge points) the candidate's pedal footprints leave free: the power cables' nearest-crossing estimate, and the
+        # crossings (holes, edge points) the candidate's pedal outlines leave free: the power cables' nearest-crossing estimate, and the
         # signal cables with a plug pointing down; Manhattan / a straight guess without holes
         pw_near = pw_cfg = holes = None
         if self.power_setup:
             pr = self.power_setup["radius"]
-            pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for f in feet + [f for _, f in self.fixed_feet]]
+            pw_blocked = [(f[0] - pr, f[1] - pr, f[2] + pr, f[3] + pr) for _, _, _, shp in obs for f in shp]   # the outlines, as `power.usable_holes`
             holes = self.power_setup["crossings"]   # (its points are already free under the board)
             pts = holes.holes.points
-            # the nearest usable crossing depends on the query point and on WHICH hole points the footprints cover (one bit per point,
-            # a footprint's bits are remembered), so (point, covered set) keys an answer kept over the whole search
+            # the nearest usable crossing depends on the query point and on WHICH hole points the outlines cover (one bit per point,
+            # a rect's bits are remembered), so (point, covered set) keys an answer kept over the whole search
             mask, over, rect_bits = 0, [], self._rect_bits
             for r in pw_blocked:
                 bits = rect_bits.get(r)
@@ -939,7 +955,7 @@ class Model:
             pw_cfg = self.power_setup["cfg"]
         # phase A: every plug end's options and costs, the best choice (a plug that fits into a hole points down)
         chain = self.project["signal_chain"]
-        recs = []   # signal cables: ["s", cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, pick]; other plug ends: ["p", n, end, rows, pick, {id(option): estimated DC cable}]
+        recs = []   # signal cables: ["s", cid, ia, ib, ea, eb, opa, opb, ca, cb, combos, pick]; other plug ends: ["p", n, end, rows, pick, the DC plug's `length(option)` or None]
         for n_hop in range(1, len(chain)):
             cid = f"S{n_hop}"
             a, bb = chain[n_hop - 1], chain[n_hop]
@@ -974,14 +990,14 @@ class Model:
             for end in ([g["power"]] if g["power"] else []) + g["extra"] + g["ports"]:
                 rows = self._clearance(end, state[n], n, obs, margin, area)
                 plug = ("p", n) if end is g["power"] else (("s", n, end["port"]) if "port" in end else None)
-                lens = {}
+                length = None
                 if plug is not None and len(rows) > 1 and plug in self.dc_legs:
-                    lens = {id(r[2]): self._dc_length(r[2], plug, n, state, geo, holes, pw_cfg, pw_near) for r in rows}
-                    least = {}   # only sides are told apart (as `routing.rank_pool`): less the least of the same type and cost
-                    for r in rows:
-                        least[(r[2].get("type"), r[0])] = min(least.get((r[2].get("type"), r[0]), math.inf), lens[id(r[2])])
-                    lens = {id(r[2]): lens[id(r[2])] - least[(r[2].get("type"), r[0])] for r in rows}
-                recs.append(["p", n, end, rows, min(rows, key=lambda r: (r[0], round(lens.get(id(r[2]), 0.0), 2))), lens])
+                    def length(o, plug=plug, n=n, memo={}):   # (a memo per plug: the default is made at each def; called only for ties, `_dc_rel`)
+                        if id(o) not in memo:
+                            memo[id(o)] = self._dc_length(o, plug, n, state, geo, holes, pw_cfg, pw_near)
+                        return memo[id(o)]
+                rel = self._dc_rel(rows, lambda r: r[0], length)
+                recs.append(["p", n, end, rows, min(rows, key=lambda r: (r[0], round(rel.get(id(r[2]), 0.0), 2))), length])
         # phase B: plugs of different jacks must not overlap (footprints: head, barrel, cable run, or the fixed box); where they do, the plugs
         # involved may take another option, as the build chooses its sides
         items = self._chosen(recs)

@@ -90,7 +90,9 @@ ideas · 5 data · 6 done.
       Done with the proposed defaults (`SWITCH_MM` 5, estimate + routed refinement, length before overlap, `TIE_MM` 5). The estimate
       (cost-weighted, top mm x 3) is sometimes wrong in sign against the routed length (gig: phase_95, retrovibe): the refinement
       starts from the old side for that reason. Open: the surrogate cannot see the routed refinement (surrogate-vs-build agreement
-      on the gig is now 43 of 49 exits, 4 of 7 collision pairs), and the build trades a collision for another of equal count.
+      on the gig fixture: 44 of 49 exits (phase_95 / retrovibe power differ), 7 of 7 collision pairs after the review let the surrogate
+      test hole coverage with the outlines); danelectro_3699.power trades its collision with .out for one with .in (equal count:
+      length decides). Live gig: retrovibe.power goes right (avoids the collision with ehx_pico_pitch_fork.out, P10 +58 mm).
       Parked (owner, 2026-11-02): "Load a proposal into Pedal Playground 2.0" (above).
 - Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm (3198 mm with the shorter DC plug sides, frozen gig fixture); 6 plugs point down into slots (Tumnus,
   S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.

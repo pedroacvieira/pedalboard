@@ -391,7 +391,7 @@ def test_a_plug_option_that_leaves_its_cable_without_a_path_is_replaced_by_one_t
     monkeypatch.setattr(routing, "route_power", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
     ctx = cup_ctx(["dc"])
     (c,) = routed(ctx).values()
-    assert (c["type_b"], c["exit_b"], c["status"]) == ("dc", "right", "routed") and len(calls) == 3   # right: the hole is on that side (length decides between equally blocked sides); 3 = the try, the retry, the old left side routed for the build log
+    assert (c["type_b"], c["exit_b"], c["status"]) == ("dc", "right", "routed") and len(calls) == 2   # right: the hole is on that side (length decides between equally blocked sides); 2 = the try, the retry
     assert not any("no free path" in w for w in ctx["warnings"])                      # the first try's finding is dropped with it
     assert [v["jack"] for v in ctx["violations"]] == ["a.power", "a.power"]            # the price: the head is blocked by both walls
     assert [h["rects"][0][0] for h in ctx["routing"]["heads"] if h["cable"] == "P1"] == ["head"]

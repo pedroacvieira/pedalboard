@@ -330,7 +330,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P9.1 | power | psu2.SW_A | fulldrive_2.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 131 mm under, 34 mm on top | 203 | routed |
 | P9.2 | power | fulldrive_2.power | mini_ego.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 172 mm under, 51 mm on top | 297 | routed |
 | P10.1 | power | psu2.SW_B | phase_95.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 34 mm under, 46 mm on top | 117 | routed |
-| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | left / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 109 mm under, 50 mm on top | 234 | routed |
+| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 109 mm under, 50 mm on top | 234 | routed |
 | P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 274 mm under, 26 mm on top | 374 | routed |
 
 Signal cable, minimum: 2737 mm over 17 cables.
