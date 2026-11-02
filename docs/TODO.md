@@ -53,21 +53,39 @@ ideas · 5 data · 6 done.
       the Sun Face rule; `psu1` SW_B alone, the Analog Chorus moved to `psu2` SW_B with Phase 95 / Retrovibe); the MXR
       Carbon Copy is not part of the board. Still to do (owner): jacks / footswitches of boss_dd8 and
       ehx_pico_pitch_fork (`uv run pb pedal-editor <id>`); delete the parked Carbon Copy in Pedal Playground and
-      `uv run pb fetch guitar-gig`; small overhangs (Sun Face, Belle Epoch, Tumnus 0.5 mm front, Beano 0.2 mm right, DD-8
-      1.0 mm left); then a proposals run on the new layout.
+      `uv run pb fetch guitar-gig`; small overhangs (with the bodies as the bounds test, 2026-11-02, only Sun Face, Belle
+      Epoch and Tumnus, 0.5 mm front each, remain; the DD-8 and the Beano are inside by their bodies); then a proposals run
+      on the new layout.
+- [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset 5.0 mm
+      on the right only (every other pedal's insets match its jack sides); find out why (`wampler-tumnus-deluxe.png`).
 - [ ] **Load a proposal into Pedal Playground 2.0**: the site has no file load (a hidden importer, no button) and no save
       to file. It loads the browser's `localStorage["pp:playground:v3"]` on start (not logged in), so a proposal could be
       loaded from the console (untested); or write the proposal into the owner's account as a new playground (needs the
       owner's login: decide). Until then: move the pedals by hand (README move list / proposal SVG).
-- [ ] **Fix-mode proposals keep one plug collision (found 2026-10-29)**: with the gig bounds (back 11.0 mm, front 8.5 mm),
-      all three `--max-change fix` proposals reach 0 blocked plugs but keep the owner's collision belle_epoch.in vs
-      the Reticon's plugs (before the bounds: 0 / 0); `rearrange --seed 42` #1 is clean (0 / 0, signal 2568 mm, DC
-      3484 mm, crowding 186). Options: let fix mode swap the two neighbours or allow larger moves for the pedals in a
-      collision, weigh collisions more in the surrogate, or accept rearrange #1.
+- [x] **Fix-mode proposals keep one plug collision (found 2026-10-29; gone, checked 2026-11-02 with `feat/pedal-body`)**: `--max-change fix`
+      seeds 1, 2, 3 and `rearrange --seed 42` all give three proposals with 0 collisions, 0 blocked plugs, 17/17 signal cables routed
+      (run on a scratch copy of the gig WITHOUT the parked Carbon Copy, see below; the owner's new DD-8 / Pico Pitch Fork data
+      included; owner: 4 collisions, signal 2697 mm, DC 3703 mm, crowding 209). Per proposal (signal mm / DC mm / crowding; (u) = one DC cable
+      left unrouted): fix 1: #1 2530 / 3409 (u) / 187, #2 2557 / 3526 / 193, #3 2547 / 3616 / 185; fix 2: #1 2530 / 3409 (u) / 187,
+      #2 2547 / 3616 / 185, #3 2548 / 3364 (u) / 190; fix 3: #1 2530 / 3409 (u) / 187, #2 2548 / 3364 (u) / 190, #3 2548 / 3364 (u) / 186;
+      rearrange 42: #1 2004 / 3482 / 205, #2 2018 / 3413 / 205, #3 2156 / 3482 / 205. NOT the bodies' doing: main (boxes as bounds) with the same
+      layout and data also gives 0 collisions in all fix proposals (fix 1: 2577 / 3476 / 207, 2588 / 3556 / 200, 2642 / 3512 / 201), so the
+      layout / data change fixed it.
+- [ ] **Fix proposals with an unrouted DC cable (found 2026-11-02, `feat/pedal-body`)**: the proposals marked (u) above move the Pico Pitch
+      Fork ~16 mm to the back edge (its body is inside the usable area now); its top DC jack's plug exit then lies beyond the back margin and
+      the build reports "P8 (psu2.F3 -> ehx_pico_pitch_fork.power) has no free path". The surrogate has no routing-area penalty for a DC plug
+      (only a feasible-first choice). Gate fixed (2026-11-02): `power_unrouted` counts as a routing problem (gate, rank, +1000 score), so
+      such a layout is never proposed (fix seed 1 re-run: 3 proposals, all cables routed). Still open: a surrogate penalty for an
+      infeasible DC exit, so the search does not spend finalists on them.
+- [ ] **The parked Carbon Copy blocks every proposal (found 2026-11-02)**: it is an obstacle outside the usable area that the
+      search cannot move, so every candidate has `outside` >= 1 and `acceptable` rejects all ("no better layout found",
+      0 proposals written) on the live gig until the owner deletes it in Pedal Playground and fetches again.
 - [ ] **Power plug side by route length (owner, 2026-10-29)**: a DC plug's exit side only matters for the length; when
       both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
       cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
       signal plugs already do. The layout surrogate's power estimate should follow.
+      Plan: `docs/plans/power-plug-side.md` (open questions for the owner at its end); branch `feat/power-plug-side`.
+      Parked (owner, 2026-11-02): "Load a proposal into Pedal Playground 2.0" (above).
 - Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
   S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.
 
@@ -190,5 +208,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
   `validation.strict_bounds`; layout search hard constraint; pre-processing pushes pedals of the owner's layout inside,
   pinned ones too); routing area = usable area + `edge_margin_mm` (strips along edge segments); dashed outline in the
   SVGs. Gig bounds: back 11.0 mm, front 8.5 mm (owner, approximate). Gig proposals regenerated (rearrange, seed 42).
+- `feat/pedal-body` (2026-11-02, `docs/plans/pedal-body.md`): the usable board area holds a pedal's BODY (median enclosure from the
+  image alpha, `catalog/outlines.json` "bodies"), not its jacks; overlaps keep the box; every plug footprint is routing area
+  (`routing.plug_zones`) so an overhanging jack's cable can start.
 - Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
   gig chain: chorus before the Reticon (2026-10-27).

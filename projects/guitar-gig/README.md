@@ -4,21 +4,18 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 11 warning(s) (`no_unknown` on)
+- **Validation:** OK, 8 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: incomplete jack setup for boss_dd8 (BOSS DD-8 Digital Delay): missing input (ambiguous: set a default), output (ambiguous: set a default) -> run: uv run scripts/pedal_editor.py boss_dd8
 - WARN layout: AnalogMan Sun Face BC183 is outside the usable board area by 0.5 mm (front)
 - WARN layout: Catalinbread Belle Epoch Deluxe is outside the usable board area by 0.5 mm (front)
 - WARN layout: Wampler Tumnus Deluxe is outside the usable board area by 0.5 mm (front)
-- WARN layout: AnalogMan Beano Boost is outside the usable board area by 0.2 mm (right)
-- WARN layout: BOSS DD-8 Digital Delay is outside the usable board area by 1.0 mm (left)
-- WARN layout: MXR Carbon Copy is outside the usable board area by 71.8 mm (left)
+- WARN layout: MXR Carbon Copy is outside the usable board area by 68.6 mm (left)
 - WARN clearance: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
+- WARN clearance: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
 - WARN clearance: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 - WARN clearance: ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head)
-- WARN footswitches: no footswitch data for 1 of 18 pedals (ehx_pico_pitch_fork) -> run: uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -272,19 +269,14 @@ Placement: under the board. Layout item: Strymon Ojai R30 (dd8cf6e4-da4a-4389-8e
 
 ## Jacks and cables
 
-Jack data: 18 of 19 catalog items set up (pedals and supplies in this project).
-
-Missing or incomplete (place the jacks on the pedal image, then rebuild):
-
-```
-uv run scripts/pedal_editor.py boss_dd8
-```
+Jack data: 19 of 19 catalog items set up (pedals and supplies in this project).
 
 No blocked cable space found (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side).
 
 Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
 
 - analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
+- boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
 - danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 - ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head)
 
@@ -322,8 +314,8 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S13 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 243 | routed |
 | S14 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 52 | routed |
 | S15 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 244 | routed |
-| S16 | signal | belle_epoch.out | boss_dd8.in | ernie_ball_flat_patch_ra | left / - | TS / TS | - | no | ? | not routed (jack or placement missing) |
-| S17 | signal | boss_dd8.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | - / down | TS / TS | - | no | ? | not routed (jack or placement missing) |
+| S16 | signal | belle_epoch.out | boss_dd8.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 208 | routed |
+| S17 | signal | boss_dd8.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 20 mm) | 184 | routed |
 | P1 | power | psu1.F1 | boss_dd8.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 122 mm under, 85 mm on top | 244 | routed |
 | P2 | power | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 143 mm under, 27 mm on top | 207 | routed |
 | P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 135 mm under, 1 mm on top | 173 | routed |
@@ -343,7 +335,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (111 mm on top) | 156 | routed |
 | P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 274 mm under, 45 mm on top | 394 | routed |
 
-Signal cable, minimum: 2301 mm over 15 cables.
+Signal cable, minimum: 2692 mm over 17 cables.
 
 ### DC cables to buy
 
@@ -366,19 +358,13 @@ DC cable, minimum: 4292 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 
-Footswitch data: 17 of 18 pedals (catalog/footswitches.json).
-
-Missing (place the switches on the pedal image, then rebuild):
-
-```
-uv run scripts/pedal_editor.py ehx_pico_pitch_fork --footswitches
-```
+Footswitch data: 18 of 18 pedals (catalog/footswitches.json).
 
 Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 200.6 (18 of 247 pairs closer than 100 mm). Closest pairs (8 of 247):
+Crowding: 209.5 (20 of 270 pairs closer than 100 mm). Closest pairs (8 of 270):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
 |---|---|---|---|--:|--:|
@@ -397,11 +383,11 @@ Chosen after the layout (never during the search), greedily: the topper that rem
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|
-| 1 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 8.2 | 192.4 |
-| 2 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 7.6 | 184.8 |
-| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 5.9 | 178.9 |
-| 4 | monk.switch_2 (Tap) | JAM Pedals Harmonious Monk Mk2 | tap | 4.9 | 174.0 |
-| 5 | danelectro_3699.bypass (Bypass) | Danelectro 3699 Fuzz | bypass | 4.5 | 169.5 |
+| 1 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 8.2 | 201.3 |
+| 2 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 7.6 | 193.7 |
+| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 5.9 | 187.8 |
+| 4 | mini_ego.bypass (Bypass) | Wampler Mini Ego Compressor | bypass | 5.5 | 182.3 |
+| 5 | monk.switch_2 (Tap) | JAM Pedals Harmonious Monk Mk2 | tap | 4.9 | 177.4 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 

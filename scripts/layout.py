@@ -4,13 +4,14 @@ A candidate is a centre (cx, cy) and a rotation (0/90/270, never 180 unless the 
 pedal placed in the owner's layout and per supply instance placed ON the board (`placement: "on_board"`: an obstacle
 by its outline whose used output ports get the DC plug clearance and start the power cables; chain pedals first in
 the state, then the supplies); the board, supplies under the board, other items and the chain order are fixed. Per pedal and allowed rotation, everything that moves with it is precomputed relative to its centre:
-footprint half-sizes, plug options (signal: both exit sides of a right-angle plug and, where the board has holes, the option pointing DOWN
+footprint half-sizes and body offsets, plug options (signal: both exit sides of a right-angle plug and, where the board has holes, the option pointing DOWN
 (its bend point relative to the centre; whether a candidate position allows it is tested per candidate with routing.down_available);
 power: every exit of every DC plug type of `cables.power_types`; extra jacks: the fixed box), measure and exit points, footswitch points.
 Moving a pedal translates cached rectangles.
 
-Hard constraints (a candidate that breaks one is never scored): inside the usable board area (board.json `bounds`; the
-board without them) shrunk by `board_margin_mm` (never overhang), no overlap beyond design.TOL_MM between pedals (touching allowed; `min_gap_mm` adds a gap), pins
+Hard constraints (a candidate that breaks one is never scored): the pedal's BODY (catalog/outlines.json "bodies": the enclosure
+without its jacks; the Pedal Playground box without body data) inside the usable board area (board.json `bounds`; the board without
+them) shrunk by `board_margin_mm` (side jacks may overhang it), no overlap beyond design.TOL_MM between pedals (touching allowed; `min_gap_mm` adds a gap), pins
 fixed, rotation within the allowed set, at most `max_move_mm` from the owner's position.
 
 Surrogate score (lower is better, "mm-equivalent"), weights in project.json `layout.weights`:
@@ -182,6 +183,22 @@ def _shift(r, dx, dy):
     return (r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy)
 
 
+def in_area(area, o, st, radius, usable):
+    """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the grown usable
+    area). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
+    `o["jack"]`, relative to the pedal's centre) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
+    parts grown by the cable radius (`o["diam"]` of a DC plug, else `radius`) counts as inside. Every other plug: the plain area test."""
+    px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
+    if area[0] <= px < area[2] and area[1] <= py < area[3]:
+        return True
+    jk = o.get("jack")
+    if jk is None or not routing.jack_overhangs(usable, (jk[0] + st[0], jk[1] + st[1])):
+        return False
+    radius = o["diam"] / 2 if o.get("diam") else radius
+    x, y = st[0], st[1]
+    return any(q[0] + x - radius <= px <= q[2] + x + radius and q[1] + y - radius <= py <= q[3] + y + radius for _, q in o["rects"])
+
+
 def _bbox(rects):
     return (min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects))
 
@@ -197,7 +214,7 @@ class Model:
     [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None):
+                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None, bodies=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -207,13 +224,16 @@ class Model:
                                                                          for o in i.get("outputs", [])]}
                  for i in (project.get("power") or {}).get("supplies", []) if i["supply"] in cat_supplies]
         jset = project.get("jacks", {})
+        if bodies is None:   # the catalog's bodies only when the outlines come from the catalog too (a caller with its own outlines gets none)
+            bodies = outlines_mod.load_bodies() if outlines is None else {}
         self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
+        self.bodies = bodies
         lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines,
-                                      board_data=board_data, board_edits=board_edits, board_bounds=board_bounds)
+                                      board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
         self.board = design.footprint(lay["board"])
-        self.usable = lay["usable"]   # where pedals and on-board supplies may sit (the board footprint without bounds)
+        self.usable = lay["usable"]   # where the BODIES of pedals and on-board supplies may sit (the board footprint without bounds)
         self.placed = lay["placed"]
         self.inst_item, self.insts = lay["inst_item"], insts
         self.ids = [p for p in chain if p in self.placed]          # movable pedals, chain order
@@ -325,7 +345,8 @@ class Model:
         tmp = {**it, "rot": rot, "left_mm": -it["w_mm"] / 2, "top_mm": -it["h_mm"] / 2}
         f = design.footprint(tmp)
         have = self.jacks_data.get(pid) or []
-        g = {"half": (f[2], f[3]), "shapes": design.outline_rects(tmp, self.outlines), "ends": {}, "power": None, "extra": [], "fs": [],
+        bd = design.body_rect(tmp, self.bodies)
+        g = {"half": (f[2], f[3]), "body": bd, "shapes": design.outline_rects(tmp, self.outlines), "ends": {}, "power": None, "extra": [], "fs": [],
              "in": None, "out": None, "ports": [], "port_pt": {}}
         if n >= self.n_ped:
             return self._supply_geometry(g, tmp, pid)
@@ -401,14 +422,14 @@ class Model:
         """One plug option as the score needs it (relative to the pedal's centre): side, rects [(part, rect)], their bbox, `exit` (the
         point the cable leaves at, for a plug pointing down the bend point where it continues under the board), `measure_mm`, `measure` (the
         point cable lengths start at), `down`, `drop_mm` (a plug pointing down: `measure_mm` less the offset along the jack axis = jack height +
-        deck); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
+        deck), `jack` (the jack point, None for a fixed box); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
         rects = [(part, r) for part, r in o["rects"]]
         drop = 0.0   # a plug pointing down: the cable beyond what a side plug has (jack height + deck), counted once per plug in the power term
         if o.get("down"):
             drop = o["measure_mm"] - math.hypot(o["exit"][0] - o["measure"][0], o["exit"][1] - o["measure"][1])
         return {"side": o["side"], "rects": rects, "bbox": _bbox([r for _, r in rects]) if rects else None,
                 "exit": o["exit"], "measure_mm": o.get("measure_mm", 0.0), "measure": o.get("measure"),
-                "down": bool(o.get("down")), "drop_mm": drop, **extra}
+                "down": bool(o.get("down")), "drop_mm": drop, "jack": o["lead"][0] if o.get("lead") else None, **extra}
 
     def _pool(self, tmp, jk, cands, fixed, run):
         """(facing, side options, down options) of one jack for the plug types `cands` [(position in the list, id, cable type)] (routing.
@@ -468,9 +489,15 @@ class Model:
         hw, hh = self._geom[(n, st[2])]["half"]
         return (st[0] - hw, st[1] - hh, st[0] + hw, st[1] + hh)
 
+    def body(self, st, n):
+        """The body (enclosure without jacks; the box without body data) of pedal n at state `st`, canvas (x0, y0, x1, y1): the part of it
+        that must lie inside the usable area. Offsets from the centre are precomputed per rotation (they are not symmetric)."""
+        b = self._geom[(n, st[2])]["body"]
+        return (st[0] + b[0], st[1] + b[1], st[0] + b[2], st[1] + b[3])
+
     def feasible_one(self, state, n, feet=None, tol=None):
-        """Whether pedal n can sit where `state` puts it: inside the board, no overlap with any other pedal or
-        fixed item, pins, rotation and max move respected."""
+        """Whether pedal n can sit where `state` puts it: its BODY inside the usable board area (jacks may overhang), no overlap of the
+        boxes with any other pedal or fixed item, pins, rotation and max move respected."""
         st = state[n]
         if st[2] not in self.allowed[n]:
             return False
@@ -483,7 +510,7 @@ class Model:
             return False
         f = self.footprint(st, n)
         tol = self.overlap_tol if tol is None else tol
-        if not self.inside_usable(f) and not (self.ids[n] in self.pins and pin is not None):
+        if not self.inside_usable(self.body(st, n)) and not (self.ids[n] in self.pins and pin is not None):
             return False   # (a pin is held at `pin`: the owner's spot, or where the pre-processing moved it inside)
         gap = float(self.cfg["min_gap_mm"])
         g = (f[0] - gap, f[1] - gap, f[2] + gap, f[3] + gap) if gap else f
@@ -498,7 +525,7 @@ class Model:
         return True
 
     def inside_usable(self, f):
-        """Whether the footprint `f` (x0, y0, x1, y1) lies inside the usable board area shrunk by `board_margin_mm`."""
+        """Whether the body rectangle `f` (x0, y0, x1, y1; `body`) lies inside the usable board area shrunk by `board_margin_mm`."""
         m, b = float(self.cfg["board_margin_mm"]), self.usable
         return not (f[0] < b[0] + m - 1e-6 or f[1] < b[1] + m - 1e-6 or f[2] > b[2] - m + 1e-6 or f[3] > b[3] - m + 1e-6)
 
@@ -559,18 +586,21 @@ class Model:
         cands = self._cands(end, st)
         for o in cands:
             cost, hits, intr, nparts, ovsum = self._opt_clearance(end, o, st, n, obs, margin)
-            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost, self.board)
+            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost, self.board, self.rcfg["diameter_mm"] / 2, self.usable)
             rows.append(((bad, cost), cost, o, hits, intr, nparts, ovsum))
         return rows
 
     @staticmethod
-    def _infeasible(o, st, n, obs, area, cost, under=None):
-        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area or (only a plug with a clearance cost can
-        have it there) strictly inside another item's outline. A plug pointing down continues under the board: its bend point is tested
-        against the under area `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
+    def _infeasible(o, st, n, obs, area, cost, under=None, radius=0.0, usable=None):
+        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack an exit
+        inside its own footprint, grown by the cable `radius`, counts as inside: `in_area`, `usable`) or (only a plug with a clearance cost can have it there) strictly
+        inside another item's outline. A plug pointing down continues under the board: its bend point is tested against the under area
+        `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
         px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
-        box = area if under is None or not o["down"] else under
-        if not (box[0] <= px < box[2] and box[1] <= py < box[3]):
+        if under is None or not o["down"]:
+            if not in_area(area, o, st, radius, usable):
+                return True
+        elif not (under[0] <= px < under[2] and under[1] <= py < under[3]):
             return True
         if cost <= 0:
             return False
@@ -883,10 +913,10 @@ class Model:
             combos = []   # (cost, index a, index b, length, a outside, b outside) of every combination of the two ends' options
             for ka, oa in enumerate(opa):
                 pa = (oa["exit"][0] + sa[0], oa["exit"][1] + sa[1])
-                outa = not oa["down"] and not (area[0] <= pa[0] < area[2] and area[1] <= pa[1] < area[3])
+                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable)
                 for kb, ob in enumerate(opb):
                     pb = (ob["exit"][0] + sb[0], ob["exit"][1] + sb[1])
-                    outb = not ob["down"] and not (area[0] <= pb[0] < area[2] and area[1] <= pb[1] < area[3])
+                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable)
                     if oa["down"] or ob["down"]:
                         span = self._under_span(oa, pa, ob, pb, holes, pw_near)
                     else:
@@ -1106,7 +1136,7 @@ def level_settings(model, level, max_move_mm="level"):
 
 
 class CannotPlace(ValueError):
-    """Pedals (or on-board supplies) of the owner's layout that lie outside the usable board area and have no feasible position
+    """Pedals (or on-board supplies) of the owner's layout whose body lies outside the usable board area and have no feasible position
     inside it; `names` = ["<name> (<id>)", ...]."""
 
     def __init__(self, names):
@@ -1115,15 +1145,15 @@ class CannotPlace(ValueError):
 
 
 def repair_start(model, state, max_radius_mm=200.0):
-    """Pre-processing of the input (owner, 2026-10-29): `state` (the owner's layout) with every pedal / on-board supply whose box lies
-    outside the usable board area pushed the least distance inside it (same rotation: the centre clamped into the area first, e.g. a
+    """Pre-processing of the input (owner, 2026-10-29): `state` (the owner's layout) with every pedal / on-board supply whose BODY (not
+    its jacks) lies outside the usable board area pushed the least distance inside it (same rotation: the centre clamped into the area first, e.g. a
     pedal 0.7 mm past the back line moves 0.7 mm forward; if that spot is taken, rings of growing radius around the original centre,
     the feasible point nearest to it on the first ring that has one; feasible_one: no overlap, max move), snapped to whole px. Pinned
     pedals are pushed in too and then stay pinned at their new spot (`model.pin_at`). The moves count in the move cost (the score
     measures them from the owner's layout). Raises `CannotPlace` naming the pedals that cannot be placed. Pedals that are inside
     keep their state (overlaps the owner already has are left alone: the search treats them as it always did)."""
     state = list(state)
-    bad = [n for n in range(len(state)) if not model.inside_usable(model.footprint(state[n], n))]
+    bad = [n for n in range(len(state)) if not model.inside_usable(model.body(state[n], n))]
     if not bad:
         return state
     pinned = [n for n in bad if model.ids[n] in model.pins]
@@ -1132,10 +1162,9 @@ def repair_start(model, state, max_radius_mm=200.0):
     failed = []
     for n in bad:
         cx, cy, rot = state[n]
-        f = model.footprint(state[n], n)
-        hw, hh = (f[2] - f[0]) / 2, (f[3] - f[1]) / 2
+        bd = model._geom[(n, rot)]["body"]   # the body's offsets from the centre (not symmetric)
         m, b = float(model.cfg["board_margin_mm"]), model.usable
-        lo_x, hi_x, lo_y, hi_y = b[0] + m + hw, b[2] - m - hw, b[1] + m + hh, b[3] - m - hh
+        lo_x, hi_x, lo_y, hi_y = b[0] + m - bd[0], b[2] - m - bd[2], b[1] + m - bd[1], b[3] - m - bd[3]
         found = None
         if lo_x <= hi_x and lo_y <= hi_y:
             def clamp(x, y):
@@ -1306,10 +1335,12 @@ def propose(model, state, rng, lv, sigma, issues, movable):
 
 
 def free_distance(model, state, n, axis):
-    """How far pedal n can slide along `axis` before it touches another item or the board edge (mm)."""
+    """How far pedal n can slide along `axis` before it touches another item (boxes) or the usable board area's edge (its body: jacks may
+    overhang) (mm)."""
     f = model.footprint(state[n], n)
+    bd = model.body(state[n], n)
     b, m = model.usable, float(model.cfg["board_margin_mm"])
-    dist = {(1, 0): b[2] - m - f[2], (-1, 0): f[0] - (b[0] + m), (0, 1): b[3] - m - f[3], (0, -1): f[1] - (b[1] + m)}[axis]
+    dist = {(1, 0): b[2] - m - bd[2], (-1, 0): bd[0] - (b[0] + m), (0, 1): b[3] - m - bd[3], (0, -1): bd[1] - (b[1] + m)}[axis]
     others = [model.footprint(st, k) for k, st in enumerate(state) if k != n] + [o for _, o in model.fixed_feet]
     for o in others:
         if axis[0]:

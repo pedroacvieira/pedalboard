@@ -72,16 +72,17 @@ def metrics(ctx, model, state, move_factor):
         "terms": {k: round(v[1], 1) for k, v in det["terms"].items()},
     }
     # final score: the surrogate with the routed signal length instead of its obstacle-free estimate, plus router
-    # penalties (unroutable 1000, over the stacking limit 50, squeezed 100 per cable)
+    # penalties (unroutable 1000, a power cable without a path 1000, over the stacking limit 50, squeezed 100 per cable)
     w = model.w
     real = out["signal_mm"] + sum(det["signal"].get(c["id"], 0.0) for c in sig if c["min_mm"] is None)
     out["score"] = round(total - det["terms"]["signal"][1] + w["signal"] * real + 1000 * out["unroutable"]
-                         + 50 * out["overflow"] + 100 * out["squeezed"], 1)
+                         + 1000 * out["power_unrouted"] + 50 * out["overflow"] + 100 * out["squeezed"], 1)
     return out
 
 
 def routing_problems(m):
-    return m["unroutable"] + m["squeezed"] + m["overflow"]
+    """Signal cables unroutable / squeezed / over a limit, and power cables without a path."""
+    return m["unroutable"] + m["squeezed"] + m["overflow"] + m.get("power_unrouted", 0)
 
 
 def rank_key(m):
@@ -114,7 +115,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_dat
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
                                   project.get("jacks", {}), [], [], outlines=outl, board_data=board_data, board_edits=board_edits,
-                                  board_bounds=board_bounds)
+                                  board_bounds=board_bounds, bodies=model.bodies)
     insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"],
               "under": lay["inst_placement"].get(s["inst"]["id"]) != "on_board"} for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
@@ -139,7 +140,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_dat
     except ValueError as e:   # keep the owner's wiring
         wiring, proj = {"supplies": project.get("power", {}).get("supplies", []), "error": str(e)}, project
     ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, items=items, footswitch_data=fs_data, project=proj,
-                         outline_data=outl, board_data=board_data)
+                         outline_data=outl, board_data=board_data, body_data=model.bodies)
     keep = model.wiring
     under = {i["id"]: i["under"] for i in insts}
     model.set_wiring([(ports.get((s["id"], o["port"])), o["pedals"], under.get(s["id"], True), (s["id"], o["port"]),
@@ -220,6 +221,7 @@ def main(argv=None):
     cat_pedals, cat_supplies = load_catalog()
     jacks_data, fs_data = jacks.read_file()["jacks"], footswitches.read_file()["footswitches"]
     outl = outlines.load()   # read once: the owner's layout, the model and every finalist use it
+    bodies = outlines.load_bodies()   # likewise (the pedals' bodies: what the usable board area is tested against)
     board_data, board_edits = boards.load(), boards.load_edits(pdir)   # likewise (catalog/boards.json, the project's board.json)
     board_bounds = boards.load_bounds(pdir)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
@@ -230,10 +232,10 @@ def main(argv=None):
     items = design.parse_data(design_doc)
     cable_types = load_cable_types()
     owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project,
-                               outline_data=outl, board_data=board_data)
+                               outline_data=outl, board_data=board_data, body_data=bodies)
     try:
         model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl,
-                             board_data=board_data, board_edits=board_edits, board_bounds=board_bounds)
+                             board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies)
     except ValueError as e:
         sys.exit(f"{pdir.name}: {e}")
     if args.score:

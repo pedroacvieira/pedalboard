@@ -163,6 +163,18 @@ def outline_rects(item, outlines):
     return out
 
 
+def body_rect(item, bodies):
+    """Canvas rectangle (x0, y0, x1, y1) of the item's BODY (its enclosure without jacks, screws, knobs: catalog/outlines.json
+    "bodies", `bodies` = {image name: [x0, y0, x1, y1] fractions of the unrotated image}); the usable board area is tested against it.
+    Two opposite corners go through `jack_point` like `outline_rects`, so 0/90/180/270 are all right. Without an image or a body:
+    `footprint(item)`."""
+    b = (bodies or {}).get(item.get("image") or "")
+    if not b:
+        return footprint(item)
+    (xa, ya), (xb, yb) = jack_point(item, b[0], b[1]), jack_point(item, b[2], b[3])
+    return (min(xa, xb), min(ya, yb), max(xa, xb), max(ya, yb))
+
+
 def _rect_minus(r, cut):
     """Fraction rectangle `r` minus `cut`: up to four non-overlapping pieces (empty if `cut` covers all of it)."""
     x0, y0, x1, y1 = r

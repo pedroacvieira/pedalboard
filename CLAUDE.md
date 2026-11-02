@@ -35,6 +35,10 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   fractions of the unrotated image that cover every opaque pixel (alpha > 128; protruding jacks and rounded corners
   included). Derived data written ONLY by `scripts/outlines.py` from the cached images (no images in the repo);
   missing = the Pedal Playground box. Pedal Playground's Width/Height include the jacks (images are not squeezed).
+  Top-level `bodies` {image name: [x0, y0, x1, y1]} (same fractions) = the pedal's BODY (enclosure without jacks): the median
+  first / last opaque x over the rows that have an opaque pixel and the median first / last opaque y over the columns that have
+  one (`outlines.body_from_alpha`; jacks, screws, knobs are ignored; filled by `outlines.py` without `--refresh` for images
+  that have none; `outlines.load_bodies`); missing = the box. The usable board area is tested against the body.
 - `catalog/boards.json`: board holes per Pedal Playground BOARD image name: `holes` = rects in fractions of the unrotated
   image that lie INSIDE the transparent, border-disconnected regions (conservative), `hole_transit_mm` (15, unverified),
   optional `edge_transit_mm`. Derived data written ONLY by `scripts/boards.py` (keeps non-hole keys on `--refresh`).
@@ -64,8 +68,8 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   and edge crossings `{type edge, side left|right|back|front, from, to}` (fractions along that side of the unrotated
   image; `design.board_edges`, `layout["edge_segments"]`; the editor snaps a drawn line to the nearest side).
   Optional `bounds` {back, front, left, right} = four lines (fractions of the unrotated image, back / front from its top edge,
-  left / right from its left edge, a missing side = the image edge; `boards.load_bounds`, editor mode B): pedals must stay
-  inside (`design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
+  left / right from its left edge, a missing side = the image edge; `boards.load_bounds`, editor mode B): the pedals' BODIES
+  must stay inside (their jacks may overhang; `design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
   layout search and the drawings; cables may still run over the edges, under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
 - `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
@@ -243,8 +247,9 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   the front; stop at `max_toppers` (default 5 per board, owner; null = no cap) or below `topper_min_gain` 0.02 of the crowding). The layout search, the proposal
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
-  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), never outside the usable board area
-  (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; pre-processing
+  chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), their BODY never outside the usable board area
+  (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; `Model.body`,
+  precomputed per rotation from `design.body_rect`, used by `feasible_one`, `repair_start` and `free_distance`'s board term; pre-processing
   pushes a pedal outside the least distance inside, a pinned one too, which then stays pinned there), no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
   penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
@@ -256,7 +261,7 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   (default: max 40 mm, no swaps/rotations) / rearrange / free. Finalists AND the owner's layout get their own power
   wiring (`power.assign`, same policy as the build via `power.output_findings`; `cables.overrides.<P#>` / `<P#.n>` follow their
   pedal, `power.remap_overrides`) and are checked with `build.validate(items=, project=)`; a proposal must not be
-  worse than the owner's layout on errors, blocked plugs, routing problems and footswitch pairs below a set minimum. Proposals never
+  worse than the owner's layout on errors, blocked plugs, routing problems (power cables without a path included) and footswitch pairs below a set minimum. Proposals never
   touch `playground_design.json` or the owner's power wiring in project.json; the README section is rendered from
   `proposals/meta.json`, stale when `common.proposal_inputs_sha1` changed (design file, project.json, cables, the
   project's catalog entries incl. jacks and footswitches) or the chain changed. A pedal of the owner's layout outside the usable
@@ -269,6 +274,17 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
 - Pedal outlines (`design.outline_rects`, `layout["shapes"]` {item id: [rects]}): the router (grid, smoothing, lanes),
   plug clearance (`routing.blocked_parts`, `jacks.check` fixed box) and the layout surrogate's clearance use the
   outline; pedal-pedal overlap, layout feasibility, moves and swaps keep the Pedal Playground box (owner, 2026-10-23).
+- Pedal bodies (owner, 2026-11-02, `feat/pedal-body`, plan `docs/plans/pedal-body.md`): ONLY the bounds tests use the body
+  (`design.body_rect(item, bodies)`, `layout["bodies"]` {item id: canvas rect}; `jacks.outside_usable`, the layout model; no
+  body data = the box); side jacks may overhang the usable area and the board. The plug of a jack that lies OUTSIDE the usable
+  area (`routing.jack_overhangs`, back or sides, > 0.05 mm) is routing area: `routing.plug_zones` (every option: head, barrel, run,
+  exit; kept in `ctx["routing"]["plug_zones"]`) -> `build_grid(..., zones)` opens the cells within the cable radius of a zone (the
+  extent grows at the back / sides by whole cells, only the added cells are walls, so without zones the grid is main's; `area_rect`
+  ignores them; pedals still block; nothing in front); the layout surrogate counts an exit inside its own plug's footprint as inside
+  for such a jack only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the usable area grown by the
+  margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
+  `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
+  includes the bodies.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner

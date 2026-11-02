@@ -66,6 +66,8 @@ def proposal_inputs_sha1(pdir):
         have = outlines.load()
         images = sorted({i["image"] for i in design_mod.parse_design(design) if i.get("image")})
         h.update(json.dumps({n: have.get(n) for n in images}, sort_keys=True).encode())
+        have_bodies = outlines.load_bodies()   # (the bodies decide what lies inside the usable board area)
+        h.update(json.dumps({n: have_bodies.get(n) for n in images}, sort_keys=True).encode())
         # the board image's holes and transit estimate (catalog/boards.json) and the project's board.json corrections
         import boards
         known = boards.load()
