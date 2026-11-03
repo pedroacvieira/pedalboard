@@ -82,13 +82,19 @@ ideas · 5 data · 6 done.
 - [ ] **The parked Carbon Copy blocks every proposal (found 2026-11-02)**: it is an obstacle outside the usable area that the
       search cannot move, so every candidate has `outside` >= 1 and `acceptable` rejects all ("no better layout found",
       0 proposals written) on the live gig until the owner deletes it in Pedal Playground and fetches again.
-- [ ] **Power plug side by route length (owner, 2026-10-29)**: a DC plug's exit side only matters for the length; when
+- [x] **Power plug side by route length (owner, 2026-10-29; done on `feat/power-plug-side`, 2026-11-02, awaiting review/merge)**: a DC plug's exit side only matters for the length; when
       both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
       cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
       signal plugs already do. The layout surrogate's power estimate should follow.
       Plan: `docs/plans/power-plug-side.md` (open questions for the owner at its end); branch `feat/power-plug-side`.
+      Done with the proposed defaults (`SWITCH_MM` 5, estimate + routed refinement, length before overlap, `TIE_MM` 5). The estimate
+      (cost-weighted, top mm x 3) is sometimes wrong in sign against the routed length (gig: phase_95, retrovibe): the refinement
+      starts from the old side for that reason. Open: the surrogate cannot see the routed refinement (surrogate-vs-build agreement
+      on the gig fixture: 44 of 49 exits (phase_95 / retrovibe power differ), 7 of 7 collision pairs after the review let the surrogate
+      test hole coverage with the outlines); danelectro_3699.power trades its collision with .out for one with .in (equal count:
+      length decides). Live gig: retrovibe.power goes right (avoids the collision with ehx_pico_pitch_fork.out, P10 +58 mm).
       Parked (owner, 2026-11-02): "Load a proposal into Pedal Playground 2.0" (above).
-- Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm; 6 plugs point down into slots (Tumnus,
+- Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm (3198 mm with the shorter DC plug sides, frozen gig fixture); 6 plugs point down into slots (Tumnus,
   S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)

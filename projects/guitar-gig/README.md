@@ -4,7 +4,7 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 8 warning(s) (`no_unknown` on)
+- **Validation:** OK, 7 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
@@ -14,8 +14,7 @@
 - WARN layout: MXR Carbon Copy is outside the usable board area by 68.6 mm (left)
 - WARN clearance: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
 - WARN clearance: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
-- WARN clearance: danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
-- WARN clearance: ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head)
+- WARN clearance: danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 
 </details>
 
@@ -277,8 +276,7 @@ Plug collisions (a plug's head, barrel or cable run overlapping another jack's p
 
 - analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
 - boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
-- danelectro_3699.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
-- ehx_pico_pitch_fork.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits left) collides with the plug at retrovibe.power (DC plug): 6.4 mm (its barrel into the head)
+- danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
 
 Cable lengths: see Cable routing.
 
@@ -304,7 +302,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S3 | signal | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 248 | routed |
 | S4 | signal | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 101 | routed |
 | S5 | signal | mini_ego.out | ehx_pico_pitch_fork.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 88 | routed |
-| S6 | signal | ehx_pico_pitch_fork.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 139 | routed |
+| S6 | signal | ehx_pico_pitch_fork.out | fulldrive_2.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 184 | routed |
 | S7 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 278 | routed |
 | S8 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 129 | routed |
 | S9 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | down / right | TS / TS | - | yes (1 hole, 3 mm) | 119 | routed |
@@ -316,26 +314,26 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S15 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 244 | routed |
 | S16 | signal | belle_epoch.out | boss_dd8.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 208 | routed |
 | S17 | signal | boss_dd8.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 20 mm) | 184 | routed |
-| P1 | power | psu1.F1 | boss_dd8.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 122 mm under, 85 mm on top | 244 | routed |
+| P1 | power | psu1.F1 | boss_dd8.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 122 mm under, 41 mm on top | 200 | routed |
 | P2 | power | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 143 mm under, 27 mm on top | 207 | routed |
 | P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 135 mm under, 1 mm on top | 173 | routed |
 | P4 | power | psu1.SW_A | reticon.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 47 mm under, 0 mm on top | 74 | routed |
 | P5 | power | psu1.SW_B | ehx_pico_pitch_fork.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 258 mm under, 20 mm on top | 315 | routed |
 | P6.1 | power | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 67 mm under, 47 mm on top | 151 | routed |
 | P6.2 | power | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 312 mm under, 61 mm on top | 447 | routed |
-| P6.3 | power | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 122 mm under, 15 mm on top | 211 | routed |
-| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 88 mm under, 150 mm on top | 312 | routed |
+| P6.3 | power | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 96 mm under, 14 mm on top | 184 | routed |
+| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 44 mm under, 149 mm on top | 268 | routed |
 | P7 | power | psu2.F2 | polytune_3.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 198 mm under, 42 mm on top | 277 | routed |
 | P8.1 | power | psu2.F3 | ratsbane.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 105 mm under, 83 mm on top | 225 | routed |
 | P8.2 | power | ratsbane.power | protein.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (22 mm on top) | 66 | routed |
 | P8.3 | power | protein.power | tumnus_deluxe.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 218 mm under, 102 mm on top | 384 | routed |
-| P9.1 | power | psu2.SW_A | fulldrive_2.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 95 mm under, 37 mm on top | 169 | routed |
-| P9.2 | power | fulldrive_2.power | mini_ego.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 242 mm under, 54 mm on top | 370 | routed |
+| P9.1 | power | psu2.SW_A | fulldrive_2.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 131 mm under, 34 mm on top | 203 | routed |
+| P9.2 | power | fulldrive_2.power | mini_ego.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 172 mm under, 51 mm on top | 297 | routed |
 | P10.1 | power | psu2.SW_B | phase_95.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 34 mm under, 46 mm on top | 117 | routed |
-| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (111 mm on top) | 156 | routed |
-| P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 274 mm under, 45 mm on top | 394 | routed |
+| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 109 mm under, 50 mm on top | 234 | routed |
+| P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 274 mm under, 26 mm on top | 374 | routed |
 
-Signal cable, minimum: 2692 mm over 17 cables.
+Signal cable, minimum: 2737 mm over 17 cables.
 
 ### DC cables to buy
 
@@ -343,18 +341,18 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 
 | DC cable | Style | Output | Route | Plugs | Min plug spacing per leg (mm) | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
-| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd8 | 2 | - | 244 | routed |
+| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd8 | 2 | - | 200 | routed |
 | P2 | serial | psu1_F2 | psu1.F2 -> belle_epoch | 2 | - | 207 | routed |
 | P3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | - | 173 | routed |
 | P4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | - | 74 | routed |
 | P5 | serial | psu1_SW_B | psu1.SW_B -> ehx_pico_pitch_fork | 2 | - | 315 | routed |
-| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 151 / P6.2 447 / P6.3 211 / P6.4 312 | 1121 | routed |
+| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 151 / P6.2 447 / P6.3 184 / P6.4 268 | 1051 | routed |
 | P7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | - | 277 | routed |
 | P8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P8.1 225 / P8.2 66 / P8.3 384 | 675 | routed |
-| P9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P9.1 169 / P9.2 370 | 539 | routed |
-| P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P10.1 117 / P10.2 156 / P10.3 394 | 667 | routed |
+| P9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P9.1 203 / P9.2 297 | 500 | routed |
+| P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P10.1 117 / P10.2 234 / P10.3 374 | 725 | routed |
 
-DC cable, minimum: 4292 mm over 10 cables (10 serial, 0 forked).
+DC cable, minimum: 4197 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 

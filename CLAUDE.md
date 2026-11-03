@@ -185,9 +185,23 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   rule does not apply); footprint = the head; measure = |exit_offset - depth/2| + `cables.jack_height_mm` + hole
   transit; the route starts / ends under the board. Owner: **always down when available**, even if longer (ranking:
   feasible, down, blocked + collisions, length). **DC plug types**: `cables.power_types`, per plug `routing.plug_rank`
-  (feasible exit, down, blocked + collisions, overlap, list order); one pedal-end type per serial cable (the port plug
+  (feasible exit, down, blocked + collisions, side length, overlap, list order); one pedal-end type per serial cable (the port plug
   apart), per leg when forked; cables carry `type_a` / `type_b`; the power grid uses the widest type. The layout
   surrogate mirrors all three (per plug best type, no serial rule).
+  **DC plug side by length** (`feat/power-plug-side`, plan `docs/plans/power-plug-side.md`, owner 2026-10-29): the exit side only matters
+  for the cable, so among options that tie on the fit (same type, same fit key) the SHORTER cable wins, not "left" (the length only tells
+  SIDES apart: `routing.rank_pool` subtracts the least estimate of the same type and fit, so the list order of the types is untouched).
+  Two stages: (1) ESTIMATE in `power_plug_choices` (`dc_estimator`: the option's measure + `power.hop_estimate` for every leg that touches the
+  plug, same function as the surrogate; part of `choose_dc`, so the signal plugs see the new footprints); (2) ROUTED refinement after the
+  power routing (`refine_dc_sides`, in `route_power_choosing`): per plug the options on the same type and fit that are within `TIE_MM` (5)
+  of the best estimate, plus the old ranking's pick (`o["legacy"]`), get an A* (plain costs, `plain_search`) for their legs; the plug
+  starts from the old side and moves only when another saves more than `SWITCH_MM` (5); after changes the cables are routed once more and
+  the result stands only if no leg became unroutable and the total did not grow. An override `exit_b` fixes the side (no choice). The
+  build log prints `power: N DC plugs took the shorter side (saved X mm)` (`ctx["routing"]["power"]["side_savings"]`; X = the refinement's
+  A* lengths, old side less kept side, no extra routing). Surrogate: the DC option of a plug is picked by (clearance cost, estimated cable of
+  its legs, `Model._dc_length`, only between tied sides: `Model._dc_rel`) and the power term uses the chosen option's exit + measure
+  (`measure_mm`) instead of the jack's measure point; the holes a candidate covers are tested against the pedal OUTLINES, as the build's
+  `power.usable_holes` (so both estimates agree). A pedal-start daisy hop never gets `exit_a` (its plug is the previous leg's `exit_b`).
 - Cable types in use (owner, 2026-10-22): patch cables are **Ernie Ball flat ribbon** (`ernie_ball_flat_patch_ra`,
   3.5 mm on-board width, flat angled plug 6.4 deep x 12.7 wide, ribbon leaves 19 mm from the jack axis: mostly
   estimates, see the file); every patch plug is angled, no straight plugs (straight/Neutrik types are role
