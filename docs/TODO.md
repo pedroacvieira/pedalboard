@@ -39,7 +39,8 @@ ideas · 5 data · 6 done.
       DC plug and per signal plug; not a collision, listed in the README as "plug it diagonally"); `dc_ra_owner_baseline.exit_offset_mm` = 8.4
       (70% of the 12 mm depth, rule of thumb, not measured). Diagonal plugging and plug height are NOT modelled (no 3D); straight DC plugs
       and DC vs DC still collide. Live gig side effect of the 8.4 offset: `sun_face.power` (jack 3.3 mm from the board's right edge,
-      facing out) has its cable exit beyond the routing margin (3.5 mm), so P6.4 is unroutable: move the pedal in or raise `cables.edge_margin_mm`.
+      facing out) put its cable exit beyond the routing margin; fixed (owner, 2026-11-03): a plug option that reaches past the board
+      edge gets a plug zone (`routing.reaches_out`), P6.4 routes again.
 - [ ] Answer the open questions of `docs/plans/pedal-position.md`.
 
 ### Checks by eye

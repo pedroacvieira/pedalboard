@@ -298,11 +298,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
 - Pedal bodies (owner, 2026-11-02, `feat/pedal-body`, plan `docs/plans/pedal-body.md`): ONLY the bounds tests use the body
   (`design.body_rect(item, bodies)`, `layout["bodies"]` {item id: canvas rect}; `jacks.outside_usable`, the layout model; no
   body data = the box); side jacks may overhang the usable area and the board. The plug of a jack that lies OUTSIDE the usable
-  area (`routing.jack_overhangs`, back or sides, > 0.05 mm) is routing area: `routing.plug_zones` (every option: head, barrel, run,
+  area (`routing.jack_overhangs`, back or sides, > 0.05 mm), and every plug option that reaches past the board edge at the back or a
+  side (`routing.reaches_out`, owner 2026-11-03: a plug sticking out over the edge), is routing area: `routing.plug_zones` (head, barrel, run,
   exit; kept in `ctx["routing"]["plug_zones"]`) -> `build_grid(..., zones)` opens the cells within the cable radius of a zone (the
   extent grows at the back / sides by whole cells, only the added cells are walls, so without zones the grid is main's; `area_rect`
   ignores them; pedals still block; nothing in front); the layout surrogate counts an exit inside its own plug's footprint as inside
-  for such a jack only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
+  for such a plug only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
   `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
   includes the bodies.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).

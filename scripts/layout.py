@@ -183,19 +183,23 @@ def _shift(r, dx, dy):
     return (r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy)
 
 
-def in_area(area, o, st, radius, usable):
+def in_area(area, o, st, radius, usable, board=None):
     """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the board +
     margin). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
-    `o["jack"]`, relative to the pedal's centre) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
+    `o["jack"]`, relative to the pedal's centre) or a plug that reaches past the board footprint `board` (None: `usable`) at the back or a
+    side (`routing.reaches_out`) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
     parts grown by the cable radius (`o["diam"]` of a DC plug, else `radius`) counts as inside. Every other plug: the plain area test."""
     px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
     if area[0] <= px < area[2] and area[1] <= py < area[3]:
         return True
     jk = o.get("jack")
-    if jk is None or not routing.jack_overhangs(usable, (jk[0] + st[0], jk[1] + st[1])):
+    if jk is None:
+        return False
+    x, y = st[0], st[1]
+    moved = {"exit": (px, py), "rects": [(p, _shift(q, x, y)) for p, q in o["rects"]]}
+    if not routing.jack_overhangs(usable, (jk[0] + x, jk[1] + y)) and not routing.reaches_out(usable if board is None else board, moved):
         return False
     radius = o["diam"] / 2 if o.get("diam") else radius
-    x, y = st[0], st[1]
     return any(q[0] + x - radius <= px <= q[2] + x + radius and q[1] + y - radius <= py <= q[3] + y + radius for _, q in o["rects"])
 
 
@@ -610,13 +614,13 @@ class Model:
 
     @staticmethod
     def _infeasible(o, st, n, obs, area, cost, under=None, radius=0.0, usable=None):
-        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack an exit
+        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack or one past the board edge an exit
         inside its own footprint, grown by the cable `radius`, counts as inside: `in_area`, `usable`) or (only a plug with a clearance cost can have it there) strictly
         inside another item's outline. A plug pointing down continues under the board: its bend point is tested against the under area
         `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
         px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
         if under is None or not o["down"]:
-            if not in_area(area, o, st, radius, usable):
+            if not in_area(area, o, st, radius, usable, under):
                 return True
         elif not (under[0] <= px < under[2] and under[1] <= py < under[3]):
             return True
@@ -988,10 +992,10 @@ class Model:
             combos = []   # (cost, index a, index b, length, a outside, b outside) of every combination of the two ends' options
             for ka, oa in enumerate(opa):
                 pa = (oa["exit"][0] + sa[0], oa["exit"][1] + sa[1])
-                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable)
+                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
                 for kb, ob in enumerate(opb):
                     pb = (ob["exit"][0] + sb[0], ob["exit"][1] + sb[1])
-                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable)
+                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
                     if oa["down"] or ob["down"]:
                         span = self._under_span(oa, pa, ob, pb, holes, pw_near)
                     else:

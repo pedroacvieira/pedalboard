@@ -4,7 +4,7 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 7 warning(s) (`no_unknown` on)
+- **Validation:** OK, 6 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
@@ -12,7 +12,6 @@
 - WARN layout: Catalinbread Belle Epoch Deluxe is outside the usable board area by 0.5 mm (front)
 - WARN layout: Wampler Tumnus Deluxe is outside the usable board area by 0.5 mm (front)
 - WARN layout: MXR Carbon Copy is outside the usable board area by 68.6 mm (left)
-- WARN routing: P6.4 (danelectro_3699.power -> sun_face.power) a plug end is outside the routing area (in front of the lowest pedals or beyond the margin)
 - WARN clearance: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
 - WARN clearance: monk.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 2.1 mm (its barrel into the head)
 
@@ -332,7 +331,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P6.1 | power | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 69 mm under, 3 mm on top | 111 | routed |
 | P6.2 | power | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 314 mm under, 19 mm on top | 412 | routed |
 | P6.3 | power | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 106 mm under, 16 mm on top | 191 | routed |
-| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no | ~206 | unroutable: a plug end is outside the routing area (in front of the lowest pedals or beyond the margin) |
+| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 66 mm under, 105 mm on top | 241 | routed |
 | P7 | power | psu2.F2 | polytune_3.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 198 mm under, 43 mm on top | 281 | routed |
 | P8.1 | power | psu2.F3 | ratsbane.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 105 mm under, 83 mm on top | 228 | routed |
 | P8.2 | power | ratsbane.power | protein.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (21 mm on top) | 70 | routed |
@@ -356,13 +355,13 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 | P3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | - | 179 | routed |
 | P4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | - | 78 | routed |
 | P5 | serial | psu1_SW_B | psu1.SW_B -> ehx_pico_pitch_fork | 2 | - | 317 | routed |
-| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 111 / P6.2 412 / P6.3 191 / P6.4 ~206 | ~813 | unroutable: a plug end is outside the routing area (in front of the lowest pedals or beyond the margin) |
+| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 111 / P6.2 412 / P6.3 191 / P6.4 241 | 955 | routed |
 | P7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | - | 281 | routed |
 | P8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P8.1 228 / P8.2 70 / P8.3 386 | 684 | routed |
 | P9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P9.1 204 / P9.2 277 | 481 | routed |
 | P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P10.1 121 / P10.2 244 / P10.3 381 | 746 | routed |
 
-DC cable, minimum: 3177 mm over 9 cables (9 serial, 0 forked).
+DC cable, minimum: 4132 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 

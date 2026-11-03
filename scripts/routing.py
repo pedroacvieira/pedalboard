@@ -403,8 +403,7 @@ def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=()):
     2026-11-02).
 
     `zones` (`plug_zones`: canvas rects, the footprint parts and exits of the plug options of the jacks that lie OUTSIDE the usable
-    area): a side jack of a pedal at the edge of the usable area (pedals only have to hold their BODY inside it) lets its plug reach past
-    it, so the cells within the cable radius of a zone are routing area wherever they lie, even beyond the board
+    area or that reach past the board edge): such a plug (pedals only have to hold their BODY inside the usable area) sticks out, so the cells within the cable radius of a zone are routing area wherever they lie, even beyond the board
     + margin (the extent grows at the back and the sides by whole cells, so the cells keep their positions; the cells of that
     growth are walls except the zone cells; nothing changes in front: the area ends at `front_y`). Pedals still block as usual. Without
     zones the grid is today's, cell for cell."""
@@ -1623,22 +1622,34 @@ def jack_overhangs(usable, point):
     return y < usable[3] and (x < usable[0] - e or x > usable[2] + e or y < usable[1] - e)
 
 
-def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable):
-    """The canvas rects the plugs of the OVERHANGING jacks may occupy (`jack_overhangs` against `usable`, `layout["usable"]` or the
-    board footprint: a jack of a pedal at the edge of the usable area that lies outside it): the footprint parts (head, barrel, cable run) and the exit point (a zero-size rect) of
-    EVERY option the router may pick (both exit sides of each right-angle signal plug, of every DC plug type of `cables.power_types`
-    and the types overridden on a cable; down options have the same head). `build_grid` makes the cells around them routing area, so the
-    cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the board + margin): the plugs
-    of the jacks inside the usable area have no zones. Fixed boxes (first input, last output, extra jacks: no routed cable) need none. [] without
-    a layout or an overhanging jack."""
+def reaches_out(board, o):
+    """Whether plug option `o` (its footprint parts or its exit) reaches past the board footprint `board` at the back or a side (never
+    the front): a plug that sticks out over the board edge (owner, 2026-11-03), whose cable may start there."""
+    e = OVERHANG_MIN_MM
+    ex, ey = o["exit"]
+    return any(r[0] < board[0] - e or r[2] > board[2] + e or r[1] < board[1] - e
+               for r in [q for _, q in o["rects"]] + [(ex, ey, ex, ey)])
+
+
+def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable, board=None):
+    """The canvas rects the plugs of the OVERHANGING jacks (`jack_overhangs` against `usable`, `layout["usable"]` or the board
+    footprint: a jack of a pedal at the edge of the usable area that lies outside it) and the plug options that reach past the board
+    footprint `board` (`reaches_out`; None: `usable`) may occupy: the footprint parts (head, barrel, cable run) and the exit point (a
+    zero-size rect) of every such option the router may pick (both exit sides of each right-angle signal plug, of every DC plug type of
+    `cables.power_types` and the types overridden on a cable; down options have the same head). `build_grid` makes the cells around them
+    routing area, so the cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the board +
+    margin). Fixed boxes (first input, last output, extra jacks: no routed cable) need none. [] without a layout or such a plug."""
     layout = ctx.get("layout") or {}
     placed = layout.get("placed") or {}
     out = []
 
+    board = usable if board is None else board
+
     def add(opts, item, jk):
-        if not jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"])):
-            return
+        over = jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"]))
         for o in opts:
+            if not over and not reaches_out(board, o):
+                continue
             out.extend(r for _, r in o["rects"])
             out.append((o["exit"][0], o["exit"][1], o["exit"][0], o["exit"][1]))
     for c in cables:
@@ -1862,7 +1873,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         usable = layout.get("usable")
         front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
         zones = plug_zones(ctx, cables, cable_types, cfg, "exit_run_mm" in (project.get("cables") or {}), outward,
-                           usable or board)
+                           usable or board, board)
         ctx["routing"]["plug_zones"] = zones   # the power grid takes the same ones (`route_power`)
         grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones)
         ctx["routing"].update(grid=grid, front_y=front_y)

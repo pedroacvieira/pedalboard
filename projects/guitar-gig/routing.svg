@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-7.7 8.5 648.0 400.7" width="648.0mm" height="400.7mm" font-family="sans-serif">
-<rect x="-7.7" y="8.5" width="648.0" height="400.7" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-7.7 8.5 660.0 400.7" width="660.0mm" height="400.7mm" font-family="sans-serif">
+<rect x="-7.7" y="8.5" width="660.0" height="400.7" fill="#ffffff"/>
 <rect x="15.8" y="22.0" width="609.6" height="331.7" fill="#eceff1" stroke="#90a4ae" stroke-width="1" class="board"/>
 <g class="holes" opacity="0.3">
 <rect x="43.8" y="80.9" width="75.8" height="0.1" fill="#90a4ae" class="hole"/>
@@ -292,6 +292,9 @@
 <polyline points="601.8,125.6 601.8,117.2 579.6,117.2 579.3,133.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P6.3"/>
 <polyline points="579.3,133.5 514.9,217.2 514.9,225.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P6.3"/>
 <circle cx="579.3" cy="133.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P6.3"/>
+<polyline points="514.9,225.6 514.9,217.2 581.3,219.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P6.4"/>
+<polyline points="581.3,219.5 581.3,221.5 607.3,229.5 621.3,229.5 623.3,233.5 630.5,290.5 630.5,312.7 622.1,312.7" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P6.4"/>
+<circle cx="581.3" cy="219.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P6.4"/>
 <polyline points="344.9,123.1 441.3,119.5 527.3,65.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P7"/>
 <polyline points="527.3,65.5 527.3,37.5 539.7,29.2 561.9,29.2 561.9,37.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P7"/>
 <circle cx="527.3" cy="65.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P7"/>
@@ -480,6 +483,7 @@
 <text x="267.0" y="131.4" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P6.1</text>
 <text x="581.1" y="115.7" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P6.2</text>
 <text x="516.4" y="215.7" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P6.3</text>
+<text x="632.0" y="289.0" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P6.4</text>
 <text x="541.2" y="27.7" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P7</text>
 <text x="239.8" y="226.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P8.1</text>
 <text x="254.7" y="242.0" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P8.2</text>

@@ -168,7 +168,7 @@ def test_a_pedal_whose_body_is_past_the_line_is_pushed_the_least_distance_by_the
 
 
 # --- the routing area --------------------------------------------------------------------------------
-def test_in_area_counts_the_own_footprint_only_for_an_overhanging_jack_and_never_in_front():
+def test_in_area_counts_the_own_footprint_for_an_overhanging_jack_or_a_plug_past_the_board_and_never_in_front():
     area = (-6.0, -6.0, 106.0, 80.0)                      # the board + margin; the usable area is the board (0, 0, 100, 80)
     usable = (0.0, 0.0, 100.0, 80.0)
     rects = [("head", (-20.0, 10.0, 0.0, 30.0)), ("cable", (-12.0, 30.0, -8.0, 36.0))]
@@ -176,14 +176,14 @@ def test_in_area_counts_the_own_footprint_only_for_an_overhanging_jack_and_never
     over = {**inner, "jack": (-1.0, 20.0)}                                                    # 1 mm past it: overhanging
     ok = lambda o, st=(0.0, 0.0), r=2.0: layout.in_area(area, o, st, r, usable)
     assert ok({"exit": (50.0, 20.0), "rects": [], "jack": None})                              # inside the area
-    assert not ok(inner)                       # an INTERIOR jack: its exit outside the grown area stays outside, whatever its footprint
+    assert ok(inner)                           # an interior jack whose plug reaches past the board edge: its own footprint counts too
+    assert not layout.in_area(area, inner, (0.0, 0.0), 2.0, usable, (-25.0, 0.0, 100.0, 80.0))   # a wider board: the plug stays on it
     assert ok(over)                            # an overhanging jack: the exit on its own head counts as inside
     assert not ok({**over, "rects": []}) and not ok({**over, "jack": None})
     assert ok({**over, "exit": (-21.5, 20.0)}) and not ok({**over, "exit": (-23.0, 20.0)})   # within the radius of the head
     assert ok({**over, "exit": (-23.0, 20.0), "diam": 8.0})                                    # a DC plug: its own cable radius (4)
     front = {"exit": (50.0, 85.0), "rects": [("cable", (45.0, 80.0, 55.0, 90.0))], "jack": (50.0, 82.0)}
     assert not ok(front)                                                                       # the front: never
-    assert not ok(over, st=(2.0, 0.0))                                                          # the pedal moved 2 mm in: its jack is inside, no zone
 
 
 CFG = {**routing.DEFAULTS, "grid_mm": 2.0, "edge_margin_mm": 4.0, "diameter_mm": 2.0}
@@ -244,15 +244,15 @@ def test_plug_zones_cover_every_option_of_an_overhanging_jack_and_nothing_else()
     assert not [z for z in zones if z[0] > 100]                                                  # B's plug (x ~190, inside the area): none
 
 
-def test_an_interior_plug_whose_exit_is_beyond_the_area_is_still_unroutable_and_has_no_zone():
+def test_an_interior_plug_whose_exit_is_beyond_the_area_gets_a_zone_and_is_routed():
     ctx = plug_ctx({"type": "ra"})
     lay = ctx["layout"]
-    lay["placed"]["a"]["left_mm"] = 250.0                          # A's output at (300, 80) facing right: inside the board + margin (306)
-    routing.route_project(ctx, {}, cable_types=TYPES)               # both exits (x 310) lie beyond the margin
+    lay["placed"]["a"]["left_mm"] = 250.0                          # A's output at (300, 80) facing right: inside the usable area (the board)
+    routing.route_project(ctx, {}, cable_types=TYPES)               # both exits (x 310) lie beyond the board + margin (306)
     (c,) = [x for x in ctx["cable_list"] if x["kind"] == "signal"]
-    assert ctx["routing"]["plug_zones"] == []                                                # nothing overhangs: no zone, the plain area test
-    assert c["status"].startswith("unroutable") and "outside the routing area" in c["status"]
-    assert any(w.startswith("routing: S1") and "outside the routing area" in w for w in ctx["warnings"])
+    zones = [tuple(z) for z in ctx["routing"]["plug_zones"]]
+    assert zones and all(z[2] > 300.0 for z in zones if z[0] == z[2])                       # the plug sticks out past the board edge: zones
+    assert c["status"] == "routed" and not [w for w in ctx["warnings"] if w.startswith("routing:")]
 
 
 def test_without_zones_the_grid_is_the_plain_one_even_with_a_fractional_extent():
