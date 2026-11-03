@@ -4,17 +4,13 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 7 warning(s) (`no_unknown` on)
+- **Validation:** OK, 3 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN layout: AnalogMan Sun Face BC183 is outside the usable board area by 0.5 mm (front)
-- WARN layout: Catalinbread Belle Epoch Deluxe is outside the usable board area by 0.5 mm (front)
-- WARN layout: Wampler Tumnus Deluxe is outside the usable board area by 0.5 mm (front)
-- WARN layout: MXR Carbon Copy is outside the usable board area by 68.6 mm (left)
-- WARN clearance: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
-- WARN clearance: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
+- WARN clearance: monk.power (Power, facing left, dc_ra_owner_baseline right-angle plug, cable exits right) is blocked by Wampler Tumnus Deluxe: it reaches 1.1 mm into the plug's head
 - WARN clearance: danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
+- WARN clearance: fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head)
 
 </details>
 
@@ -270,13 +266,14 @@ Placement: under the board. Layout item: Strymon Ojai R30 (dd8cf6e4-da4a-4389-8e
 
 Jack data: 19 of 19 catalog items set up (pedals and supplies in this project).
 
-No blocked cable space found (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side).
+Blocked cable space (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side):
+
+- `monk.power` is blocked by Wampler Tumnus Deluxe: 1.1 mm into the head of the dc_ra_owner_baseline plug, cable exits right
 
 Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
 
-- analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel)
-- boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head)
 - danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel)
+- fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head)
 
 Cable lengths: see Cable routing.
 
@@ -297,43 +294,43 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 
 | Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 97 | routed |
+| S1 | signal | sun_face.out | danelectro_3699.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 96 | routed |
 | S2 | signal | danelectro_3699.out | beano.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 204 | routed |
-| S3 | signal | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 248 | routed |
-| S4 | signal | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 101 | routed |
-| S5 | signal | mini_ego.out | ehx_pico_pitch_fork.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 88 | routed |
-| S6 | signal | ehx_pico_pitch_fork.out | fulldrive_2.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 184 | routed |
-| S7 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 278 | routed |
-| S8 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 129 | routed |
-| S9 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | down / right | TS / TS | - | yes (1 hole, 3 mm) | 119 | routed |
-| S10 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 76 | routed |
-| S11 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 69 | routed |
-| S12 | signal | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 215 | routed |
-| S13 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 243 | routed |
-| S14 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 52 | routed |
-| S15 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 244 | routed |
-| S16 | signal | belle_epoch.out | boss_dd8.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 208 | routed |
-| S17 | signal | boss_dd8.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 20 mm) | 184 | routed |
-| P1 | power | psu1.F1 | boss_dd8.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 122 mm under, 41 mm on top | 200 | routed |
+| S3 | signal | beano.out | polytune_3.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 249 | routed |
+| S4 | signal | polytune_3.out | mini_ego.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 96 | routed |
+| S5 | signal | mini_ego.out | ehx_pico_pitch_fork.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 116 | routed |
+| S6 | signal | ehx_pico_pitch_fork.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 77 | routed |
+| S7 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 141 | routed |
+| S8 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 200 | routed |
+| S9 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | down / left | TS / TS | - | yes (1 hole, 12 mm) | 104 | routed |
+| S10 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 77 | routed |
+| S11 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 67 | routed |
+| S12 | signal | protein.out | analog_chorus.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 216 | routed |
+| S13 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 196 | routed |
+| S14 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 57 | routed |
+| S15 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 250 | routed |
+| S16 | signal | belle_epoch.out | boss_dd8.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 102 | routed |
+| S17 | signal | boss_dd8.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 146 mm) | 459 | routed |
+| P1 | power | psu1.F1 | boss_dd8.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 171 mm under, 0 mm on top | 198 | routed |
 | P2 | power | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 143 mm under, 27 mm on top | 207 | routed |
-| P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 135 mm under, 1 mm on top | 173 | routed |
-| P4 | power | psu1.SW_A | reticon.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 47 mm under, 0 mm on top | 74 | routed |
-| P5 | power | psu1.SW_B | ehx_pico_pitch_fork.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 258 mm under, 20 mm on top | 315 | routed |
-| P6.1 | power | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 67 mm under, 47 mm on top | 151 | routed |
-| P6.2 | power | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 312 mm under, 61 mm on top | 447 | routed |
-| P6.3 | power | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 96 mm under, 14 mm on top | 184 | routed |
-| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 44 mm under, 149 mm on top | 268 | routed |
+| P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 142 mm under, 1 mm on top | 180 | routed |
+| P4 | power | psu1.SW_A | reticon.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 49 mm under, 0 mm on top | 76 | routed |
+| P5 | power | psu1.SW_B | ehx_pico_pitch_fork.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 219 mm under, 27 mm on top | 283 | routed |
+| P6.1 | power | psu2.F1 | red_muck.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 69 mm under, 48 mm on top | 154 | routed |
+| P6.2 | power | red_muck.power | beano.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 314 mm under, 61 mm on top | 450 | routed |
+| P6.3 | power | beano.power | danelectro_3699.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 96 mm under, 13 mm on top | 184 | routed |
+| P6.4 | power | danelectro_3699.power | sun_face.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 44 mm under, 150 mm on top | 268 | routed |
 | P7 | power | psu2.F2 | polytune_3.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 198 mm under, 42 mm on top | 277 | routed |
-| P8.1 | power | psu2.F3 | ratsbane.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 105 mm under, 83 mm on top | 225 | routed |
-| P8.2 | power | ratsbane.power | protein.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (22 mm on top) | 66 | routed |
-| P8.3 | power | protein.power | tumnus_deluxe.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 218 mm under, 102 mm on top | 384 | routed |
-| P9.1 | power | psu2.SW_A | fulldrive_2.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 131 mm under, 34 mm on top | 203 | routed |
-| P9.2 | power | fulldrive_2.power | mini_ego.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 172 mm under, 51 mm on top | 297 | routed |
-| P10.1 | power | psu2.SW_B | phase_95.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 34 mm under, 46 mm on top | 117 | routed |
-| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 109 mm under, 50 mm on top | 234 | routed |
-| P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 274 mm under, 26 mm on top | 374 | routed |
+| P8.1 | power | psu2.F3 | ratsbane.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 107 mm under, 88 mm on top | 232 | routed |
+| P8.2 | power | ratsbane.power | protein.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | no (25 mm on top) | 70 | routed |
+| P8.3 | power | protein.power | tumnus_deluxe.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 218 mm under, 109 mm on top | 392 | routed |
+| P9.1 | power | psu2.SW_A | fulldrive_2.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 130 mm under, 30 mm on top | 197 | routed |
+| P9.2 | power | fulldrive_2.power | mini_ego.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 154 mm under, 37 mm on top | 265 | routed |
+| P10.1 | power | psu2.SW_B | phase_95.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 101 mm under, 7 mm on top | 146 | routed |
+| P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 140 mm under, 48 mm on top | 262 | routed |
+| P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 276 mm under, 58 mm on top | 409 | routed |
 
-Signal cable, minimum: 2737 mm over 17 cables.
+Signal cable, minimum: 2706 mm over 17 cables.
 
 ### DC cables to buy
 
@@ -341,18 +338,18 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 
 | DC cable | Style | Output | Route | Plugs | Min plug spacing per leg (mm) | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
-| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd8 | 2 | - | 200 | routed |
+| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd8 | 2 | - | 198 | routed |
 | P2 | serial | psu1_F2 | psu1.F2 -> belle_epoch | 2 | - | 207 | routed |
-| P3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | - | 173 | routed |
-| P4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | - | 74 | routed |
-| P5 | serial | psu1_SW_B | psu1.SW_B -> ehx_pico_pitch_fork | 2 | - | 315 | routed |
-| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 151 / P6.2 447 / P6.3 184 / P6.4 268 | 1051 | routed |
+| P3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | - | 180 | routed |
+| P4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | - | 76 | routed |
+| P5 | serial | psu1_SW_B | psu1.SW_B -> ehx_pico_pitch_fork | 2 | - | 283 | routed |
+| P6 | serial | psu2_F1 | psu2.F1 -> red_muck -> beano -> danelectro_3699 -> sun_face | 5 | P6.1 154 / P6.2 450 / P6.3 184 / P6.4 268 | 1056 | routed |
 | P7 | serial | psu2_F2 | psu2.F2 -> polytune_3 | 2 | - | 277 | routed |
-| P8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P8.1 225 / P8.2 66 / P8.3 384 | 675 | routed |
-| P9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P9.1 203 / P9.2 297 | 500 | routed |
-| P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P10.1 117 / P10.2 234 / P10.3 374 | 725 | routed |
+| P8 | serial | psu2_F3 | psu2.F3 -> ratsbane -> protein -> tumnus_deluxe | 4 | P8.1 232 / P8.2 70 / P8.3 392 | 693 | routed |
+| P9 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P9.1 197 / P9.2 265 | 462 | routed |
+| P10 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P10.1 146 / P10.2 262 / P10.3 409 | 816 | routed |
 
-DC cable, minimum: 4197 mm over 10 cables (10 serial, 0 forked).
+DC cable, minimum: 4246 mm over 10 cables (10 serial, 0 forked).
 
 ## Footswitches
 
@@ -362,18 +359,18 @@ Spacing is comfort, not a hard rule: switches of different pedals should be as f
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 209.5 (20 of 270 pairs closer than 100 mm). Closest pairs (8 of 270):
+Crowding: 247.0 (21 of 270 pairs closer than 100 mm). Closest pairs (8 of 270):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
 |---|---|---|---|--:|--:|
 | danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 45.0 | 30.3 |
 | protein.switch_2 | bypass | belle_epoch.bypass | bypass | 48.3 | 26.8 |
-| red_muck.bypass | bypass | ratsbane.bypass | bypass | 55.7 | 19.6 |
+| ehx_pico_pitch_fork.bypass | bypass | phase_95.bypass | bypass | 53.9 | 21.3 |
 | fulldrive_2.bypass | bypass | protein.bypass | bypass | 57.4 | 18.2 |
-| beano.bypass | bypass | mini_ego.bypass | bypass | 59.9 | 16.1 |
-| sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 60.0 | 16.0 |
-| reticon.bypass | bypass | monk.switch_2 | tap | 65.4 | 12.0 |
-| monk.bypass | bypass | boss_dd8.bypass | bypass | 66.5 | 11.2 |
+| phase_95.bypass | bypass | retrovibe.bypass | bypass | 58.6 | 17.1 |
+| red_muck.bypass | bypass | ratsbane.bypass | bypass | 59.5 | 16.4 |
+| mini_ego.bypass | bypass | ehx_pico_pitch_fork.bypass | bypass | 59.6 | 16.3 |
+| sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 59.8 | 16.2 |
 
 ### Suggested toppers
 
@@ -381,11 +378,11 @@ Chosen after the layout (never during the search), greedily: the topper that rem
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|
-| 1 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 8.2 | 201.3 |
-| 2 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 7.6 | 193.7 |
-| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 5.9 | 187.8 |
-| 4 | mini_ego.bypass (Bypass) | Wampler Mini Ego Compressor | bypass | 5.5 | 182.3 |
-| 5 | monk.switch_2 (Tap) | JAM Pedals Harmonious Monk Mk2 | tap | 4.9 | 177.4 |
+| 1 | ehx_pico_pitch_fork.bypass (Bypass) | Electro-Harmonix Pico Pitch Fork | bypass | 7.8 | 239.2 |
+| 2 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 7.2 | 232.0 |
+| 3 | phase_95.bypass (Bypass) | MXR Phase 95 | bypass | 7.1 | 225.0 |
+| 4 | mini_ego.bypass (Bypass) | Wampler Mini Ego Compressor | bypass | 6.2 | 218.8 |
+| 5 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 6.2 | 212.6 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 

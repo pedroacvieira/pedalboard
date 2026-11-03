@@ -35,7 +35,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 7 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 3 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -46,9 +46,9 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Plug collision: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
+- Blocked cable space: `monk.power` is blocked by Wampler Tumnus Deluxe (1.1 mm into the head of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
 - Plug collision: danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
 
 ### Guitar practice board
 
