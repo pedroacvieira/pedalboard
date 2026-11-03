@@ -183,10 +183,11 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   on `collisions`. **A DC plug passes under ONE signal plug** (owner 2026-11-03, `feat/dc-under-signal`: real angled DC plugs are plugged
   diagonally and go under a neighbouring patch plug; no 3D, no diagonal orientation): an overlap of a RIGHT-ANGLE DC plug's footprint (any
   option, pedal or on-board supply port) with a SIGNAL footprint (a modelled patch plug or a fixed audio box of a first input / last output /
-  extra jack) is no collision. One pass per DC plug and per signal plug (`routing.pass_pairs` / `assign_passes`: DC plugs in natural key
+  extra jack) is no collision, but ONLY when the two jacks face the same way on the canvas (`design.jack_facing`, after the pedal's rotation; a
+  perpendicular or opposite pair is an ordinary collision; owner 2026-11-03). One pass per DC plug and per signal plug (`routing.pass_pairs` / `assign_passes`: DC plugs in natural key
   order, each takes its deepest overlap with a signal plug not paired yet; the rest collide as before). Not covered: straight DC plugs, DC
-  vs DC, anything vs a pedal body (blocked parts stay). Footprints are marked (`routing.DcRects`, `like`): the DC options' `rects` carry
-  `right_angle`, so `collision_count` (plug ranking of both ends, `choose_signal`, `refine_dc_sides`, the surrogate's `_count`) is the same
+  vs DC, anything vs a pedal body (blocked parts stay). Footprints are marked (`routing.DcRects` with `right_angle` + `facing` for DC options, `routing.SigRects` with `facing` for signal
+  options and fixed boxes, `like` keeps the marks; a plain list has no facing and never passes; `pass_eligible` tests it), so `collision_count` (plug ranking of both ends, `choose_signal`, `refine_dc_sides`, the surrogate's `_count`) is the same
   rule; passes go to `ctx["plug_under"]` [{"dc", "signal", "depth_mm", "cable", "signal_cable"}] (README line per pass via
   `routing.under_text`, power cables drawn below the signal cables in `routing.svg`), not to `plug_collisions`; the surrogate reports
   `det["plug_under"]` and agrees with the build (`tests/test_layout.py` gig agreement). **Down**: a right-angle plug (signal or power) may point down into a hole: `routing.down_available`

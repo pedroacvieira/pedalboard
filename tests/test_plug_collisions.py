@@ -135,8 +135,13 @@ def test_a_dc_plug_that_passes_under_a_signal_plug_is_still_blocked_by_a_pedal_b
 
 
 # --- the pass-under rule on bare footprints ----------------------------------------------------------
-def dcf(parts, right_angle=True):
-    return routing.DcRects(parts, right_angle)
+# a right-angle DC plug passes under a signal footprint only when both jacks face the same way (owner 2026-11-03)
+def dcf(parts, right_angle=True, facing="top"):
+    return routing.DcRects(parts, right_angle, facing)
+
+
+def sigf(parts, facing="top"):
+    return routing.SigRects(parts, facing)
 
 
 def under_of(fp, meta=None):
@@ -147,50 +152,97 @@ def under_of(fp, meta=None):
 
 
 def test_a_right_angle_dc_plug_over_one_signal_plug_is_one_pass_and_no_collision():
-    ctx, sink = under_of({"a.power": dcf([("head", (0, 0, 10, 10))]), "b.out": [("head", (7, 0, 20, 10))]})
+    ctx, sink = under_of({"a.power": dcf([("head", (0, 0, 10, 10))]), "b.out": sigf([("head", (7, 0, 20, 10))])})
     assert ctx["plug_collisions"] == [] and sink == []
     assert [(u["dc"], u["signal"], u["depth_mm"]) for u in ctx["plug_under"]] == [("a.power", "b.out", pytest.approx(3.0))]
 
 
+@pytest.mark.parametrize("dc_facing,sig_facing,passes", [
+    ("top", "top", True), ("left", "left", True),                  # the same facing: a pass
+    ("top", "left", False), ("right", "top", False),               # perpendicular: an ordinary collision
+    ("top", "down", False), ("left", "right", False),              # opposite: an ordinary collision
+])
+def test_a_dc_plug_passes_under_a_signal_plug_only_with_the_same_facing(dc_facing, sig_facing, passes):
+    ctx, sink = under_of({"a.power": dcf([("head", (0, 0, 10, 10))], True, dc_facing), "b.out": sigf([("head", (7, 0, 20, 10))], sig_facing)})
+    assert [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == ([("a.power", "b.out")] if passes else [])
+    assert [(c["jack"], c["with"], c["depth_mm"]) for c in ctx["plug_collisions"]] == ([] if passes else [("a.power", "b.out", pytest.approx(3.0))])
+    assert len(sink) == (0 if passes else 1)
+    assert routing.pass_eligible(dcf([], True, dc_facing), sigf([], sig_facing)) == passes
+    assert routing.pass_eligible(sigf([], sig_facing), dcf([], True, dc_facing)) == passes
+
+
+def test_a_footprint_without_a_facing_never_passes():
+    assert not routing.pass_eligible(dcf([], True, None), sigf([], None)) and not routing.pass_eligible(dcf([], True), [])
+
+
 def test_a_dc_plug_over_two_signal_plugs_passes_under_the_deeper_one_and_collides_with_the_other():
-    fp = {"a.power": dcf([("head", (0, 0, 10, 10))]), "b.out": [("head", (8, 0, 20, 10))], "c.out": [("head", (-9, 0, 4, 10))]}   # 2 mm and 4 mm deep
+    fp = {"a.power": dcf([("head", (0, 0, 10, 10))]), "b.out": sigf([("head", (8, 0, 20, 10))]), "c.out": sigf([("head", (-9, 0, 4, 10))])}   # 2 mm and 4 mm deep
     ctx, _ = under_of(fp)
     assert [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == [("a.power", "c.out")]
     assert [(c["jack"], c["with"], c["depth_mm"]) for c in ctx["plug_collisions"]] == [("a.power", "b.out", pytest.approx(2.0))]
+    fp["c.out"] = sigf([("head", (-9, 0, 4, 10))], "left")           # the deeper one faces another way: the pass goes to the other
+    ctx, _ = under_of(fp)
+    assert [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == [("a.power", "b.out")]
+    assert [(c["jack"], c["with"]) for c in ctx["plug_collisions"]] == [("a.power", "c.out")]
 
 
 def test_two_dc_plugs_over_the_same_signal_plug_one_passes_and_one_collides():
-    fp = {"p2.power": dcf([("head", (10, 0, 20, 10))]), "p1.power": dcf([("head", (0, 0, 10, 10))]), "s.out": [("head", (5, 0, 15, 10))]}
+    fp = {"p2.power": dcf([("head", (10, 0, 20, 10))]), "p1.power": dcf([("head", (0, 0, 10, 10))]), "s.out": sigf([("head", (5, 0, 15, 10))])}
     ctx, _ = under_of(fp)
     assert [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == [("p1.power", "s.out")]       # the first in natural key order
     assert [(c["jack"], c["with"]) for c in ctx["plug_collisions"]] == [("p2.power", "s.out")]
 
 
 def test_a_straight_dc_plug_and_two_dc_plugs_never_pass():
-    ctx, _ = under_of({"a.power": dcf([("head", (0, 0, 10, 10))], False), "b.out": [("head", (7, 0, 20, 10))]})
+    ctx, _ = under_of({"a.power": dcf([("head", (0, 0, 10, 10))], False), "b.out": sigf([("head", (7, 0, 20, 10))])})
     assert ctx["plug_under"] == [] and len(ctx["plug_collisions"]) == 1
     ctx, _ = under_of({"a.power": dcf([("head", (0, 0, 10, 10))]), "b.power": dcf([("head", (7, 0, 20, 10))])})
     assert ctx["plug_under"] == [] and [(c["jack"], c["with"]) for c in ctx["plug_collisions"]] == [("a.power", "b.power")]
 
 
 def test_collision_count_ranks_a_one_signal_overlap_like_a_free_side():
-    """An option of a right-angle DC plug that overlaps one signal plug is as good as a free one; with a second signal plug, or when that signal
-    plug already passes under another DC plug, or for a straight DC plug, the overlap counts."""
+    """An option of a right-angle DC plug that overlaps one signal plug of the same facing is as good as a free one; with a second signal plug,
+    or when that signal plug already passes under another DC plug, for a straight DC plug or another facing, the overlap counts."""
     head = [("head", (0, 0, 10, 10))]
-    near = {"s1": [("head", (7, 0, 20, 10))]}
+    near = {"s1": sigf([("head", (7, 0, 20, 10))])}
     assert routing.collision_count({"rects": dcf(head)}, "d.power", near) == 0
-    assert routing.collision_count({"rects": head}, "d.power", near) == 1                       # a signal plug against a signal plug
+    assert routing.collision_count({"rects": dcf(head, True, "left")}, "d.power", near) == 1   # perpendicular: counts
+    assert routing.collision_count({"rects": sigf(head)}, "d.power", near) == 1                 # a signal plug against a signal plug
     assert routing.collision_count({"rects": dcf(head, False)}, "d.power", near) == 1
-    assert routing.collision_count({"rects": dcf(head)}, "d.power", {**near, "s2": [("head", (-9, 0, 4, 10))]}) == 1    # the second one counts
+    assert routing.collision_count({"rects": dcf(head)}, "d.power", {**near, "s2": sigf([("head", (-9, 0, 4, 10))])}) == 1    # the second one counts
     taken = {**near, "c.power": dcf([("head", (7, 0, 20, 10))])}                               # c.power comes first (natural order) and takes s1
     assert routing.collision_count({"rects": dcf(head)}, "d.power", taken) == 2                # s1 (already paired) and c.power itself (DC against DC)
-    taken = {"s1": [("head", (7, 0, 20, 10))], "a.power": dcf([("head", (15, 0, 30, 10))])}      # a.power (not in the way) sorts before d.power
+    taken = {"s1": near["s1"], "a.power": dcf([("head", (15, 0, 30, 10))])}                    # a.power (not in the way) sorts before d.power
     assert routing.collision_count({"rects": dcf(head)}, "d.power", taken) == 1                  # and has taken s1 already
     assert routing.collision_count({"rects": dcf(head)}, "z.power", taken) == 1
     assert routing.collision_count({"rects": dcf(head)}, "A.power", taken) == 0                  # "A" sorts first: it takes s1 itself
+    taken = {"s1": near["s1"], "a.power": dcf([("head", (15, 0, 30, 10))], True, "left")}      # a.power faces another way: it cannot take s1
+    assert routing.collision_count({"rects": dcf(head)}, "d.power", taken) == 0
     # a signal option overlapping one DC plug: free too
-    assert routing.collision_count({"rects": [("head", (7, 0, 20, 10))]}, "s1", {"d.power": dcf(head)}) == 0
-    assert routing.collision_count({"rects": [("head", (7, 0, 20, 10))]}, "s1", {"d.power": dcf(head, False)}) == 1
+    assert routing.collision_count({"rects": sigf([("head", (7, 0, 20, 10))])}, "s1", {"d.power": dcf(head)}) == 0
+    assert routing.collision_count({"rects": sigf([("head", (7, 0, 20, 10))])}, "s1", {"d.power": dcf(head, False)}) == 1
+    assert routing.collision_count({"rects": sigf([("head", (7, 0, 20, 10))], "down")}, "s1", {"d.power": dcf(head)}) == 1
+
+
+def facing_pedal(out_facing, power_facing):
+    """Pedal A (20..120 x 60..160) with `out` on its top edge at x 65 and `power` at x 70, each facing as given. The `out` fixed box reaches 6.3 mm
+    out of the jack and 7 mm to each side; the DC plug's 10 mm head too, whatever side its cable leaves by."""
+    jd = {"a": [jack("out", "output", 0.45, "Output", out_facing), jack("power", "power", 0.5, "Power", power_facing)]}
+    ctx = make_ctx({"a": (20, 60, 100, 100)}, jd, ["a"], {"power_type": "dc"}, [{"from": "psu1.1", "to": "a.power"}])
+    ctx["fixed_zones"] = {"a.out": zone(ctx["layout"], "a", jd["a"][0])}
+    return route(ctx)
+
+
+def test_the_build_lets_a_dc_plug_pass_under_a_signal_plug_only_with_the_same_facing():
+    """Both facing right: the head (70..80 x 55..65) reaches 1.3 mm into the box (65..71.3 x 53..67) whichever side the cable takes: a pass.
+    The DC jack facing the back (head 65..75 x 50..60) overlaps the box 6.3 mm deep: perpendicular, a collision, and no pass."""
+    ctx = facing_pedal("right", "right")
+    assert ctx["plug_collisions"] == [] and [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == [("a.power", "a.out")]
+    assert ctx["plug_under"][0]["depth_mm"] == pytest.approx(1.3)
+    ctx = facing_pedal("right", "top")
+    assert ctx["plug_under"] == [] and [(c["jack"], c["with"], c["depth_mm"]) for c in ctx["plug_collisions"]] == [("a.out", "a.power", pytest.approx(6.3))]
+    ctx = facing_pedal("top", "top")                                   # the same facing again (box 58..72 x 53.7..60): a pass
+    assert ctx["plug_collisions"] == [] and len(ctx["plug_under"]) == 1
 
 
 def three_pedals():

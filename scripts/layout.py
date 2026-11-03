@@ -369,7 +369,7 @@ class Model:
                 facing = design.jack_facing(tmp, jk["facing"])
                 g["extra"].append({"jack": f"{pid}.{jk['id']}", "facing": facing, "down": [], "opts": [self._opt(
                     {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
-                     "exit": pt, "measure_mm": 0.0})]})
+                     "exit": pt, "measure_mm": 0.0}, facing=facing)]})
                 continue
             cid = f"S{hop}"
             tid = routing.cable_type_id(self.project, cid)
@@ -381,7 +381,7 @@ class Model:
                 pt = design.jack_point(tmp, jk["x"], jk["y"])
                 for o in opts:
                     o["rects"] = [("box", design.clearance_rect(pt, facing, self.outward, self.side))]
-                opts, downs = [self._opt(o) for o in opts], []
+                opts, downs = [self._opt(o, facing=facing) for o in opts], []
             else:
                 facing, opts, downs = self._pool(tmp, jk, [(0, tid, ctype)], fixed, run)
             g["ends"][cid] = {"jack": f"{pid}.{jk['id']}", "facing": facing, "opts": opts, "down": downs}
@@ -398,7 +398,7 @@ class Model:
                 facing = design.jack_facing(tmp, jk["facing"])
                 g["extra"].append({"jack": f"{pid}.{jid}", "facing": facing, "down": [], "opts": [self._opt(
                     {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
-                     "exit": pt, "measure_mm": 0.0})]})
+                     "exit": pt, "measure_mm": 0.0}, facing=facing)]})
         for fs in self.fs_data.get(pid) or []:
             x, y = design.jack_point(tmp, fs["x"], fs["y"])
             g["fs"].append((x, y, fs["type"], f"{pid}.{fs['id']}"))
@@ -422,15 +422,17 @@ class Model:
         return g
 
     @staticmethod
-    def _opt(o, dc=None, **extra):
+    def _opt(o, dc=None, facing=None, **extra):
         """One plug option as the score needs it (relative to the pedal's centre): side, rects [(part, rect)], their bbox, `exit` (the
         point the cable leaves at, for a plug pointing down the bend point where it continues under the board), `measure_mm`, `measure` (the
         point cable lengths start at), `down`, `drop_mm` (a plug pointing down: `measure_mm` less the offset along the jack axis = jack height +
-        deck), `jack` (the jack point, None for a fixed box); `dc` (a DC plug option: True right-angle, False straight; None otherwise): the rects are then
-        marked (`routing.DcRects`: a right-angle DC plug may pass under one signal plug); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
+        deck), `jack` (the jack point, None for a fixed box); `dc` (a DC plug option: True right-angle, False straight; None otherwise) and `facing` (the jack's facing on the canvas): the
+        rects are then marked (`routing.DcRects` / `routing.SigRects`: a right-angle DC plug may pass under one signal plug of a jack with the same facing); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
         rects = [(part, r) for part, r in o["rects"]]
         if dc is not None:
-            rects = routing.DcRects(rects, dc)
+            rects = routing.DcRects(rects, dc, facing)
+        elif facing is not None:
+            rects = routing.SigRects(rects, facing)
         drop = 0.0   # a plug pointing down: the cable beyond what a side plug has (jack height + deck), counted once per plug in the power term
         if o.get("down"):
             drop = o["measure_mm"] - math.hypot(o["exit"][0] - o["measure"][0], o["exit"][1] - o["measure"][1])
@@ -450,7 +452,7 @@ class Model:
             facing, ts = routing.end_options(tmp, jk, ct, None if fx == design.DOWN else fx, run(ct) if callable(run) else run,
                                              self.outward, down=down)
             for o in ts:
-                (downs if o.get("down") else sides).append(self._opt(o, dc=(ct["plug"]["style"] != "straight") if dc else None, type=tid,
+                (downs if o.get("down") else sides).append(self._opt(o, dc=(ct["plug"]["style"] != "straight") if dc else None, facing=facing, type=tid,
                                                                      tidx=tidx, diam=float(ct["diameter_mm"])))
         if fx in design.SIDES:
             sides = [o for o in sides if o["side"] == fx] or sides
@@ -462,7 +464,7 @@ class Model:
         if not self.pcands:
             box = {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))], "exit": pt,
                    "measure_mm": 0.0, "measure": design.stub(pt, facing, self.p_depth / 2)}
-            return [self._opt(box, type=None, tidx=0, diam=0.0)], []
+            return [self._opt(box, facing=facing, type=None, tidx=0, diam=0.0)], []
         names = [fixed_type] if routing.is_power_type(self.cable_types, fixed_type) else self.pcands
         cands = [(0 if len(names) == 1 else i, t, self.cable_types[t]) for i, t in enumerate(names)]
         jh = self.rcfg.get("jack_height_mm", routing.DEFAULTS["jack_height_mm"])

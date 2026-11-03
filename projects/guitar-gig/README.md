@@ -4,11 +4,12 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
+- **Validation:** OK, 2 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
 - WARN clearance: monk.power (Power, facing left, dc_ra_owner_baseline right-angle plug, cable exits right) is blocked by Wampler Tumnus Deluxe: it reaches 1.1 mm into the plug's head
+- WARN clearance: fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head)
 
 </details>
 
@@ -268,11 +269,14 @@ Blocked cable space (signal jacks with a cable type: the plug head plus its cabl
 
 - `monk.power` is blocked by Wampler Tumnus Deluxe: 1.1 mm into the head of the dc_ra_owner_baseline plug, cable exits right
 
+Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
+
+- fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head)
+
 DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagonally and its cable goes under the patch cables; not a collision, one pass per plug):
 
 - P10.3 (analog_chorus.power) passes under the plug at analog_chorus.in: plug it diagonally
 - P6.3 (danelectro_3699.power) passes under the plug at danelectro_3699.out: plug it diagonally
-- P9.1 (fulldrive_2.power) passes under the plug at phase_95.out: plug it diagonally
 - P6.1 (red_muck.power) passes under the plug at red_muck.out: plug it diagonally
 - P4 (reticon.power) passes under the plug at reticon.out: plug it diagonally
 - P6.4 (sun_face.power) passes under the plug at sun_face.in: plug it diagonally
@@ -303,7 +307,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S5 | signal | mini_ego.out | ehx_pico_pitch_fork.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 116 | routed |
 | S6 | signal | ehx_pico_pitch_fork.out | fulldrive_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 77 | routed |
 | S7 | signal | fulldrive_2.out | phase_95.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 142 | routed |
-| S8 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 156 | routed |
+| S8 | signal | phase_95.out | retrovibe.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 200 | routed |
 | S9 | signal | retrovibe.out | red_muck.in | ernie_ball_flat_patch_ra | down / left | TS / TS | - | yes (1 hole, 12 mm) | 104 | routed |
 | S10 | signal | red_muck.out | ratsbane.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 77 | routed |
 | S11 | signal | ratsbane.out | protein.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 67 | routed |
@@ -332,7 +336,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P10.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 145 mm under, 48 mm on top | 272 | routed |
 | P10.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 278 mm under, 56 mm on top | 413 | routed |
 
-Signal cable, minimum: 2571 mm over 17 cables.
+Signal cable, minimum: 2615 mm over 17 cables.
 
 ### DC cables to buy
 

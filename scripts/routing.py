@@ -1493,23 +1493,38 @@ def rect_pairs(parts_a, parts_b):
     return sum(1 for _, r in parts_a for _, q in parts_b if q[0] < r[2] and r[0] < q[2] and q[1] < r[3] and r[1] < q[3] and design.overlap(r, q))
 
 
+class SigRects(list):
+    """The footprint parts [(part, rect)] of a signal plug or a fixed box, marked with the `facing` of its jack on the canvas (after the pedal's
+    rotation, `design.jack_facing`): a right-angle DC plug may pass under it only when its own jack faces the same way (`pass_eligible`)."""
+    def __init__(self, parts=(), facing=None):
+        super().__init__(parts)
+        self.facing = facing
+
+
 class DcRects(list):
     """The footprint parts [(part, rect)] of a DC plug, marked: `right_angle` True for a right-angle plug (any exit: left / right / down),
-    which may pass under ONE signal plug (`pass_pairs`); a straight one never. Every other footprint (a signal plug, a fixed box) is a plain
-    list; `like` keeps the mark when the parts are shifted."""
-    def __init__(self, parts=(), right_angle=True):
+    which may pass under ONE signal plug of a jack with the same `facing` (`pass_pairs`); a straight one never. Every other footprint
+    (a signal plug, a fixed box) is a `SigRects` (a plain list has no facing: it never passes); `like` keeps the marks when the parts are shifted."""
+    def __init__(self, parts=(), right_angle=True, facing=None):
         super().__init__(parts)
         self.right_angle = right_angle
+        self.facing = facing
 
 
 def like(rects, parts):
-    """`parts` marked as `rects` is (a `DcRects` of the same kind, else a plain list)."""
-    return DcRects(parts, rects.right_angle) if isinstance(rects, DcRects) else list(parts)
+    """`parts` marked as `rects` is (a `DcRects` / `SigRects` of the same kind and facing, else a plain list)."""
+    if isinstance(rects, DcRects):
+        return DcRects(parts, rects.right_angle, rects.facing)
+    return SigRects(parts, rects.facing) if isinstance(rects, SigRects) else list(parts)
 
 
 def pass_eligible(a, b):
-    """Whether two footprints (`DcRects` or plain lists) may be a pass: one is a right-angle DC plug, the other is not a DC plug at all (a signal
-    plug or a fixed audio box). DC vs DC and straight DC plugs never pass under anything."""
+    """Whether two footprints may be a pass: one is a right-angle DC plug, the other is not a DC plug at all (a signal plug or a fixed audio
+    box), and their jacks face the same way on the canvas (a perpendicular or opposite pair is an ordinary collision; a footprint without
+    a facing never passes). DC vs DC and straight DC plugs never pass under anything."""
+    fa, fb = getattr(a, "facing", None), getattr(b, "facing", None)
+    if fa is None or fa != fb:
+        return False
     ra = lambda f: isinstance(f, DcRects) and f.right_angle
     return (ra(a) and not isinstance(b, DcRects)) or (ra(b) and not isinstance(a, DcRects))
 
@@ -1701,7 +1716,7 @@ def fixed_footprints(ctx, modelled):
     for key, z in zones.items():
         if key in modelled:
             continue
-        parts[key] = [("box", z["rect"])]
+        parts[key] = SigRects([("box", z["rect"])], z["facing"])
         kinds[key] = ("first input, fixed box" if key == first else "last output, fixed box" if key == last else
                       "extra jack, fixed box" if key in extra else "power box" if z["zone"] == "power" else "audio box")
     return parts, kinds
@@ -1930,7 +1945,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             if not (e and o and ctype):
                 continue
             key = f"{e['cid']}.{e['jack']['id']}"
-            taken[key] = list(o["rects"])
+            taken[key] = o["rects"]
             meta[key] = {"kind": f"{c['type']} plug", "label": e["jack"]["label"], "cable": c["id"], "cable_type": c["type"],
                          "side": o["side"], "how": f"{c['type']} {ctype['plug']['style'].replace('_', '-')} plug" + exit_how(o)}
 
@@ -1958,6 +1973,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             if c.get(f"exit_{end}") == design.DOWN and not any(o["side"] == design.DOWN for o in opts):
                 sink.append(down_override_finding(c["id"], f"exit_{end}", f"{cid}.{jk['id']}", ctype))
             for o in opts:
+                o["rects"] = SigRects(o["rects"], facing)   # (a right-angle DC plug of a jack with the same facing may pass under it)
                 o["hits"] = blocked_parts(o, placed[cid]["id"], obstacles, shapes)
                 o["cell"] = state_of(grid, o) if grid else None
             ends.append({"cid": cid, "jack": jk, "facing": facing, "opts": opts})
@@ -2646,7 +2662,7 @@ def power_plug_pool(it, jk, key, cands, cable_types, fixed, cfg, layout, obstacl
                "hole_transit_mm": cfg.get("hole_transit_mm", 0.0)}
         facing, ts = end_options(it, jk, t, fixed, run, layout.get("outward_mm", 0), down=down)
         for o in ts:
-            o["rects"] = DcRects(o["rects"], t["plug"]["style"] != "straight")   # a right-angle DC plug may pass under a signal plug
+            o["rects"] = DcRects(o["rects"], t["plug"]["style"] != "straight", facing)   # a right-angle DC plug may pass under a signal plug
             o.update(type=tid, tidx=tidx, hits=blocked_parts(o, it["id"], obstacles, layout.get("shapes")),
                      failed=(tid, o["side"]) in avoid, ok=(tid, o["side"]) not in avoid and exit_feasible(o, it["id"], obstacles, layout.get("shapes"), inside, inside_under))
         opts += ts

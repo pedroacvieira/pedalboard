@@ -797,6 +797,30 @@ def test_a_right_angle_dc_plug_passes_under_one_signal_plug_in_the_surrogate_as_
     assert [(c["jack"], c["with"], round(c["depth_mm"], 2)) for c in det["collisions"]] == [("a.out", "a.power", 3.38)]
 
 
+def test_the_surrogate_passes_a_dc_plug_under_a_signal_plug_only_with_the_same_facing():
+    """As above (pedal a, `power` at the top right corner facing right, 10 x 8 mm head). `out` at (1.0, 0.3) facing right: a pass (3.38 mm). Facing
+    the back (box x -7..7, y 1.32..7.62 from the jack): the head reaches min(7, 2.68) = 2.68 mm into it, perpendicular: a collision. Facing
+    left (box x -6.3..0): no overlap at all. The pedal turned by 90 degrees: the facings turn with it (`design.jack_facing`), the same results."""
+    def jacks_with(out_facing):
+        return {"a": [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.5, "facing": "left"},
+                      {"id": "out", "label": "Output", "function": "output", "x": 1.0, "y": 0.3, "facing": out_facing},
+                      {"id": "power", "label": "9V", "function": "power", "x": 1.0, "y": 0.0, "facing": "right"}]}
+
+    def score(out_facing, rot=0):
+        proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc"}, "jacks": {}}
+        m = layout.Model(proj, design.parse_canvas(canvas(BOARD, ped("T A", 100, 100, w=1.0, h=1.0))), PEDALS, {}, jacks_with(out_facing),
+                         {}, {**TYPES, "dc": DC_A}, outlines={})
+        state = [(m.owner[0][0], m.owner[0][1], rot)]
+        return m.score(state, margin=0, detail=True)[1]
+    for rot in (0, 90):
+        det = score("right", rot)
+        assert det["collisions"] == [] and [(u["dc"], u["signal"], round(u["depth_mm"], 2)) for u in det["plug_under"]] == [("a.power", "a.out", 3.38)]
+        det = score("top", rot)
+        assert det["plug_under"] == [] and [(c["jack"], c["with"], round(c["depth_mm"], 2)) for c in det["collisions"]] == [("a.out", "a.power", 2.68)]
+        det = score("left", rot)
+        assert det["plug_under"] == [] and det["collisions"] == []
+
+
 def test_a_dc_plug_pointing_down_ends_the_power_cable_under_the_board():
     """Pedal a (50.8 x 50.8, centre (127.0, 94.8)): its power jack faces up, the bend point of the 10 mm head is 5 mm above it, inside the
     hole (x 101.6..152.4, y 50.8..76.2); the cable (from a point under the board) ends there: no pass up, plus the 12 mm jack height and
