@@ -47,8 +47,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 ### Guitar gig board
 
 - Plug collision: analog_chorus.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 2.3 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: boss_dd8.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at monk.power (DC plug): 5.6 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
-- Plug collision: danelectro_3699.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at danelectro_3699.power (DC plug): 5.2 mm (its head into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: monk.in (Input, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at reticon.power (DC plug): 2.1 mm (its barrel into the head); move a pedal or set a plug side in `cables.overrides`
 
 ### Guitar practice board
 

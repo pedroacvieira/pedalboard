@@ -104,9 +104,11 @@ def test_the_gig_fixture_needs_less_dc_cable_than_with_the_old_tie_break_and_no_
     total = sum(c["min_mm"] for c in ctx["power_cable_summary"])
     assert total < 3355 - 100            # the old tie-break (left first) needed 3355 mm; belle_epoch / analog_chorus / danelectro_3699 went right
     sides = {c["to"]: c["exit_b"] for c in ctx["cable_list"] if c["kind"] == "power"}
-    assert [sides[k] for k in ("belle_epoch.power", "analog_chorus.power", "danelectro_3699.power")] == ["right"] * 3
-    assert len([w for w in ctx["warnings"] if w.startswith("clearance")]) == 12 and ctx["errors"] == []   # as many findings as before
+    # (with the DC exit offset 8.4 and the pass-under rule, 2026-11-03: analog_chorus.power takes the left side, danelectro_3699.power points down
+    # into a hole; was right / right / right with 12 clearance findings and 3 refined plugs)
+    assert [sides[k] for k in ("belle_epoch.power", "analog_chorus.power", "danelectro_3699.power")] == ["right", "left", "down"]
+    assert len([w for w in ctx["warnings"] if w.startswith("clearance")]) == 8 and ctx["errors"] == []   # fewer findings than before: passes are no collisions
     saving = ctx["routing"]["power"]["side_savings"]
-    assert saving["plugs"] == 3 and saving["saved_mm"] > 100
+    assert saving["plugs"] == 2 and saving["saved_mm"] > 100
     # a daisy hop that starts at a pedal has no exit_a (its plug is the previous leg's exit_b), also after the refinement changed phase_95's side
     assert [c["id"] for c in ctx["cable_list"] if c["kind"] == "power" and c.get("exit_a") and not c["from"].startswith("psu")] == []

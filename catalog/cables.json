@@ -53,12 +53,13 @@
       "diameter_mm": 3.2,
       "jacket": {"shape": "round", "width_mm": 3.2, "height_mm": 3.2},
       "tips": "DC 2.1 mm",
-      "plug": {"style": "right_angle", "head_depth_mm": 12.0, "head_width_mm": 8.0, "head_thickness_mm": null, "exit_offset_mm": null, "body_reach_mm": 19.0, "barrel_width_mm": 6.0},
+      "plug": {"style": "right_angle", "head_depth_mm": 12.0, "head_width_mm": 8.0, "head_thickness_mm": null, "exit_offset_mm": 8.4, "body_reach_mm": 19.0, "barrel_width_mm": 6.0},
       "verified": ["head_depth_mm", "head_width_mm", "body_reach_mm"],
       "sources": [
-        "owner measured a random DC cable, 2026-10-28: right-angle end needs 12 mm outwards from the jack, 19 mm on the side it bends to (from the jack axis, where the cable leaves the body), 4 mm on the other side (the head's radius); pointing down 4 mm to each side and the same 12 mm out"
+        "owner measured a random DC cable, 2026-10-28: right-angle end needs 12 mm outwards from the jack, 19 mm on the side it bends to (from the jack axis, where the cable leaves the body), 4 mm on the other side (the head's radius); pointing down 4 mm to each side and the same 12 mm out",
+        "exit_offset_mm 8.4: owner rule of thumb, 70% of head_depth_mm (12), 2026-11-03 (not measured)"
       ],
-      "notes": "OWNER BASELINE, may be smaller: the measured cable is probably bigger than most of the owner's own; the owner updates these values later. head_width 8 = 2 x the 4 mm head radius. exit_offset = default (half the depth, not measured). barrel_width 6 and diameter 3.2 are estimates (copied from dc_ra_2_1_low_profile). Replaces dc_ra_2_1_low_profile (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation to 11 deep x 11 wide, body reach 14.5) as the projects' power_type."
+      "notes": "OWNER BASELINE, may be smaller: the measured cable is probably bigger than most of the owner's own; the owner updates these values later. head_width 8 = 2 x the 4 mm head radius. exit_offset 8.4 = owner rule of thumb, 70% of head_depth, 2026-11-03 (not measured, so not in verified; before that the default, half the depth). barrel_width 6 and diameter 3.2 are estimates (copied from dc_ra_2_1_low_profile). Replaces dc_ra_2_1_low_profile (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation to 11 deep x 11 wide, body reach 14.5) as the projects' power_type."
     },
     "dc_straight_owner_baseline": {
       "name": "DC power cable, straight 2.1 mm plug (owner-measured baseline)",

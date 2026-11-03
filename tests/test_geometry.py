@@ -237,3 +237,19 @@ def test_dc_low_profile_plug_facing_top_exit_right():
     assert close(parts["barrel"], (105.5, 41.5, 114.5, 47.5))
     assert close(parts["cable"], (114.5, 42.9, 117.7, 46.1))
     assert close(g["exit"], (117.7, 44.5)) and g["lead_mm"] == pytest.approx(5.5 + 14.5 + 3.2)
+
+
+def test_dc_owner_baseline_plug_has_the_exit_offset_of_70_percent_of_the_depth():
+    # head 12 deep x 8 wide; cable axis 8.4 out (owner rule of thumb, 70% of 12, 2026-11-03: not 6); body to 19 mm (6 mm wide); 3.2 mm cable and run.
+    # Facing right, exit left (up, -y).
+    plug, d = _catalog_plug("dc_ra_owner_baseline")
+    assert plug["exit_offset_mm"] == 8.4
+    g = design.plug_geometry(P, "right", plug, d, d, "left")
+    parts = dict(g["rects"])
+    assert close(parts["head"], (100, 46, 112, 54))
+    assert close(parts["barrel"], (105.4, 31, 111.4, 46))      # 8.4 +- 3 out, 4..19 up
+    assert close(parts["cable"], (106.8, 27.8, 110.0, 31))     # 8.4 +- 1.6 out, 19..22.2 up
+    assert close(g["exit"], (108.4, 27.8)) and g["lead_mm"] == pytest.approx(8.4 + 19 + 3.2)
+    assert close(g["measure"], (106, 50)) and g["measure_mm"] == pytest.approx(2.4 + 19 + 3.2)   # 6 -> 8.4 out, then up
+    down = design.plug_geometry(P, "right", plug, d, d, "down", 27.0)
+    assert close(down["exit"], (108.4, 50)) and down["measure_mm"] == pytest.approx(2.4 + 27.0)

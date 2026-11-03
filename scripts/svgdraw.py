@@ -608,8 +608,8 @@ def render(ctx, names, overlay=None, legend=None, images=None):
         body.append(pedal(o, names.get(cid, cid) if cid else o.get("title", ""), uris.get(cid), (layout.get("shapes") or {}).get(o["id"])))
     body += overflow_cells(grid, r.get("overflow"))
     body += plug_heads(r.get("heads"))
+    body += power_cables(cable_list)   # below the signal cables: a DC plug passes under a signal plug (`routing.pass_pairs`)
     body += cables(cable_list, colours, diameter, ends)
-    body += power_cables(cable_list)
     jd = layout.get("jacks") or {}
     for cid, it in placed.items():
         body += jacks(it, jd.get(cid) or [], used_jacks(ctx, cid))

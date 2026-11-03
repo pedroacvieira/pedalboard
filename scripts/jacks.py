@@ -392,7 +392,7 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     supplies_layer = jset.get("supplies_layer", "under")   # the default of a supply without its own `placement`
     jack_sink = errors if val.get("require_jacks") else warnings
     clear_sink = errors if val.get("strict_clearance") else warnings
-    ctx.update(outside_usable=[], jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[],
+    ctx.update(outside_usable=[], jack_fixes=[], jack_notes=[], jack_setup={}, violations=[], cables=None, layout=None, layout_source=None, fixed_box=[], fixed_zones={}, plug_collisions=[], plug_under=[],
                jack_settings={"outward_mm": outward, "side_mm": side, "power_outward_mm": p_out, "power_side_mm": p_side,
                               "power_modelled": power_modelled, "supplies_layer": supplies_layer})
 
