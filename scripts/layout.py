@@ -464,7 +464,7 @@ class Model:
         if not self.pcands:
             box = {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))], "exit": pt,
                    "measure_mm": 0.0, "measure": design.stub(pt, facing, self.p_depth / 2)}
-            return [self._opt(box, facing=facing, type=None, tidx=0, diam=0.0)], []
+            return [self._opt(box, dc=False, facing=facing, type=None, tidx=0, diam=0.0)], []   # a power box: never passes
         names = [fixed_type] if routing.is_power_type(self.cable_types, fixed_type) else self.pcands
         cands = [(0 if len(names) == 1 else i, t, self.cable_types[t]) for i, t in enumerate(names)]
         jh = self.rcfg.get("jack_height_mm", routing.DEFAULTS["jack_height_mm"])

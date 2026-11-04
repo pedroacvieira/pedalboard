@@ -187,8 +187,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   perpendicular or opposite pair is an ordinary collision; owner 2026-11-03). One pass per DC plug and per signal plug (`routing.pass_pairs` / `assign_passes`: DC plugs in natural key
   order, each takes its deepest overlap with a signal plug not paired yet; the rest collide as before). Not covered: straight DC plugs, DC
   vs DC, anything vs a pedal body (blocked parts stay). Footprints are marked (`routing.DcRects` with `right_angle` + `facing` for DC options, `routing.SigRects` with `facing` for signal
-  options and fixed boxes, `like` keeps the marks; a plain list has no facing and never passes; `pass_eligible` tests it), so `collision_count` (plug ranking of both ends, `choose_signal`, `refine_dc_sides`, the surrogate's `_count`) is the same
-  rule; passes go to `ctx["plug_under"]` [{"dc", "signal", "depth_mm", "cable", "signal_cable"}] (README line per pass via
+  options and fixed audio boxes, a fixed power box a non-right-angle `DcRects`, `like` keeps the marks; a plain list has no facing and never passes; `pass_eligible` tests it), so `collision_count` (plug ranking of both ends, `choose_signal`, `refine_dc_sides`, the surrogate's `_count`) is the same
+  rule (it also counts the passes of OTHER plugs the option ends or creates by reshuffling the pairing: the change of the findings); passes go to `ctx["plug_under"]` [{"dc", "signal", "depth_mm", "cable", "signal_cable"}] (README line per pass via
   `routing.under_text`, power cables drawn below the signal cables in `routing.svg`), not to `plug_collisions`; the surrogate reports
   `det["plug_under"]` and agrees with the build (`tests/test_layout.py` gig agreement). **Down**: a right-angle plug (signal or power) may point down into a hole: `routing.down_available`
   (a cable-wide square at the bend point inside the effective holes, clear of under-board supplies; the top "free"

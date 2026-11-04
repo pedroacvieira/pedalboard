@@ -1504,7 +1504,8 @@ class SigRects(list):
 class DcRects(list):
     """The footprint parts [(part, rect)] of a DC plug, marked: `right_angle` True for a right-angle plug (any exit: left / right / down),
     which may pass under ONE signal plug of a jack with the same `facing` (`pass_pairs`); a straight one never. Every other footprint
-    (a signal plug, a fixed box) is a `SigRects` (a plain list has no facing: it never passes); `like` keeps the marks when the parts are shifted."""
+    (a signal plug, a fixed audio box) is a `SigRects`, a fixed power box a `DcRects` that is not right-angle (a plain list has no facing: it
+    never passes); `like` keeps the marks when the parts are shifted."""
     def __init__(self, parts=(), right_angle=True, facing=None):
         super().__init__(parts)
         self.right_angle = right_angle
@@ -1572,8 +1573,10 @@ def collision_count(opt, own_key, taken, everything=None):
     `taken` = {"<id>.<jack id>": [(part, rect)]}, the fixed boxes and the plugs already chosen; the option's own key is skipped. (The
     bounding-box test in front of `design.overlap` only spares its min / max calls: this runs inside the layout search.)
     A right-angle DC plug passes under one signal plug (`pass_pairs`): the pairs that are passes in `everything` (default `taken`: every
-    footprint that counts for the pairing; the option takes its own key's place there) are not counted. `own_key` None: the option is
-    not in `taken` (a placeholder key takes its place in the pairing)."""
+    footprint that counts for the pairing; the option takes its own key's place there) are not counted. The option can also reshuffle the
+    pairing of the others (it takes a signal plug another DC plug passed under, which then collides, or frees one): every pass of two other
+    plugs it ends adds that pair's overlapping parts, every one it creates takes them off, so the count is the change of the collisions the
+    findings will list. `own_key` None: the option is not in `taken` (a placeholder key takes its place in the pairing)."""
     n, per = 0, {}
     own = opt["rects"]
     for _, r in own:
@@ -1585,12 +1588,20 @@ def collision_count(opt, own_key, taken, everything=None):
         return n
     mine = own_key if own_key is not None else "\0own"
     fps = {k: v for k, v in (everything() if callable(everything) else everything or taken).items() if k != own_key}
+    before = pass_pairs(fps)
     fps[mine] = own
     pairs = pass_pairs(fps)
     if mine in pairs:
         n -= per.get(pairs[mine][0], 0)
     else:
         n -= sum(per.get(dc, 0) for dc, (sig, _) in pairs.items() if sig == mine)
+    parts = lambda dc, sig: sum(1 for _, r in fps[dc] if any(design.overlap(r, q) for _, q in fps[sig]))   # as `per` counts
+    for dc, (sig, _) in before.items():   # passes of others the option ends
+        if pairs.get(dc, (None,))[0] != sig:
+            n += parts(dc, sig)
+    for dc, (sig, _) in pairs.items():    # passes of others it creates
+        if mine not in (dc, sig) and before.get(dc, (None,))[0] != sig:
+            n -= parts(dc, sig)
     return n
 
 
@@ -1716,7 +1727,8 @@ def fixed_footprints(ctx, modelled):
     for key, z in zones.items():
         if key in modelled:
             continue
-        parts[key] = SigRects([("box", z["rect"])], z["facing"])
+        box = [("box", z["rect"])]   # an audio box is a signal footprint; a power box a DC one that never passes (DC vs DC)
+        parts[key] = DcRects(box, False, z["facing"]) if z["zone"] == "power" else SigRects(box, z["facing"])
         kinds[key] = ("first input, fixed box" if key == first else "last output, fixed box" if key == last else
                       "extra jack, fixed box" if key in extra else "power box" if z["zone"] == "power" else "audio box")
     return parts, kinds

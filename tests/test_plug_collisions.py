@@ -215,7 +215,8 @@ def test_collision_count_ranks_a_one_signal_overlap_like_a_free_side():
     taken = {"s1": near["s1"], "a.power": dcf([("head", (15, 0, 30, 10))])}                    # a.power (not in the way) sorts before d.power
     assert routing.collision_count({"rects": dcf(head)}, "d.power", taken) == 1                  # and has taken s1 already
     assert routing.collision_count({"rects": dcf(head)}, "z.power", taken) == 1
-    assert routing.collision_count({"rects": dcf(head)}, "A.power", taken) == 0                  # "A" sorts first: it takes s1 itself
+    assert routing.collision_count({"rects": dcf(head)}, "A.power", taken) == 1                  # "A" sorts first and takes s1, but a.power
+    #                                                                                            # then collides with s1: one collision either way
     taken = {"s1": near["s1"], "a.power": dcf([("head", (15, 0, 30, 10))], True, "left")}      # a.power faces another way: it cannot take s1
     assert routing.collision_count({"rects": dcf(head)}, "d.power", taken) == 0
     # a signal option overlapping one DC plug: free too
@@ -390,3 +391,26 @@ def test_gig_fixture_readme_lists_the_passes_and_the_picture_draws_power_below_t
     names = {pid: pedals[pid]["name"] for pid in ctx["chain"]}
     svg = svgdraw.render(ctx, names)
     assert 0 < svg.index('class="power-cable"') < svg.index('class="cable"')
+
+
+def test_collision_count_counts_the_passes_an_option_takes_from_other_plugs():
+    """An option that takes a pass away from another plug (that plug then collides) is no better than one that collides itself; one that
+    frees a signal plug for another DC plug counts that new pass off (the count is the change of the findings)."""
+    head = [("head", (0, 0, 10, 10))]
+    taken = {"s1": sigf([("head", (7, 0, 20, 10))]), "a.power": dcf([("head", (15, 0, 30, 10))])}   # a.power passes under s1 (5 mm)
+    assert routing.collision_count({"rects": dcf(head)}, "A.power", taken) == 1
+    # a signal option deeper over a.power than s1 is: a.power passes under it instead and s1 collides again, as the findings would say
+    taken = {"s1": sigf([("head", (25, 0, 40, 10))]), "a.power": dcf([("head", (15, 0, 30, 10))])}   # s1 5 mm into a.power
+    deep = {"rects": sigf([("head", (10, 0, 25, 10))])}                                              # 10 mm into a.power
+    assert routing.collision_count(deep, "s2.out", taken) == 1
+    fp = {**taken, "s2.out": deep["rects"]}
+    ctx, _ = under_of(fp)
+    assert len(ctx["plug_collisions"]) == 1 and [(u["dc"], u["signal"]) for u in ctx["plug_under"]] == [("a.power", "s2.out")]
+
+
+def test_a_fixed_power_box_never_lets_a_dc_plug_pass():
+    z = {"rect": (7, 0, 20, 10), "facing": "top", "label": "Power"}
+    ctx = {"fixed_zones": {"b.power": {**z, "zone": "power"}, "c.in": {**z, "zone": "audio"}}, "layout": {}, "chain": [], "project": {}}
+    parts, _ = routing.fixed_footprints(ctx, set())
+    dc = dcf([("head", (0, 0, 10, 10))])
+    assert not routing.pass_eligible(dc, parts["b.power"]) and routing.pass_eligible(dc, parts["c.in"])
