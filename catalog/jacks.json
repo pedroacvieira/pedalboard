@@ -18,6 +18,14 @@
       {"id": "power", "label": "Power", "function": "power", "x": 0.2237, "y": 0.0426, "facing": "top"},
       {"id": "jack_4", "label": "Exp", "function": "other", "x": 0.4124, "y": 0.0074, "facing": "top"}
     ],
+    "boss_dd200": [
+      {"id": "in", "label": "Input", "function": "input", "x": 0.882, "y": 0.0, "facing": "top", "default": true},
+      {"id": "out", "label": "Output", "function": "output", "x": 0.568, "y": 0.0, "facing": "top", "default": true},
+      {"id": "power", "label": "Power", "function": "power", "x": 0.092, "y": 0.0353, "facing": "top"},
+      {"id": "jack_4", "label": "Input Stereo", "function": "input", "x": 0.726, "y": 0.0, "facing": "top"},
+      {"id": "jack_5", "label": "Output Stereo", "function": "output", "x": 0.416, "y": 0.0, "facing": "top"},
+      {"id": "jack_6", "label": "Exp", "function": "other", "x": 0.26, "y": 0.0, "facing": "top"}
+    ],
     "boss_dd8": [
       {"id": "in", "label": "Input", "function": "input", "x": 1.0, "y": 0.4059, "facing": "right", "default": true},
       {"id": "out", "label": "Output", "function": "output", "x": 0.0, "y": 0.4044, "facing": "left", "default": true},

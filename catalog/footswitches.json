@@ -11,6 +11,10 @@
       {"id": "bypass", "label": "Bypass", "x": 0.8128, "y": 0.85, "type": "bypass"},
       {"id": "switch_2", "label": "Echo Osc.", "x": 0.1829, "y": 0.85, "type": "function"}
     ],
+    "boss_dd200": [
+      {"id": "bypass", "label": "Bypass", "x": 0.176, "y": 0.8853, "type": "bypass"},
+      {"id": "switch_2", "label": "Memory / Tap", "x": 0.82, "y": 0.8868, "type": "tap"}
+    ],
     "boss_dd8": [
       {"id": "bypass", "label": "Bypass", "x": 0.5007, "y": 0.7706, "type": "bypass"}
     ],

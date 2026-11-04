@@ -4,13 +4,11 @@
 
 - **Instrument:** guitar
 - **Board:** Fender Professional (Medium) (610 x 332 mm)
-- **Validation:** OK, 3 warning(s) (`no_unknown` on)
+- **Validation:** OK, 1 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN jacks: unknown jack setup for boss_dd200 (BOSS DD-200 Digital Delay) -> run: uv run scripts/pedal_editor.py boss_dd200
 - WARN layout: JAM Pedals Harmonious Monk Mk2 is outside the usable board area by 0.3 mm (back)
-- WARN footswitches: no footswitch data for 1 of 17 pedals (boss_dd200) -> run: uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches
 
 </details>
 
@@ -255,13 +253,7 @@ Placement: under the board. Layout item: Strymon Ojai R30 (dd8cf6e4-da4a-4389-8e
 
 ## Jacks and cables
 
-Jack data: 17 of 18 catalog items set up (pedals and supplies in this project).
-
-Missing or incomplete (place the jacks on the pedal image, then rebuild):
-
-```
-uv run scripts/pedal_editor.py boss_dd200
-```
+Jack data: 18 of 18 catalog items set up (pedals and supplies in this project).
 
 No blocked cable space found (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side).
 
@@ -306,9 +298,9 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S12 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 207 | routed |
 | S13 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 54 | routed |
 | S14 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 252 | routed |
-| S15 | signal | belle_epoch.out | boss_dd200.in | ernie_ball_flat_patch_ra | left / - | TS / TS | - | no | ? | not routed (jack or placement missing) |
-| S16 | signal | boss_dd200.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | - / down | TS / TS | - | no | ? | not routed (jack or placement missing) |
-| P1 | power | psu1.F1 | boss_dd200.power | dc_ra_owner_baseline | - / - | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (power jack or placement missing) |
+| S15 | signal | belle_epoch.out | boss_dd200.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | yes (2 holes, 154 mm) | 287 | routed |
+| S16 | signal | boss_dd200.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | right / down | TS / TS | - | yes (1 hole, 160 mm) | 254 | routed |
+| P1 | power | psu1.F1 | boss_dd200.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 97 mm under, 78 mm on top | 215 | routed |
 | P2 | power | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 143 mm under, 24 mm on top | 207 | routed |
 | P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 109 mm under, 1 mm on top | 149 | routed |
 | P4 | power | psu1.SW_A | reticon.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 21 mm under, 0 mm on top | 50 | routed |
@@ -326,7 +318,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P9.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 193 mm under, 15 mm on top | 276 | routed |
 | P9.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 324 mm under, 28 mm on top | 430 | routed |
 
-Signal cable, minimum: 1906 mm over 14 cables.
+Signal cable, minimum: 2448 mm over 16 cables.
 
 ### DC cables to buy
 
@@ -334,7 +326,7 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 
 | DC cable | Style | Output | Route | Plugs | Min plug spacing per leg (mm) | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
-| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd200 | 2 | - | ? | not routed (power jack or placement missing) |
+| P1 | serial | psu1_F1 | psu1.F1 -> boss_dd200 | 2 | - | 215 | routed |
 | P2 | serial | psu1_F2 | psu1.F2 -> belle_epoch | 2 | - | 207 | routed |
 | P3 | serial | psu1_F3 | psu1.F3 -> monk | 2 | - | 149 | routed |
 | P4 | serial | psu1_SW_A | psu1.SW_A -> reticon | 2 | - | 50 | routed |
@@ -344,23 +336,17 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 | P8 | serial | psu2_SW_A | psu2.SW_A -> fulldrive_2 -> mini_ego | 3 | P8.1 155 / P8.2 301 | 456 | routed |
 | P9 | serial | psu2_SW_B | psu2.SW_B -> phase_95 -> retrovibe -> analog_chorus | 4 | P9.1 113 / P9.2 276 / P9.3 430 | 820 | routed |
 
-DC cable, minimum: 3435 mm over 8 cables (8 serial, 0 forked).
+DC cable, minimum: 3649 mm over 9 cables (9 serial, 0 forked).
 
 ## Footswitches
 
-Footswitch data: 16 of 17 pedals (catalog/footswitches.json).
-
-Missing (place the switches on the pedal image, then rebuild):
-
-```
-uv run scripts/pedal_editor.py boss_dd200 --footswitches
-```
+Footswitch data: 17 of 17 pedals (catalog/footswitches.json).
 
 Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 201.4 (19 of 225 pairs closer than 100 mm). Closest pairs (8 of 225):
+Crowding: 215.0 (21 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
 |---|---|---|---|--:|--:|
@@ -371,7 +357,7 @@ Crowding: 201.4 (19 of 225 pairs closer than 100 mm). Closest pairs (8 of 225):
 | sun_face.bypass | bypass | danelectro_3699.switch_2 | function | 60.0 | 16.0 |
 | analog_chorus.bypass | bypass | monk.switch_2 | tap | 60.6 | 15.5 |
 | red_muck.switch_2 | boost | ratsbane.bypass | bypass | 62.6 | 14.0 |
-| reticon.bypass | bypass | monk.switch_2 | tap | 67.0 | 10.9 |
+| monk.bypass | bypass | boss_dd200.switch_2 | tap | 63.2 | 13.6 |
 
 ### Suggested toppers
 
@@ -379,11 +365,11 @@ Chosen after the layout (never during the search), greedily: the topper that rem
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|
-| 1 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 6.5 | 194.9 |
-| 2 | analog_chorus.bypass (Bypass) | MXR Analog Chorus | bypass | 6.0 | 188.9 |
-| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 5.9 | 183.0 |
-| 4 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 5.7 | 177.3 |
-| 5 | retrovibe.bypass (Bypass) | JAM Pedals Retrovibe | bypass | 5.4 | 171.9 |
+| 1 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 6.5 | 208.5 |
+| 2 | analog_chorus.bypass (Bypass) | MXR Analog Chorus | bypass | 6.0 | 202.5 |
+| 3 | fulldrive_2.switch_2 (Boost) | Fulltone Full-Drive 2 Mosfet | boost | 5.9 | 196.6 |
+| 4 | ratsbane.bypass (Bypass) | Wampler Ratsbane | bypass | 5.7 | 190.9 |
+| 5 | monk.switch_2 (Tap) | JAM Pedals Harmonious Monk Mk2 | tap | 5.4 | 185.6 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 
