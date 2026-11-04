@@ -316,6 +316,6 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   touch) to `docs/handovers/<task>.md` and point the agent at that handover only. Keep its scope and inputs
   minimal: one well-bounded task, only the decisions, conventions and file/function names that task needs
   (copy the relevant lines in), no "read the whole plan / other handovers / all of CLAUDE.md" pointers.
-- Delegated implementation agents (`general-purpose`) run on `model: sonnet`; use Opus only for planning, code
-  review, or when the owner asks.
+- Delegated agents (`general-purpose`: implementation AND code review) run on `model: sonnet`; Opus only for
+  planning or when the owner asks.
 - Keep this file current when structure, conventions or decisions change.
