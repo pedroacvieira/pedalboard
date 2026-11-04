@@ -17,8 +17,8 @@ over the stacking or plug limit) and footswitch pairs below the minimum, and bet
 blocked mm, plug collisions, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
 penalties).
 
-Output in projects/<name>/proposals/: <n>.json (Pedal Playground "Load from File": the owner's canvas with only the
-moved pedals' left/top/rotation changed), <n>.svg (proposal with the owner's positions dashed and arrows), and
+Output in projects/<name>/proposals/: <n>.json (the owner's layout document with only the moved
+pedals' position/rotation changed; Pedal Playground cannot load it, the owner moves those pedals by hand), <n>.svg (proposal with the owner's positions dashed and arrows), and
 meta.json (scores, moved pedals, power wiring, command, seed; read by build.py for the README).
 """
 import argparse

@@ -265,6 +265,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   a pair's effective distance = d + `topper_bonus_mm` per topper on it (default 4.5 mm = the height a topper
   adds, RockBoard StomPete, retailer listing: a rough proxy, owner 2026-10-28); the build's crowding and
   `min_distance_mm` use the effective distance, the README also shows it without toppers. Post-layout suggestions
+  only on BYPASS switches (`footswitches.TOPPER_TYPES`, owner 2026-11-04: the switches stepped on most; never a boost switch; a
+  tap switch in the middle of the board, e.g. the Monk's, only by hand in `footswitches.toppers`)
   (`footswitches.suggest_toppers`, greedy: largest crowding reduction, ties more crowded pairs > type priority > nearer
   the front; stop at `max_toppers` (default 5 per board, owner; null = no cap) or below `topper_min_gain` 0.02 of the crowding). The layout search, the proposal
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).

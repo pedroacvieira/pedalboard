@@ -1179,12 +1179,15 @@ class Model:
 
     # --- output -----------------------------------------------------------------------------------
     def items_for(self, state, snap=True):
-        """The owner's items with the chain pedals and on-board supplies moved to `state` (design.move; snapped to whole px)."""
+        """The owner's items with the chain pedals and on-board supplies moved to `state` (design.move; snapped to whole px).
+        A pedal at its owner position keeps the owner's item as is: v2 documents store inches, not whole px, so snapping it
+        could push it past a bound or into a neighbour (the owner's layout must evaluate as the build sees it)."""
         by_id = {self.mitem[p]["id"]: n for n, p in enumerate(self.ids)}
         out = []
         for it in self.items:
             n = by_id.get(it["id"])
-            if n is None:
+            own = None if n is None else self.owner[n]
+            if n is None or (abs(state[n][0] - own[0]) < 1e-9 and abs(state[n][1] - own[1]) < 1e-9 and state[n][2] == own[2]):
                 out.append(it)
             else:
                 st = state[n]

@@ -280,6 +280,16 @@ def test_items_for_and_snapping_keep_unmoved_pedals_exact():
     assert items[1] == m.placed["a"] and design.centre(items[2]) == pytest.approx(st[1][:2])
 
 
+def test_items_for_keeps_unmoved_owner_items_unsnapped():
+    """v2 layouts store inches, not whole px: a pedal at its owner position must come back as the owner's item itself
+    (snapping it pushed the gig's PolyTune 0.1 mm past the usable area in the proposal check, 2026-11-04)."""
+    m = model([ped("T A", 0), ped("T B", 135.37)])
+    out = m.items_for(m.owner)
+    assert all(a is b for a, b in zip(out, m.items))
+    moved = m.items_for([m.owner[0], (150.13, 60.07, 0)])
+    assert moved[1] is m.items[1] and moved[2] is not m.items[2]
+
+
 # --- power assignment -----------------------------------------------------------------------------
 def test_chain_order_is_the_shortest_daisy_chain():
     pts = {"x": (10, 0), "y": (5, 0), "z": (20, 0)}

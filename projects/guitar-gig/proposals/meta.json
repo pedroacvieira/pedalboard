@@ -6,14 +6,13 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "1d78ed313b025591236da47be41f37314e99f001",
+ "inputs_sha1": "dc6131e36ea06f8284dc8c8d138415d417c21881",
  "chain": [
   "sun_face",
   "danelectro_3699",
   "beano",
   "polytune_3",
   "mini_ego",
-  "ehx_pico_pitch_fork",
   "fulldrive_2",
   "phase_95",
   "retrovibe",
@@ -24,49 +23,47 @@
   "reticon",
   "monk",
   "belle_epoch",
-  "boss_dd8",
-  "tumnus_deluxe"
+  "tumnus_deluxe",
+  "boss_dd200"
  ],
- "runtime_s": 56.4,
- "finalists": 2,
+ "runtime_s": 45.2,
+ "finalists": 3,
  "owner": {
   "errors": 0,
-  "warnings": 2,
-  "blocked": 1,
-  "blocked_mm": 14.0,
-  "blocked_jacks": [
-   "monk.power"
-  ],
-  "collisions": 1,
-  "outside": 0,
+  "warnings": 1,
+  "blocked": 0,
+  "blocked_mm": 0,
+  "blocked_jacks": [],
+  "collisions": 0,
+  "outside": 1,
   "unroutable": 0,
   "squeezed": 0,
   "overflow": 0,
   "fs_close": 0,
-  "fs_closest_mm": 44.7,
-  "fs_crowding": 246.2,
+  "fs_closest_mm": 45.0,
+  "fs_crowding": 215.0,
   "fs_known": true,
-  "signal_mm": 2616.9,
-  "signal_routed": 17,
-  "signal_cables": 17,
-  "power_mm": 3383.1,
+  "signal_mm": 2313.9,
+  "signal_routed": 16,
+  "signal_cables": 16,
+  "power_mm": 3085.5,
   "power_unrouted": 0,
-  "io_mm": 18.1,
-  "surrogate": 4126.4,
+  "io_mm": 36.0,
+  "surrogate": 3737.1,
   "terms": {
-   "clearance": 248.9,
+   "clearance": 99.6,
    "routing_area": 0.0,
-   "signal": 2607.4,
-   "power": 520.4,
-   "footswitch": 494.1,
-   "io": 18.1,
-   "flow": 18.1,
-   "access": 185.4,
+   "signal": 2495.8,
+   "power": 458.5,
+   "footswitch": 430.0,
+   "io": 36.0,
+   "flow": 22.1,
+   "access": 161.5,
    "rotation": 40.0,
    "move": 0.0,
-   "touch": -6.0
+   "touch": -6.6
   },
-  "score": 4135.9
+  "score": 3555.1
  },
  "owner_power": {
   "supplies": [
@@ -79,7 +76,7 @@
       "port": "F1",
       "voltage_v": 9,
       "pedals": [
-       "boss_dd8"
+       "boss_dd200"
       ]
      },
      {
@@ -121,9 +118,6 @@
       "port": "F1",
       "voltage_v": 9,
       "pedals": [
-       "phase_95",
-       "protein",
-       "ratsbane",
        "red_muck",
        "tumnus_deluxe"
       ]
@@ -132,26 +126,13 @@
       "port": "F2",
       "voltage_v": 9,
       "pedals": [
-       "ehx_pico_pitch_fork"
+       "phase_95",
+       "protein",
+       "ratsbane"
       ]
      },
      {
       "port": "F3",
-      "voltage_v": 9,
-      "pedals": [
-       "polytune_3"
-      ]
-     },
-     {
-      "port": "SW_A",
-      "voltage_v": 18,
-      "pedals": [
-       "mini_ego",
-       "fulldrive_2"
-      ]
-     },
-     {
-      "port": "SW_B",
       "voltage_v": 9,
       "pedals": [
        "retrovibe",
@@ -159,11 +140,26 @@
        "danelectro_3699",
        "sun_face"
       ]
+     },
+     {
+      "port": "SW_A",
+      "voltage_v": 18,
+      "pedals": [
+       "fulldrive_2",
+       "mini_ego"
+      ]
+     },
+     {
+      "port": "SW_B",
+      "voltage_v": 9,
+      "pedals": [
+       "polytune_3"
+      ]
      }
     ]
    }
   ],
-  "length_mm": 5398.0,
+  "length_mm": 4821.9,
   "error": null
  },
  "proposals": [
@@ -173,71 +169,71 @@
    "svg": "1.svg",
    "metrics": {
     "errors": 0,
-    "warnings": 1,
+    "warnings": 0,
     "blocked": 0,
     "blocked_mm": 0,
     "blocked_jacks": [],
-    "collisions": 1,
+    "collisions": 0,
     "outside": 0,
     "unroutable": 0,
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 44.7,
-    "fs_crowding": 240.6,
+    "fs_closest_mm": 45.0,
+    "fs_crowding": 212.9,
     "fs_known": true,
-    "signal_mm": 2530.3,
-    "signal_routed": 17,
-    "signal_cables": 17,
-    "power_mm": 3381.3,
+    "signal_mm": 2264.1,
+    "signal_routed": 16,
+    "signal_cables": 16,
+    "power_mm": 3022.6,
     "power_unrouted": 0,
-    "io_mm": 18.1,
-    "surrogate": 3866.6,
+    "io_mm": 36.0,
+    "surrogate": 3691.1,
     "terms": {
-     "clearance": 54.3,
+     "clearance": 57.1,
      "routing_area": 0.0,
-     "signal": 2453.8,
-     "power": 517.5,
-     "footswitch": 482.4,
-     "io": 18.1,
-     "flow": 17.8,
-     "access": 184.0,
+     "signal": 2418.3,
+     "power": 428.1,
+     "footswitch": 425.7,
+     "io": 36.0,
+     "flow": 21.2,
+     "access": 165.0,
      "rotation": 40.0,
-     "move": 104.7,
-     "touch": -6.0
+     "move": 108.0,
+     "touch": -8.3
     },
-    "score": 3943.1
+    "score": 3536.9
    },
    "moved": [
     {
-     "pedal": "beano",
-     "dx_mm": -0.5,
-     "dy_mm": 5.7,
-     "distance_mm": 5.8,
+     "pedal": "retrovibe",
+     "dx_mm": 1.1,
+     "dy_mm": -8.6,
+     "distance_mm": 8.7,
      "rot_from": 0,
      "rot_to": 0
     },
     {
-     "pedal": "ehx_pico_pitch_fork",
-     "dx_mm": 2.8,
-     "dy_mm": 8.0,
-     "distance_mm": 8.5,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "red_muck",
-     "dx_mm": 6.0,
-     "dy_mm": -1.9,
-     "distance_mm": 6.3,
-     "rot_from": 0,
-     "rot_to": 0
+     "pedal": "ratsbane",
+     "dx_mm": 14.7,
+     "dy_mm": 0.4,
+     "distance_mm": 14.7,
+     "rot_from": 270,
+     "rot_to": 270
     },
     {
      "pedal": "monk",
-     "dx_mm": 2.7,
-     "dy_mm": -1.0,
-     "distance_mm": 2.9,
+     "dx_mm": 0.4,
+     "dy_mm": 0.6,
+     "distance_mm": 0.7,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "tumnus_deluxe",
+     "dx_mm": 10.2,
+     "dy_mm": -12.0,
+     "distance_mm": 15.7,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -253,7 +249,7 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "boss_dd8"
+         "boss_dd200"
         ]
        },
        {
@@ -295,37 +291,21 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "phase_95",
-         "protein",
-         "ratsbane",
-         "red_muck",
-         "tumnus_deluxe"
+         "red_muck"
         ]
        },
        {
         "port": "F2",
         "voltage_v": 9,
         "pedals": [
-         "ehx_pico_pitch_fork"
+         "phase_95",
+         "protein",
+         "ratsbane",
+         "tumnus_deluxe"
         ]
        },
        {
         "port": "F3",
-        "voltage_v": 9,
-        "pedals": [
-         "polytune_3"
-        ]
-       },
-       {
-        "port": "SW_A",
-        "voltage_v": 18,
-        "pedals": [
-         "mini_ego",
-         "fulldrive_2"
-        ]
-       },
-       {
-        "port": "SW_B",
         "voltage_v": 9,
         "pedals": [
          "retrovibe",
@@ -333,11 +313,26 @@
          "danelectro_3699",
          "sun_face"
         ]
+       },
+       {
+        "port": "SW_A",
+        "voltage_v": 18,
+        "pedals": [
+         "fulldrive_2",
+         "mini_ego"
+        ]
+       },
+       {
+        "port": "SW_B",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_3"
+        ]
        }
       ]
      }
     ],
-    "length_mm": 5371.2,
+    "length_mm": 4527.2,
     "warnings": [],
     "error": null
    }
@@ -348,71 +343,55 @@
    "svg": "2.svg",
    "metrics": {
     "errors": 0,
-    "warnings": 1,
+    "warnings": 0,
     "blocked": 0,
     "blocked_mm": 0,
     "blocked_jacks": [],
-    "collisions": 1,
+    "collisions": 0,
     "outside": 0,
     "unroutable": 0,
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 44.7,
-    "fs_crowding": 243.4,
+    "fs_closest_mm": 45.0,
+    "fs_crowding": 216.4,
     "fs_known": true,
-    "signal_mm": 2527.9,
-    "signal_routed": 17,
-    "signal_cables": 17,
-    "power_mm": 3367.2,
+    "signal_mm": 2300.1,
+    "signal_routed": 16,
+    "signal_cables": 16,
+    "power_mm": 3053.8,
     "power_unrouted": 0,
-    "io_mm": 18.1,
-    "surrogate": 3891.0,
+    "io_mm": 36.0,
+    "surrogate": 3731.1,
     "terms": {
-     "clearance": 77.0,
+     "clearance": 81.0,
      "routing_area": 0.0,
-     "signal": 2453.4,
-     "power": 514.6,
-     "footswitch": 488.3,
-     "io": 18.1,
-     "flow": 17.2,
-     "access": 183.8,
+     "signal": 2479.2,
+     "power": 432.0,
+     "footswitch": 432.9,
+     "io": 36.0,
+     "flow": 22.1,
+     "access": 161.4,
      "rotation": 40.0,
-     "move": 104.6,
-     "touch": -6.0
+     "move": 53.1,
+     "touch": -6.6
     },
-    "score": 3965.5
+    "score": 3552.0
    },
    "moved": [
     {
-     "pedal": "beano",
-     "dx_mm": -0.5,
-     "dy_mm": 5.7,
-     "distance_mm": 5.8,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "ehx_pico_pitch_fork",
-     "dx_mm": 2.8,
-     "dy_mm": 8.0,
-     "distance_mm": 8.5,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "retrovibe",
-     "dx_mm": -5.5,
-     "dy_mm": 1.1,
-     "distance_mm": 5.6,
-     "rot_from": 0,
-     "rot_to": 0
+     "pedal": "ratsbane",
+     "dx_mm": 14.7,
+     "dy_mm": 0.4,
+     "distance_mm": 14.7,
+     "rot_from": 270,
+     "rot_to": 270
     },
     {
      "pedal": "monk",
-     "dx_mm": 2.7,
-     "dy_mm": -1.0,
-     "distance_mm": 2.9,
+     "dx_mm": 0.4,
+     "dy_mm": 0.6,
+     "distance_mm": 0.7,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -428,7 +407,7 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "boss_dd8"
+         "boss_dd200"
         ]
        },
        {
@@ -470,9 +449,156 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
+         "red_muck"
+        ]
+       },
+       {
+        "port": "F2",
+        "voltage_v": 9,
+        "pedals": [
          "phase_95",
          "protein",
          "ratsbane",
+         "tumnus_deluxe"
+        ]
+       },
+       {
+        "port": "F3",
+        "voltage_v": 9,
+        "pedals": [
+         "retrovibe",
+         "beano",
+         "danelectro_3699",
+         "sun_face"
+        ]
+       },
+       {
+        "port": "SW_A",
+        "voltage_v": 18,
+        "pedals": [
+         "fulldrive_2",
+         "mini_ego"
+        ]
+       },
+       {
+        "port": "SW_B",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_3"
+        ]
+       }
+      ]
+     }
+    ],
+    "length_mm": 4517.6,
+    "warnings": [],
+    "error": null
+   }
+  },
+  {
+   "n": 3,
+   "file": "3.json",
+   "svg": "3.svg",
+   "metrics": {
+    "errors": 0,
+    "warnings": 0,
+    "blocked": 0,
+    "blocked_mm": 0,
+    "blocked_jacks": [],
+    "collisions": 0,
+    "outside": 0,
+    "unroutable": 0,
+    "squeezed": 0,
+    "overflow": 0,
+    "fs_close": 0,
+    "fs_closest_mm": 45.0,
+    "fs_crowding": 216.1,
+    "fs_known": true,
+    "signal_mm": 2312.8,
+    "signal_routed": 16,
+    "signal_cables": 16,
+    "power_mm": 3085.3,
+    "power_unrouted": 0,
+    "io_mm": 36.0,
+    "surrogate": 3744.9,
+    "terms": {
+     "clearance": 81.0,
+     "routing_area": 0.0,
+     "signal": 2494.8,
+     "power": 458.7,
+     "footswitch": 432.1,
+     "io": 36.0,
+     "flow": 22.1,
+     "access": 161.5,
+     "rotation": 40.0,
+     "move": 25.1,
+     "touch": -6.6
+    },
+    "score": 3562.8
+   },
+   "moved": [
+    {
+     "pedal": "monk",
+     "dx_mm": 0.4,
+     "dy_mm": 0.6,
+     "distance_mm": 0.7,
+     "rot_from": 0,
+     "rot_to": 0
+    }
+   ],
+   "power": {
+    "supplies": [
+     {
+      "id": "psu1",
+      "supply": "ojai_r30",
+      "label": "Ojai R30 (left)",
+      "outputs": [
+       {
+        "port": "F1",
+        "voltage_v": 9,
+        "pedals": [
+         "boss_dd200"
+        ]
+       },
+       {
+        "port": "F2",
+        "voltage_v": 9,
+        "pedals": [
+         "belle_epoch"
+        ]
+       },
+       {
+        "port": "F3",
+        "voltage_v": 9,
+        "pedals": [
+         "monk"
+        ]
+       },
+       {
+        "port": "SW_A",
+        "voltage_v": 18,
+        "pedals": [
+         "reticon"
+        ]
+       },
+       {
+        "port": "SW_B",
+        "voltage_v": 9,
+        "pedals": [
+         "analog_chorus"
+        ]
+       }
+      ]
+     },
+     {
+      "id": "psu2",
+      "supply": "ojai_r30",
+      "label": "Ojai R30 (right)",
+      "outputs": [
+       {
+        "port": "F1",
+        "voltage_v": 9,
+        "pedals": [
          "red_muck",
          "tumnus_deluxe"
         ]
@@ -481,26 +607,13 @@
         "port": "F2",
         "voltage_v": 9,
         "pedals": [
-         "ehx_pico_pitch_fork"
+         "phase_95",
+         "protein",
+         "ratsbane"
         ]
        },
        {
         "port": "F3",
-        "voltage_v": 9,
-        "pedals": [
-         "polytune_3"
-        ]
-       },
-       {
-        "port": "SW_A",
-        "voltage_v": 18,
-        "pedals": [
-         "mini_ego",
-         "fulldrive_2"
-        ]
-       },
-       {
-        "port": "SW_B",
         "voltage_v": 9,
         "pedals": [
          "retrovibe",
@@ -508,11 +621,26 @@
          "danelectro_3699",
          "sun_face"
         ]
+       },
+       {
+        "port": "SW_A",
+        "voltage_v": 18,
+        "pedals": [
+         "fulldrive_2",
+         "mini_ego"
+        ]
+       },
+       {
+        "port": "SW_B",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_3"
+        ]
        }
       ]
      }
     ],
-    "length_mm": 5344.8,
+    "length_mm": 4823.8,
     "warnings": [],
     "error": null
    }

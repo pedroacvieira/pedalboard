@@ -337,6 +337,18 @@ def test_tie_goes_to_the_higher_type_priority_then_the_front():
     assert fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0)["suggestions"][0]["key"] == "p.s"
 
 
+def test_suggestions_only_on_bypass_switches():
+    """Owner, 2026-11-04: toppers go on bypass switches; a boost switch never gets one, a tap switch only by hand. The boost
+    and tap switches gain more (two close pairs each) but are skipped; `types=None` allows every type."""
+    pts, prs = _synthetic(("a.s", "bypass", 0, 0), ("b.s", "boost", 60, 0), ("c.s", "bypass", 120, 0),
+                          ("d.s", "tap", 60, 60))
+    got = [s["key"] for s in fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0)["suggestions"]]
+    assert got and set(got) <= {"a.s", "c.s"}
+    assert fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, types=None)["suggestions"][0]["key"] in {"b.s", "d.s"}
+    tap = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, existing=["d.s"])   # set by hand: counts, is not suggested again
+    assert "d.s" not in [s["key"] for s in tap["suggestions"]]
+
+
 def test_cap_threshold_existing_and_none_needed():
     pts, prs = _synthetic(("a.s", "bypass", 0, 0), ("b.s", "bypass", 60, 0), ("c.s", "bypass", 120, 0))
     cap1 = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, max_toppers=1)
@@ -451,7 +463,7 @@ def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path, old_topp
             "(effective with toppers, 76.2 mm plain) (min 90.0 mm)") in md
 
 
-def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, min_gain=None):
+def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, min_gain=None, types=fsw.TOPPER_TYPES):
     """The straightforward greedy (whole-board crowding for every candidate): the reference for suggest_toppers."""
     min_gain = fsw.TOPPER_MIN_GAIN if min_gain is None else min_gain
     have = set(existing)
@@ -471,7 +483,7 @@ def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, 
                     crowded[k] = crowded.get(k, 0) + 1
         best = None
         for k, n in crowded.items():
-            if k in have:
+            if k in have or (types is not None and info[k]["type"] not in types):
                 continue
             gain = current - total(have | {k})
             key = (round(gain, 9), n, prio.get(info[k]["type"], 0.0), info[k]["y"])

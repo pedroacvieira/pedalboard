@@ -22,7 +22,8 @@ after the layout, per project: `footswitches.toppers` lists "<pedal id>.<switch 
 distance d_eff = d + `topper_bonus_mm` (default TOPPER_BONUS_MM: the height a topper adds, a rough proxy) per topper
 on the pair (both switches: 2x); crowding and `min_distance_mm` use d_eff. The layout search ignores toppers (layout.py uses `crowding` on the
 plain distances). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
-crowding (at most `max_toppers` in all, default MAX_TOPPERS, stopping when the next gain is below `topper_min_gain` x the crowding).
+crowding (at most `max_toppers` in all, default MAX_TOPPERS, stopping when the next gain is below `topper_min_gain` x the crowding),
+on bypass switches only (TOPPER_TYPES; a tap switch gets one by hand, never a boost one: owner, 2026-11-04).
 """
 import json
 import math
@@ -51,6 +52,8 @@ TOPPER_BONUS_MM = 4.5
 MAX_TOPPERS = 5          # default cap per board (owner, 2026-10-28); `footswitches.max_toppers: null` = no cap
 TOPPER_MIN_GAIN = 0.02   # a suggested topper must remove at least this share of the board's crowding (2 %: with the
                          # 4.5 mm height bonus one topper removes 2.5-3.5 % on the gig)
+TOPPER_TYPES = ("bypass",)  # switch types a topper is suggested for (owner, 2026-11-04: the switches the owner steps on most; never
+                            # a boost switch; a tap switch in the middle of the board only by hand, `footswitches.toppers`)
 
 
 # --- file ---------------------------------------------------------------------------------------
@@ -217,13 +220,13 @@ def effective_distance(distance_mm, n_toppers, bonus_mm):
     return distance_mm + n_toppers * bonus_mm
 
 
-def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None):
+def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None, types=TOPPER_TYPES):
     """Greedy topper suggestions (pure; post-layout, never during the search). `max_toppers` default MAX_TOPPERS (None =
     no cap), `min_gain` default TOPPER_MIN_GAIN, both read when called (one source with `topper_settings`).
 
     `pts` = points (key, type, y), `prs` = pairs (a, b, a_type, b_type, plain distance_mm), `existing` = keys that
     already have a topper (they count towards `max_toppers`). Each step tries a topper on every switch that is in at
-    least one crowded pair (d_eff < comfort) and takes the largest crowding reduction (computed from that switch's own
+    least one crowded pair (d_eff < comfort) and whose type is in `types` (None = any) and takes the largest crowding reduction (computed from that switch's own
     pairs only); ties: the switch in more crowded pairs, then the higher type priority, then nearer the front (larger
     y). Stops at the cap, when no crowding is left, or when the best gain < min_gain x the crowding before suggesting
     (fixed at the start). Returns {"before": crowding with `existing`, "after": crowding with all, "suggestions":
@@ -248,7 +251,7 @@ def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppe
     while before > 0 and (limit is None or len(out) < limit):
         best = None
         for k, mine in own.items():
-            if k in have:
+            if k in have or (types is not None and info[k]["type"] not in types):
                 continue
             n = sum(1 for r, _ in mine
                     if effective_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus_mm) < comfort_mm)

@@ -740,7 +740,8 @@ def footswitch_section(ctx, cat_pedals):
     sug = ctx.get("footswitch_suggestions")
     if sug is not None:
         cap, nset = st.get("max_toppers"), len(toppers)
-        intro = ("Chosen after the layout (never during the search), greedily: the topper that removes the most crowding "
+        intro = ("Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost "
+                 "switch never), greedily: the topper that removes the most crowding "
                  "first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the "
                  "higher priority type, then nearer the front), "
                  + (f"at most {cap} in all (`footswitches.max_toppers`)" if cap is not None else "no cap (`footswitches.max_toppers`)")
@@ -787,10 +788,11 @@ def proposals_section(ctx, cat_pedals):
     stale = meta.get("inputs_sha1") != proposal_inputs_sha1(pdir) or meta.get("chain") != ctx["chain"]
     md += [f"Made by `{meta['command']}` (max_change `{meta['max_change']}`, max move "
            f"{'none' if meta.get('max_move_mm') is None else format(meta['max_move_mm'], 'g') + ' mm'}, seed {meta['seed']}, "
-           f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is a Pedal "
-           "Playground file (Load from File: the owner's layout with only the moved pedals changed; pedals stay inside the usable board area, "
-           "`board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first); load it, adjust, save it as "
-           "playground_design.json, then build. Approximation: plug sizes are partly estimates and the search scores a simplified "
+           f"{meta['iterations']} iterations x {meta['restarts']} restarts, {meta['runtime_s']:g} s). Each proposal is the owner's layout with only the moved "
+           "pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it "
+           "is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: "
+           "dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout "
+           "(`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified "
            "model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).", ""]
     if stale:
         md += ["**Stale:** playground_design.json, project.json or the catalog data of these pedals (jacks, footswitches, outlines, "
@@ -822,7 +824,7 @@ def proposals_section(ctx, cat_pedals):
     for p in props:
         m = p["metrics"]
         gone = sorted(set(owner.get("blocked_jacks", [])) - set(m.get("blocked_jacks", [])))
-        md += [f"### Proposal {p['n']}", "", f"Pedal Playground file: [proposals/{p['file']}](proposals/{p['file']})"
+        md += [f"### Proposal {p['n']}", "", f"Layout document: [proposals/{p['file']}](proposals/{p['file']})"
                + (f"; blocked plugs fixed: {', '.join(f'`{j}`' for j in gone)}" if gone else "") + ".", "",
                f"![Proposal {p['n']}](proposals/{p['svg']})", "",
                "| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |", "|---|--:|--:|--:|---|"]
