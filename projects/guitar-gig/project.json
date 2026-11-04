@@ -28,7 +28,7 @@
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {} },
-  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "boss_dd200", "tumnus_deluxe"],
+  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "tumnus_deluxe", "boss_dd200"],
   "sections": {
     "priority": -10,
     "order": [
@@ -38,8 +38,9 @@
       { "name": "fuzz / distortion after the phasers (Protein still follows Ratsbane)", "pedals": ["red_muck", "ratsbane", "protein"] },
       { "name": "modulation", "pedals": ["analog_chorus", "reticon"] },
       { "name": "tremolo", "pedals": ["monk"] },
-      { "name": "delays", "pedals": ["belle_epoch", "boss_dd200"] },
-      { "name": "eq / boost", "pedals": ["tumnus_deluxe"] }
+      { "name": "delay", "pedals": ["belle_epoch"] },
+      { "name": "eq / boost", "pedals": ["tumnus_deluxe"] },
+      { "name": "delay with looper (records the whole chain)", "pedals": ["boss_dd200"] }
     ]
   },
   "rule_overrides": {},
@@ -60,8 +61,17 @@
       "type": "position",
       "value": "last",
       "strength": "required",
-      "reason": "Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain",
+      "reason": "Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain; only the DD-200 (looper) follows it",
       "priority": 100
+    },
+    {
+      "id": "boss_dd200.position_last",
+      "pedal": "boss_dd200",
+      "type": "position",
+      "value": "last",
+      "strength": "required",
+      "reason": "Its looper records the whole chain, so it comes after everything, the Tumnus included (owner, 2026-11-04)",
+      "priority": 110
     },
     { "id": "boss_dd200.after_group_gain", "pedal": "boss_dd200", "type": "after_group", "group": "gain", "strength": "required", "reason": "Time-based effects after the dirt" },
     {

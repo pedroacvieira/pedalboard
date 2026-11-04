@@ -32,10 +32,10 @@ flowchart TB
     reticon["<b>13</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
     monk["<b>14</b> &nbsp;JAM Pedals Harmonious Monk Mk2<br/>tremolo"]:::c_tremolo
     belle_epoch["<b>15</b> &nbsp;Catalinbread Belle Epoch Deluxe<br/>delay"]:::c_delay
-    boss_dd200["<b>16</b> &nbsp;BOSS DD-200 Digital Delay<br/>delay"]:::c_delay
-    tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
+    tumnus_deluxe["<b>16</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
+    boss_dd200["<b>17</b> &nbsp;BOSS DD-200 Digital Delay<br/>delay"]:::c_delay
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> analog_chorus --> reticon --> monk --> belle_epoch --> boss_dd200 --> tumnus_deluxe --> amp
+    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> analog_chorus --> reticon --> monk --> belle_epoch --> tumnus_deluxe --> boss_dd200 --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
@@ -66,8 +66,8 @@ flowchart TB
 | 13 | PastFX Reticon Flanger | Yes | 18V | 18V | 50 mA | True | No | Ojai R30 · SW_A |
 | 14 | JAM Pedals Harmonious Monk Mk2 | Yes | 9V | 9V | 145 mA | True | Yes | Ojai R30 · F3 |
 | 15 | Catalinbread Belle Epoch Deluxe | Yes | 9V | 9V | 200 mA | True (switchable) | Yes | Ojai R30 · F2 |
-| 16 | BOSS DD-200 Digital Delay | No | 9V | 9V | 225 mA | Buffered | Yes | Ojai R30 · F1 |
-| 17 | Wampler Tumnus Deluxe | Yes | 9V | 9V | 70 mA | Buffered (switchable) | No | Ojai R30 · F3 |
+| 16 | Wampler Tumnus Deluxe | Yes | 9V | 9V | 70 mA | Buffered (switchable) | No | Ojai R30 · F3 |
+| 17 | BOSS DD-200 Digital Delay | No | 9V | 9V | 225 mA | Buffered | Yes | Ojai R30 · F1 |
 
 **To buy:** BOSS DD-200 Digital Delay
 
@@ -84,7 +84,8 @@ flowchart TB
 - **JAM Pedals Harmonious Monk Mk2** must come after all `modulation` pedals: Tremolo after the modulation pedals `[project]`
 - **Catalinbread Belle Epoch Deluxe** must come after all `gain` pedals: Original plan: time-based effects after the dirt `[project]`
 - **Catalinbread Belle Epoch Deluxe** must come before BOSS DD-200 Digital Delay: Belle Epoch ahead of the DD-200 `[project]`
-- **Wampler Tumnus Deluxe** must be last in the chain (priority 100): Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain `[project]`
+- **Wampler Tumnus Deluxe** must be last in the chain (priority 100): Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain; only the DD-200 (looper) follows it `[project]`
+- **BOSS DD-200 Digital Delay** must be last in the chain (priority 110): Its looper records the whole chain, so it comes after everything, the Tumnus included (owner, 2026-11-04) `[project]`
 - **BOSS DD-200 Digital Delay** must come after all `gain` pedals: Time-based effects after the dirt `[project]`
 - **TC Electronic PolyTune 3** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first, with no buffer ahead of the Sun Face and Beano `[project]`
 - **TC Electronic PolyTune 3** must be first in the chain (priority 50): Tuner should come first (overruled by the fuzz rules) `[project]`
@@ -106,8 +107,9 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 4. **fuzz / distortion after the phasers (Protein still follows Ratsbane)**: JAM Pedals Red Muck Mk2, Wampler Ratsbane, Browne Protein V3
 5. **modulation**: MXR Analog Chorus, PastFX Reticon Flanger
 6. **tremolo**: JAM Pedals Harmonious Monk Mk2
-7. **delays**: Catalinbread Belle Epoch Deluxe, BOSS DD-200 Digital Delay
+7. **delay**: Catalinbread Belle Epoch Deluxe
 8. **eq / boost**: Wampler Tumnus Deluxe
+9. **delay with looper (records the whole chain)**: BOSS DD-200 Digital Delay
 
 ### Overridden by priority
 
@@ -116,7 +118,7 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - `tumnus_deluxe.position_last` overrides `reticon.after_group_gain` for: tumnus_deluxe before reticon
 - `tumnus_deluxe.position_last` overrides `analog_chorus.after_group_gain` for: tumnus_deluxe before analog_chorus
 - `tumnus_deluxe.position_last` overrides `belle_epoch.after_group_gain` for: tumnus_deluxe before belle_epoch
-- `tumnus_deluxe.position_last` overrides `boss_dd200.after_group_gain` for: tumnus_deluxe before boss_dd200
+- `boss_dd200.position_last` overrides `tumnus_deluxe.position_last` for: boss_dd200 before tumnus_deluxe
 - `polytune_3.after_fuzz` overrides `polytune_3.first` for: polytune_3 before danelectro_3699
 - `polytune_3.first` overrides `mini_ego.first` for: mini_ego before polytune_3
 - `mini_ego.after_fuzz` overrides `mini_ego.first` for: mini_ego before sun_face; mini_ego before beano; mini_ego before danelectro_3699
@@ -138,8 +140,8 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **PastFX Reticon Flanger**: Analog BBD flanger, post-dirt modulation. Needs an isolated 18V output, no battery. True bypass (per owner). 'Under 50 mA' is from search snippets of the PastFX page/manual (direct fetch failed): verify.
 - **JAM Pedals Harmonious Monk Mk2**: Harmonic tremolo with digital tap controller. Analog signal path but a digital processor, so treated as DIGITAL: must not share an output. JAM recommends an isolated supply; 145 mA is JAM's max (third-party listings say 35-100 mA). True bypass.
 - **Catalinbread Belle Epoch Deluxe**: Tape echo emulation. Analog EP-3-style circuitry around a 24-bit digital delay line, so treated as DIGITAL. Catalinbread lists 9V DC ONLY at 200 mA (it steps up to an internal rail itself): the original plan had it on 18V, which could damage it, so it is on a 9V output here. Give it a clean isolated output. Spelled 'Epoque' in the original plan.
-- **BOSS DD-200 Digital Delay**: In guitar-gig (replaced the DD-8, owner layout 2026-11-04). Digital delay with 2 footswitches, memories, MIDI, 60 s looper. BOSS spec page (boss.info/global/products/dd-200/specifications): current draw 225 mA (high), power = 3 AA batteries or PSA-S series AC adaptor (sold separately), bypass 'Buffered bypass' ('Analog dry through and buffered bypass'). The BOSS page gives no DC voltage or polarity; 9 V DC (Thomann: 9 V DC) and center-negative (a UK retailer listing; also the PSA-S adaptor BOSS specifies is 9 V center-negative, Roland support) are therefore secondary sources, unverified against the manual. Digital: must not share an output; 225 mA needs an output rated for it.
 - **Wampler Tumnus Deluxe**: Klon-style EQ/overdrive: dead last, master mid-stack and buffer. Runs at 9V ONLY (boosts the rail internally, do not use 18V). Buffered or true bypass via side switch (buffer enabled in this plan). 70.3 mA at 9V. Tagged 'gain' (it is a drive) but 'dead last' outranks the group-order rules via priority.
+- **BOSS DD-200 Digital Delay**: In guitar-gig (replaced the DD-8, owner layout 2026-11-04). Digital delay with 2 footswitches, memories, MIDI, 60 s looper. BOSS spec page (boss.info/global/products/dd-200/specifications): current draw 225 mA (high), power = 3 AA batteries or PSA-S series AC adaptor (sold separately), bypass 'Buffered bypass' ('Analog dry through and buffered bypass'). The BOSS page gives no DC voltage or polarity; 9 V DC (Thomann: 9 V DC) and center-negative (a UK retailer listing; also the PSA-S adaptor BOSS specifies is 9 V center-negative, Roland support) are therefore secondary sources, unverified against the manual. Digital: must not share an output; 225 mA needs an output rated for it.
 
 ## Powering
 
@@ -264,6 +266,7 @@ DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagona
 - P5.1 (red_muck.power) passes under the plug at red_muck.out: plug it diagonally
 - P4 (reticon.power) passes under the plug at reticon.out: plug it diagonally
 - P5.4 (sun_face.power) passes under the plug at sun_face.in: plug it diagonally
+- P7.3 (tumnus_deluxe.power) passes under the plug at tumnus_deluxe.out: plug it diagonally
 
 Cable lengths: see Cable routing.
 
@@ -298,8 +301,8 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S12 | signal | analog_chorus.out | reticon.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 207 | routed |
 | S13 | signal | reticon.out | monk.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 54 | routed |
 | S14 | signal | monk.out | belle_epoch.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 252 | routed |
-| S15 | signal | belle_epoch.out | boss_dd200.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | yes (2 holes, 154 mm) | 287 | routed |
-| S16 | signal | boss_dd200.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | right / down | TS / TS | - | yes (1 hole, 160 mm) | 254 | routed |
+| S15 | signal | belle_epoch.out | tumnus_deluxe.in | ernie_ball_flat_patch_ra | left / down | TS / TS | - | yes (1 hole, 38 mm) | 155 | routed |
+| S16 | signal | tumnus_deluxe.out | boss_dd200.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | yes (2 holes, 165 mm) | 253 | routed |
 | P1 | power | psu1.F1 | boss_dd200.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 97 mm under, 78 mm on top | 215 | routed |
 | P2 | power | psu1.F2 | belle_epoch.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 143 mm under, 24 mm on top | 207 | routed |
 | P3 | power | psu1.F3 | monk.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 109 mm under, 1 mm on top | 149 | routed |
@@ -318,7 +321,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P9.2 | power | phase_95.power | retrovibe.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 193 mm under, 15 mm on top | 276 | routed |
 | P9.3 | power | retrovibe.power | analog_chorus.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 2 holes; 324 mm under, 28 mm on top | 430 | routed |
 
-Signal cable, minimum: 2448 mm over 16 cables.
+Signal cable, minimum: 2314 mm over 16 cables.
 
 ### DC cables to buy
 

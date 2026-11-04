@@ -155,10 +155,10 @@
 <rect x="119.7" y="240.1" width="8.0" height="12.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="104.7" y="240.7" width="15.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="101.5" y="242.1" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="44.1" y="209.8" width="8.0" height="12.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="21.2" y="50.1" width="8.0" height="12.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="29.2" y="50.7" width="15.0" height="6.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <rect x="44.2" y="52.1" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
-<rect x="44.1" y="209.8" width="8.0" height="12.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
 <g class="plug-down"><circle cx="514.9" cy="217.2" r="1.9" fill="#37474f" fill-opacity="0.85" stroke="#ffffff" stroke-width="0.4"/><path d="M513.9 216.2 L515.9 218.2 M513.9 218.2 L515.9 216.2" stroke="#ffffff" stroke-width="0.5" fill="none"/></g>
 <g class="plug-down"><circle cx="369.0" cy="204.8" r="1.9" fill="#37474f" fill-opacity="0.85" stroke="#ffffff" stroke-width="0.4"/><path d="M368.0 203.8 L370.0 205.8 M368.0 205.8 L370.0 203.8" stroke="#ffffff" stroke-width="0.5" fill="none"/></g>
 <g class="plug-down"><circle cx="216.4" cy="138.4" r="1.9" fill="#37474f" fill-opacity="0.85" stroke="#ffffff" stroke-width="0.4"/><path d="M215.4 137.4 L217.4 139.4 M215.4 139.4 L217.4 137.4" stroke="#ffffff" stroke-width="0.5" fill="none"/></g>
@@ -229,8 +229,8 @@
 <g class="jack" data-jack="power" data-used="1"><line x1="224.8" y1="138.4" x2="221.4" y2="138.4" stroke="#ef6c00" stroke-width="0.7"/><circle cx="224.8" cy="138.4" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="power" data-used="1"><line x1="131.7" y1="100.8" x2="128.3" y2="100.8" stroke="#ef6c00" stroke-width="0.7"/><circle cx="131.7" cy="100.8" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="power" data-used="1"><line x1="123.7" y1="252.1" x2="123.7" y2="248.7" stroke="#ef6c00" stroke-width="0.7"/><circle cx="123.7" cy="252.1" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
-<g class="jack" data-jack="power" data-used="1"><line x1="25.2" y1="62.1" x2="25.2" y2="58.7" stroke="#ef6c00" stroke-width="0.7"/><circle cx="25.2" cy="62.1" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="power" data-used="1"><line x1="48.1" y1="221.8" x2="48.1" y2="218.4" stroke="#ef6c00" stroke-width="0.7"/><circle cx="48.1" cy="221.8" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="25.2" y1="62.1" x2="25.2" y2="58.7" stroke="#ef6c00" stroke-width="0.7"/><circle cx="25.2" cy="62.1" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="SW_A" data-used="1"><line x1="229.8" y1="116.6" x2="229.8" y2="120.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="229.8" cy="116.6" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="SW_B" data-used="0"><line x1="249.0" y1="116.6" x2="249.0" y2="120.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="249.0" cy="116.6" r="1.4" fill="#ffffff" stroke="#ef6c00" stroke-width="0.6"/></g>
 <g class="jack" data-jack="F3" data-used="1"><line x1="217.9" y1="116.6" x2="217.9" y2="120.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="217.9" cy="116.6" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
