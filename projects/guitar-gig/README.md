@@ -67,9 +67,9 @@ flowchart TB
 | 14 | JAM Pedals Harmonious Monk Mk2 | Yes | 9V | 9V | 145 mA | True | Yes | Ojai R30 · F3 |
 | 15 | Catalinbread Belle Epoch Deluxe | Yes | 9V | 9V | 200 mA | True (switchable) | Yes | Ojai R30 · F2 |
 | 16 | Wampler Tumnus Deluxe | Yes | 9V | 9V | 70 mA | Buffered (switchable) | No | Ojai R30 · F3 |
-| 17 | BOSS DD-200 Digital Delay | No | 9V | 9V | 225 mA | Buffered | Yes | Ojai R30 · F1 |
+| 17 | BOSS DD-200 Digital Delay | Yes | 9V | 9V | 225 mA | Buffered | Yes | Ojai R30 · F1 |
 
-**To buy:** BOSS DD-200 Digital Delay
+**To buy:** nothing
 
 ### Ordering rules
 

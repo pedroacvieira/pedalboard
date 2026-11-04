@@ -826,7 +826,7 @@
     },
     {
       "id": "boss_dd200",
-      "owned": false,
+      "owned": true,
       "instruments": ["guitar"],
       "brand": "BOSS",
       "name": "DD-200 Digital Delay",
