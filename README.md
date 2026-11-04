@@ -34,17 +34,13 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
-| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 6 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
 
 ## Open issues
 
 ### Bass board
-
-- No playground_design.json: cable lengths and clearance are not checked
-
-### Guitar practice board
 
 - No playground_design.json: cable lengths and clearance are not checked
 
@@ -65,22 +61,20 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ## Shared gear
 
-- **Strymon Ojai R30**: projects use 3 units (guitar-gig: 2, guitar-practice: 1) but you own 2
+- **TC Electronic PolyTune 2 Mini** is in bass, guitar-practice but you own 1
+- **Harley Benton PowerPlant ISO-5 Pro**: projects use 2 units (bass: 1, guitar-practice: 1) but you own 1
 
 ## Shopping list
 
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
+| TC Electronic PolyTune 2 Mini | 1 | bass, guitar-practice | - |
 | MXR Bass Synth | 1 | bass | 329 EUR |
-| BOSS DD-200 Digital Delay | 1 | guitar-gig | 255 EUR |
-| JHS Pulp 'N' Peel V4 | 1 | guitar-practice | 238 EUR |
-| JHS Hard Drive | 1 | guitar-practice | 207 EUR |
-| Strymon Ojai R30 (power supply) | 1 | guitar-gig, guitar-practice | 177 EUR |
-| Rockboard by Warwick Duo 2.1 (board) | 1 | guitar-practice | 74 EUR |
+| Harley Benton PowerPlant ISO-5 Pro (power supply) | 1 | bass, guitar-practice | 49 EUR |
 
-**Known total:** 1280 EUR
+**Known total:** 378 EUR (1 item(s) without a `price_eur`)
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, JHS Flight Delay, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
+JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
 

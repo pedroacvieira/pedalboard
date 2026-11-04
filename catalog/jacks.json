@@ -90,6 +90,14 @@
       {"id": "out", "label": "Output", "function": "output", "x": 0.2349, "y": 0.0, "facing": "top"},
       {"id": "power", "label": "Power", "function": "power", "x": 0.4942, "y": 0.0178, "facing": "top"}
     ],
+    "harley_benton_iso5_pro": [
+      {"id": "OUT1", "label": "OUT1", "function": "power_out", "x": 0.2837, "y": 1.0, "facing": "down"},
+      {"id": "OUT2", "label": "OUT2", "function": "power_out", "x": 0.4209, "y": 1.0, "facing": "down"},
+      {"id": "OUT3", "label": "OUT3", "function": "power_out", "x": 0.5558, "y": 1.0, "facing": "down"},
+      {"id": "OUT4", "label": "OUT4", "function": "power_out", "x": 0.693, "y": 1.0, "facing": "down"},
+      {"id": "OUT5", "label": "OUT5", "function": "power_out", "x": 0.8279, "y": 1.0, "facing": "down"},
+      {"id": "POWER IN", "label": "POWER IN", "function": "other", "x": 0.15, "y": 1.0, "facing": "down"}
+    ],
     "jhs_hard_drive": [
       {"id": "in", "label": "Input", "function": "input", "x": 0.7509, "y": 0.0044, "facing": "top"},
       {"id": "out", "label": "Output", "function": "output", "x": 0.255, "y": 0.0044, "facing": "top"},

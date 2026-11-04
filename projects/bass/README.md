@@ -4,13 +4,7 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
-
-<details><summary>Validation messages</summary>
-
-- WARN jacks: harley_benton_iso5_pro (Harley Benton PowerPlant ISO-5 Pro) has no playground_title, so there is no image to mark jacks on
-
-</details>
+- **Validation:** OK, 0 warning(s) (`no_unknown` on)
 
 ## Signal chain
 
@@ -119,7 +113,7 @@ Placement: under the board. Layout item: no layout.
 
 ## Jacks and cables
 
-Jack data: 5 of 6 catalog items set up (pedals and supplies in this project).
+Jack data: 6 of 6 catalog items set up (pedals and supplies in this project).
 
 *no playground_design.json: cable lengths and clearance are not checked.*
 

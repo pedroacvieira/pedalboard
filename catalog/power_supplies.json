@@ -66,7 +66,7 @@
       "model": "PowerPlant ISO-5 Pro",
       "quantity": 1,
       "polarity": "center_negative",
-      "playground_title": null,
+      "playground_title": "Harley Benton PowerPlant ISO-1AC Pro",
       "outputs": [
         {
           "port": "OUT1",
@@ -108,7 +108,7 @@
           ]
         }
       ],
-      "comments": "Bass supply (model confirmed by owner). Five isolated, filtered, short-circuit-protected outputs: OUT1-3 fixed 9V up to 300 mA; OUT4-5 selectable 9/12/18V (rear switches) up to 500 mA. Input: included 12V/2A adapter. Total output load must not exceed 18 W (not checked by the build). Thomann's summary says all five go to 18V/500 mA, but its detailed description and the Harley Benton spec sheet agree with the figures above. The 500 mA at 12V/18V is the listed maximum; unlike the Ojai there is no published derating.",
+      "comments": "Bass supply (model confirmed by owner). Pedal Playground has no ISO-5 Pro: playground_title is a STAND-IN, the ISO-1AC Pro (owner, 2026-11-04: almost the same footprint, different height and max current; outputs and limits here stay the ISO-5 Pro's). Five isolated, filtered, short-circuit-protected outputs: OUT1-3 fixed 9V up to 300 mA; OUT4-5 selectable 9/12/18V (rear switches) up to 500 mA. Input: included 12V/2A adapter. Total output load must not exceed 18 W (not checked by the build). Thomann's summary says all five go to 18V/500 mA, but its detailed description and the Harley Benton spec sheet agree with the figures above. The 500 mA at 12V/18V is the listed maximum; unlike the Ojai there is no published derating.",
       "price_eur": 49,
       "price_info": {
         "store": "thomann.de",
