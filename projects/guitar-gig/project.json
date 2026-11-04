@@ -28,7 +28,7 @@
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {} },
-  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "ehx_pico_pitch_fork", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "boss_dd8", "tumnus_deluxe"],
+  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "boss_dd200", "tumnus_deluxe"],
   "sections": {
     "priority": -10,
     "order": [
@@ -38,7 +38,7 @@
       { "name": "fuzz / distortion after the phasers (Protein still follows Ratsbane)", "pedals": ["red_muck", "ratsbane", "protein"] },
       { "name": "modulation", "pedals": ["analog_chorus", "reticon"] },
       { "name": "tremolo", "pedals": ["monk"] },
-      { "name": "delays", "pedals": ["belle_epoch", "boss_dd8"] },
+      { "name": "delays", "pedals": ["belle_epoch", "boss_dd200"] },
       { "name": "eq / boost", "pedals": ["tumnus_deluxe"] }
     ]
   },
@@ -53,7 +53,7 @@
     { "id": "analog_chorus.after_group_gain", "pedal": "analog_chorus", "type": "after_group", "group": "gain", "strength": "required", "reason": "Modulation after the gain pedals" },
     { "id": "monk.after_group_modulation", "pedal": "monk", "type": "after_group", "group": "modulation", "strength": "required", "reason": "Tremolo after the modulation pedals" },
     { "id": "belle_epoch.after_group_gain", "pedal": "belle_epoch", "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" },
-    { "id": "belle_epoch.before_boss_dd8", "pedal": "belle_epoch", "type": "before", "pedals": ["boss_dd8"], "strength": "required", "reason": "Belle Epoch ahead of the DD-8" },
+    { "id": "belle_epoch.before_boss_dd200", "pedal": "belle_epoch", "type": "before", "pedals": ["boss_dd200"], "strength": "required", "reason": "Belle Epoch ahead of the DD-200" },
     {
       "id": "tumnus_deluxe.position_last",
       "pedal": "tumnus_deluxe",
@@ -63,7 +63,7 @@
       "reason": "Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain",
       "priority": 100
     },
-    { "id": "boss_dd8.after_group_gain", "pedal": "boss_dd8", "type": "after_group", "group": "gain", "strength": "required", "reason": "Time-based effects after the dirt" },
+    { "id": "boss_dd200.after_group_gain", "pedal": "boss_dd200", "type": "after_group", "group": "gain", "strength": "required", "reason": "Time-based effects after the dirt" },
     {
       "id": "polytune_3.after_fuzz",
       "pedal": "polytune_3",
@@ -89,11 +89,10 @@
         "supply": "ojai_r30",
         "label": "Ojai R30 (left)",
         "outputs": [
-          { "port": "F1", "voltage_v": 9, "pedals": ["boss_dd8"], "note": "Digital: alone" },
+          { "port": "F1", "voltage_v": 9, "pedals": ["boss_dd200"], "note": "Digital: alone" },
           { "port": "F2", "voltage_v": 9, "pedals": ["belle_epoch"], "note": "Digital: alone" },
           { "port": "F3", "voltage_v": 9, "pedals": ["monk"], "note": "Digital: alone" },
-          { "port": "SW_A", "voltage_v": 18, "pedals": ["reticon"], "note": "Isolated output needed: alone" },
-          { "port": "SW_B", "voltage_v": 9, "pedals": ["ehx_pico_pitch_fork"], "note": "Digital: alone" }
+          { "port": "SW_A", "voltage_v": 18, "pedals": ["reticon"], "note": "Isolated output needed: alone" }
         ]
       },
       {

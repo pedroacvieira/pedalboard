@@ -5,21 +5,20 @@ flowchart TB
     beano["<b>3</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
     polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
     mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
-    ehx_pico_pitch_fork["<b>6</b> &nbsp;Electro-Harmonix Pico Pitch Fork<br/>other"]:::c_other
-    fulldrive_2["<b>7</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
-    phase_95["<b>8</b> &nbsp;MXR Phase 95<br/>phase-type"]:::c_phase_type
-    retrovibe["<b>9</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
-    red_muck["<b>10</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
-    ratsbane["<b>11</b> &nbsp;Wampler Ratsbane<br/>drive / distortion"]:::c_drive___distortion
-    protein["<b>12</b> &nbsp;Browne Protein V3<br/>drive / distortion"]:::c_drive___distortion
-    analog_chorus["<b>13</b> &nbsp;MXR Analog Chorus<br/>modulation"]:::c_modulation
-    reticon["<b>14</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
-    monk["<b>15</b> &nbsp;JAM Pedals Harmonious Monk Mk2<br/>tremolo"]:::c_tremolo
-    belle_epoch["<b>16</b> &nbsp;Catalinbread Belle Epoch Deluxe<br/>delay"]:::c_delay
-    boss_dd8["<b>17</b> &nbsp;BOSS DD-8 Digital Delay<br/>delay"]:::c_delay
-    tumnus_deluxe["<b>18</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
+    fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
+    phase_95["<b>7</b> &nbsp;MXR Phase 95<br/>phase-type"]:::c_phase_type
+    retrovibe["<b>8</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
+    red_muck["<b>9</b> &nbsp;JAM Pedals Red Muck Mk2<br/>fuzz / boost"]:::c_fuzz___boost
+    ratsbane["<b>10</b> &nbsp;Wampler Ratsbane<br/>drive / distortion"]:::c_drive___distortion
+    protein["<b>11</b> &nbsp;Browne Protein V3<br/>drive / distortion"]:::c_drive___distortion
+    analog_chorus["<b>12</b> &nbsp;MXR Analog Chorus<br/>modulation"]:::c_modulation
+    reticon["<b>13</b> &nbsp;PastFX Reticon Flanger<br/>modulation"]:::c_modulation
+    monk["<b>14</b> &nbsp;JAM Pedals Harmonious Monk Mk2<br/>tremolo"]:::c_tremolo
+    belle_epoch["<b>15</b> &nbsp;Catalinbread Belle Epoch Deluxe<br/>delay"]:::c_delay
+    boss_dd200["<b>16</b> &nbsp;BOSS DD-200 Digital Delay<br/>delay"]:::c_delay
+    tumnus_deluxe["<b>17</b> &nbsp;Wampler Tumnus Deluxe<br/>eq / boost"]:::c_eq___boost
     amp(["Amplifier"]):::endpoint
-    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> ehx_pico_pitch_fork --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> analog_chorus --> reticon --> monk --> belle_epoch --> boss_dd8 --> tumnus_deluxe --> amp
+    guitar --> sun_face --> danelectro_3699 --> beano --> polytune_3 --> mini_ego --> fulldrive_2 --> phase_95 --> retrovibe --> red_muck --> ratsbane --> protein --> analog_chorus --> reticon --> monk --> belle_epoch --> boss_dd200 --> tumnus_deluxe --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
@@ -30,5 +29,4 @@ flowchart TB
     classDef c_tremolo fill:#c5cae9,stroke:#3949ab,stroke-width:2px,color:#1b1b1b
     classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
     classDef c_eq___boost fill:#f8bbd0,stroke:#ad1457,stroke-width:2px,color:#1b1b1b
-    classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
     linkStyle default stroke:#78909c,stroke-width:2px

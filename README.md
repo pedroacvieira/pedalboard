@@ -35,7 +35,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
 | [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
-| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 18 | 2 x Strymon Ojai R30 | OK, 2 warning(s) |
+| [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 3 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Strymon Ojai R30 | OK, 0 warning(s) |
 
 ## Open issues
@@ -46,8 +46,8 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Blocked cable space: `monk.power` is blocked by Wampler Tumnus Deluxe (1.1 mm into the head of the dc_ra_owner_baseline plug, cable exits right); move one of the pedals apart
-- Plug collision: fulldrive_2.power (Power, dc_ra_owner_baseline right-angle plug, cable exits right) collides with the plug at phase_95.out (ernie_ball_flat_patch_ra plug): 1.3 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
+- Jacks not set up for `boss_dd200`: `uv run scripts/pedal_editor.py boss_dd200`
+- Footswitches not placed for 1 pedal(s): `uv run scripts/pedal_editor.py --list-missing guitar-gig --only footswitches`
 
 ### Guitar practice board
 
@@ -77,16 +77,15 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
 | MXR Bass Synth | 1 | bass | 329 EUR |
-| Electro-Harmonix Pico Pitch Fork | 1 | guitar-gig | 196 EUR |
-| BOSS DD-8 Digital Delay | 1 | guitar-gig | 179 EUR |
+| BOSS DD-200 Digital Delay | 1 | guitar-gig | 255 EUR |
 | JHS Pulp 'N' Peel V4 | 1 | guitar-practice | 238 EUR |
 | JHS Hard Drive | 1 | guitar-practice | 207 EUR |
 | Strymon Ojai R30 (power supply) | 1 | guitar-gig, guitar-practice | 177 EUR |
 | Rockboard by Warwick Duo 2.1 (board) | 1 | guitar-practice | 74 EUR |
 
-**Known total:** 1400 EUR
+**Known total:** 1280 EUR
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, JHS Flight Delay, BOSS DD-200 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG
+JHS Double Dragon, JHS Flight Delay, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
 

@@ -1,11 +1,10 @@
 flowchart LR
     subgraph psu1["Ojai R30 (left)"]
         direction TB
-        psu1_F1["<b>F1</b> · 9V<br/>100 / 500 mA"]:::out9
+        psu1_F1["<b>F1</b> · 9V<br/>225 / 500 mA"]:::out9
         psu1_F2["<b>F2</b> · 9V<br/>200 / 500 mA"]:::out9
         psu1_F3["<b>F3</b> · 9V<br/>145 / 500 mA"]:::out9
         psu1_SW_A["<b>SW_A</b> · 18V<br/>50 / 250 mA"]:::out18
-        psu1_SW_B["<b>SW_B</b> · 9V<br/>100 / 500 mA"]:::out9
     end
     subgraph psu2["Ojai R30 (right)"]
         direction TB
@@ -15,11 +14,10 @@ flowchart LR
         psu2_SW_A["<b>SW_A</b> · 18V<br/>32 / 250 mA"]:::out18
         psu2_SW_B["<b>SW_B</b> · 9V<br/>141 / 500 mA"]:::out9
     end
-    boss_dd8["BOSS DD-8 Digital Delay<br/>delay · 100 mA"]:::c_delay
+    boss_dd200["BOSS DD-200 Digital Delay<br/>delay · 225 mA"]:::c_delay
     belle_epoch["Catalinbread Belle Epoch Deluxe<br/>delay · 200 mA"]:::c_delay
     monk["JAM Pedals Harmonious Monk Mk2<br/>tremolo · 145 mA"]:::c_tremolo
     reticon["PastFX Reticon Flanger<br/>modulation · 50 mA"]:::c_modulation
-    ehx_pico_pitch_fork["Electro-Harmonix Pico Pitch Fork<br/>other · 100 mA"]:::c_other
     red_muck["JAM Pedals Red Muck Mk2<br/>fuzz / boost · 15 mA"]:::c_fuzz___boost
     beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
@@ -33,11 +31,10 @@ flowchart LR
     phase_95["MXR Phase 95<br/>phase-type · 8 mA"]:::c_phase_type
     retrovibe["JAM Pedals Retrovibe<br/>phase-type · 120 mA"]:::c_phase_type
     analog_chorus["MXR Analog Chorus<br/>modulation · 13 mA"]:::c_modulation
-    psu1_F1 --> boss_dd8
+    psu1_F1 --> boss_dd200
     psu1_F2 --> belle_epoch
     psu1_F3 --> monk
     psu1_SW_A --> reticon
-    psu1_SW_B --> ehx_pico_pitch_fork
     psu2_F1 --> red_muck
     red_muck --> beano
     beano --> danelectro_3699
@@ -63,7 +60,6 @@ flowchart LR
     classDef c_tremolo fill:#c5cae9,stroke:#3949ab,stroke-width:2px,color:#1b1b1b
     classDef c_delay fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#1b1b1b
     classDef c_eq___boost fill:#f8bbd0,stroke:#ad1457,stroke-width:2px,color:#1b1b1b
-    classDef c_other fill:#d7ccc8,stroke:#5d4037,stroke-width:2px,color:#1b1b1b
     style psu1 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
     style psu2 fill:none,stroke:#90a4ae,stroke-dasharray:4 3
     linkStyle default stroke:#78909c,stroke-width:2px
