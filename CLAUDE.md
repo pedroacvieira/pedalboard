@@ -95,7 +95,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `fetch_playground.py` (the shared layout from
   Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~670 tests, ~100 s, hand-computed geometry cases
+- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~700 tests, ~150 s, hand-computed geometry cases
   (`PEDALBOARD_SLOW=1` adds the full guitar-gig search). Tests that depend on the gig's layout, wiring or proposals use the
   FROZEN copy `tests/fixtures/guitar-gig/` (`conftest.gig_copy` / `GIG_FIXTURE`), never the live project (the owner fetches
   new layouts all the time); update the fixture only deliberately.
@@ -180,7 +180,17 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   fixed box from `ctx["fixed_zones"]`: first input, last output, extra jacks) must not overlap another jack's
   (`routing.plug_collision_findings`, `ctx["plug_collisions"]`, clearance warnings; NOT in `ctx["violations"]`); the
   side choice counts a collision like a blocked part (signal cables in chain order, then the DC plugs); proposals gate
-  on `collisions`. **Down**: a right-angle plug (signal or power) may point down into a hole: `routing.down_available`
+  on `collisions`. **A DC plug passes under ONE signal plug** (owner 2026-11-03, `feat/dc-under-signal`: real angled DC plugs are plugged
+  diagonally and go under a neighbouring patch plug; no 3D, no diagonal orientation): an overlap of a RIGHT-ANGLE DC plug's footprint (any
+  option, pedal or on-board supply port) with a SIGNAL footprint (a modelled patch plug or a fixed audio box of a first input / last output /
+  extra jack) is no collision, but ONLY when the two jacks face the same way on the canvas (`design.jack_facing`, after the pedal's rotation; a
+  perpendicular or opposite pair is an ordinary collision; owner 2026-11-03). One pass per DC plug and per signal plug (`routing.pass_pairs` / `assign_passes`: DC plugs in natural key
+  order, each takes its deepest overlap with a signal plug not paired yet; the rest collide as before). Not covered: straight DC plugs, DC
+  vs DC, anything vs a pedal body (blocked parts stay). Footprints are marked (`routing.DcRects` with `right_angle` + `facing` for DC options, `routing.SigRects` with `facing` for signal
+  options and fixed audio boxes, a fixed power box a non-right-angle `DcRects`, `like` keeps the marks; a plain list has no facing and never passes; `pass_eligible` tests it), so `collision_count` (plug ranking of both ends, `choose_signal`, `refine_dc_sides`, the surrogate's `_count`) is the same
+  rule (it also counts the passes of OTHER plugs the option ends or creates by reshuffling the pairing: the change of the findings); passes go to `ctx["plug_under"]` [{"dc", "signal", "depth_mm", "cable", "signal_cable"}] (README line per pass via
+  `routing.under_text`, power cables drawn below the signal cables in `routing.svg`), not to `plug_collisions`; the surrogate reports
+  `det["plug_under"]` and agrees with the build (`tests/test_layout.py` gig agreement). **Down**: a right-angle plug (signal or power) may point down into a hole: `routing.down_available`
   (a cable-wide square at the bend point inside the effective holes, clear of under-board supplies; the top "free"
   rule does not apply); footprint = the head; measure = |exit_offset - depth/2| + `cables.jack_height_mm` + hole
   transit; the route starts / ends under the board. Owner: **always down when available**, even if longer (ranking:
@@ -207,8 +217,8 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   estimates, see the file); every patch plug is angled, no straight plugs (straight/Neutrik types are role
   `reference` only). Fender Professional (`fender_pro_instrument_ra`, role instrument) is only the guitar/amp cable,
   not modelled yet. Power jacks: `cables.power_type` = `dc_ra_owner_baseline` (owner-measured random DC cable,
-  2026-10-28: 12 deep x 8 wide, body reach 19; `dc_straight_owner_baseline` 34 x 10; both a baseline the owner may
-  shrink; RockBoard `dc_ra_2_1_low_profile` kept as reference data): the head on the less blocked exit side (fewest blocked parts, then least overlap) plus a
+  2026-10-28: 12 deep x 8 wide, body reach 19, exit offset 8.4 = 70% of the depth (owner's rule of thumb, 2026-11-03, not measured);
+  `dc_straight_owner_baseline` 34 x 10; both a baseline the owner may shrink; RockBoard `dc_ra_2_1_low_profile` kept as reference data): the head on the less blocked exit side (fewest blocked parts, then least overlap) plus a
   one-cable-width run is checked in `routing.power_plug_clearance`; without a power type `jacks.power_clearance`
   (default 5.5 / 5.5 mm) is used, never the audio box.
 - Cable routing (`routing.py`): 2 mm grid; pedals grown by cable radius minus half a cell (any gap >= one cable
@@ -289,11 +299,12 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
 - Pedal bodies (owner, 2026-11-02, `feat/pedal-body`, plan `docs/plans/pedal-body.md`): ONLY the bounds tests use the body
   (`design.body_rect(item, bodies)`, `layout["bodies"]` {item id: canvas rect}; `jacks.outside_usable`, the layout model; no
   body data = the box); side jacks may overhang the usable area and the board. The plug of a jack that lies OUTSIDE the usable
-  area (`routing.jack_overhangs`, back or sides, > 0.05 mm) is routing area: `routing.plug_zones` (every option: head, barrel, run,
+  area (`routing.jack_overhangs`, back or sides, > 0.05 mm), and every plug option that reaches past the board edge at the back or a
+  side (`routing.reaches_out`, owner 2026-11-03: a plug sticking out over the edge), is routing area: `routing.plug_zones` (head, barrel, run,
   exit; kept in `ctx["routing"]["plug_zones"]`) -> `build_grid(..., zones)` opens the cells within the cable radius of a zone (the
   extent grows at the back / sides by whole cells, only the added cells are walls, so without zones the grid is main's; `area_rect`
   ignores them; pedals still block; nothing in front); the layout surrogate counts an exit inside its own plug's footprint as inside
-  for such a jack only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
+  for such a plug only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
   `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
   includes the bodies.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).

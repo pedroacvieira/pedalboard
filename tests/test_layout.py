@@ -130,7 +130,7 @@ def test_surrogate_blocked_plugs_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(b["jack"], b["obstacle"], b["part"], round(b["depth_mm"], 1)) for b in det["blocked"]}
     want = {(v["jack"], v["obstacle"], v["part"], round(v["depth_mm"], 1)) for v in ctx["violations"]}
-    assert got == want and len(got) == 5   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm); danelectro_3699.out by the Retrovibe
+    assert got == want and len(got) == 4   # monk.out / monk.power by the Belle Epoch; red_muck.power / analog_chorus.power heads (1 mm). (5 before the DC exit offset 8.4: danelectro_3699.out by the Retrovibe went with it)
 
 
 def test_surrogate_plug_collisions_match_the_build_on_the_gig_layout():
@@ -142,7 +142,8 @@ def test_surrogate_plug_collisions_match_the_build_on_the_gig_layout():
     _, det = m.score(m.owner, margin=0, detail=True)
     got = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in det["collisions"]}
     want = {(c["jack"], c["with"]): round(c["depth_mm"], 1) for c in ctx["plug_collisions"]}
-    assert got == want and len(got) == 7
+    assert got == want and len(got) == 4   # the 7 before the pass-under rule (a right-angle DC plug passes under one signal plug) and the DC exit offset 8.4: now 4, the surrogate and the build agree on them and on the passes
+    assert {(u["dc"], u["signal"]) for u in det["plug_under"]} == {(u["dc"], u["signal"]) for u in ctx["plug_under"]} and len(det["plug_under"]) == 7
 
 
 def test_surrogate_plugs_pointing_down_match_the_build_on_the_gig_layout():
@@ -769,6 +770,55 @@ def test_the_surrogate_takes_the_dc_plug_type_the_build_takes_in_a_simple_case()
     proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dcb", "power_types": ["dca"]}, "jacks": {}}
     m = layout.Model(proj, design.parse_canvas(canvas(BOARD, *free)), PEDALS, {}, JACKS, {}, types, outlines={})
     assert m.score(m.owner, detail=True)[1]["plugs"]["a.power"]["type"] == "dcb"
+
+
+def test_a_right_angle_dc_plug_passes_under_one_signal_plug_in_the_surrogate_as_in_the_build():
+    """Pedal a (25.4 mm square): `power` at its top right corner facing right (10 x 8 mm head: x 0..10, y -4..4 from the jack), `out` at
+    (1.0, 0.3) facing right (audio box 6.3 out x 7 to each side: y 0.62..14.62 from the power jack's y): the head reaches min(6.3, 3.38) = 3.38 mm
+    into it. A right-angle DC plug passes under it (no collision, one pass); a straight one collides. With a second fixed box (`aux`, 6.3 mm
+    deep) the plug passes under the deeper one and collides with `out` (as `routing.pass_pairs`, `tests/test_plug_collisions.py`)."""
+    jd = {"a": [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.5, "facing": "left"},
+                {"id": "out", "label": "Output", "function": "output", "x": 1.0, "y": 0.3, "facing": "right"},
+                {"id": "aux", "label": "Aux", "function": "other", "x": 1.0, "y": 0.1, "facing": "right"},
+                {"id": "power", "label": "9V", "function": "power", "x": 1.0, "y": 0.0, "facing": "right"}]}
+
+    def score(style, extra=()):
+        dc = {**DC_A, "plug": {**DC_A["plug"], "style": style}}
+        proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc"}, "jacks": {"extra_used": {"a": list(extra)}}}
+        m = layout.Model(proj, design.parse_canvas(canvas(BOARD, ped("T A", 100, 100, w=1.0, h=1.0))), PEDALS, {}, jd, {}, {**TYPES, "dc": dc}, outlines={})
+        return m.score(m.owner, margin=0, detail=True)[1]
+    det = score("right_angle")
+    assert det["collisions"] == [] and [(u["dc"], u["signal"], round(u["depth_mm"], 2)) for u in det["plug_under"]] == [("a.power", "a.out", 3.38)]
+    assert det["terms"]["clearance"] == (0.0, 0.0)
+    det = score("straight")
+    assert [(c["jack"], c["with"], round(c["depth_mm"], 2)) for c in det["collisions"]] == [("a.out", "a.power", 3.38)] and det["plug_under"] == []
+    det = score("right_angle", ["aux"])
+    assert [(u["dc"], u["signal"], round(u["depth_mm"], 2)) for u in det["plug_under"]] == [("a.power", "a.aux", 6.3)]
+    assert [(c["jack"], c["with"], round(c["depth_mm"], 2)) for c in det["collisions"]] == [("a.out", "a.power", 3.38)]
+
+
+def test_the_surrogate_passes_a_dc_plug_under_a_signal_plug_only_with_the_same_facing():
+    """As above (pedal a, `power` at the top right corner facing right, 10 x 8 mm head). `out` at (1.0, 0.3) facing right: a pass (3.38 mm). Facing
+    the back (box x -7..7, y 1.32..7.62 from the jack): the head reaches min(7, 2.68) = 2.68 mm into it, perpendicular: a collision. Facing
+    left (box x -6.3..0): no overlap at all. The pedal turned by 90 degrees: the facings turn with it (`design.jack_facing`), the same results."""
+    def jacks_with(out_facing):
+        return {"a": [{"id": "in", "label": "Input", "function": "input", "x": 0.0, "y": 0.5, "facing": "left"},
+                      {"id": "out", "label": "Output", "function": "output", "x": 1.0, "y": 0.3, "facing": out_facing},
+                      {"id": "power", "label": "9V", "function": "power", "x": 1.0, "y": 0.0, "facing": "right"}]}
+
+    def score(out_facing, rot=0):
+        proj = {"signal_chain": ["a"], "cables": {"type": "t", "power_type": "dc"}, "jacks": {}}
+        m = layout.Model(proj, design.parse_canvas(canvas(BOARD, ped("T A", 100, 100, w=1.0, h=1.0))), PEDALS, {}, jacks_with(out_facing),
+                         {}, {**TYPES, "dc": DC_A}, outlines={})
+        state = [(m.owner[0][0], m.owner[0][1], rot)]
+        return m.score(state, margin=0, detail=True)[1]
+    for rot in (0, 90):
+        det = score("right", rot)
+        assert det["collisions"] == [] and [(u["dc"], u["signal"], round(u["depth_mm"], 2)) for u in det["plug_under"]] == [("a.power", "a.out", 3.38)]
+        det = score("top", rot)
+        assert det["plug_under"] == [] and [(c["jack"], c["with"], round(c["depth_mm"], 2)) for c in det["collisions"]] == [("a.out", "a.power", 2.68)]
+        det = score("left", rot)
+        assert det["plug_under"] == [] and det["collisions"] == []
 
 
 def test_a_dc_plug_pointing_down_ends_the_power_cable_under_the_board():

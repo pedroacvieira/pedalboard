@@ -403,8 +403,7 @@ def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=()):
     2026-11-02).
 
     `zones` (`plug_zones`: canvas rects, the footprint parts and exits of the plug options of the jacks that lie OUTSIDE the usable
-    area): a side jack of a pedal at the edge of the usable area (pedals only have to hold their BODY inside it) lets its plug reach past
-    it, so the cells within the cable radius of a zone are routing area wherever they lie, even beyond the board
+    area or that reach past the board edge): such a plug (pedals only have to hold their BODY inside the usable area) sticks out, so the cells within the cable radius of a zone are routing area wherever they lie, even beyond the board
     + margin (the extent grows at the back and the sides by whole cells, so the cells keep their positions; the cells of that
     growth are walls except the zone cells; nothing changes in front: the area ends at `front_y`). Pedals still block as usual. Without
     zones the grid is today's, cell for cell."""
@@ -1494,15 +1493,115 @@ def rect_pairs(parts_a, parts_b):
     return sum(1 for _, r in parts_a for _, q in parts_b if q[0] < r[2] and r[0] < q[2] and q[1] < r[3] and r[1] < q[3] and design.overlap(r, q))
 
 
-def collision_count(opt, own_key, taken):
+class SigRects(list):
+    """The footprint parts [(part, rect)] of a signal plug or a fixed box, marked with the `facing` of its jack on the canvas (after the pedal's
+    rotation, `design.jack_facing`): a right-angle DC plug may pass under it only when its own jack faces the same way (`pass_eligible`)."""
+    def __init__(self, parts=(), facing=None):
+        super().__init__(parts)
+        self.facing = facing
+
+
+class DcRects(list):
+    """The footprint parts [(part, rect)] of a DC plug, marked: `right_angle` True for a right-angle plug (any exit: left / right / down),
+    which may pass under ONE signal plug of a jack with the same `facing` (`pass_pairs`); a straight one never. Every other footprint
+    (a signal plug, a fixed audio box) is a `SigRects`, a fixed power box a `DcRects` that is not right-angle (a plain list has no facing: it
+    never passes); `like` keeps the marks when the parts are shifted."""
+    def __init__(self, parts=(), right_angle=True, facing=None):
+        super().__init__(parts)
+        self.right_angle = right_angle
+        self.facing = facing
+
+
+def like(rects, parts):
+    """`parts` marked as `rects` is (a `DcRects` / `SigRects` of the same kind and facing, else a plain list)."""
+    if isinstance(rects, DcRects):
+        return DcRects(parts, rects.right_angle, rects.facing)
+    return SigRects(parts, rects.facing) if isinstance(rects, SigRects) else list(parts)
+
+
+def pass_eligible(a, b):
+    """Whether two footprints may be a pass: one is a right-angle DC plug, the other is not a DC plug at all (a signal plug or a fixed audio
+    box), and their jacks face the same way on the canvas (a perpendicular or opposite pair is an ordinary collision; a footprint without
+    a facing never passes). DC vs DC and straight DC plugs never pass under anything."""
+    fa, fb = getattr(a, "facing", None), getattr(b, "facing", None)
+    if fa is None or fa != fb:
+        return False
+    ra = lambda f: isinstance(f, DcRects) and f.right_angle
+    return (ra(a) and not isinstance(b, DcRects)) or (ra(b) and not isinstance(a, DcRects))
+
+
+def pass_depth(parts_a, parts_b):
+    """The deepest overlap (min(dx, dy), `design.overlap`) of a part of each footprint, None when no part pair overlaps."""
+    best = None
+    for _, ra in parts_a:
+        for _, rb in parts_b:
+            ov = design.overlap(ra, rb)
+            if ov and (best is None or min(ov) > best):
+                best = min(ov)
+    return best
+
+
+def assign_passes(cands):
+    """The passes under: {DC plug key: (signal key, depth mm)} from the overlaps [(dc key, signal key, depth)] of right-angle DC plugs with
+    signal footprints. One pass per DC plug and per signal plug, deterministic: the DC plugs in natural key order, each takes its deepest
+    overlap with a signal plug that is not paired yet (a tie: the first signal key in natural order)."""
+    by_dc, used, out = {}, set(), {}
+    for dc, sig, depth in cands:
+        by_dc.setdefault(dc, []).append((depth, sig))
+    for dc in sorted(by_dc, key=natural_key):
+        free = [x for x in by_dc[dc] if x[1] not in used]
+        if free:
+            depth, sig = min(free, key=lambda x: (-x[0], natural_key(x[1])))
+            used.add(sig)
+            out[dc] = (sig, depth)
+    return out
+
+
+def pass_pairs(footprints):
+    """The passes under among `footprints` {key: parts} (`assign_passes`): {DC plug key: (signal key, depth mm)}. {} without a right-angle DC plug."""
+    cands = []
+    for dc, fp in footprints.items():
+        if isinstance(fp, DcRects) and fp.right_angle:
+            for sig, other in footprints.items():
+                if sig != dc and pass_eligible(fp, other) and (depth := pass_depth(fp, other)) is not None:
+                    cands.append((dc, sig, depth))
+    return assign_passes(cands)
+
+
+def collision_count(opt, own_key, taken, everything=None):
     """How many (part of this plug option, other footprint) pairs overlap (`design.overlap`, TOL like pedals):
     `taken` = {"<id>.<jack id>": [(part, rect)]}, the fixed boxes and the plugs already chosen; the option's own key is skipped. (The
-    bounding-box test in front of `design.overlap` only spares its min / max calls: this runs inside the layout search.)"""
-    n = 0
-    for _, r in opt["rects"]:
+    bounding-box test in front of `design.overlap` only spares its min / max calls: this runs inside the layout search.)
+    A right-angle DC plug passes under one signal plug (`pass_pairs`): the pairs that are passes in `everything` (default `taken`: every
+    footprint that counts for the pairing; the option takes its own key's place there) are not counted. The option can also reshuffle the
+    pairing of the others (it takes a signal plug another DC plug passed under, which then collides, or frees one): every pass of two other
+    plugs it ends adds that pair's overlapping parts, every one it creates takes them off, so the count is the change of the collisions the
+    findings will list. `own_key` None: the option is not in `taken` (a placeholder key takes its place in the pairing)."""
+    n, per = 0, {}
+    own = opt["rects"]
+    for _, r in own:
         for key, parts in taken.items():
             if key != own_key and any(q[0] < r[2] and r[0] < q[2] and q[1] < r[3] and r[1] < q[3] and design.overlap(r, q) for _, q in parts):
                 n += 1
+                per[key] = per.get(key, 0) + 1
+    if not per or not any(pass_eligible(own, taken[k]) for k in per):
+        return n
+    mine = own_key if own_key is not None else "\0own"
+    fps = {k: v for k, v in (everything() if callable(everything) else everything or taken).items() if k != own_key}
+    before = pass_pairs(fps)
+    fps[mine] = own
+    pairs = pass_pairs(fps)
+    if mine in pairs:
+        n -= per.get(pairs[mine][0], 0)
+    else:
+        n -= sum(per.get(dc, 0) for dc, (sig, _) in pairs.items() if sig == mine)
+    parts = lambda dc, sig: sum(1 for _, r in fps[dc] if any(design.overlap(r, q) for _, q in fps[sig]))   # as `per` counts
+    for dc, (sig, _) in before.items():   # passes of others the option ends
+        if pairs.get(dc, (None,))[0] != sig:
+            n += parts(dc, sig)
+    for dc, (sig, _) in pairs.items():    # passes of others it creates
+        if mine not in (dc, sig) and before.get(dc, (None,))[0] != sig:
+            n -= parts(dc, sig)
     return n
 
 
@@ -1549,22 +1648,34 @@ def jack_overhangs(usable, point):
     return y < usable[3] and (x < usable[0] - e or x > usable[2] + e or y < usable[1] - e)
 
 
-def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable):
-    """The canvas rects the plugs of the OVERHANGING jacks may occupy (`jack_overhangs` against `usable`, `layout["usable"]` or the
-    board footprint: a jack of a pedal at the edge of the usable area that lies outside it): the footprint parts (head, barrel, cable run) and the exit point (a zero-size rect) of
-    EVERY option the router may pick (both exit sides of each right-angle signal plug, of every DC plug type of `cables.power_types`
-    and the types overridden on a cable; down options have the same head). `build_grid` makes the cells around them routing area, so the
-    cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the board + margin): the plugs
-    of the jacks inside the usable area have no zones. Fixed boxes (first input, last output, extra jacks: no routed cable) need none. [] without
-    a layout or an overhanging jack."""
+def reaches_out(board, o):
+    """Whether plug option `o` (its footprint parts or its exit) reaches past the board footprint `board` at the back or a side (never
+    the front): a plug that sticks out over the board edge (owner, 2026-11-03), whose cable may start there."""
+    e = OVERHANG_MIN_MM
+    ex, ey = o["exit"]
+    return any(r[0] < board[0] - e or r[2] > board[2] + e or r[1] < board[1] - e
+               for r in [q for _, q in o["rects"]] + [(ex, ey, ex, ey)])
+
+
+def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable, board=None):
+    """The canvas rects the plugs of the OVERHANGING jacks (`jack_overhangs` against `usable`, `layout["usable"]` or the board
+    footprint: a jack of a pedal at the edge of the usable area that lies outside it) and the plug options that reach past the board
+    footprint `board` (`reaches_out`; None: `usable`) may occupy: the footprint parts (head, barrel, cable run) and the exit point (a
+    zero-size rect) of every such option the router may pick (both exit sides of each right-angle signal plug, of every DC plug type of
+    `cables.power_types` and the types overridden on a cable; down options have the same head). `build_grid` makes the cells around them
+    routing area, so the cable of such a plug can start. Every other plug keeps the plain area test (its exit must lie in the board +
+    margin). Fixed boxes (first input, last output, extra jacks: no routed cable) need none. [] without a layout or such a plug."""
     layout = ctx.get("layout") or {}
     placed = layout.get("placed") or {}
     out = []
 
+    board = usable if board is None else board
+
     def add(opts, item, jk):
-        if not jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"])):
-            return
+        over = jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"]))
         for o in opts:
+            if not over and not reaches_out(board, o):
+                continue
             out.extend(r for _, r in o["rects"])
             out.append((o["exit"][0], o["exit"][1], o["exit"][0], o["exit"][1]))
     for c in cables:
@@ -1616,7 +1727,8 @@ def fixed_footprints(ctx, modelled):
     for key, z in zones.items():
         if key in modelled:
             continue
-        parts[key] = [("box", z["rect"])]
+        box = [("box", z["rect"])]   # an audio box is a signal footprint; a power box a DC one that never passes (DC vs DC)
+        parts[key] = DcRects(box, False, z["facing"]) if z["zone"] == "power" else SigRects(box, z["facing"])
         kinds[key] = ("first input, fixed box" if key == first else "last output, fixed box" if key == last else
                       "extra jack, fixed box" if key in extra else "power box" if z["zone"] == "power" else "audio box")
     return parts, kinds
@@ -1626,11 +1738,19 @@ def plug_collision_findings(ctx, footprints, meta, clear_sink):
     """Every pair of footprints of different jacks that overlap (`footprints` {key: [(part, rect)]}; `meta` {key: {kind,
     label, how, cable, cable_type, side}}): one finding per pair, its deepest part pair (depth = min(dx, dy) of the
     overlap, `design.overlap`). Appended to ctx["plug_collisions"] and sent to `clear_sink` (the pair in natural key order).
-    Two fixed boxes of the same item (a pedal's own audio and power boxes) are never a finding: nothing can clear them."""
+    Two fixed boxes of the same item (a pedal's own audio and power boxes) are never a finding: nothing can clear them. A right-angle DC
+    plug that overlaps a signal footprint passes under it (`pass_pairs`, one pass per DC plug and per signal plug): no finding, an entry in
+    ctx["plug_under"] {"dc", "signal", "depth_mm", "cable" (the DC plug's), "signal_cable"} instead."""
     keys = sorted(footprints, key=natural_key)
+    passes = pass_pairs(footprints)
+    ctx["plug_under"] = [{"dc": dc, "signal": sig, "depth_mm": depth, "cable": (meta.get(dc) or {}).get("cable"),
+                          "signal_cable": (meta.get(sig) or {}).get("cable")}
+                         for dc, (sig, depth) in sorted(passes.items(), key=lambda x: natural_key(x[0]))]
     for i, ka in enumerate(keys):
         for kb in keys[i + 1:]:
             if same_item_boxes(ka, footprints[ka], kb, footprints[kb]):
+                continue
+            if passes.get(ka, (None,))[0] == kb or passes.get(kb, (None,))[0] == ka:
                 continue
             best = None
             for pa, ra in footprints[ka]:
@@ -1656,6 +1776,11 @@ def collision_text(col):
             f"{col['depth_mm']:.1f} mm (its {part(col['part'])} into the {part(col['with_part'])})")
 
 
+def under_text(u):
+    """'P5 (analog_chorus.power) passes under the plug at analog_chorus.out: plug it diagonally' for one `ctx["plug_under"]` entry."""
+    return f"{u.get('cable') or 'DC plug'} ({u['dc']}) passes under the plug at {u['signal']}: plug it diagonally"
+
+
 def route_project(ctx, cat_pedals, cable_types=None):
     """Build ctx['cable_list'] (signal + power cables with attributes), route the signal cables and check the
     clearance of their plugs (appended to ctx['violations']).
@@ -1676,6 +1801,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
                       "under": None, "hole_cells": set(), "power": {"settings": power_settings(project, cfg)}}
     ctx.setdefault("violations", [])
     ctx["plug_collisions"] = []
+    ctx["plug_under"] = []
     layout = ctx.get("layout")
     cables = []
     over = cfg["overrides"]
@@ -1774,7 +1900,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         usable = layout.get("usable")
         front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
         zones = plug_zones(ctx, cables, cable_types, cfg, "exit_run_mm" in (project.get("cables") or {}), outward,
-                           usable or board)
+                           usable or board, board)
         ctx["routing"]["plug_zones"] = zones   # the power grid takes the same ones (`route_power`)
         grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones)
         ctx["routing"].update(grid=grid, front_y=front_y)
@@ -1831,7 +1957,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             if not (e and o and ctype):
                 continue
             key = f"{e['cid']}.{e['jack']['id']}"
-            taken[key] = list(o["rects"])
+            taken[key] = o["rects"]
             meta[key] = {"kind": f"{c['type']} plug", "label": e["jack"]["label"], "cable": c["id"], "cable_type": c["type"],
                          "side": o["side"], "how": f"{c['type']} {ctype['plug']['style'].replace('_', '-')} plug" + exit_how(o)}
 
@@ -1859,6 +1985,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
             if c.get(f"exit_{end}") == design.DOWN and not any(o["side"] == design.DOWN for o in opts):
                 sink.append(down_override_finding(c["id"], f"exit_{end}", f"{cid}.{jk['id']}", ctype))
             for o in opts:
+                o["rects"] = SigRects(o["rects"], facing)   # (a right-angle DC plug of a jack with the same facing may pass under it)
                 o["hits"] = blocked_parts(o, placed[cid]["id"], obstacles, shapes)
                 o["cell"] = state_of(grid, o) if grid else None
             ends.append({"cid": cid, "jack": jk, "facing": facing, "opts": opts})
@@ -2149,7 +2276,7 @@ def retry_unroutable(ctx, cables, cable_types, cfg, area, choices, choose, avoid
     pw.clear()
     pw.update(first_pw)
     for cid, jk, _, _, o in choices:
-        taken[f"{cid}.{jk['id']}"] = list(o["rects"])
+        taken[f"{cid}.{jk['id']}"] = o["rects"]
     sink.extend(first_sink)
     return choices, grids
 
@@ -2217,7 +2344,7 @@ def refine_dc_sides(ctx, cables, cable_types, cfg, area, choices, grids, taken, 
         if now is not o:
             changes.append((key, o, now))
             entry[4] = now   # the next plugs are judged with this one as chosen
-            taken[key] = list(now["rects"])
+            taken[key] = now["rects"]
     snap = lambda: [dict(c) for c in pcables]
     total = lambda: sum(c["min_mm"] for c in pcables if c.get("min_mm") is not None)
     stuck = lambda: {c["id"] for c in pcables if c["status"].startswith("unroutable")}
@@ -2547,6 +2674,7 @@ def power_plug_pool(it, jk, key, cands, cable_types, fixed, cfg, layout, obstacl
                "hole_transit_mm": cfg.get("hole_transit_mm", 0.0)}
         facing, ts = end_options(it, jk, t, fixed, run, layout.get("outward_mm", 0), down=down)
         for o in ts:
+            o["rects"] = DcRects(o["rects"], t["plug"]["style"] != "straight", facing)   # a right-angle DC plug may pass under a signal plug
             o.update(type=tid, tidx=tidx, hits=blocked_parts(o, it["id"], obstacles, layout.get("shapes")),
                      failed=(tid, o["side"]) in avoid, ok=(tid, o["side"]) not in avoid and exit_feasible(o, it["id"], obstacles, layout.get("shapes"), inside, inside_under))
         opts += ts
@@ -2710,7 +2838,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
                 rank, o = min(rank_pool(ts, m[4], local), key=lambda x: x[0])
                 score = [x + y for x, y in zip(score, rank[:6])]
                 if local is not None:
-                    local[m[4]] = list(o["rects"])
+                    local[m[4]] = o["rects"]
                 sel.append(o)
             else:
                 if best is None or (score, tidx) < best[0]:
@@ -2725,12 +2853,12 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
                     decided[m[4]] = o
                     note_ties(o, pools[m[4]], m[4], taken)
                     if taken is not None:
-                        taken[m[4]] = list(o["rects"])
+                        taken[m[4]] = o["rects"]
             else:
                 decided[key] = best_option(pools[key], key, taken)
                 note_ties(decided[key], pools[key], key, taken)
                 if taken is not None:
-                    taken[key] = list(decided[key]["rects"])
+                    taken[key] = decided[key]["rects"]
         o = decided[key]
         if pc is not None:
             pc["exit_b"] = o["side"]
@@ -2762,7 +2890,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
         o = best_option(pool, key, taken)
         note_ties(o, pool, key, taken)
         if taken is not None:
-            taken[key] = list(o["rects"])
+            taken[key] = o["rects"]
         for c in pcs:
             c["exit_a"], c["type_a"] = o["side"], o["type"]
             ported.add(id(c))

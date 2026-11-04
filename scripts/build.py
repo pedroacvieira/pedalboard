@@ -678,6 +678,10 @@ def jacks_section(ctx):
         md += ["Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them "
                "where it can):", ""]
         md += [f"- {routing.collision_text(col)}" for col in ctx["plug_collisions"]] + [""]
+    if ctx.get("plug_under"):
+        md += ["DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagonally and its cable goes under the patch "
+               "cables; not a collision, one pass per plug):", ""]
+        md += [f"- {routing.under_text(u)}" for u in ctx["plug_under"]] + [""]
     md += ["Cable lengths: see Cable routing.", ""]
     return md
 

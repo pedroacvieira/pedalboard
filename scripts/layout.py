@@ -183,19 +183,23 @@ def _shift(r, dx, dy):
     return (r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy)
 
 
-def in_area(area, o, st, radius, usable):
+def in_area(area, o, st, radius, usable, board=None):
     """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the board +
     margin). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
-    `o["jack"]`, relative to the pedal's centre) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
+    `o["jack"]`, relative to the pedal's centre) or a plug that reaches past the board footprint `board` (None: `usable`) at the back or a
+    side (`routing.reaches_out`) gets more, as the build's grid (`routing.build_grid` `zones`): an exit inside one of its own footprint
     parts grown by the cable radius (`o["diam"]` of a DC plug, else `radius`) counts as inside. Every other plug: the plain area test."""
     px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
     if area[0] <= px < area[2] and area[1] <= py < area[3]:
         return True
     jk = o.get("jack")
-    if jk is None or not routing.jack_overhangs(usable, (jk[0] + st[0], jk[1] + st[1])):
+    if jk is None:
+        return False
+    x, y = st[0], st[1]
+    moved = {"exit": (px, py), "rects": [(p, _shift(q, x, y)) for p, q in o["rects"]]}
+    if not routing.jack_overhangs(usable, (jk[0] + x, jk[1] + y)) and not routing.reaches_out(usable if board is None else board, moved):
         return False
     radius = o["diam"] / 2 if o.get("diam") else radius
-    x, y = st[0], st[1]
     return any(q[0] + x - radius <= px <= q[2] + x + radius and q[1] + y - radius <= py <= q[3] + y + radius for _, q in o["rects"])
 
 
@@ -365,7 +369,7 @@ class Model:
                 facing = design.jack_facing(tmp, jk["facing"])
                 g["extra"].append({"jack": f"{pid}.{jk['id']}", "facing": facing, "down": [], "opts": [self._opt(
                     {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
-                     "exit": pt, "measure_mm": 0.0})]})
+                     "exit": pt, "measure_mm": 0.0}, facing=facing)]})
                 continue
             cid = f"S{hop}"
             tid = routing.cable_type_id(self.project, cid)
@@ -377,7 +381,7 @@ class Model:
                 pt = design.jack_point(tmp, jk["x"], jk["y"])
                 for o in opts:
                     o["rects"] = [("box", design.clearance_rect(pt, facing, self.outward, self.side))]
-                opts, downs = [self._opt(o) for o in opts], []
+                opts, downs = [self._opt(o, facing=facing) for o in opts], []
             else:
                 facing, opts, downs = self._pool(tmp, jk, [(0, tid, ctype)], fixed, run)
             g["ends"][cid] = {"jack": f"{pid}.{jk['id']}", "facing": facing, "opts": opts, "down": downs}
@@ -394,7 +398,7 @@ class Model:
                 facing = design.jack_facing(tmp, jk["facing"])
                 g["extra"].append({"jack": f"{pid}.{jid}", "facing": facing, "down": [], "opts": [self._opt(
                     {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
-                     "exit": pt, "measure_mm": 0.0})]})
+                     "exit": pt, "measure_mm": 0.0}, facing=facing)]})
         for fs in self.fs_data.get(pid) or []:
             x, y = design.jack_point(tmp, fs["x"], fs["y"])
             g["fs"].append((x, y, fs["type"], f"{pid}.{fs['id']}"))
@@ -418,12 +422,17 @@ class Model:
         return g
 
     @staticmethod
-    def _opt(o, **extra):
+    def _opt(o, dc=None, facing=None, **extra):
         """One plug option as the score needs it (relative to the pedal's centre): side, rects [(part, rect)], their bbox, `exit` (the
         point the cable leaves at, for a plug pointing down the bend point where it continues under the board), `measure_mm`, `measure` (the
         point cable lengths start at), `down`, `drop_mm` (a plug pointing down: `measure_mm` less the offset along the jack axis = jack height +
-        deck), `jack` (the jack point, None for a fixed box); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
+        deck), `jack` (the jack point, None for a fixed box); `dc` (a DC plug option: True right-angle, False straight; None otherwise) and `facing` (the jack's facing on the canvas): the
+        rects are then marked (`routing.DcRects` / `routing.SigRects`: a right-angle DC plug may pass under one signal plug of a jack with the same facing); `extra`: type, tidx (position in the project's DC plug types), diam (cable diameter)."""
         rects = [(part, r) for part, r in o["rects"]]
+        if dc is not None:
+            rects = routing.DcRects(rects, dc, facing)
+        elif facing is not None:
+            rects = routing.SigRects(rects, facing)
         drop = 0.0   # a plug pointing down: the cable beyond what a side plug has (jack height + deck), counted once per plug in the power term
         if o.get("down"):
             drop = o["measure_mm"] - math.hypot(o["exit"][0] - o["measure"][0], o["exit"][1] - o["measure"][1])
@@ -431,7 +440,7 @@ class Model:
                 "exit": o["exit"], "measure_mm": o.get("measure_mm", 0.0), "measure": o.get("measure"),
                 "down": bool(o.get("down")), "drop_mm": drop, "jack": o["lead"][0] if o.get("lead") else None, **extra}
 
-    def _pool(self, tmp, jk, cands, fixed, run):
+    def _pool(self, tmp, jk, cands, fixed, run, dc=False):
         """(facing, side options, down options) of one jack for the plug types `cands` [(position in the list, id, cable type)] (routing.
         end_options; the down option of each type is kept apart: whether it may be used depends on where a candidate puts the bend
         point, see `_cands`). An exit override (`fixed`) of a side keeps only the options with that side (all if there is none); "down"
@@ -443,7 +452,8 @@ class Model:
             facing, ts = routing.end_options(tmp, jk, ct, None if fx == design.DOWN else fx, run(ct) if callable(run) else run,
                                              self.outward, down=down)
             for o in ts:
-                (downs if o.get("down") else sides).append(self._opt(o, type=tid, tidx=tidx, diam=float(ct["diameter_mm"])))
+                (downs if o.get("down") else sides).append(self._opt(o, dc=(ct["plug"]["style"] != "straight") if dc else None, facing=facing, type=tid,
+                                                                     tidx=tidx, diam=float(ct["diameter_mm"])))
         if fx in design.SIDES:
             sides = [o for o in sides if o["side"] == fx] or sides
         return facing, sides, downs
@@ -454,13 +464,13 @@ class Model:
         if not self.pcands:
             box = {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.p_out, self.p_side))], "exit": pt,
                    "measure_mm": 0.0, "measure": design.stub(pt, facing, self.p_depth / 2)}
-            return [self._opt(box, type=None, tidx=0, diam=0.0)], []
+            return [self._opt(box, dc=False, facing=facing, type=None, tidx=0, diam=0.0)], []   # a power box: never passes
         names = [fixed_type] if routing.is_power_type(self.cable_types, fixed_type) else self.pcands
         cands = [(0 if len(names) == 1 else i, t, self.cable_types[t]) for i, t in enumerate(names)]
         jh = self.rcfg.get("jack_height_mm", routing.DEFAULTS["jack_height_mm"])
         run = lambda ct: {"exit_run_mm": float(ct["diameter_mm"]), "jack_height_mm": jh,
                           "hole_transit_mm": self.dcfg.get("hole_transit_mm", 0.0)}
-        _, sides, downs = self._pool(tmp, jk, cands, fixed, run)
+        _, sides, downs = self._pool(tmp, jk, cands, fixed, run, dc=True)
         return sides, downs
 
     def set_wiring(self, wiring):
@@ -606,13 +616,13 @@ class Model:
 
     @staticmethod
     def _infeasible(o, st, n, obs, area, cost, under=None, radius=0.0, usable=None):
-        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack an exit
+        """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack or one past the board edge an exit
         inside its own footprint, grown by the cable `radius`, counts as inside: `in_area`, `usable`) or (only a plug with a clearance cost can have it there) strictly
         inside another item's outline. A plug pointing down continues under the board: its bend point is tested against the under area
         `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
         px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
         if under is None or not o["down"]:
-            if not in_area(area, o, st, radius, usable):
+            if not in_area(area, o, st, radius, usable, under):
                 return True
         elif not (under[0] <= px < under[2] and under[1] <= py < under[3]):
             return True
@@ -671,13 +681,13 @@ class Model:
         return o["bbox"] is not None and o["rects"][0][0] == "box"
 
     def _collisions(self, state, items, margin):
-        """(cost, intrusion mm, [{"jack", "with", "depth_mm", "na", "nb"}]) of the plug footprints of different jacks that overlap
+        """(cost, intrusion mm, [{"jack", "with", "depth_mm", "na", "nb"}], [{"dc", "signal", "depth_mm"}: the passes under]) of the plug footprints of different jacks that overlap
         (`_pair`; `na`, `nb` = the pedal / supply indices). Weights as the clearance (`_pair_cost`): the intrusion of every pair that comes
         within the margin counts, only those that really overlap are listed (as the build's `plug_collisions`). Candidate pairs
-        come from a sweep over the bounding boxes. Two fixed boxes of the same pedal never count (the build skips them too)."""
+        come from a sweep over the bounding boxes. Two fixed boxes of the same pedal never count (the build skips them too). A right-angle DC plug
+        passes under one signal plug (`routing.assign_passes`, as the build's `pass_pairs`): such a pair costs nothing and is not listed."""
         boxes = self._boxes(state, items, margin)
-        cost = intrusion = 0.0
-        found = []
+        pairs, cands = [], []
         for i, (ax0, ay0, ax1, ay1, ka, na, oa) in enumerate(boxes):
             for j in range(i + 1, len(boxes)):
                 bx0, by0, bx1, by1, kb, nb, ob = boxes[j]
@@ -687,11 +697,22 @@ class Model:
                     continue
                 real, pen = self._pair(oa, state[na], ob, state[nb], margin)
                 if pen > 0:
-                    intrusion += pen
-                    cost += self._pair_cost(real, pen)
-                    if real > 0:
-                        found.append({"jack": ka, "with": kb, "depth_mm": real, "na": na, "nb": nb})
-        return cost, intrusion, found
+                    pairs.append((ka, kb, na, nb, real, pen))
+                    if real > 0 and routing.pass_eligible(oa["rects"], ob["rects"]):
+                        dc, sig = (ka, kb) if isinstance(oa["rects"], routing.DcRects) else (kb, ka)
+                        cands.append((dc, sig, real))
+        passes = routing.assign_passes(cands) if cands else {}
+        cost = intrusion = 0.0
+        found = []
+        under = [{"dc": dc, "signal": sig, "depth_mm": d} for dc, (sig, d) in sorted(passes.items(), key=lambda x: routing.natural_key(x[0]))]
+        for ka, kb, na, nb, real, pen in pairs:
+            if passes.get(ka, (None,))[0] == kb or passes.get(kb, (None,))[0] == ka:
+                continue
+            intrusion += pen
+            cost += self._pair_cost(real, pen)
+            if real > 0:
+                found.append({"jack": ka, "with": kb, "depth_mm": real, "na": na, "nb": nb})
+        return cost, intrusion, found, under
 
     def _against(self, state, o, n, others, margin):
         """The collision cost of plug option `o` of pedal `n` against the footprints `others` (`_boxes`)."""
@@ -762,17 +783,18 @@ class Model:
                 items.append((rec[2]["jack"], rec[1], rec[4][2]))
         return items
 
-    def _count(self, state, o, n, taken):
+    def _count(self, state, o, n, taken, key=None):
         """The build's `routing.collision_count` (the same function, on the option shifted to its candidate position and the footprints of
         `taken` = `_resolve`'s boxes (`(x0, y0, x1, y1, key, n, option, parts)`, `parts` = [(part, rect)] at their candidate positions) whose
-        bounding box meets its own): how many (part of option `o` of pedal `n`, other plug) pairs overlap."""
+        bounding box meets its own): how many (part of option `o` of pedal `n`, other plug) pairs overlap, less the pass under one signal plug of a
+        right-angle DC plug (`key` = the plug's jack key: its place in the pairing, which sees every footprint of `taken`)."""
         x, y = state[n][0], state[n][1]
-        rects = [(part, _shift(r, x, y)) for part, r in o["rects"]]
+        rects = routing.like(o["rects"], [(part, _shift(r, x, y)) for part, r in o["rects"]])
         if not rects:
             return 0
         b0, b1, b2, b3 = _bbox([r for _, r in rects])
         near = {key: parts for tx0, ty0, tx1, ty1, key, _, _, parts in taken if tx0 < b2 and tx1 > b0 and ty0 < b3 and ty1 > b1}
-        return routing.collision_count({"rects": rects}, None, near) if near else 0
+        return routing.collision_count({"rects": rects}, key, near, lambda: {t[4]: t[7] for t in taken}) if near else 0
 
     def _resolve(self, state, recs, bad, margin, full=False):
         """Where plugs collide (`bad`: their jack keys), the choice of the ends involved is made again as the build makes it: signal cables in
@@ -785,7 +807,7 @@ class Model:
             x, y = state[n][0], state[n][1]
             b = o["bbox"]
             return (b[0] + x - margin, b[1] + y - margin, b[2] + x + margin, b[3] + y + margin, key, n, o,
-                    [(part, _shift(r, x, y)) for part, r in o["rects"]])
+                    routing.like(o["rects"], [(part, _shift(r, x, y)) for part, r in o["rects"]]))
         fixed = self._is_box
         items = self._chosen(recs)
         boxes = {k: box(k, n, o) for k, n, o in items if o["bbox"] is not None}   # every plug's footprint as it stands now
@@ -806,8 +828,8 @@ class Model:
                     taken = seen(own, True)
                     if self._against(state, opa[cur[1]], ia, taken, margin) + self._against(state, opb[cur[2]], ib, taken, margin) + \
                             self._pair_cost(*self._pair(opa[cur[1]], state[ia], opb[cur[2]], state[ib], margin)) > 0:
-                        ha = [ca[k][3] + self._count(state, opa[k], ia, taken) for k in range(len(opa))]
-                        hb = [cb[k][3] + self._count(state, opb[k], ib, taken) for k in range(len(opb))]
+                        ha = [ca[k][3] + self._count(state, opa[k], ia, taken, ea["jack"]) for k in range(len(opa))]
+                        hb = [cb[k][3] + self._count(state, opb[k], ib, taken, eb["jack"]) for k in range(len(opb))]
 
                         best = min(combos, key=lambda c: (c[4] or c[5], ha[c[1]] + hb[c[2]] +
                                                           self._parts(opa[c[1]], state[ia], opb[c[2]], state[ib]), c[3]))
@@ -826,7 +848,7 @@ class Model:
                 if len(rows) > 1 and end["jack"] in bad:
                     taken = seen({end["jack"]}, False)
                     if self._against(state, o, n, taken, margin) > 0:
-                        fit = {id(r[2]): (r[0][0], r[5] + self._count(state, r[2], n, taken)) for r in rows}
+                        fit = {id(r[2]): (r[0][0], r[5] + self._count(state, r[2], n, taken, end["jack"])) for r in rows}
                         rel = self._dc_rel(rows, lambda r: fit[id(r[2])], length)
                         best = min(rows, key=lambda r: (fit[id(r[2])], round(rel.get(id(r[2]), 0.0), 2), r[6], r[2]["tidx"]))
                         if best is not cur:
@@ -895,7 +917,7 @@ class Model:
 
     def score(self, state, margin=None, detail=False, move_factor=1.0):
         """Weighted surrogate score of a candidate (lower is better); with `detail` also the raw terms and the
-        findings: (total, {"terms": {name: (raw, weighted)}, "blocked": [...], "collisions": [{"jack", "with", "depth_mm"}], "plugs": {jack key:
+        findings: (total, {"terms": {name: (raw, weighted)}, "blocked": [...], "collisions": [{"jack", "with", "depth_mm"}], "plug_under": [{"dc", "signal", "depth_mm"}], "plugs": {jack key:
         {"side", "type", "down"}} (the option every used jack takes), "fs_close": [...], ...})."""
         w = self.w
         margin = float(self.cfg["clearance_margin_mm"]) if margin is None else margin
@@ -972,10 +994,10 @@ class Model:
             combos = []   # (cost, index a, index b, length, a outside, b outside) of every combination of the two ends' options
             for ka, oa in enumerate(opa):
                 pa = (oa["exit"][0] + sa[0], oa["exit"][1] + sa[1])
-                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable)
+                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
                 for kb, ob in enumerate(opb):
                     pb = (ob["exit"][0] + sb[0], ob["exit"][1] + sb[1])
-                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable)
+                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
                     if oa["down"] or ob["down"]:
                         span = self._under_span(oa, pa, ob, pb, holes, pw_near)
                     else:
@@ -1001,12 +1023,12 @@ class Model:
         # phase B: plugs of different jacks must not overlap (footprints: head, barrel, cable run, or the fixed box); where they do, the plugs
         # involved may take another option, as the build chooses its sides
         items = self._chosen(recs)
-        c_cost, c_intr, found = self._collisions(state, items, margin)
+        c_cost, c_intr, found, passes_under = self._collisions(state, items, margin)
         for rnd in range(min(ROUNDS, routing.SIDE_ROUNDS) if found else 0):   # the build's first pass, then its next round that sees every plug
             changed = self._resolve(state, recs, {k for c in found for k in (c["jack"], c["with"])}, margin, full=bool(rnd))
             if rnd and not changed:
                 break
-            c_cost, c_intr, found = self._collisions(state, self._chosen(recs), margin)
+            c_cost, c_intr, found, passes_under = self._collisions(state, self._chosen(recs), margin)
             if not found:
                 break
         terms["clearance"] += c_cost
@@ -1150,7 +1172,7 @@ class Model:
         total = sum(terms.values())
         if not detail:
             return total, issues
-        return total, {"terms": {k: (raw[k], terms[k]) for k in terms}, "blocked": blocked, "collisions": collisions, "plugs": {k: {"side": o["side"], "type": o.get("type"), "down": o["down"]} for k, _, o in self._chosen(recs)},
+        return total, {"terms": {k: (raw[k], terms[k]) for k in terms}, "blocked": blocked, "collisions": collisions, "plug_under": passes_under, "plugs": {k: {"side": o["side"], "type": o.get("type"), "down": o["down"]} for k, _, o in self._chosen(recs)},
                        "outside": outside,
                        "fs_close": fs_close, "signal": sig_lengths, "issues": issues,
                        "fs_known": self.fs_known, "fs_limit": self.fs_limit}
