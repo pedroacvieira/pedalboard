@@ -24,6 +24,12 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
   `power_consumption` {current_ma (worst case), min_voltage_v, max_voltage_v, needs_isolated_output}, prices,
   `playground_title` = key into Pedal Playground's database, intrinsic ordering rules in `dependencies`).
+  `height_mm` (optional, null = not found; not required by `no_unknown`) = how tall the pedal stands; the footswitch is
+  assumed to be its tallest point, so the switch top = `height_mm` (owner, 2026-11-05; for footswitch reach / toppers
+  later). `height_info` {measure overall|unspecified|enclosure_plus_switch, confidence maker|retailer|forum, source, url,
+  notes}; an enclosure-only figure gets + 15.2 mm (`switch_allowance_mm`: Carbon Copy 47.0 overall - Sun Face 31.8
+  enclosure, owner rule 2026-11-05; `enclosure_mm` keeps the published figure). Researched 2026-11-05, handover
+  `docs/handovers/pedal-heights.md`.
 - `catalog/power_supplies.json`: supply models (ports, voltage options, mA limits, quantity owned).
 - `catalog/cables.json`: cable types with a `role` (patch | instrument | power | reference), `diameter_mm` = width ON
   THE BOARD (routing width; a flat ribbon's narrow side), `jacket`, plug style right_angle|straight, head

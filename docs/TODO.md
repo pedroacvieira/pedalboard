@@ -4,7 +4,7 @@ Hand-written backlog (not generated). Build-derived findings (warnings, data to 
 generated `README.md`; this file holds the work and the questions for the owner. Tick items off or move them to
 "Done" when finished, and keep `CLAUDE.md` current when a decision changes.
 
-Sections: 1 owner input (measurements, decisions, checks) · 2 gig board · 3 next features (in order) · 4 later /
+Sections: 1 owner input (measurements, decisions, checks) · 2 boards · 3 next features (in order) · 4 later /
 ideas · 5 data · 6 done.
 
 ## 1. Owner input
@@ -12,105 +12,70 @@ ideas · 5 data · 6 done.
 ### Measurements (each replaces an estimate that feeds every cable length / clearance check)
 - [ ] **Jack height** above the deck (`cables.jack_height_mm`, 12, estimate): the length of a plug pointing down.
 - [ ] **Owner's own DC plugs** (right-angle and straight): `dc_ra_owner_baseline` / `dc_straight_owner_baseline` are a
-      random cable's sizes (12 x 8, body reach 19 / 34 x 10), likely bigger than the owner's.
+      random cable's sizes (12 x 8, body reach 19, exit offset 8.4 = 70 % rule of thumb / 34 x 10), likely bigger than
+      the owner's.
+- [ ] **Ojai DC plug**: depth from the jack face, width, height, cable thickness. Today `dc_ra_2_1_low_profile`
+      (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation, ~11 mm deep) is deeper than the Ernie Ball plug, against
+      the owner's expectation; RockBoard's own page also gives 5/16 in height.
 - [ ] **Fender Pro Medium deck**: thickness (+ the bend of a ribbon through a slot) for `hole_transit_mm` (15,
       estimate) and the board height at the back edge for `edge_transit_mm` (30 = 2 x hole transit, estimate); put
-      them in `catalog/boards.json` (`fender-pro-medium.png`).
+      them in `catalog/boards.json` (`fender-pro-medium.png`). Same for the Duo 2.1 (`rockboard-duo-21.png`).
 - [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
       to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
       `verified` list.
-- [ ] **Ojai DC plug** (a random DC cable was measured by the owner 2026-10-28: right-angle 12 out / 19 bend side / 4
-      other side, straight 34 out / 5 radius; used in `docs/plans/plug-orientation.md`; the Ojai's own plug is still open): depth from the jack face, width, height, and the cable thickness. Today
-      `dc_ra_2_1_low_profile` (RockBoard 20 x 11 x 10.5 mm, mapped by interpretation, ~11 mm deep) is deeper than the
-      Ernie Ball plug, against the owner's expectation; RockBoard's own page also gives 5/16 in height.
 - [ ] Confirm the power-jack fallback box `jacks.power_clearance` (5.5 x 5.5 mm, estimate; only used without a
       `cables.power_type`).
 
 ### Decisions
-- [x] Power plug side (owner, 2026-10-29): it only matters for the cable length. Take the side whose routed cable is
-      shorter, not "left" on a tie. -> task below (**Power plug side by route length**).
-- [x] Power routes on top (owner, 2026-10-29): P2 / P12 / P17 running 111-140 mm on top are fine, even wanted (they
-      save cable elsewhere). Keep `power_routing.top_cost` 3; the "> 150 mm on top" warning stays.
-- [x] Footswitch spacing (owner, 2026-10-29): the proposals spread the switches enough; keep `comfort_mm` 100 and
-      weight 2.
-- [x] Layout proposals (owner, 2026-10-29, after `--max-change rearrange --seed 42`): the moves are "kind of ok"; the
-      remaining problem is pedals on the board's unusable rounded edges -> **Usable board area** (done 2026-10-29, `feat/board-bounds`).
-- [x] DC plug under a signal plug (owner, 2026-11-03, `feat/dc-under-signal`): a right-angle DC plug may pass under ONE signal plug (one pass per
-      DC plug and per signal plug; not a collision, listed in the README as "plug it diagonally"); `dc_ra_owner_baseline.exit_offset_mm` = 8.4
-      (70% of the 12 mm depth, rule of thumb, not measured). Diagonal plugging and plug height are NOT modelled (no 3D); straight DC plugs
-      and DC vs DC still collide. Same-facing rule (owner, 2026-11-03): the pass only applies when the DC jack and the signal jack face the same way on the canvas; a perpendicular or opposite pair collides. Live gig side effect of the 8.4 offset: `sun_face.power` (jack 3.3 mm from the board's right edge,
-      facing out) put its cable exit beyond the routing margin; fixed (owner, 2026-11-03): a plug option that reaches past the board
-      edge gets a plug zone (`routing.reaches_out`), P6.4 routes again.
 - [ ] Answer the open questions of `docs/plans/pedal-position.md`.
+- [ ] Load a proposal into Pedal Playground 2.0 (parked, owner 2026-11-02): the site has no file load (a hidden importer,
+      no button) and no save to file. It reads `localStorage["pp:playground:v3"]` on start (not logged in), so a
+      proposal could be loaded from the console (untested); or write it into the owner's account as a new playground
+      (needs the owner's login). Until then: move the pedals by hand (README move table: dx + = right, dy + = towards the
+      front; proposal SVG).
 
 ### Checks by eye
-- [x] `routing.svg` / `power.svg` label placement: ok for now (owner, 2026-10-29).
-- [x] Pedal editor GUI footswitch mode: ok for now (owner, 2026-10-29).
-- [ ] Duo 2.1 holes (practice / bass have no layout yet): `uv run scripts/board_editor.py bass`.
+- [ ] Duo 2.1 holes (practice now has a layout): `uv run pb board-editor guitar-practice`; also its usable area
+      (`bounds`, key B), if the rounded edges need one.
 
 ### Later, when it happens
 - [ ] Polarity: every pedal and supply is recorded center-negative (owner); add the real value when a
       center-positive pedal arrives.
 
-## 2. Gig board
-- [ ] **New gig layout from Pedal Playground 2.0 (fetched 2026-11-02, "Gig Board", saved 2026-10-29)**: chain updated
-      (owner, 2026-11-02): BOSS DD-8 replaces the JHS Flight Delay (same rules, `psu1` F1 alone); EHX Pico Pitch Fork after
-      the compressor (tuner -> Mini Ego -> Pitch Fork: "after compression, before drives"; not first: buffered bypass and
-      the Sun Face rule; `psu1` SW_B alone, the Analog Chorus moved to `psu2` SW_B with Phase 95 / Retrovibe); the MXR
-      Carbon Copy is not part of the board. Still to do (owner): jacks / footswitches of boss_dd8 and
-      ehx_pico_pitch_fork (`uv run pb pedal-editor <id>`); delete the parked Carbon Copy in Pedal Playground and
-      `uv run pb fetch guitar-gig`; small overhangs (with the bodies as the bounds test, 2026-11-02, only Sun Face, Belle
-      Epoch and Tumnus, 0.5 mm front each, remain; the DD-8 and the Beano are inside by their bodies); then a proposals run
-      on the new layout.
-- [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset 5.0 mm
-      on the right only (every other pedal's insets match its jack sides); find out why (`wampler-tumnus-deluxe.png`).
-- [ ] **Load a proposal into Pedal Playground 2.0**: the site has no file load (a hidden importer, no button) and no save
-      to file. It loads the browser's `localStorage["pp:playground:v3"]` on start (not logged in), so a proposal could be
-      loaded from the console (untested); or write the proposal into the owner's account as a new playground (needs the
-      owner's login: decide). Until then: move the pedals by hand (README move list / proposal SVG).
-- [x] **Fix-mode proposals keep one plug collision (found 2026-10-29; gone, checked 2026-11-02 with `feat/pedal-body`)**: `--max-change fix`
-      seeds 1, 2, 3 and `rearrange --seed 42` all give three proposals with 0 collisions, 0 blocked plugs, 17/17 signal cables routed
-      (run on a scratch copy of the gig WITHOUT the parked Carbon Copy, see below; the owner's new DD-8 / Pico Pitch Fork data
-      included; owner: 4 collisions, signal 2697 mm, DC 3703 mm, crowding 209). Per proposal (signal mm / DC mm / crowding; (u) = one DC cable
-      left unrouted): fix 1: #1 2530 / 3409 (u) / 187, #2 2557 / 3526 / 193, #3 2547 / 3616 / 185; fix 2: #1 2530 / 3409 (u) / 187,
-      #2 2547 / 3616 / 185, #3 2548 / 3364 (u) / 190; fix 3: #1 2530 / 3409 (u) / 187, #2 2548 / 3364 (u) / 190, #3 2548 / 3364 (u) / 186;
-      rearrange 42: #1 2004 / 3482 / 205, #2 2018 / 3413 / 205, #3 2156 / 3482 / 205. NOT the bodies' doing: main (boxes as bounds) with the same
-      layout and data also gives 0 collisions in all fix proposals (fix 1: 2577 / 3476 / 207, 2588 / 3556 / 200, 2642 / 3512 / 201), so the
-      layout / data change fixed it.
-- [x] **Fix proposals with an unrouted DC cable (found 2026-11-02, `feat/pedal-body`; FIXED 2026-11-02 `fix/cable-area`: the cause was the
-      routing area cut at the bounds + margin, but the bounds limit the pedals only: the area is the board + margin again; fix 1/2/3 and
-      rearrange 42 re-run on the scratch copy: 12 proposals, all cables routed, 0 collisions)**: the proposals marked (u) above move the Pico Pitch
-      Fork ~16 mm to the back edge (its body is inside the usable area now); its top DC jack's plug exit then lies beyond the back margin and
-      the build reports "P8 (psu2.F3 -> ehx_pico_pitch_fork.power) has no free path". The surrogate has no routing-area penalty for a DC plug
-      (only a feasible-first choice). Gate fixed (2026-11-02): `power_unrouted` counts as a routing problem (gate, rank, +1000 score), so
-      such a layout is never proposed (fix seed 1 re-run: 3 proposals, all cables routed). Still open: a surrogate penalty for an
-      infeasible DC exit, so the search does not spend finalists on them.
-- [ ] **The parked Carbon Copy blocks every proposal (found 2026-11-02)**: it is an obstacle outside the usable area that the
-      search cannot move, so every candidate has `outside` >= 1 and `acceptable` rejects all ("no better layout found",
-      0 proposals written) on the live gig until the owner deletes it in Pedal Playground and fetches again.
-- [x] **Power plug side by route length (owner, 2026-10-29; done on `feat/power-plug-side`, 2026-11-02, awaiting review/merge)**: a DC plug's exit side only matters for the length; when
-      both sides are equally feasible (same down / blocked / collisions), take the side with the shorter routed power
-      cable instead of the overlap / "left" tie-break (`routing.plug_rank`, `routing.power_plug_clearance`), as the
-      signal plugs already do. The layout surrogate's power estimate should follow.
-      Plan: `docs/plans/power-plug-side.md` (open questions for the owner at its end); branch `feat/power-plug-side`.
-      Done with the proposed defaults (`SWITCH_MM` 5, estimate + routed refinement, length before overlap, `TIE_MM` 5). The estimate
-      (cost-weighted, top mm x 3) is sometimes wrong in sign against the routed length (gig: phase_95, retrovibe): the refinement
-      starts from the old side for that reason. Open: the surrogate cannot see the routed refinement (surrogate-vs-build agreement
-      on the gig fixture: 44 of 49 exits (phase_95 / retrovibe power differ), 7 of 7 collision pairs after the review let the surrogate
-      test hole coverage with the outlines); danelectro_3699.power trades its collision with .out for one with .in (equal count:
-      length decides). Live gig: retrovibe.power goes right (avoids the collision with ehx_pico_pitch_fork.out, P10 +58 mm).
-      Parked (owner, 2026-11-02): "Load a proposal into Pedal Playground 2.0" (above).
-- Current state (2026-10-28, measured DC plug): signal 2624 mm, DC 3355 mm (3198 mm with the shorter DC plug sides, frozen gig fixture); 6 plugs point down into slots (Tumnus,
-  S15 / S16 ends, P1, P8.1, P8.3); one owner-drawn edge crossing at the back (handle area), unused.
+## 2. Boards
+
+### Gig (layout 2026-11-04 10:15 + DD-200; DD-8 and Pico Pitch Fork out)
+- State (2026-11-05): 17 pedals, signal 2314 mm, DC 3322 mm over 10 cables (every Ojai output in use), crowding 215,
+  0 blocked plugs, 0 collisions. One warning: the Monk 0.3 mm outside the usable area at the back.
+- [ ] Nudge the Monk ~1 mm to the front in Pedal Playground (proposal 3 does only that), fetch, build.
+- [ ] Re-run the proposals: stale since the power rewiring (`uv run pb propose guitar-gig`, then build). Before the
+      rewiring: proposal 1 = Retrovibe, Ratsbane, Tumnus, Monk (signal -50 mm, DC -63 mm).
+- [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset
+      5.0 mm on the right only (every other pedal's insets match its jack sides); find out why (`wampler-tumnus-deluxe.png`).
+- [ ] Toppers: left automatic for now (owner, 2026-11-04); the owner picks them later (`footswitches.toppers`). Suggestions
+      are bypass switches only; a tap switch in the middle of the board (the Monk's) only by hand.
+
+### Practice (layout 2026-11-04, owned gear only)
+- State: PolyTune 2 Mini -> Octahive -> Duke of Tone -> E-Lady -> Carbon Copy -> Ditto on the bass rig's Duo 2.1 and
+  ISO-5 Pro (shared between the two rigs: the "shared" warnings are expected); all 5 signal and 5 DC cables routed
+  (DC 1268 mm), 0 blocked plugs, 0 collisions.
+- [ ] Supply position: under the board between the Carbon Copy and the Octahive today. The owner said "behind the
+      board": if that means off the back edge, move it in Pedal Playground and draw a back edge crossing in the board
+      editor (type `edge`), else nothing to do.
+
+### Bass
+- [ ] Layout in Pedal Playground (`playground_design.json`) so its cables and clearance are checked; the ISO-5 Pro now has
+      a stand-in image (the ISO-1AC Pro) with its outputs marked.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
-Order (owner, 2026-10-29): pedal preferences -> web UI. Next: `feat/pedal-preferences` (no plan file yet: write
-`docs/plans/pedal-preferences.md` first, owner decisions, then handovers).
+Order (owner, 2026-10-29; U-turn plugs added 2026-11-05): pedal preferences -> U-turn plugs -> web UI (last: it wraps
+the stable features).
 Project focus (owner, 2026-10-29): be able to assemble the board and guarantee that pedals, plugs and cables FIT;
 model as many physical aspects as possible; every cable gets a precise minimum required length, from which the owner
 picks a long-enough cable (no tracking of owned cables). Lengths are optimised so no huge cables are needed.
 
 ### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
+No plan file yet: write `docs/plans/pedal-preferences.md` first, owner decisions, then handovers.
 Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
 - [ ] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
       order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
@@ -121,7 +86,13 @@ Every per-pedal wish in one place, editable with values, drop-downs and toggles 
       each proposal); the layout search and `power.assign` read it.
 - [ ] Until the web UI: edit project.json by hand (documented schema).
 
-### 3.2 `feat/web-ui`: one local web app with tabs (last: wraps the stable features)
+### 3.2 `feat/u-turn-plugs`: a right-angle plug that turns its cable back
+No plan file yet (`docs/plans/u-turn-plugs.md`).
+- [ ] When a right-angle plug cannot point to the side its cable has to go, point it the other way and turn the cable
+      back: longer minimum length, the turned cable occupies both sides; the router considers it when the direct side
+      is blocked or worse (signal and DC plugs; the layout surrogate mirrors it).
+
+### 3.3 `feat/web-ui`: one local web app with tabs
 Replaces the Tkinter editors and the README-only views with a local browser app.
 - Owner (2026-10-23): new dependencies are fine with a reason each; Python ones via uv, anything else (npm, system
   packages) only after asking.
@@ -152,46 +123,36 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
       - Footswitch shape: Boss compact pedals have one big rectangular pedal-style switch, not a small round one: add an
         optional rectangular footswitch (`shape` round|rect, width x height) to `catalog/footswitches.json`, the
         editor, the spacing model (distance between shapes, not centres) and the drawing.
-      - Test cases (owner): the candidate pedals added 2026-10-29 (section 5): boss_dd8 (Boss compact: template +
-        rectangular switch), boss_dd200 (200-series), ehx_pico_pog / ehx_pico_pitch_fork (EHX Pico pair), jhs_angry_charlie
-        / jhs_the_violet (JHS), against the owner's placed pedals of the same families.
-- Power-cable inventory (owned DC cable models, fit, automatic style / cable choice): PARKED by the owner (2026-10-29),
-  plan kept in `docs/plans/power-cable-inventory.md`. DC cables are cheap and easy to get; not relevant for now.
-- DIY patch cables: when the owner builds a board with DIY patch cables, cut lengths (plug allowances on top of the
-  precise `min_mm`) may be wanted.
-- [ ] Layouts for `guitar-practice` and `bass` (`playground_design.json`), so their cables and clearance are checked.
-      The Harley Benton ISO-5 Pro has no Pedal Playground entry (`playground_title`), so it never appears in a layout
-      and has no outline. Practice board: out of scope for now (owner, 2026-10-22); its Ojai R30 is still to buy.
+      - Test cases: boss_dd8 (Boss compact: template + rectangular switch), boss_dd200 (200-series, placed by the owner),
+        ehx_pico_pog / ehx_pico_pitch_fork (EHX Pico pair), jhs_angry_charlie / jhs_the_violet (JHS).
+- [ ] Toppers and pedal height (owner, 2026-10-27): a low pedal at the back of the board is harder to reach, a tall pedal
+      is naturally easier to reach and may not need a topper at all. Needs a height per pedal (enclosure height, and
+      the switch height above the board) and a reach / position model (back vs front row); then the spacing model
+      (`topper_bonus_mm`) and the suggestions weigh a switch by its height and position.
 - [ ] Guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): need guitar and amp
       positions (or board-edge exit points) in the project.
-- [ ] Layout surrogate vs router: the signal estimate (octile + detour around crossed pedals) misjudges some routes and
-      overestimates the smoothed router by up to ~8 % per cable; an any-angle estimate in `layout.py` (finalists are
-      checked with the router, so proposals are safe, but the search may miss better ones).
-- [ ] U-turn plugs: when a right-angle plug cannot point to the side its cable has to go, point it the other way and
-      turn the cable back; longer minimum length, the turned cable occupies both sides; the router considers it when
-      the direct side is blocked or worse.
+- [ ] Layout search: a penalty for an infeasible DC plug exit in the surrogate (today the build's check rejects such a
+      finalist, so the search spends finalists on them).
+- [ ] Layout surrogate vs router: the signal estimate (octile + detour around crossed pedals) overestimates the smoothed
+      router by up to ~8 % per cable; an any-angle estimate in `layout.py` (finalists are checked with the router, so
+      proposals are safe, but the search may miss better ones). The surrogate cannot see the routed DC side refinement
+      either (gig fixture: 44 of 49 exits agree).
 - [ ] Many cables side by side (5-10) should add length (lane offsets); ignored for now (owner).
 - [ ] Under-board fit (supply height vs space under the deck) is not checked (owner decision); a later branch if needed.
 - [ ] The saturated single-hole routing case (two cables forced through one one-cell hole) never converges and runs
       all `cables.iterations` rounds; no provably safe early stop found (feat/routing-speed review).
-
-- [ ] Toppers and pedal height (owner, 2026-10-27): a low pedal at the back of the board is harder to reach, a tall pedal
-      is naturally easier to reach and may not need a topper at all. Needs a height per pedal (enclosure height, and
-      the switch height above the board) and a reach / position model (back vs front row); then the spacing model
-      (`topper_bonus_mm`) and the suggestions weigh a switch by its height and position (a tall pedal's switch gets a
-      bonus of its own, a low one at the back a penalty).
+- Power-cable inventory (owned DC cable models, fit, automatic style / cable choice): PARKED by the owner (2026-10-29),
+  plan kept in `docs/plans/power-cable-inventory.md`. DC cables are cheap and easy to get.
+- DIY patch cables: when the owner builds a board with DIY patch cables, cut lengths (plug allowances on top of the
+  precise `min_mm`) may be wanted.
 
 ## 5. Data
-- [x] **Pedal Playground moved its images (found 2026-10-29; fixed on `fix/image-download`: images and database now come from catalog.json, HTML answers are rejected, `tests/test_downloads.py`)**: `common.fetch_image` (`app/images/pedals/<name>.png`,
-      `public/images/pedals/<name>.png`) now gets a 2886-byte HTML page with HTTP 200 for every pedal; the new site has
-      `https://pedalplayground.com/catalog/catalog.json` with `assets.pedals[<image name>].img` = a hashed `.webp` under
-      `/catalog/` (350 px wide, same aspect). Fix `fetch_image` (and check the DB cache refresh, `.cache/pedals.json`);
-      reject HTML responses. The six new pedals' images were fetched by hand that way into `.cache/images/`.
-- [ ] Candidate pedals added 2026-10-29 (catalog only, `owned: false`): boss_dd8, boss_dd200, jhs_angry_charlie (V3),
-      jhs_the_violet, ehx_pico_pog, ehx_pico_pitch_fork. Unverified: BOSS polarity (from the PSA-S adaptor) and DD-200
-      voltage; Angry Charlie 9-18 V (2016 JHS manual); every Violet figure (retailers only). Before moving one into a
-      project: jacks and footswitches with `scripts/pedal_editor.py <id>`.
-- [ ] Items in the generated README's "Data to verify" (power specs, Reticon, Protein, version assumptions).
+- [ ] Candidate pedals (catalog only, not in a project): boss_dd8, jhs_angry_charlie (V3), jhs_the_violet, ehx_pico_pog,
+      ehx_pico_pitch_fork. Unverified: DD-8 voltage range (9 V only assumed), DD-200 voltage (9 V, Thomann); Angry
+      Charlie 9-18 V (2016 JHS manual); every Violet figure (retailers only). Both BOSS delays are center-negative
+      (owner, 2026-11-05). Before moving one into a project: jacks and footswitches with `uv run pb pedal-editor <id>`.
+- [ ] Items in the generated READMEs' "Data to verify" (power specs, Reticon, Protein, version assumptions).
+- [ ] Bass shopping list: MXR Bass Synth (`owned: false`); mark it owned if it is.
 
 ## 6. Done (merged into main; details in the plans and handovers)
 - `feat/jack-tracking`, `feat/cable-routing` (2026-10-22): jack data, clearance, cable model and grid router.
@@ -206,24 +167,31 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
   edge crossings as owner-drawn segments, `cables.route_in_front`, on-board supplies movable in the search.
 - `feat/routing-speed` (2026-10-27, results identical): gig check 1.2 -> 0.7 s, layout search ~47 -> 15 s, tests
   73 -> 30 s; side-choice searches reused by `route_all`.
-- `feat/daisy-chains` (2026-10-27): serial / forked per output, physical DC cables and "DC cables to buy";
-  gig unchanged (all serial).
+- `feat/daisy-chains` (2026-10-27): serial / forked per output, physical DC cables and "DC cables to buy".
 - `feat/footswitch-toppers` (2026-10-27, defaults 2026-10-28): `footswitches.toppers`, effective distance (+4.5 mm per
-  topper = its added height), cap 5 per board, post-layout suggestions (gig: ratsbane, belle_epoch, fulldrive_2 boost,
-  monk tap, protein blue: crowding 184 -> 157).
+  topper = its added height), cap 5 per board, post-layout suggestions; bypass switches only (owner, 2026-11-04).
 - `feat/plug-orientation` (2026-10-28, `docs/plans/plug-orientation.md`): plug-to-plug collisions, right-angle plugs
-  pointing down into a hole (always when available), several DC plug types per project (`cables.power_types`, one
-  pedal-end type per serial cable), owner-measured DC plugs, the layout surrogate mirrors all three.
-- `feat/cable-ids` (2026-10-29, `docs/plans/cable-ids.md`): power cables are P# (the cable you buy), the legs of a daisy
-  chain P#.1, P#.2...; no C# ids; unknown `cables.overrides` keys are errors with a hint; "DC cables to buy" lists each
-  leg's min plug spacing. Lengths unchanged.
-- `feat/board-bounds` (2026-10-29, `docs/plans/board-bounds.md`): usable board area per project (`board.json`
-  `bounds`, board editor key B, lines moved independently); pedals and on-board supplies must sit inside (build warning,
-  `validation.strict_bounds`; layout search hard constraint; pre-processing pushes pedals of the owner's layout inside,
-  pinned ones too); routing area = usable area + `edge_margin_mm` (strips along edge segments); dashed outline in the
-  SVGs. Gig bounds: back 11.0 mm, front 8.5 mm (owner, approximate). Gig proposals regenerated (rearrange, seed 42).
-- `feat/pedal-body` (2026-11-02, `docs/plans/pedal-body.md`): the usable board area holds a pedal's BODY (median enclosure from the
-  image alpha, `catalog/outlines.json` "bodies"), not its jacks; overlaps keep the box; every plug footprint is routing area
-  (`routing.plug_zones`) so an overhanging jack's cable can start.
-- Owner data: every project pedal's footswitches placed (2026-10-23); footswitch spacing is comfort, no minimum;
-  gig chain: chorus before the Reticon (2026-10-27).
+  pointing down into a hole (always when available), several DC plug types per project (`cables.power_types`),
+  owner-measured DC plugs, the layout surrogate mirrors all three.
+- `feat/cable-ids` (2026-10-29, `docs/plans/cable-ids.md`): power cables are P#, daisy-chain legs P#.1, P#.2...;
+  unknown `cables.overrides` keys are errors; "DC cables to buy" lists each leg's min plug spacing.
+- `feat/board-bounds` (2026-10-29, `docs/plans/board-bounds.md`): usable board area per project (`board.json` `bounds`,
+  board editor key B); pedals and on-board supplies must sit inside; gig bounds back 11.0 mm, front 8.5 mm.
+- `feat/pedal-body` (2026-11-02, `docs/plans/pedal-body.md`): the usable board area holds a pedal's BODY, not its jacks;
+  every overhanging plug footprint is routing area (`routing.plug_zones`).
+- `fix/image-download` (2026-10-29): images and the database come from Pedal Playground's catalog.json.
+- `fix/cable-area` (2026-11-02): the bounds limit the pedals only; the routing area is the board + margin again (fixed
+  the unrouted DC cables of fix proposals); unrouted DC cables count as a routing problem in the proposal gate.
+- `feat/power-plug-side` (2026-11-03, `docs/plans/power-plug-side.md`): a DC plug takes the side with the shorter cable
+  (estimate + routed refinement, `TIE_MM` / `SWITCH_MM` 5).
+- `feat/dc-under-signal` (2026-11-03): a right-angle DC plug may pass under ONE same-facing signal plug ("plug it
+  diagonally", not a collision); DC exit offset 8.4 mm (70 % of the depth, rule of thumb); a plug past the board edge
+  gets a plug zone. Diagonal plugging and plug height are not modelled.
+- Gig (2026-11-04): DD-200 replaces the DD-8 and comes last, after the Tumnus (its looper records the whole chain);
+  Pico Pitch Fork and the parked Carbon Copy removed; every Ojai output in use (Analog Chorus alone on psu1 SW_B, DC
+  3649 -> 3322 mm). Proposals: unmoved pedals keep their exact position (the whole-px snap had rejected every
+  candidate); README says to move the pedals by hand.
+- `feat/guitar-practice-layout` (2026-11-04): practice rig with owned gear only, first layout, the bass rig's Duo 2.1
+  and ISO-5 Pro (Pedal Playground stand-in image: ISO-1AC Pro, outputs marked by the owner).
+- Owner decisions kept: footswitch spacing is comfort, no minimum (`comfort_mm` 100, weight 2); power routes on top up to
+  150 mm are fine (`top_cost` 3); `routing.svg` labels and the pedal editor's footswitch mode are ok for now.
