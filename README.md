@@ -44,6 +44,10 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 - No playground_design.json: cable lengths and clearance are not checked
 
+### Guitar gig board
+
+- Blocked cable space: `red_muck.power` is blocked by Jam Pedals Retrovibe (0.7 mm into the head of the dc_ra_owner_baseline plug, plug points down); move one of the pedals apart
+
 ### Known limitations
 
 - Guitar to first pedal and last pedal to amp cables are not modelled (the guitar and amp positions are not in the layout).

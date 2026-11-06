@@ -22,6 +22,9 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
 
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
+  `bypass_info` {confidence maker|retailer|forum|owner, source, url, notes} sources `buffered_bypass` / `buffer_switchable` (a
+  switchable pedal's `buffered_bypass` = the factory default unless the owner set it; gig pedals researched 2026-11-06,
+  handover `docs/handovers/gig-buffers.md`),
   `power_consumption` {current_ma (worst case), min_voltage_v, max_voltage_v, needs_isolated_output}, prices,
   `playground_title` = key into Pedal Playground's database, intrinsic ordering rules in `dependencies`).
   `height_mm` (optional, null = not found; not required by `no_unknown`) = how tall the pedal stands; the footswitch is
