@@ -152,6 +152,38 @@ def default_power_type(project):
     return routing.settings(project)["power_type"]
 
 
+EXTRA_PLUG_ROLES = ("expression", "patch")   # the cable types an extra jack's plug may take (cables.extra_type / extra_types)
+
+
+def extra_plug_type(project, key):
+    """The cable type id of the plug in extra jack `key` ("<pedal>.<jack>"): cables.extra_types[key], else cables.extra_type, else None."""
+    cfg = project.get("cables") or {}
+    per = cfg.get("extra_types") if isinstance(cfg.get("extra_types"), dict) else {}
+    tid = per.get(key) or cfg.get("extra_type")
+    return tid if isinstance(tid, str) else None   # a malformed value: routing.validate_project_types reports it
+
+
+def takes_extra_plug(have, jk):
+    """Whether used extra jack `jk` (of the jack list `have`) may take a typed extra plug: not a power jack and not the default
+    input / output (those have their own plug model or fixed box), so the build and the layout surrogate treat it alike."""
+    fn = jk.get("function")
+    if fn in ("power", "power_out"):
+        return False
+    return not (fn in ("input", "output") and (default_jack(have, fn) or {}).get("id") == jk["id"])
+
+
+def extra_plug_box(project, cable_types, key):
+    """(type id, outward mm, side mm) of the box of a STRAIGHT plug in extra jack `key` (`extra_plug_type`): the head depth plus a
+    one-diameter straight run along the facing, half the head width to each side (owner, 2026-11-06: every expression cable is
+    straight on the board side); None without a straight type (the jack keeps the audio clearance box)."""
+    tid = extra_plug_type(project, key)
+    t = (cable_types or {}).get(tid or "")
+    plug = (t or {}).get("plug") or {}
+    if not t or plug.get("style") != "straight":
+        return None
+    return tid, float(plug["head_depth_mm"]) + float(t["diameter_mm"]), float(plug["head_width_mm"]) / 2
+
+
 POWER_CLEARANCE_DEFAULT = {"outward_mm": 5.5, "side_mm": 5.5}  # DC jacks without cables.power_type (estimate: 5.5 mm barrel OD)
 
 
@@ -484,9 +516,14 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         facing = design.jack_facing(it, jk["facing"])
         is_power = jk["function"] in ("power", "power_out")
         out_mm, side_mm = (p_out, p_side) if is_power else (outward, side)
+        key = f"{cid}.{jk['id']}"
+        typed = (extra_plug_box(project, cable_types, key)
+                 if jk["id"] in extra_used.get(cid, []) and takes_extra_plug(jacks_data.get(cid) or [], jk) else None)
+        if typed:
+            _, out_mm, side_mm = typed
         zone = design.clearance_rect(pt, facing, out_mm, side_mm)
-        ctx["fixed_zones"][f"{cid}.{jk['id']}"] = {"rect": zone, "facing": facing, "zone": "power" if is_power else "audio",
-                                                   "label": jk["label"]}
+        ctx["fixed_zones"][key] = {"rect": zone, "facing": facing, "zone": "power" if is_power else "audio",
+                                   "label": jk["label"], "plug_type": typed[0] if typed else None}
         for ob in obstacles:
             if ob["id"] == it["id"]:
                 continue
@@ -495,8 +532,9 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
                 depth = design.overlap_depth(facing, ov)
                 ctx["fixed_box"].append((f"{cid}.{jk['id']}",
                     {"jack": f"{cid}.{jk['id']}", "obstacle": ob["title"], "depth_mm": depth, "zone": "power" if is_power else "audio"},
-                    f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: "
-                    f"it reaches {depth:.1f} mm into the {out_mm:g} mm {'power' if is_power else 'audio'} zone"))
+                    f"clearance: {cid}.{jk['id']} ({jk['label']}, facing {facing}) is blocked by {ob['title']}: " +
+                    (f"it reaches {depth:.1f} mm into the {typed[0]} straight plug ({out_mm:g} mm deep)" if typed else
+                     f"it reaches {depth:.1f} mm into the {out_mm:g} mm {'power' if is_power else 'audio'} zone")))
     if not defer:
         report_fixed_box(ctx)
 

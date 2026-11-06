@@ -46,7 +46,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Plug collision: belle_epoch.jack_4 (Exp, extra jack, fixed box) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 4.3 mm (its box into the barrel); move a pedal or set a plug side in `cables.overrides`
+- Plug collision: belle_epoch.jack_4 (Exp, extra jack, exp_trs_straight_baseline straight plug) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 3.5 mm (its box into the cable run); move a pedal or set a plug side in `cables.overrides`
 
 ### Known limitations
 

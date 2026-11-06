@@ -27,7 +27,7 @@
     "extra_used": { "retrovibe": ["jack_4"], "belle_epoch": ["jack_4"], "boss_dd200": ["jack_6"] },
     "supplies_layer": "under"
   },
-  "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {} },
+  "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "extra_type": "exp_trs_straight_baseline", "overrides": {} },
   "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "retrovibe", "phase_95", "red_muck", "ratsbane", "protein", "tumnus_deluxe", "analog_chorus", "reticon", "monk", "belle_epoch", "boss_dd200"],
   "sections": {
     "priority": -10,

@@ -343,7 +343,7 @@ class Model:
 
     def _geometry(self, n, rot):
         """Everything of pedal n at rotation `rot` relative to its centre."""
-        from jacks import default_jack, _jack_by_id
+        from jacks import default_jack, _jack_by_id, extra_plug_box, takes_extra_plug
         pid = self.ids[n]
         it = self.mitem[pid]
         tmp = {**it, "rot": rot, "left_mm": -it["w_mm"] / 2, "top_mm": -it["h_mm"] / 2}
@@ -396,8 +396,11 @@ class Model:
             if jk and f"{pid}.{jid}" not in {e["jack"] for e in g["extra"]}:   # each jack once, as jacks.check
                 pt = design.jack_point(tmp, jk["x"], jk["y"])
                 facing = design.jack_facing(tmp, jk["facing"])
+                typed = (extra_plug_box(self.project, self.cable_types, f"{pid}.{jid}")   # a straight plug, as jacks.check
+                         if takes_extra_plug(have, jk) else None)
+                out_mm, side_mm = typed[1:] if typed else (self.outward, self.side)
                 g["extra"].append({"jack": f"{pid}.{jid}", "facing": facing, "down": [], "opts": [self._opt(
-                    {"side": None, "rects": [("box", design.clearance_rect(pt, facing, self.outward, self.side))],
+                    {"side": None, "rects": [("box", design.clearance_rect(pt, facing, out_mm, side_mm))],
                      "exit": pt, "measure_mm": 0.0}, facing=facing)]})
         for fs in self.fs_data.get(pid) or []:
             x, y = design.jack_point(tmp, fs["x"], fs["y"])

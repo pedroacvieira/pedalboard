@@ -31,7 +31,8 @@ def run(tmp_path, positive=(), outputs=None):
 
 def test_every_catalog_pedal_and_supply_has_a_polarity():
     pedals, supplies = load_catalog()
-    assert {p["power_consumption"]["polarity"] for p in pedals.values()} == {"center_negative"}
+    powered = [p for p in pedals.values() if p["power_consumption"]["current_ma"] != 0]   # a passive controller (EV-30) has none
+    assert {p["power_consumption"]["polarity"] for p in powered} == {"center_negative"}
     assert {s["polarity"] for s in supplies.values()} == {"center_negative"}
 
 

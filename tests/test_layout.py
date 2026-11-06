@@ -901,3 +901,17 @@ def test_a_hop_whose_target_sits_over_a_hole_costs_at_most_the_jack_height_more_
     assert dd["plugs"]["a.power"]["down"] and ds["plugs"]["a.power"]["side"] == "left"
     assert dd["terms"]["power"][0] == pytest.approx(40.0 + 35.6 + 27.0)
     assert dd["terms"]["power"][0] <= ds["terms"]["power"][0] + 12.0
+
+
+def test_the_surrogate_uses_the_straight_extra_plug_as_the_build_does():
+    """The aux jack of AUX_JACKS (right edge, facing right) with cables.extra_type = a straight 40 mm plug + a 6 mm run: its box is 46 mm deep,
+    so pedal b 25.4 mm to the right blocks it (the 6.3 mm audio box does not reach)."""
+    exp = {"role": "expression", "diameter_mm": 6.0, "plug": {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0}}
+    types = {**TYPES, "exp": exp}
+    state = at((25.4, 50.8, 0), (25.4 + 50.8 + 25.4, 50.8, 0))
+    base = {"signal_chain": ["a", "b"], "cables": {"type": "t", "overrides": {"S1": {"exit_a": "left"}}}, "jacks": {"extra_used": {"a": ["aux"]}}}
+    layout_items = design.parse_canvas(canvas(BOARD, ped("T A", 0), ped("T B", 135)))
+    _, plain = layout.Model(base, layout_items, PEDALS, {}, AUX_JACKS, {}, types, outlines={}).score(state, margin=0, detail=True)
+    typed = {**base, "cables": {**base["cables"], "extra_type": "exp"}}
+    _, det = layout.Model(typed, layout_items, PEDALS, {}, AUX_JACKS, {}, types, outlines={}).score(state, margin=0, detail=True)
+    assert det["terms"]["clearance"][0] > plain["terms"]["clearance"][0]
