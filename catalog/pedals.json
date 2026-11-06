@@ -1042,6 +1042,24 @@
         "confidence": "page",
         "notes": "Thomann page: 196 EUR incl. VAT, 'In 7-9 Wochen lieferbar' (not in stock); 9.6 V adapter included. Thomann Belgium snippet showed about 199 EUR."
       }
+    },
+    {
+      "id": "boss_ev30",
+      "owned": true,
+      "instruments": ["guitar"],
+      "brand": "BOSS",
+      "name": "EV-30 Dual Expression Pedal",
+      "digital": false,
+      "clocked_noise": false,
+      "buffered_bypass": null,
+      "buffer_switchable": null,
+      "tags": ["expression", "controller"],
+      "playground_title": "BOSS EV-30 Dual Expression Pedal",
+      "power_consumption": { "current_ma": 0, "min_voltage_v": null, "max_voltage_v": null, "needs_isolated_output": false, "polarity": null },
+      "height_mm": 92,
+      "height_info": {"measure": "overall", "confidence": "maker", "source": "BOSS EV-30 specifications", "url": "https://www.boss.info/global/products/ev-30/specifications/", "notes": "'Maximum height 92 mm' (treadle fully up); body 80 W x 192 D x 58 H mm. A treadle, not a footswitch: the footswitch rule does not apply."},
+      "dependencies": [],
+      "comments": "Expression controller (owner, 2026-11-06), NOT in any signal chain: passive, no power, no audio path (so buffer / power fields do not apply). Two TRS outputs, EXP 1 OUT and EXP 2 OUT, each with its own MIN knob; a POLARITY switch on EXP 2 only (BOSS specifications page: 80 x 192 x 58 mm, max height 92 mm, 780 g, 1 m stereo cable included). In guitar-gig it drives the Exp jacks of the Retrovibe, the Belle Epoch and the DD-200, one or two at a time (two outputs; the owner re-patches), so all three Exp jacks are in jacks.extra_used. Expression cables are not routed or measured yet (docs/TODO.md)."
     }
   ]
 }

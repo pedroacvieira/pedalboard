@@ -24,22 +24,22 @@
   "jacks": {
     "clearance": { "outward_mm": 6.3, "side_mm": 7 },
     "power_clearance": { "outward_mm": 5.5, "side_mm": 5.5 },
-    "extra_used": {},
+    "extra_used": { "retrovibe": ["jack_4"], "belle_epoch": ["jack_4"], "boss_dd200": ["jack_6"] },
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_owner_baseline", "overrides": {} },
-  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "phase_95", "retrovibe", "red_muck", "ratsbane", "protein", "analog_chorus", "reticon", "monk", "belle_epoch", "tumnus_deluxe", "boss_dd200"],
+  "signal_chain": ["sun_face", "danelectro_3699", "beano", "polytune_3", "mini_ego", "fulldrive_2", "retrovibe", "phase_95", "red_muck", "ratsbane", "protein", "tumnus_deluxe", "analog_chorus", "reticon", "monk", "belle_epoch", "boss_dd200"],
   "sections": {
     "priority": -10,
     "order": [
       { "name": "fuzz / old school", "pedals": ["sun_face", "beano", "danelectro_3699"] },
       { "name": "drive before the phasers", "pedals": ["fulldrive_2"] },
-      { "name": "phase-type (phaser, vibe; any order)", "pedals": ["phase_95", "retrovibe"] },
+      { "name": "phase-type (vibe, then phaser)", "pedals": ["retrovibe", "phase_95"] },
       { "name": "fuzz / distortion after the phasers (Protein still follows Ratsbane)", "pedals": ["red_muck", "ratsbane", "protein"] },
+      { "name": "eq / boost (end of the drive section)", "pedals": ["tumnus_deluxe"] },
       { "name": "modulation", "pedals": ["analog_chorus", "reticon"] },
       { "name": "tremolo", "pedals": ["monk"] },
       { "name": "delay", "pedals": ["belle_epoch"] },
-      { "name": "eq / boost", "pedals": ["tumnus_deluxe"] },
       { "name": "delay with looper (records the whole chain)", "pedals": ["boss_dd200"] }
     ]
   },
@@ -55,22 +55,14 @@
     { "id": "monk.after_group_modulation", "pedal": "monk", "type": "after_group", "group": "modulation", "strength": "required", "reason": "Tremolo after the modulation pedals" },
     { "id": "belle_epoch.after_group_gain", "pedal": "belle_epoch", "type": "after_group", "group": "gain", "strength": "required", "reason": "Original plan: time-based effects after the dirt" },
     { "id": "belle_epoch.before_boss_dd200", "pedal": "belle_epoch", "type": "before", "pedals": ["boss_dd200"], "strength": "required", "reason": "Belle Epoch ahead of the DD-200" },
-    {
-      "id": "tumnus_deluxe.position_last",
-      "pedal": "tumnus_deluxe",
-      "type": "position",
-      "value": "last",
-      "strength": "required",
-      "reason": "Final volume and EQ setting; also the end-of-chain buffer. Outranks every group-order rule, because the Tumnus is also tagged gain; only the DD-200 (looper) follows it",
-      "priority": 100
-    },
+    { "id": "tumnus_deluxe.after_group_gain", "pedal": "tumnus_deluxe", "type": "after_group", "group": "gain", "strength": "required", "reason": "End of the drive section: final volume and EQ of the dirt, ahead of the modulation (owner, 2026-11-06; was dead last)" },
     {
       "id": "boss_dd200.position_last",
       "pedal": "boss_dd200",
       "type": "position",
       "value": "last",
       "strength": "required",
-      "reason": "Its looper records the whole chain, so it comes after everything, the Tumnus included (owner, 2026-11-04)",
+      "reason": "Its looper records the whole chain, so it comes after everything (owner, 2026-11-04)",
       "priority": 110
     },
     { "id": "boss_dd200.after_group_gain", "pedal": "boss_dd200", "type": "after_group", "group": "gain", "strength": "required", "reason": "Time-based effects after the dirt" },
@@ -87,6 +79,7 @@
     { "id": "mini_ego.after_fuzz", "pedal": "mini_ego", "type": "after", "pedals": ["sun_face", "beano", "danelectro_3699"], "strength": "required", "priority": 100, "reason": "Fuzz rules win: the fuzz group comes first" },
     { "id": "mini_ego.first", "pedal": "mini_ego", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor should come first (overruled by the fuzz rules and the tuner rule)" },
     { "id": "phase_95.before_red_muck", "pedal": "phase_95", "type": "before", "pedals": ["red_muck"], "strength": "required", "reason": "Phaser into the Muff fuzz for Pink Floyd sounds" },
+    { "id": "retrovibe.before_phase_95", "pedal": "retrovibe", "type": "before", "pedals": ["phase_95"], "strength": "required", "reason": "Vibe ahead of the phaser (owner, 2026-11-06)" },
     { "id": "retrovibe.before_red_muck", "pedal": "retrovibe", "type": "before", "pedals": ["red_muck"], "strength": "required", "reason": "Vibe into the Muff fuzz for Pink Floyd sounds" },
     { "id": "fulldrive_2.before_phasers", "pedal": "fulldrive_2", "type": "before", "pedals": ["phase_95", "retrovibe"], "strength": "required", "reason": "Full-Drive stays ahead of the phaser and vibe" },
     { "id": "danelectro_3699.after_sun_face", "pedal": "danelectro_3699", "type": "after", "pedals": ["sun_face"], "strength": "preferred", "reason": "Fuzz Face first; the Danelectro follows it" },

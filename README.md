@@ -46,7 +46,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ### Guitar gig board
 
-- Blocked cable space: `red_muck.power` is blocked by Jam Pedals Retrovibe (0.7 mm into the head of the dc_ra_owner_baseline plug, plug points down); move one of the pedals apart
+- Plug collision: belle_epoch.jack_4 (Exp, extra jack, fixed box) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 4.3 mm (its box into the barrel); move a pedal or set a plug side in `cables.overrides`
 
 ### Known limitations
 
@@ -80,5 +80,5 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
+JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork, BOSS EV-30 Dual Expression Pedal
 

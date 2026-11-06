@@ -44,10 +44,15 @@ ideas · 5 data · 6 done.
 
 ## 2. Boards
 
-### Gig (layout 2026-11-04 10:15 + DD-200; DD-8 and Pico Pitch Fork out)
-- State (2026-11-05): 17 pedals, signal 2314 mm, DC 3322 mm over 10 cables (every Ojai output in use), crowding 215,
-  0 blocked plugs, 0 collisions. One warning: the Monk 0.3 mm outside the usable area at the back.
-- [ ] Nudge the Monk ~1 mm to the front in Pedal Playground (proposal 3 does only that), fetch, build.
+### Gig (layout 2026-11-06 13:47; Tumnus at the end of the drive section, Retrovibe before Phase 95)
+- State (2026-11-06): 17 pedals, signal 2713 mm, DC 3388 mm over 10 cables, crowding 170.7, 0 blocked plugs.
+  Exp jacks of Retrovibe, Belle Epoch, DD-200 in `jacks.extra_used` (driven by the BOSS EV-30). One warning: the Belle
+  Epoch's Exp box collides with its own output plug (4.3 mm; jacks ~22 mm apart, the flat plug reaches 19 mm sideways).
+- [ ] **Belle Epoch Exp vs output plug**: owner picks a fix (straight plug on the Exp cable, a slimmer angled plug on S16,
+      or measure the Ernie Ball plug first).
+- [ ] **Place the EV-30** (`boss_ev30`, catalog 2026-11-06) in Pedal Playground and mark its two TRS jacks
+      (`uv run pb pedal-editor boss_ev30`). It is an obstacle on the board but not routed yet.
+- [ ] **Tumnus Deluxe / Belle Epoch buffer setting**: owner checks the pedals (catalog keeps Tumnus buffered, Belle true).
 - [ ] Re-run the proposals: stale since the power rewiring (`uv run pb propose guitar-gig`, then build). Before the
       rewiring: proposal 1 = Retrovibe, Ratsbane, Tumnus, Monk (signal -50 mm, DC -63 mm).
 - [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset
@@ -107,6 +112,8 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - Open: drag pedals in the Board tab and save as a new layout file (never `playground_design.json` itself)?
 
 ## 4. Later / ideas
+- [ ] **Expression cables** (owner, 2026-11-06): route and measure the TRS cables from the EV-30 (2 outputs) to the Exp
+      jacks of Retrovibe, Belle Epoch, DD-200 (one or two at a time: the owner re-patches; so maybe one cable per target).
 - [ ] **Jack / footswitch templates per enclosure family** (owner, 2026-10-29): pedals of one brand and one enclosure
       size usually share their in / out / power jack and footswitch positions (exceptions exist, so a template is a
       proposal, never verified data). Families: EHX Pico / Nano / normal / double, MXR mini / normal / double, Boss
