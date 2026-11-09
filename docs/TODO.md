@@ -20,6 +20,8 @@ ideas · 5 data · 6 done.
 - [ ] **Fender Pro Medium deck**: thickness (+ the bend of a ribbon through a slot) for `hole_transit_mm` (15,
       estimate) and the board height at the back edge for `edge_transit_mm` (30 = 2 x hole transit, estimate); put
       them in `catalog/boards.json` (`fender-pro-medium.png`). Same for the Duo 2.1 (`rockboard-duo-21.png`).
+- [ ] **Expression cable's straight plug** (board side): head length and width, cable thickness -> `exp_trs_straight_baseline`
+      (40 x 12 mm, 6 mm cable: placeholder).
 - [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
       to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
       `verified` list.
@@ -48,8 +50,9 @@ ideas · 5 data · 6 done.
 - State (2026-11-06): 17 pedals, signal 2713 mm, DC 3388 mm over 10 cables, crowding 170.7, 0 blocked plugs.
   Exp jacks of Retrovibe, Belle Epoch, DD-200 in `jacks.extra_used` (driven by the BOSS EV-30). One warning: the Belle
   Epoch's Exp box collides with its own output plug (4.3 mm; jacks ~22 mm apart, the flat plug reaches 19 mm sideways).
-- [ ] **Belle Epoch Exp vs output plug**: owner picks a fix (straight plug on the Exp cable, a slimmer angled plug on S16,
-      or measure the Ernie Ball plug first).
+- [ ] **Belle Epoch Exp vs output plug**: the Exp jacks now take a straight plug (`exp_trs_straight_baseline`, 40 x 12 mm
+      placeholder, owner 2026-11-06); the Belle's output plug's cable run still crosses it (3.5 mm). Fix: a slimmer angled plug
+      on S16, or measure the Ernie Ball plug and the expression cable's straight plug first.
 - [ ] **Place the EV-30** (`boss_ev30`, catalog 2026-11-06) in Pedal Playground and mark its two TRS jacks
       (`uv run pb pedal-editor boss_ev30`). It is an obstacle on the board but not routed yet.
 - [ ] **Tumnus Deluxe / Belle Epoch buffer setting**: owner checks the pedals (catalog keeps Tumnus buffered, Belle true).

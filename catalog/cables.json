@@ -1,5 +1,5 @@
 {
-  "_doc": "Cable types (all mm). role: patch (pedal to pedal on the board; a project's cables.type must be one), instrument (guitar -> board / board -> amp; not modelled yet), power (DC plugs; a project's cables.power_type), reference (for comparison only; never a default). diameter_mm = the cable's width ON THE BOARD, used as the routing width: the jacket diameter of a round cable, the narrow side of a flat (ribbon) cable standing on edge; jacket gives the cross section. plug.style: right_angle (cable leaves the head sideways, to the left or right of the jack's facing, in the board plane) or straight (cable leaves along the facing). plug.head_depth_mm = how far the head sticks out from the jack face along the facing; head_width_mm = across the facing (in the board plane), centred on the jack; head_thickness_mm = height above the board (informational). Right-angle only: exit_offset_mm = distance from the jack face, along the facing, to the cable axis (default head_depth/2); body_reach_mm = distance from the jack axis, along the exit side, to the end of the plug body / strain relief (default head_width/2); barrel_width_mm = width of that part along the facing (default the cable width). After the plug body the cable runs straight for exit_run_mm (signal: cables.exit_run_mm, default one cable width; power: one power-cable width) before it may bend: that is where the router starts. 'verified' lists the values taken directly from a source; everything else is an estimate or a placeholder (see notes).",
+  "_doc": "Cable types (all mm). role: patch (pedal to pedal on the board; a project's cables.type must be one), instrument (guitar -> board / board -> amp; not modelled yet), power (DC plugs; a project's cables.power_type), expression (an expression / control cable: the straight plug in a pedal's used extra jack, cables.extra_type), reference (for comparison only; never a default). diameter_mm = the cable's width ON THE BOARD, used as the routing width: the jacket diameter of a round cable, the narrow side of a flat (ribbon) cable standing on edge; jacket gives the cross section. plug.style: right_angle (cable leaves the head sideways, to the left or right of the jack's facing, in the board plane) or straight (cable leaves along the facing). plug.head_depth_mm = how far the head sticks out from the jack face along the facing; head_width_mm = across the facing (in the board plane), centred on the jack; head_thickness_mm = height above the board (informational). Right-angle only: exit_offset_mm = distance from the jack face, along the facing, to the cable axis (default head_depth/2); body_reach_mm = distance from the jack axis, along the exit side, to the end of the plug body / strain relief (default head_width/2); barrel_width_mm = width of that part along the facing (default the cable width). After the plug body the cable runs straight for exit_run_mm (signal: cables.exit_run_mm, default one cable width; power: one power-cable width) before it may bend: that is where the router starts. 'verified' lists the values taken directly from a source; everything else is an estimate or a placeholder (see notes).",
   "cables": {
     "ernie_ball_flat_patch_ra": {
       "name": "Ernie Ball Flat Ribbon Patch Cable (red), flat angled / angled plugs",
@@ -73,6 +73,16 @@
         "owner measured a random DC cable, 2026-10-28: the straight end needs 34 mm outwards from the jack and a 5 mm radius (10 mm wide)"
       ],
       "notes": "OWNER BASELINE, may be smaller (the owner's straight plugs are likely smaller; updated later). head_thickness 10 = the 5 mm radius (round body, informational). diameter 3.2 is UNVERIFIED (the right-angle type's estimate)."
+    },
+    "exp_trs_straight_baseline": {
+      "name": "Expression cable, straight TRS plug on the board side (placeholder)",
+      "role": "expression",
+      "diameter_mm": 6.0,
+      "tips": "TRS",
+      "plug": {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0, "head_thickness_mm": 12.0},
+      "verified": [],
+      "sources": [],
+      "notes": "Owner (2026-11-06): every expression cable is angled at one end and STRAIGHT on the board side (the pedal's Exp jack). UNVERIFIED placeholder with the generic_straight sizes (40 mm head, 12 mm wide, 6 mm cable) until the owner measures the cable (the BOSS EV-30 ships with a 1 m stereo cable)."
     },
     "generic_straight": {
       "name": "Generic straight patch plug (placeholder)",

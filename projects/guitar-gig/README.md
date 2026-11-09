@@ -8,7 +8,7 @@
 
 <details><summary>Validation messages</summary>
 
-- WARN clearance: belle_epoch.jack_4 (Exp, extra jack, fixed box) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 4.3 mm (its box into the barrel)
+- WARN clearance: belle_epoch.jack_4 (Exp, extra jack, exp_trs_straight_baseline straight plug) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 3.5 mm (its box into the cable run)
 
 </details>
 
@@ -20,7 +20,7 @@ flowchart TB
     sun_face["<b>1</b> &nbsp;AnalogMan Sun Face BC183<br/>fuzz / boost"]:::c_fuzz___boost
     danelectro_3699["<b>2</b> &nbsp;Danelectro 3699 Fuzz<br/>fuzz / boost"]:::c_fuzz___boost
     beano["<b>3</b> &nbsp;AnalogMan Beano Boost<br/>fuzz / boost"]:::c_fuzz___boost
-    polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3<br/>tuner"]:::c_tuner
+    polytune_3["<b>4</b> &nbsp;TC Electronic PolyTune 3 Mini<br/>tuner"]:::c_tuner
     mini_ego["<b>5</b> &nbsp;Wampler Mini Ego Compressor<br/>compressor"]:::c_compressor
     fulldrive_2["<b>6</b> &nbsp;Fulltone Full-Drive 2 Mosfet<br/>drive / distortion"]:::c_drive___distortion
     retrovibe["<b>7</b> &nbsp;JAM Pedals Retrovibe<br/>phase-type"]:::c_phase_type
@@ -54,10 +54,10 @@ flowchart TB
 | 1 | AnalogMan Sun Face BC183 | Yes | 9V | 9V | 1 mA | True | No | Ojai R30 · F1 |
 | 2 | Danelectro 3699 Fuzz | Yes | 9V | 9V | 9 mA | True | No | Ojai R30 · F1 |
 | 3 | AnalogMan Beano Boost | Yes | 9V | 9V | 5 mA | True | No | Ojai R30 · F1 |
-| 4 | TC Electronic PolyTune 3 | Yes | 9V | 9V | 100 mA | True (switchable) | Yes | Ojai R30 · F2 |
+| 4 | TC Electronic PolyTune 3 Mini | Yes | 9V | 9V | 100 mA | True (switchable) | Yes | Ojai R30 · F2 |
 | 5 | Wampler Mini Ego Compressor | Yes | 9-18V | 18V | 22 mA | True | No | Ojai R30 · SW_A |
-| 6 | Fulltone Full-Drive 2 Mosfet | Yes | 9-18V | 18V | 10 mA | True | No | Ojai R30 · SW_A |
-| 7 | JAM Pedals Retrovibe | Yes | 9V | 9V | 120 mA | True | No | Ojai R30 · SW_B |
+| 6 | Fulltone Full-Drive 2 Mosfet | Yes | 9-18V | 18V | 15 mA | True | No | Ojai R30 · SW_A |
+| 7 | JAM Pedals Retrovibe | Yes | 9V | 9V | 150 mA | True | No | Ojai R30 · SW_B |
 | 8 | MXR Phase 95 | Yes | 9V | 9V | 8 mA | True | No | Ojai R30 · SW_B |
 | 9 | JAM Pedals Red Muck Mk2 | Yes | 9V | 9V | 15 mA | True | No | Ojai R30 · F1 |
 | 10 | Wampler Ratsbane | Yes | 9-18V | 9V | 3 mA | True | No | Ojai R30 · F3 |
@@ -87,8 +87,8 @@ flowchart TB
 - **Wampler Tumnus Deluxe** must come after all `gain` pedals: End of the drive section: final volume and EQ of the dirt, ahead of the modulation (owner, 2026-11-06; was dead last) `[project]`
 - **BOSS DD-200 Digital Delay** must be last in the chain (priority 110): Its looper records the whole chain, so it comes after everything (owner, 2026-11-04) `[project]`
 - **BOSS DD-200 Digital Delay** must come after all `gain` pedals: Time-based effects after the dirt `[project]`
-- **TC Electronic PolyTune 3** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first, with no buffer ahead of the Sun Face and Beano `[project]`
-- **TC Electronic PolyTune 3** must be first in the chain (priority 50): Tuner should come first (overruled by the fuzz rules) `[project]`
+- **TC Electronic PolyTune 3 Mini** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first, with no buffer ahead of the Sun Face and Beano `[project]`
+- **TC Electronic PolyTune 3 Mini** must be first in the chain (priority 50): Tuner should come first (overruled by the fuzz rules) `[project]`
 - **Wampler Mini Ego Compressor** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first `[project]`
 - **Wampler Mini Ego Compressor** must be first in the chain (priority 10): Compressor should come first (overruled by the fuzz rules and the tuner rule) `[project]`
 - **MXR Phase 95** must come before JAM Pedals Red Muck Mk2: Phaser into the Muff fuzz for Pink Floyd sounds `[project]`
@@ -123,10 +123,10 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **AnalogMan Sun Face BC183**: Silicon Fuzz Face, unbuffered: must be FIRST in the chain, guitar straight into it. Ships battery-only; check your unit has the optional DC jack. Silicon version is negative ground so sharing power is OK, but AnalogMan warns a supply can add hum/oscillation. 'Under 1 mA' is from the shared Fuzz Face page. Power re-checked 2026-10-21: no source publishes a current draw, so 1 mA is unverified; AnalogMan never forbids higher than 9V but gives no range either.
 - **Danelectro 3699 Fuzz**: Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board, between the Sun Face and the Beano. True bypass per retailer spec lists (no Danelectro spec sheet found).
 - **AnalogMan Beano Boost**: Germanium treble booster, direct post-fuzz. Per AnalogMan it can share a DC supply with the Sun Face and other basic fuzzes (keep that group simple). The Oct 2020 manual text read by the research agent said isolated power only / no daisy-chaining, so confirm the wording for your unit. Never 9V AC. Needs the DC jack option (battery by default). Center-negative.
-- **TC Electronic PolyTune 3**: Tuner / master front buffer. 100 mA is the manual's minimum supply rating; measured draw is lower (~38 mA reported for the Mini). Bypass mode is selectable by DIP switch (true by default, buffered, or buffered with display on); buffer ENABLED in this plan as the master front buffer. Has a power-out jack for daisy-chaining. Power re-checked 2026-10-21: actual draw 45 mA (full size) / 40 mA (Mini), but TC asks for a >100 mA supply and one Noir listing says 100 mA, so 100 mA stays as the worst case.
+- **TC Electronic PolyTune 3 Mini**: The owner's unit is the PolyTune 3 MINI (Noir; owner, 2026-11-06). Tuner / master front buffer. 100 mA is the manual's minimum supply rating; measured draw is lower (~38 mA reported for the Mini). Bypass mode is selectable by DIP switch (true by default, buffered, or buffered with display on); buffer ENABLED in this plan as the master front buffer. Has a power-out jack for daisy-chaining. Power re-checked 2026-10-21: actual draw 45 mA (full size) / 40 mA (Mini), but TC asks for a >100 mA supply and one Noir listing says 100 mA, so 100 mA stays as the worst case.
 - **Wampler Mini Ego Compressor**: Compressor. Wampler publishes 14 mA at 9V and 22 mA at 18V (figure here is the 18V one). Page does not explicitly state the jack is 18V-rated. True bypass. Listed as 'Ego Mini' in the original plan.
-- **Fulltone Full-Drive 2 Mosfet**: Overdrive, more headroom at 18V. ~10 mA is from Fulltone's page for the newer v2; no manufacturer figure found for the original Mosfet model (one forum measurement: ~7 mA).
-- **JAM Pedals Retrovibe**: Photocell Uni-Vibe, pre-dirt for throbbing fuzz-vibe tones. 120 mA assumes the current mk.4 (mk.3 is listed at 80-150 mA): check your version. True bypass, no battery. Exempt from 'modulation after gain': intentionally ahead of the dirt.
+- **Fulltone Full-Drive 2 Mosfet**: Overdrive, more headroom at 18V. ~10 mA is from Fulltone's page for the newer v2; no manufacturer figure found for the original Mosfet model (one forum measurement: ~7 mA). 15 mA = the owner's worst case (2026-11-06).
+- **JAM Pedals Retrovibe**: Photocell Uni-Vibe, pre-dirt for throbbing fuzz-vibe tones. The owner's unit is the Mk3 (owner, 2026-11-06): 150 mA = the worst case of the Mk3 listings (80-150 mA; the Mk4 is 120 mA). True bypass, no battery. Exempt from 'modulation after gain': intentionally ahead of the dirt.
 - **MXR Phase 95**: Phaser, pre-dirt for a classic 70s sweep. No battery option. True bypass. Exempt from 'modulation after gain': intentionally ahead of the dirt.
 - **JAM Pedals Red Muck Mk2**: Russian/Civil War Muff fuzz. Sources conflict: 60 mA (JAM shop page) vs 12-15 mA (retailers); planning on 60 mA until the manual is checked. True bypass. Power re-checked 2026-10-21: 12 mA on most listings, 15 mA on Thomann (planning on 15); the old 60 mA appears in no source.
 - **Wampler Ratsbane**: Hard-clipping distortion. 2.5 mA at 9V, 3.2 mA at 18V; approved for 18V but designed around 9V. No battery connector. True bypass.
@@ -157,8 +157,8 @@ flowchart LR
         psu2_F1["<b>F1</b> · 9V<br/>30 / 500 mA"]:::out9
         psu2_F2["<b>F2</b> · 9V<br/>100 / 500 mA"]:::out9
         psu2_F3["<b>F3</b> · 9V<br/>203 / 500 mA"]:::out9
-        psu2_SW_A["<b>SW_A</b> · 18V<br/>32 / 250 mA"]:::out18
-        psu2_SW_B["<b>SW_B</b> · 9V<br/>128 / 500 mA"]:::out9
+        psu2_SW_A["<b>SW_A</b> · 18V<br/>37 / 250 mA"]:::out18
+        psu2_SW_B["<b>SW_B</b> · 9V<br/>158 / 500 mA"]:::out9
     end
     boss_dd200["BOSS DD-200 Digital Delay<br/>delay · 225 mA"]:::c_delay
     belle_epoch["Catalinbread Belle Epoch Deluxe<br/>delay · 200 mA"]:::c_delay
@@ -169,14 +169,14 @@ flowchart LR
     beano["AnalogMan Beano Boost<br/>fuzz / boost · 5 mA"]:::c_fuzz___boost
     danelectro_3699["Danelectro 3699 Fuzz<br/>fuzz / boost · 9 mA"]:::c_fuzz___boost
     sun_face["AnalogMan Sun Face BC183<br/>fuzz / boost · 1 mA"]:::c_fuzz___boost
-    polytune_3["TC Electronic PolyTune 3<br/>tuner · 100 mA"]:::c_tuner
+    polytune_3["TC Electronic PolyTune 3 Mini<br/>tuner · 100 mA"]:::c_tuner
     ratsbane["Wampler Ratsbane<br/>drive / distortion · 3 mA"]:::c_drive___distortion
     protein["Browne Protein V3<br/>drive / distortion · 130 mA"]:::c_drive___distortion
     tumnus_deluxe["Wampler Tumnus Deluxe<br/>eq / boost · 70 mA"]:::c_eq___boost
-    fulldrive_2["Fulltone Full-Drive 2 Mosfet<br/>drive / distortion · 10 mA"]:::c_drive___distortion
+    fulldrive_2["Fulltone Full-Drive 2 Mosfet<br/>drive / distortion · 15 mA"]:::c_drive___distortion
     mini_ego["Wampler Mini Ego Compressor<br/>compressor · 22 mA"]:::c_compressor
     phase_95["MXR Phase 95<br/>phase-type · 8 mA"]:::c_phase_type
-    retrovibe["JAM Pedals Retrovibe<br/>phase-type · 120 mA"]:::c_phase_type
+    retrovibe["JAM Pedals Retrovibe<br/>phase-type · 150 mA"]:::c_phase_type
     psu1_F1 --> boss_dd200
     psu1_F2 --> belle_epoch
     psu1_F3 --> monk
@@ -236,17 +236,17 @@ Placement: under the board. Layout item: Strymon Ojai R30 (dd8cf6e4-da4a-4389-8e
 |  | 9V | AnalogMan Beano Boost | 5 |  |
 |  | 9V | Danelectro 3699 Fuzz | 9 |  |
 |  | 9V | AnalogMan Sun Face BC183 | 1 |  |
-| **F2** (fixed) | 9V | TC Electronic PolyTune 3 | 100 | 100 / 500 mA |
+| **F2** (fixed) | 9V | TC Electronic PolyTune 3 Mini | 100 | 100 / 500 mA |
 | **F3** (fixed) | 9V | Wampler Ratsbane | 3 | 203 / 500 mA |
 |  | 9V | Browne Protein V3 | 130 |  |
 |  | 9V | Wampler Tumnus Deluxe | 70 |  |
-| **SW_A** (switchable) | 18V | Fulltone Full-Drive 2 Mosfet | 10 | 32 / 250 mA |
+| **SW_A** (switchable) | 18V | Fulltone Full-Drive 2 Mosfet | 15 | 37 / 250 mA |
 |  | 18V | Wampler Mini Ego Compressor | 22 |  |
-| **SW_B** (switchable) | 9V | MXR Phase 95 | 8 | 128 / 500 mA |
-|  | 9V | JAM Pedals Retrovibe | 120 |  |
-| | | **Ojai R30 total** | | **493 mA** |
+| **SW_B** (switchable) | 9V | MXR Phase 95 | 8 | 158 / 500 mA |
+|  | 9V | JAM Pedals Retrovibe | 150 |  |
+| | | **Ojai R30 total** | | **528 mA** |
 
-**All supplies combined:** 1126 mA
+**All supplies combined:** 1161 mA
 
 
 ## Jacks and cables
@@ -257,7 +257,7 @@ No blocked cable space found (signal jacks with a cable type: the plug head plus
 
 Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
 
-- belle_epoch.jack_4 (Exp, extra jack, fixed box) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 4.3 mm (its box into the barrel)
+- belle_epoch.jack_4 (Exp, extra jack, exp_trs_straight_baseline straight plug) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 3.5 mm (its box into the cable run)
 
 DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagonally and its cable goes under the patch cables; not a collision, one pass per plug):
 
@@ -427,7 +427,7 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (right) | F2 | 9V | MXR Phase 95, Browne Protein V3, Wampler Ratsbane, Wampler Tumnus Deluxe |
 | Ojai R30 (right) | F3 | 9V | JAM Pedals Retrovibe, AnalogMan Beano Boost, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
-| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 Mini |
 
 ### Proposal 2
 
@@ -453,7 +453,7 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (right) | F2 | 9V | MXR Phase 95, Browne Protein V3, Wampler Ratsbane, Wampler Tumnus Deluxe |
 | Ojai R30 (right) | F3 | 9V | JAM Pedals Retrovibe, AnalogMan Beano Boost, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
-| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 Mini |
 
 ### Proposal 3
 
@@ -478,5 +478,5 @@ Power wiring for this layout (computed under the power policy; the build keeps u
 | Ojai R30 (right) | F2 | 9V | MXR Phase 95, Browne Protein V3, Wampler Ratsbane |
 | Ojai R30 (right) | F3 | 9V | JAM Pedals Retrovibe, AnalogMan Beano Boost, Danelectro 3699 Fuzz, AnalogMan Sun Face BC183 |
 | Ojai R30 (right) | SW_A | 18V | Fulltone Full-Drive 2 Mosfet, Wampler Mini Ego Compressor |
-| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 |
+| Ojai R30 (right) | SW_B | 9V | TC Electronic PolyTune 3 Mini |
 

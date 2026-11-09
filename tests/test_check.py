@@ -422,3 +422,58 @@ def test_on_board_port_takes_the_free_exit_side_and_an_override_fixes_it(tmp_pat
     routing.route_project(ctx, {}, cable_types=DC_TYPES)
     (v,) = [v for v in ctx["violations"] if v["jack"] == "psu1.F1"]
     assert v["side"] == "left" and v["part"] == "cable" and v["obstacle"] == "T C"
+
+
+EXP = {"role": "expression", "diameter_mm": 6.0, "plug": {"style": "straight", "head_depth_mm": 40.0, "head_width_mm": 12.0}}
+
+
+def test_extra_plug_box_is_the_straight_head_plus_one_diameter():
+    types = {"exp": EXP, "ra": {"role": "patch", "diameter_mm": 3.5, "plug": {"style": "right_angle", "head_depth_mm": 6.4, "head_width_mm": 12.7}}}
+    assert jacks.extra_plug_box({"cables": {"extra_type": "exp"}}, types, "a.tap") == ("exp", 46.0, 6.0)
+    # a per-jack type wins over the default; a right-angle or unknown type gives no box (the audio box stays)
+    assert jacks.extra_plug_box({"cables": {"extra_type": "ra", "extra_types": {"a.tap": "exp"}}}, types, "a.tap") == ("exp", 46.0, 6.0)
+    assert jacks.extra_plug_box({"cables": {"extra_type": "ra"}}, types, "a.tap") is None
+    assert jacks.extra_plug_box({"cables": {}}, types, "a.tap") is None
+
+
+def test_a_straight_extra_plug_reaches_further_than_the_audio_box(tmp_path):
+    """a.tap faces right at the right edge (x 50.8); B starts 25.4 mm away: clear for the 6.3 mm audio box, blocked by a 46 mm straight plug."""
+    data = {"a": pedal_jacks() + [{"id": "tap", "label": "Exp", "function": "other", "x": 1.0, "y": 0.2, "facing": "right"}], "b": pedal_jacks()}
+    ctx = project(tmp_path, [A(0), B(135)], jacks_block={"extra_used": {"a": ["tap"]}})
+    jacks.check(ctx, PEDALS, SUPPLIES, data, cable_types={"exp": EXP})
+    assert "a.tap" not in [v["jack"] for v in ctx["violations"]]
+    ctx = project(tmp_path, [A(0), B(135)], jacks_block={"extra_used": {"a": ["tap"]}})
+    ctx["project"]["cables"] = {"extra_type": "exp"}
+    jacks.check(ctx, PEDALS, SUPPLIES, data, cable_types={"exp": EXP})
+    v = next(v for v in ctx["violations"] if v["jack"] == "a.tap")
+    assert v["depth_mm"] == pytest.approx(46.0 - 25.4)
+    assert ctx["fixed_zones"]["a.tap"]["plug_type"] == "exp"
+    assert any("a.tap" in w and "exp straight plug (46 mm deep)" in w for w in ctx["warnings"])
+
+
+def test_extra_plug_types_are_validated():
+    types = {"exp": EXP, "ra": {"role": "patch", "diameter_mm": 3.5, "plug": {"style": "right_angle", "head_depth_mm": 6.4, "head_width_mm": 12.7}},
+             "dc": {"role": "power", "diameter_mm": 3.0, "plug": {"style": "straight", "head_depth_mm": 30.0, "head_width_mm": 10.0}}}
+    ok = {"jacks": {"extra_used": {"a": ["tap"]}}, "cables": {"extra_type": "exp", "extra_types": {"a.tap": "exp"}}}
+    assert routing.validate_project_types(ok, types) == []
+    errs = routing.validate_project_types({"jacks": {"extra_used": {"a": ["tap"]}},
+                                           "cables": {"extra_type": "ra", "extra_types": {"a.tap": "dc", "b.x": "exp", "a.y": "nope"}}}, types)
+    assert any(e.startswith("cables.extra_type: ra must be a straight plug") for e in errs)
+    assert any(e.startswith("cables.extra_types.a.tap: dc must be a straight plug") for e in errs)
+    assert "cables.extra_types.b.x: not a jack in jacks.extra_used" in errs
+    assert any(e.startswith("cables.extra_types.a.y: nope is not in catalog/cables.json") for e in errs)
+
+
+def test_malformed_extra_types_do_not_crash_and_are_reported():
+    assert jacks.extra_plug_box({"cables": {"extra_types": ["a.tap"], "extra_type": ["exp"]}}, {"exp": EXP}, "a.tap") is None
+    errs = routing.validate_project_types({"cables": {"extra_type": ["exp"], "extra_types": ["a.tap"]}}, {"exp": EXP})
+    assert "cables.extra_type must be a cable type id (a string)" in errs and any(e.startswith("cables.extra_types must be") for e in errs)
+
+
+def test_a_default_jack_listed_as_extra_keeps_its_own_box(tmp_path):
+    """a.out is the default output: listing it in extra_used never gives it the straight extra plug."""
+    ctx = project(tmp_path, [A(0), B(135)], jacks_block={"extra_used": {"a": ["out", "power"]}})
+    ctx["project"]["cables"] = {"extra_type": "exp"}
+    jacks.check(ctx, PEDALS, SUPPLIES, DATA, cable_types={"exp": EXP})
+    assert ctx["fixed_zones"]["a.out"]["plug_type"] is None and ctx["fixed_zones"]["a.power"]["plug_type"] is None
+    assert jacks.takes_extra_plug(pedal_jacks(), {"id": "x", "function": "input"}) is True     # a second (stereo) input may take it

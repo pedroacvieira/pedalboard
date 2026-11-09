@@ -119,8 +119,9 @@ def missing_lines(names, pedals, supplies, only=None, jacks_data=None, fs_data=N
 
 
 # --- editing helpers (pure, tested) -------------------------------------------------------------
-def new_jack(existing, fx, fy, kind, ports=()):
-    """The jack a click adds: a supply's next free port, else the first missing input/output/power, else 'other'."""
+def new_jack(existing, fx, fy, kind, ports=(), controller=False):
+    """The jack a click adds: a supply's next free port, else the first missing input/output/power, else 'other'. A controller
+    (catalog tag "controller", e.g. an expression pedal: no audio in / out, no power) gets 'other' jacks named Exp 1, Exp 2..."""
     have = {j["function"] for j in existing}
     ids = [j["id"] for j in existing]
     facing = jacks.guess_facing(fx, fy)
@@ -128,6 +129,9 @@ def new_jack(existing, fx, fy, kind, ports=()):
         free = [p for p in ports if p not in ids]
         port = free[0] if free else "port"
         return {"id": port, "label": port, "function": "power_out", "x": fx, "y": fy, "facing": facing}
+    if controller:
+        n = len(existing) + 1
+        return {"id": jacks.unique_id(ids, f"exp{n}"), "label": f"Exp {n}", "function": "other", "x": fx, "y": fy, "facing": facing}
     for fn, jid, label in (("input", "in", "Input"), ("output", "out", "Output"), ("power", "power", "Power")):
         if fn not in have:
             return {"id": jid, "label": label, "function": fn, "x": fx, "y": fy, "facing": facing}
@@ -597,7 +601,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
             if -0.02 <= fx <= 1.02 and -0.02 <= fy <= 1.02:
                 fx, fy = min(1, max(0, fx)), min(1, max(0, fy))
                 if self.mode == "jacks":
-                    self.items.append(new_jack(self.items, fx, fy, kind, ports))
+                    self.items.append(new_jack(self.items, fx, fy, kind, ports, "controller" in (item.get("tags") or [])))
                 else:
                     self.items.append(new_footswitch(self.items, fx, fy))
                     self._refresh_none()

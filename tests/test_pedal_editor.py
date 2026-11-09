@@ -148,3 +148,9 @@ def test_list_missing_does_not_run_the_router(tmp_path, monkeypatch):
     monkeypatch.setattr(routing, "route_project", lambda *a, **k: (_ for _ in ()).throw(AssertionError("routed")))
     pedals, supplies = load_catalog()
     assert pe.missing_lines(["guitar-gig"], pedals, supplies, only="footswitches")
+
+
+def test_a_controller_gets_exp_jacks_not_input_output_power():
+    first = pe.new_jack([], 0.2, 0.0, "pedal", controller=True)
+    second = pe.new_jack([first], 0.8, 0.0, "pedal", controller=True)
+    assert [(j["id"], j["label"], j["function"]) for j in (first, second)] == [("exp1", "Exp 1", "other"), ("exp2", "Exp 2", "other")]

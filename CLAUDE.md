@@ -34,7 +34,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   enclosure, owner rule 2026-11-05; `enclosure_mm` keeps the published figure). Researched 2026-11-05, handover
   `docs/handovers/pedal-heights.md`.
 - `catalog/power_supplies.json`: supply models (ports, voltage options, mA limits, quantity owned).
-- `catalog/cables.json`: cable types with a `role` (patch | instrument | power | reference), `diameter_mm` = width ON
+- `catalog/cables.json`: cable types with a `role` (patch | instrument | power | expression | reference), `diameter_mm` = width ON
   THE BOARD (routing width; a flat ribbon's narrow side), `jacket`, plug style right_angle|straight, head
   depth/width/thickness, right-angle exit offset / body reach / barrel width, sources, `verified` list, notes. Data.
 - `catalog/jacks.json`: jack positions per catalog id. Written ONLY by `scripts/pedal_editor.py` (Tkinter).
@@ -245,7 +245,11 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   fixed box), along the plug's cable exit and the routed path; no slack, no rounding (`min_mm`). Power cables: routed (see above); `estimate_mm` keeps
   the old right-angle estimate for comparison. Goal is an approximation, not a real 3D simulation: all cables bend
   the same (no bend radius, flat or round), routes are not hand-tuned.
-- Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`.
+- Extra jacks (Exp, Tap, Thru, XLR...) are documentation only until listed in a project's `jacks.extra_used`. A used extra jack gets
+  the audio clearance box, or with `cables.extra_type` (per jack `cables.extra_types` {"<pedal>.<jack>": type}; a STRAIGHT plug, role
+  expression|patch) a box of head depth + one cable diameter x head width (`jacks.extra_plug_box`, mirrored in `layout.py`; owner
+  2026-11-06: every expression cable is straight on the board side; gig: `exp_trs_straight_baseline`, a 40 x 12 mm placeholder). The
+  cable itself is not routed or measured.
 - Generated files (READMEs, .mmd, .svg) are never edited by hand; change the generator/data.
 - Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
   (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's layout: only `fetch_playground.py` writes it.

@@ -104,7 +104,7 @@ NEIGHBOURS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -
 
 
 STYLES = ("right_angle", "straight")
-ROLES = ("patch", "instrument", "power", "reference")   # what a catalog/cables.json type is for
+ROLES = ("patch", "instrument", "power", "expression", "reference")   # what a catalog/cables.json type is for
 
 
 def _is_number(v):
@@ -1391,6 +1391,24 @@ def validate_project_types(project, types):
                 errs.append(f"cables.power_types: {t} is not in catalog/cables.json")
             elif role(t) != "power":
                 errs.append(f"cables.power_types: {t} is a {role(t)} cable, not a DC power cable (role power)")
+    from jacks import EXTRA_PLUG_ROLES
+    extra = cfg.get("extra_types")
+    if extra is not None and not isinstance(extra, dict):
+        errs.append("cables.extra_types must be an object {\"<pedal>.<jack>\": cable type id}")
+    used = {f"{p}.{j}" for p, ids in ((project.get("jacks") or {}).get("extra_used") or {}).items() for j in ids}
+    for where, tid in [("cables.extra_type", cfg.get("extra_type"))] + [(f"cables.extra_types.{k}", v) for k, v in
+                                                                        (extra.items() if isinstance(extra, dict) else ())]:
+        if tid is None:
+            continue
+        if not isinstance(tid, str):
+            errs.append(f"{where} must be a cable type id (a string)")
+        elif tid not in types:
+            errs.append(f"{where}: {tid} is not in catalog/cables.json")
+        elif role(tid) not in EXTRA_PLUG_ROLES or ((types[tid].get("plug") or {}).get("style")) != "straight":
+            errs.append(f"{where}: {tid} must be a straight plug with role {' or '.join(EXTRA_PLUG_ROLES)} (catalog/cables.json)")
+    for k in (extra or {}) if isinstance(extra, dict) else ():
+        if k not in used:
+            errs.append(f"cables.extra_types.{k}: not a jack in jacks.extra_used")
     for cid, o in (cfg.get("overrides") or {}).items():
         if (o or {}).get("type") in types and role(o["type"]) == "power" and not cid.startswith("P"):
             errs.append(f"cables.overrides.{cid}.type: {o['type']} is a DC power cable")
@@ -1730,7 +1748,8 @@ def fixed_footprints(ctx, modelled):
         box = [("box", z["rect"])]   # an audio box is a signal footprint; a power box a DC one that never passes (DC vs DC)
         parts[key] = DcRects(box, False, z["facing"]) if z["zone"] == "power" else SigRects(box, z["facing"])
         kinds[key] = ("first input, fixed box" if key == first else "last output, fixed box" if key == last else
-                      "extra jack, fixed box" if key in extra else "power box" if z["zone"] == "power" else "audio box")
+                      (f"extra jack, {z['plug_type']} straight plug" if z.get("plug_type") else "extra jack, fixed box") if key in extra
+                      else "power box" if z["zone"] == "power" else "audio box")
     return parts, kinds
 
 
