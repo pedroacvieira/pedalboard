@@ -22,6 +22,10 @@ along its own axis: back / front follow the mouse's y, left / right its x) or nu
 edge; Esc deselects. The four lines move independently (at least 10 mm apart from their opposite). In the other modes the
 lines are drawn (dashed teal, the area outside shaded) but not selectable.
 
+Composed boards (several pedalboard items in the layout, summed and evaluated as one board): this editor edits the FIRST piece only (the
+top-level `boxes` / `bounds`); the edits of the other pieces live in the `pieces` key of board.json ({"<board image file name>":
+{"boxes": [...], "bounds": {...}}}), written by hand, and are kept when you save.
+
 In the editor: pick the type of the next entry with the buttons in the panel or the keys 1 (hole), 2 (filled), 3 (edge),
 shown in the status bar (B: bounds mode, see above); drag on empty space draws a box; in edge mode (a drag starting on a box still draws) you drag a LINE (rubber band)
 that snaps to the nearest board side on release (`project_edge`: both ends are projected on the side nearest to the line's
@@ -299,9 +303,10 @@ def bounds_set(bounds):
 
 
 # --- the file (pure) -----------------------------------------------------------------------------
-def dumps_edits(boxes, bounds=None):
+def dumps_edits(boxes, bounds=None, pieces=None):
     """board.json text: a `_doc`, the `bounds` (only the sides that differ from the image edge; no key when none does), then
-    one entry per line with 4 decimals (like catalog/outlines.json)."""
+    one entry per line with 4 decimals (like catalog/outlines.json). `pieces`: the raw `pieces` value of the file (the edits of the further
+    pieces of a composed board, which this editor does not edit), written back unchanged."""
     lines = []
     for b in boxes:
         if b["type"] == "edge":
@@ -313,14 +318,19 @@ def dumps_edits(boxes, bounds=None):
     full = full_bounds(bounds)
     sides = bounds_set(full)
     bounds_line = ('  "bounds": {' + ", ".join(f'"{side}": {round(full[side], DECIMALS)}' for side in sides) + "},\n") if sides else ""
-    return "{\n" + f'  "_doc": {json.dumps(DOC, ensure_ascii=False)},\n{bounds_line}  "boxes": {body}\n' + "}\n"
+    pieces_line = f',\n  "pieces": {json.dumps(pieces, ensure_ascii=False)}' if pieces else ""
+    return "{\n" + f'  "_doc": {json.dumps(DOC, ensure_ascii=False)},\n{bounds_line}  "boxes": {body}{pieces_line}\n' + "}\n"
 
 
 def save_edits(project_dir, boxes, bounds=None):
     """Write projects/<name>/board.json atomically (.tmp + os.replace); returns the path."""
     path = Path(project_dir) / EDITS_FILE
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(dumps_edits(boxes, bounds))
+    try:   # the edits of further board pieces are not ours to change: keep them
+        pieces = json.loads(path.read_text()).get("pieces")
+    except (OSError, ValueError, AttributeError):
+        pieces = None
+    tmp.write_text(dumps_edits(boxes, bounds, pieces))
     os.replace(tmp, path)
     return path
 

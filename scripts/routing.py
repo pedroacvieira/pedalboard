@@ -396,8 +396,12 @@ def area_box(board_rect, front_y, cfg):
 ZONE_PAD_MM = 6.0   # how far past a plug footprint `build_grid` extends its extent (room for the cable radius and the exit cell)
 
 
-def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=()):
+def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=(), pieces=None):
     """Routing area = board + margin at the back and sides, cut off at `front_y` (`front_limit`).
+
+    `pieces`: the footprints of a composed board (several pieces, `layout["board_rects"]`; `board_rect` is then their bounding box): the
+    cells whose centre is farther than `edge_margin_mm` from EVERY piece are walls (the zone cells stay open, as with the growth below).
+    One piece or None: the grid is today's, cell for cell.
 
     The usable board area (board.json `bounds`) limits the pedals only: cables may run anywhere in the board + margin (owner,
     2026-11-02).
@@ -430,6 +434,13 @@ def build_grid(board_rect, obstacle_rects, front_y, cfg, zones=()):
         cut -= set().union(*(rect_cells(g, z, reach) for z in zones))
         g.blocked |= cut
         g.body |= cut
+    if pieces and len(pieces) > 1:   # a composed board: the cells beyond the margin of every piece (the notch of an L, a gap) are walls
+        near = set().union(*(rect_cells(g, r, m) for r in pieces))
+        far = {(i, j) for i in range(g.nx) for j in range(g.ny)} - near
+        if zones:
+            far -= set().union(*(rect_cells(g, z, cfg["diameter_mm"] / 2 + g.cell / 2) for z in zones))
+        g.blocked |= far
+        g.body |= far
     return g
 
 
@@ -557,40 +568,47 @@ def usable_edge_segments(layout, cfg):
     return [sg for sg in layout.get("edge_segments") or [] if sg[2] != "front" or cfg.get("route_in_front")]
 
 
-def under_grid(top, board_rect, obstacle_rects, cfg):
+def under_grid(top, board_rect, obstacle_rects, cfg, pieces=None):
     """The under-board grid over the board footprint (`board_rect`; the whole board, also in front of the lowest pedals),
     same origin and cells as `top`: the cells outside the board and the under-board `obstacle_rects` grown like pedals
-    are blocked."""
+    are blocked. `pieces`: the footprints of a composed board (`board_rect` = their bounding box): the cells outside EVERY piece are
+    blocked (the under layer is the union of the pieces: cables pass freely between them)."""
     x1, y1 = board_rect[2], board_rect[3]
     g = Grid(top.x0, top.y0, x1, y1, top.cell)
+    rects = pieces if pieces and len(pieces) > 1 else [board_rect]
     g.blocked = {(i, j) for i in range(g.nx) for j in range(g.ny)
-                 if not (board_rect[0] <= g.centre((i, j))[0] <= x1 and board_rect[1] <= g.centre((i, j))[1] <= y1)}
+                 if not any(r[0] <= g.centre((i, j))[0] <= r[2] and r[1] <= g.centre((i, j))[1] <= r[3] for r in rects)}
     grow = grow_of(cfg)
     for r in obstacle_rects:
         g.block_rect(r, grow=grow)
     return g
 
 
-def build_under(top, board_rect, obstacle_rects, hole_rects, cfg, transit_mm, edge_segments=(), edge_transit_mm=0.0):
+def build_under(top, board_rect, obstacle_rects, hole_rects, cfg, transit_mm, edge_segments=(), edge_transit_mm=0.0, pieces=None):
     """The under-board layer (`under_grid`) with the hole cells and the edge links (`edge_links` over `edge_segments`, each costing
     `edge_transit_mm` + the deck penalty to the search, like a hole pass); None for the layer without either (nothing can
     change layer)."""
-    g = under_grid(top, board_rect, obstacle_rects, cfg)
+    g = under_grid(top, board_rect, obstacle_rects, cfg, pieces)
     holes = hole_cells(top, g, hole_rects)
-    links = edge_links(top, g, board_rect, edge_segments, edge_transit_mm, float(cfg["hole_penalty"]))
+    links = edge_links(top, g, board_rect, edge_segments, edge_transit_mm, float(cfg["hole_penalty"]), pieces)
     if not holes and not links:
         return g, None
     return g, Under(g, holes, float(transit_mm), float(cfg["hole_penalty"]), float(cfg["under_cost"]), int(cfg["max_stack_under"]),
                     edges=links)
 
 
-def edge_links(top, ug, board_rect, edge_segments, transit_mm, penalty=0.0):
+def edge_links(top, ug, board_rect, edge_segments, transit_mm, penalty=0.0, pieces=None):
     """[(under cell, top cell, cost, side)]: every free under cell on the board border whose projection on its side lies within an
     edge segment of that side (`edge_segments` = `layout["edge_segments"]`: ((x0, y0), (x1, y1), side) in canvas mm), joined to
     the top cell just outside the board (the margin of the routing area). None where that cell is not in the top grid or is
     blocked (e.g. in front of the lowest pedals). cost = `transit_mm` + `penalty` (the search-only deck penalty of the signal
-    cables), at least one cell (keeps the search heuristic consistent). No segments, no links."""
+    cables), at least one cell (keeps the search heuristic consistent). No segments, no links.
+    `pieces`: the footprints of a composed board (several; `board_rect` = their bounding box): a border cell is a cell inside a piece
+    whose neighbour on that side lies inside none (a joint between two pieces is no border), and the segment must lie on the border
+    where the cell is (within one cell of it)."""
     x0, y0, x1, y1 = board_rect
+    if pieces and len(pieces) > 1:
+        return _piece_edge_links(top, ug, pieces, edge_segments, transit_mm, penalty)
     cols = [i for i in range(ug.nx) if x0 <= ug.centre((i, 0))[0] <= x1]   # the cells inside the board footprint
     rows = [j for j in range(ug.ny) if y0 <= ug.centre((0, j))[1] <= y1]
     if not edge_segments or not cols or not rows:
@@ -608,6 +626,32 @@ def edge_links(top, ug, board_rect, edge_segments, transit_mm, penalty=0.0):
             t = ug.centre(c)[axis]
             if any(lo <= t <= hi for lo, hi in spans):
                 out.append((c, n, cost, side))
+    return out
+
+
+def _piece_edge_links(top, ug, pieces, edge_segments, transit_mm, penalty):
+    """`edge_links` of a composed board: the under cells inside a piece whose neighbour on the side lies inside no piece."""
+    if not edge_segments:
+        return []
+
+    def inside(c):
+        x, y = ug.centre(c)
+        return any(r[0] <= x <= r[2] and r[1] <= y <= r[3] for r in pieces)
+    cost = max(transit_mm + penalty, top.cell)
+    out = []
+    for side, (dx, dy), axis in (("left", (-1, 0), 1), ("right", (1, 0), 1), ("back", (0, -1), 0), ("front", (0, 1), 0)):
+        spans = [(min(a[axis], b[axis]), max(a[axis], b[axis]), a[1 - axis]) for a, b, sd in edge_segments if sd == side]   # along, across
+        if not spans:
+            continue
+        for i in range(ug.nx):
+            for j in range(ug.ny):
+                c = (i, j)
+                n = (i + dx, j + dy)
+                if c in ug.blocked or not inside(c) or inside(n) or not top.free(n):
+                    continue
+                t, across = ug.centre(c)[axis], ug.centre(c)[1 - axis]
+                if any(lo <= t <= hi and abs(across - at) <= ug.cell for lo, hi, at in spans):
+                    out.append((c, n, cost, side))
     return out
 
 
@@ -1657,22 +1701,29 @@ def dc_plug_jacks(ctx, pcables=()):
 OVERHANG_MIN_MM = 0.05   # a jack past the usable area by less than this does not overhang (as `jacks.OUTSIDE_MIN_MM`)
 
 
-def jack_overhangs(usable, point):
+def jack_overhangs(usable, point, rects=None):
     """Whether a jack at `point` lies outside the usable board area `usable` (`layout["usable"]`, the board footprint without bounds) at the
     back or a side: a jack that overhangs it (only the pedal's BODY has to be inside it). Never in front (the area ends at the lowest
-    pedals there; no plug zone)."""
+    pedals there; no plug zone). `rects`: the usable rects of a composed board (several pieces, `layout["usable_rects"]`): the jack then
+    overhangs when it lies outside their UNION (`usable` is only their bounding box: its y gives the front)."""
     x, y = point
     e = OVERHANG_MIN_MM
+    if rects and len(rects) > 1:
+        return y < usable[3] and not design.inside_union((x, y, x, y), rects, e)
     return y < usable[3] and (x < usable[0] - e or x > usable[2] + e or y < usable[1] - e)
 
 
-def reaches_out(board, o):
+def reaches_out(board, o, rects=None):
     """Whether plug option `o` (its footprint parts or its exit) reaches past the board footprint `board` at the back or a side (never
-    the front): a plug that sticks out over the board edge (owner, 2026-11-03), whose cable may start there."""
+    the front): a plug that sticks out over the board edge (owner, 2026-11-03), whose cable may start there. `rects`: the pieces'
+    footprints of a composed board (several): a part then reaches out when it is not inside their union (and not wholly in front of the
+    board, `board` = their bounding box)."""
     e = OVERHANG_MIN_MM
     ex, ey = o["exit"]
-    return any(r[0] < board[0] - e or r[2] > board[2] + e or r[1] < board[1] - e
-               for r in [q for _, q in o["rects"]] + [(ex, ey, ex, ey)])
+    parts = [q for _, q in o["rects"]] + [(ex, ey, ex, ey)]
+    if rects and len(rects) > 1:
+        return any(r[1] < board[3] and not design.inside_union(r, rects, e) for r in parts)
+    return any(r[0] < board[0] - e or r[2] > board[2] + e or r[1] < board[1] - e for r in parts)
 
 
 def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable, board=None):
@@ -1688,11 +1739,13 @@ def plug_zones(ctx, cables, cable_types, cfg, run_given, outward, usable, board=
     out = []
 
     board = usable if board is None else board
+    pieces = len(layout.get("board_rects") or []) > 1   # a composed board: the union of the pieces decides, not the bounding boxes
+    urects, brects = (layout["usable_rects"], layout["board_rects"]) if pieces else (None, None)
 
     def add(opts, item, jk):
-        over = jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"]))
+        over = jack_overhangs(usable, design.jack_point(item, jk["x"], jk["y"]), urects)
         for o in opts:
-            if not over and not reaches_out(board, o):
+            if not over and not reaches_out(board, o, brects):
                 continue
             out.extend(r for _, r in o["rects"])
             out.append((o["exit"][0], o["exit"][1], o["exit"][0], o["exit"][1]))
@@ -1914,14 +1967,15 @@ def route_project(ctx, cat_pedals, cable_types=None):
         return design.item_shapes(shapes, it)
     grid, layers, under_rects = None, None, []   # without a pedalboard item nothing is routed, but every plug is still checked
     if layout.get("board"):
-        board = design.footprint(layout["board"])
+        board = design.layout_board_rect(layout)   # the board's extent: the bounding box of its pieces (one piece: its footprint)
+        pieces = design.layout_board_rects(layout)
         feet = [r for it in placed.values() for r in shapes_of(it)]
         usable = layout.get("usable")
         front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
         zones = plug_zones(ctx, cables, cable_types, cfg, "exit_run_mm" in (project.get("cables") or {}), outward,
                            usable or board, board)
         ctx["routing"]["plug_zones"] = zones   # the power grid takes the same ones (`route_power`)
-        grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones)
+        grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones, pieces)
         ctx["routing"].update(grid=grid, front_y=front_y)
         if cfg["under_board"]:
             place = layout.get("inst_placement") or {}
@@ -1934,13 +1988,13 @@ def route_project(ctx, cat_pedals, cable_types=None):
             edge_t, edge_src = edge_transit(power_settings(project, cfg), layout, transit)
             ctx["routing"].update(edge_transit_mm=edge_t, edge_transit_source=edge_src)
             segments = usable_edge_segments(layout, cfg)
-            ugrid, layers = build_under(grid, board, under_rects, layout.get("holes"), cfg, transit, segments, edge_t)
+            ugrid, layers = build_under(grid, board, under_rects, layout.get("holes"), cfg, transit, segments, edge_t, pieces)
             ctx["routing"].update(under=ugrid, hole_cells=set(layers.holes) if layers else set(), edge_links=len(layers.edges) if layers else 0)
             for n, seg in enumerate(layout.get("edge_segments") or [], 1):   # an edge segment no cable can use
                 if seg not in segments:
                     sink.append(f"routing: board.json: edge segment {n} is at the front, where the cable area ends at the lowest pedals: "
                                 f"it cannot be used (set cables.route_in_front to true to route in front of the pedals)")
-                elif not edge_links(grid, ugrid, board, [seg], edge_t):
+                elif not edge_links(grid, ugrid, board, [seg], edge_t, pieces=pieces):
                     sink.append(f"routing: board.json: edge segment {n} ({seg[2]}) has no usable crossing "
                                 f"(its border cells are blocked or outside the cable area)")
     run_given = "exit_run_mm" in (project.get("cables") or {})
@@ -2434,10 +2488,11 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     transit = cfg["hole_transit_mm"]
     edge_t, source = edge_transit(pcfg, layout, transit)
     pw.update(edge_transit_mm=edge_t, edge_transit_source=source, hole_transit_mm=float(transit), diameter_mm=pd)
-    pgrid = build_grid(board, pedal_rects, front_y, pc_cfg, ctx["routing"].get("plug_zones") or ())
-    ug = under_grid(pgrid, board, under_rects, pc_cfg)
+    pieces = design.layout_board_rects(layout) or [board]   # a composed board: its pieces (one piece: today's grids)
+    pgrid = build_grid(board, pedal_rects, front_y, pc_cfg, ctx["routing"].get("plug_zones") or (), pieces)
+    ug = under_grid(pgrid, board, under_rects, pc_cfg, pieces)
     holes = hole_cells(pgrid, ug, layout.get("holes"))
-    links = edge_links(pgrid, ug, board, usable_edge_segments(layout, cfg), edge_t)
+    links = edge_links(pgrid, ug, board, usable_edge_segments(layout, cfg), edge_t, pieces=pieces)
     layers = Under(ug, holes, float(transit), float(cfg["hole_penalty"]), POWER_UNDER_COST, int(pcfg["max_stack"]),
                    top_cost=float(pcfg["top_cost"]), edges=links)
     layers.tight = True
@@ -2466,7 +2521,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
             cell = pgrid.cell_of(*start_pt)
             start, oa = (cell[0], cell[1], 1), None
             port_start[c["id"]] = start
-            if not (board[0] <= start_pt[0] <= board[2] and board[1] <= start_pt[1] <= board[3] and ug.inside(cell)):   # the under layer = the board footprint
+            if not (any(r[0] <= start_pt[0] <= r[2] and r[1] <= start_pt[1] <= r[3] for r in pieces) and ug.inside(cell)):   # the under layer = the board footprint (the union of the pieces)
                 c["status"] = "unroutable: the supply port is outside the board footprint"
                 sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) is unroutable: {c['status'][len('unroutable: '):]}")
                 continue

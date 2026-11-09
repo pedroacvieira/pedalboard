@@ -225,13 +225,119 @@ def board_bounds(board_item, bounds):
 
 
 def has_bounds(layout):
-    """Whether the layout's usable area (`layout["usable"]`) is smaller than the board footprint: the project has bounds
-    (`board.json`) that differ from the board edges."""
-    usable = (layout or {}).get("usable")
-    if not usable or not layout.get("board"):
+    """Whether the layout's usable area is smaller than the board footprint: the project has bounds (`board.json`) that differ
+    from the board edges. With several pieces: any piece's usable rect (`layout["usable_rects"]`) differs from its footprint
+    (`layout["board_rects"]`); else `layout["usable"]` against the first piece."""
+    layout = layout or {}
+    if not layout.get("board"):
         return False
-    board = footprint(layout["board"])
-    return any(abs(a - b) > 1e-6 for a, b in zip(usable, board))
+    usable, boards = layout.get("usable_rects"), layout.get("board_rects")
+    if not usable or not boards:
+        usable, boards = [layout.get("usable")], [footprint(layout["board"])]
+    if not usable or usable[0] is None:
+        return False
+    return any(abs(a - b) > 1e-6 for u, f in zip(usable, boards) for a, b in zip(u, f))
+
+
+def layout_board_rects(layout):
+    """The footprints of the board's pieces (`layout["board_rects"]`; a hand-made layout with only `board`: that one's footprint; []
+    without a board)."""
+    layout = layout or {}
+    return list(layout.get("board_rects") or ([footprint(layout["board"])] if layout.get("board") else []))
+
+
+def layout_board_rect(layout):
+    """The board's extent: the bounding box of its pieces (`layout["board_rect"]`; None without a board)."""
+    return bounding_rect(layout_board_rects(layout))
+
+
+def bounding_rect(rects):
+    """The bounding box (x0, y0, x1, y1) of rectangles; None for none."""
+    rects = list(rects)
+    if not rects:
+        return None
+    return (min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects))
+
+
+def _cuts(lo, hi, rects, axis):
+    """The sorted coordinates along `axis` (0 x, 1 y) that cut [lo, hi] into cells on which the coverage by `rects` is constant."""
+    cs = {lo, hi}
+    for r in rects:
+        for v in (r[axis], r[axis + 2]):
+            if lo < v < hi:
+                cs.add(v)
+    return sorted(cs)
+
+
+def inside_union(rect, rects, tol=0.0):
+    """Whether `rect` (x0, y0, x1, y1) lies inside the union of `rects` (closed rectangles, each grown by `tol` mm: a hair of a seam
+    between two abutting pieces does not count). With ONE rect: x0 >= r.x0 - tol and so on. The pieces of a composed board may
+    abut, overlap or form an L: a rect across a joint is inside, a rect in the notch of an L is not."""
+    rects = [(r[0] - tol, r[1] - tol, r[2] + tol, r[3] + tol) for r in rects]
+    xs, ys = _cuts(rect[0], rect[2], rects, 0), _cuts(rect[1], rect[3], rects, 1)
+    for a, b in zip(xs, xs[1:]) if len(xs) > 1 else [(xs[0], xs[0])]:
+        cx = (a + b) / 2
+        for c, d in zip(ys, ys[1:]) if len(ys) > 1 else [(ys[0], ys[0])]:
+            cy = (c + d) / 2
+            if not any(r[0] <= cx <= r[2] and r[1] <= cy <= r[3] for r in rects):
+                return False
+    return True
+
+
+# the side a rect is "past" when it has to move that way: shifting right (+x) brings a rect that sticks out at the LEFT back inside
+_PUSH = {"left": (1, 0), "right": (-1, 0), "back": (0, 1), "front": (0, -1)}
+
+
+def outside_union(rect, rects, tol=0.0):
+    """How far `rect` lies outside the union of `rects` (see `inside_union`): None when it is inside, else (side, mm): the least
+    distance that brings it inside, `side` = the side it sticks out past (left / right / back = top / front = bottom of the canvas).
+    One rect: the worst side's overshoot (max of the four, ties left, right, back, front). Several: the least of the single-axis
+    shifts that bring `rect` inside the union (a shift to the right = "left"; ties left, right, back, front); when no single shift does
+    (it sticks out on two axes, or is bigger than the union allows) the single-rect measure against the nearest piece."""
+    if inside_union(rect, rects, tol):
+        return None
+
+    def against(r):   # one rect: the worst overshoot
+        past = {"left": r[0] - rect[0], "right": rect[2] - r[2], "back": r[1] - rect[1], "front": rect[3] - r[3]}
+        side = max(past, key=past.get)
+        return side, past[side]
+    if len(rects) == 1:
+        return against(rects[0])
+    best = None
+    for side, (dx, dy) in _PUSH.items():
+        mine = (rect[0], rect[2]) if dx else (rect[1], rect[3])
+        cands = {(v - a) * (dx or dy) for r in rects for v in ((r[0], r[2]) if dx else (r[1], r[3])) for a in mine}   # an edge of the shifted rect meets an edge of a piece
+        for d in sorted(c for c in cands if c > 1e-9):
+            moved = (rect[0] + dx * d, rect[1] + dy * d, rect[2] + dx * d, rect[3] + dy * d)
+            if inside_union(moved, rects, tol):
+                if best is None or d < best[1] - 1e-9:
+                    best = (side, d)
+                break
+    return best or min((against(r) for r in rects), key=lambda sm: sm[1])
+
+
+def slide_room(rect, rects, axis, tol=0.0):
+    """How far `rect` can slide along `axis` ((1, 0) right, (-1, 0) left, (0, 1) front, (0, -1) back) before part of it leaves the
+    union of `rects` (the swept area stays inside; 0 when it is not inside to begin with)."""
+    if not inside_union(rect, rects, tol):
+        return 0.0
+    rects = [(r[0] - tol, r[1] - tol, r[2] + tol, r[3] + tol) for r in rects]
+    k = 0 if axis[0] else 1               # the sliding coordinate
+    o = 1 - k                             # the other one
+    room = math.inf
+    cuts = _cuts(rect[o], rect[o + 2], rects, o)
+    for a, b in zip(cuts, cuts[1:]) if len(cuts) > 1 else [(cuts[0], cuts[0])]:
+        mid = (a + b) / 2
+        spans = sorted((r[k], r[k + 2]) for r in rects if r[o] <= mid <= r[o + 2])   # the slab's coverage along the sliding axis
+        merged = []
+        for lo, hi in spans:
+            if merged and lo <= merged[-1][1] + 1e-9:
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+        run = next(m for m in merged if m[0] <= rect[k] + 1e-9 and rect[k + 2] <= m[1] + 1e-9)
+        room = min(room, run[1] - rect[k + 2] if axis[k] > 0 else rect[k] - run[0])
+    return max(0.0, room)
 
 
 def board_edges(board_item, edits=None):

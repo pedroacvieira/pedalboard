@@ -10,7 +10,7 @@ ever committed.
 
     uv run scripts/boards.py [project ...] [--image NAME ...] [--refresh]
 
-fetches the board images of the projects (their layout's board, else the board named in project.json) and of
+fetches the board images of the projects (every pedalboard item of their layout, else the board named in project.json) and of
 `--image`, and writes catalog/boards.json; existing entries are kept unless --refresh (which recomputes only the
 holes: `hole_transit_mm` and `notes` stay).
 
@@ -282,25 +282,8 @@ def load():
     return usable(read_file()["boards"])
 
 
-def load_edits(project_dir, warnings=None):
-    """The valid edit boxes {"type": "hole" | "filled", "x0", "y0", "x1", "y1"} (fractions of the board image) and edge segments
-    {"type": "edge", "side", "from", "to"} of
-    projects/<name>/board.json, in file order; [] if the file is missing (or there is no project folder). Invalid boxes (or an unreadable file) are
-    ignored and described in `warnings` (a list, if given) instead of crashing the build."""
-    if project_dir is None:
-        return []
-    path = Path(project_dir) / EDITS_FILE
-    if not path.exists():
-        return []
-
-    def warn(msg):
-        if warnings is not None:
-            warnings.append(f"{path.parent.name}/{EDITS_FILE}: {msg}")
-    try:
-        raw = load_json(path).get("boxes", [])
-    except (ValueError, AttributeError, OSError) as e:
-        warn(f"unreadable, ignored ({e})")
-        return []
+def _clean_boxes(raw, warn):
+    """The valid boxes of a raw `boxes` list (file order); the others are described through `warn(msg)`."""
     if not isinstance(raw, list):
         warn("'boxes' is not a list, ignored")
         return []
@@ -315,31 +298,48 @@ def load_edits(project_dir, warnings=None):
     return boxes
 
 
+def _read_edits(project_dir):
+    """(path, board.json as a dict or None, error text or None); (None, None, None) without a project folder, data None without the file."""
+    if project_dir is None:
+        return None, None, None
+    path = Path(project_dir) / EDITS_FILE
+    if not path.exists():
+        return path, None, None
+    try:
+        data = load_json(path)
+        data.get  # (a JSON list or number is no object)
+        return path, data, None
+    except (ValueError, AttributeError, OSError) as e:
+        return path, None, str(e)
+
+
+def load_edits(project_dir, warnings=None):
+    """The valid edit boxes {"type": "hole" | "filled", "x0", "y0", "x1", "y1"} (fractions of the board image) and edge segments
+    {"type": "edge", "side", "from", "to"} of
+    projects/<name>/board.json, in file order; [] if the file is missing (or there is no project folder). Invalid boxes (or an unreadable file) are
+    ignored and described in `warnings` (a list, if given) instead of crashing the build. These are the boxes of the FIRST board piece
+    (`load_pieces` has the others)."""
+    path, data, err = _read_edits(project_dir)
+
+    def warn(msg):
+        if warnings is not None:
+            warnings.append(f"{path.parent.name}/{EDITS_FILE}: {msg}")
+    if err is not None:
+        warn(f"unreadable, ignored ({err})")
+        return []
+    if data is None:
+        return []
+    return _clean_boxes(data.get("boxes", []), warn)
+
+
 BOUND_SIDES = ("back", "front", "left", "right")
 BOUNDS_EDGE = {"back": 0.0, "front": 1.0, "left": 0.0, "right": 1.0}   # no bound = the image edge
 
 
-def load_bounds(project_dir, warnings=None):
-    """The four boundary lines of projects/<name>/board.json `bounds` as {"back", "front", "left", "right"}: fractions of
-    the unrotated board image (back / front from its TOP edge, left / right from its LEFT edge; where pedals may sit). A
-    missing side, no `bounds` key, no file or no project folder = the image edge (back 0, front 1, left 0, right 1). Invalid
-    values (not numbers, outside 0..1, unknown side, back >= front, left >= right) are described in `warnings` (a list, if
-    given) and the defaults are returned (all four sides: a half-valid set is not trusted)."""
+def _clean_bounds(raw, warn):
+    """The four bounds of a raw `bounds` value (None = the image edges); an invalid one: `warn(msg)` is called and its result (the
+    defaults) returned (all four sides: a half-valid set is not trusted)."""
     out = dict(BOUNDS_EDGE)
-    if project_dir is None:
-        return out
-    path = Path(project_dir) / EDITS_FILE
-    if not path.exists():
-        return out
-
-    def warn(msg):
-        if warnings is not None:
-            warnings.append(f"{path.parent.name}/{EDITS_FILE}: bounds ignored ({msg})")
-        return dict(BOUNDS_EDGE)
-    try:
-        raw = load_json(path).get("bounds")
-    except (ValueError, AttributeError, OSError) as e:
-        return warn(f"file unreadable: {e}")
     if raw is None:
         return out
     if not isinstance(raw, dict):
@@ -355,6 +355,65 @@ def load_bounds(project_dir, warnings=None):
     if out["left"] >= out["right"]:
         return warn(f"left {out['left']} must be smaller than right {out['right']}")
     return out
+
+
+def load_bounds(project_dir, warnings=None):
+    """The four boundary lines of projects/<name>/board.json `bounds` as {"back", "front", "left", "right"}: fractions of
+    the unrotated board image (back / front from its TOP edge, left / right from its LEFT edge; where pedals may sit). A
+    missing side, no `bounds` key, no file or no project folder = the image edge (back 0, front 1, left 0, right 1). Invalid
+    values (not numbers, outside 0..1, unknown side, back >= front, left >= right) are described in `warnings` (a list, if
+    given) and the defaults are returned (all four sides: a half-valid set is not trusted). The bounds of the FIRST board piece
+    (`load_pieces` has the others)."""
+    path, data, err = _read_edits(project_dir)
+
+    def warn(msg):
+        if warnings is not None:
+            warnings.append(f"{path.parent.name}/{EDITS_FILE}: bounds ignored ({msg})")
+        return dict(BOUNDS_EDGE)
+    if err is not None:
+        return warn(f"file unreadable: {err}")
+    if data is None:
+        return dict(BOUNDS_EDGE)
+    return _clean_bounds(data.get("bounds"), warn)
+
+
+def load_pieces(project_dir, warnings=None):
+    """The owner's edits of the pieces of a composed board, projects/<name>/board.json `pieces`: {board image file name: {"boxes":
+    [...], "bounds": {...}}}, each as `load_edits` / `load_bounds` return them (same validation, invalid parts described in
+    `warnings`; a piece without `boxes` / `bounds` gets [] / the image edges). The top-level `boxes` / `bounds` stay the FIRST piece's;
+    `jacks.layout_from_items` uses this for the other pieces. {} without the key, the file or the folder."""
+    path, data, err = _read_edits(project_dir)
+    raw = None if err is not None or data is None else data.get("pieces")
+    if raw is None:
+        return {}
+    where = f"{path.parent.name}/{EDITS_FILE}"
+    if not isinstance(raw, dict):
+        if warnings is not None:
+            warnings.append(f"{where}: 'pieces' is not an object keyed by board image name, ignored")
+        return {}
+    out = {}
+    for name, entry in raw.items():
+        if not isinstance(entry, dict):
+            if warnings is not None:
+                warnings.append(f"{where}: pieces.{name} is not an object, ignored")
+            continue
+
+        def warn_boxes(msg, name=name):
+            if warnings is not None:
+                warnings.append(f"{where}: pieces.{name}: {msg}")
+
+        def warn_bounds(msg, name=name):
+            if warnings is not None:
+                warnings.append(f"{where}: pieces.{name}: bounds ignored ({msg})")
+            return dict(BOUNDS_EDGE)
+        out[name] = {"boxes": _clean_boxes(entry.get("boxes", []), warn_boxes), "bounds": _clean_bounds(entry.get("bounds"), warn_bounds)}
+    return out
+
+
+def unknown_pieces(pieces, images):
+    """Warnings for the keys of `pieces` (`load_pieces`) that are no pedalboard image of the layout (`images`: their file names)."""
+    return [f"board.json: pieces.{name} is not a pedalboard image of the layout (its pieces: {', '.join(images) or 'none'}), ignored"
+            for name in pieces if name not in images]
 
 
 # --- the CLI -------------------------------------------------------------------------------------
@@ -378,9 +437,10 @@ def wanted(project_names, extra_images, db):
 
     for pdir in project_dirs(project_names or None):
         f = pdir / "playground_design.json"
-        item = next((it for it in design.parse_design(f) if it["kind"] == "pedalboard" and it.get("image")), None) if f.exists() else None
-        if item is not None:
+        pieces = [it for it in design.parse_design(f) if it["kind"] == "pedalboard" and it.get("image")] if f.exists() else []
+        for item in pieces:   # every piece of a composed board
             add(item["image"], item=item)
+        if pieces:
             continue
         b = load_json(pdir / "project.json").get("board") or {}
         entry = db.get(f"{b.get('brand')} {b.get('model')}")

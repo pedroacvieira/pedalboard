@@ -108,14 +108,14 @@ def moved_list(model, state):
     return out
 
 
-def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_data=None, board_edits=None, board_bounds=None):
+def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_data=None, board_edits=None, board_bounds=None, board_pieces=None):
     """(metrics, ctx, wiring) of a candidate: its own power wiring, then build.validate with the injected layout.
-    `board_data` / `board_edits` / `board_bounds`: catalog/boards.json and the project's board.json (boxes, bounds), read once by the caller."""
+    `board_data` / `board_edits` / `board_bounds` / `board_pieces`: catalog/boards.json and the project's board.json (boxes, bounds, the further pieces' edits), read once by the caller."""
     cat_pedals, cat_supplies, jacks_data, fs_data, outl = cat
     items = model.items_for(state)
     lay = jacks.layout_from_items(items, owner_ctx["chain"], owner_ctx["supplies"], cat_pedals, cat_supplies,
                                   project.get("jacks", {}), [], [], outlines=outl, board_data=board_data, board_edits=board_edits,
-                                  board_bounds=board_bounds, bodies=model.bodies)
+                                  board_bounds=board_bounds, bodies=model.bodies, board_pieces=board_pieces)
     insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"], "label": s["inst"].get("label"), "sup": s["sup"],
               "under": lay["inst_placement"].get(s["inst"]["id"]) != "on_board"} for s in owner_ctx["supplies"]]
     pts, ports = power.measure_points(lay["placed"], lay["inst_item"], insts, jacks.usable(jacks_data), model.p_depth)
@@ -223,7 +223,7 @@ def main(argv=None):
     outl = outlines.load()   # read once: the owner's layout, the model and every finalist use it
     bodies = outlines.load_bodies()   # likewise (the pedals' bodies: what the usable board area is tested against)
     board_data, board_edits = boards.load(), boards.load_edits(pdir)   # likewise (catalog/boards.json, the project's board.json)
-    board_bounds = boards.load_bounds(pdir)
+    board_bounds, board_pieces = boards.load_bounds(pdir), boards.load_pieces(pdir)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
     project = load_json(pdir / "project.json")
     if args.pin:
@@ -235,7 +235,7 @@ def main(argv=None):
                                outline_data=outl, board_data=board_data, body_data=bodies)
     try:
         model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl,
-                             board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies)
+                             board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies, board_pieces=board_pieces)
     except ValueError as e:
         sys.exit(f"{pdir.name}: {e}")
     if args.score:
@@ -265,13 +265,13 @@ def main(argv=None):
                   f"dy {st[1] - own[1]:+.1f}) into the usable board area{' (pinned: stays there)' if model.ids[n] in model.pins else ''}")
     mf = lv["move_factor"]
     # the owner's layout is compared with its own computed wiring, as every finalist: a proposal must win on positions
-    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf, board_data, board_edits, board_bounds)
+    owner_m, _, owner_wiring = evaluate(pdir, project, model, model.owner, owner_ctx, cat, mf, board_data, board_edits, board_bounds, board_pieces)
     finals = []
     for _, state in found:
         moved = moved_list(model, state)
         if not moved:
             continue
-        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf, board_data, board_edits, board_bounds)
+        m, ctx, wiring = evaluate(pdir, project, model, state, owner_ctx, cat, mf, board_data, board_edits, board_bounds, board_pieces)
         finals.append({"state": state, "metrics": m, "ctx": ctx, "wiring": wiring, "moved": moved, "ok": acceptable(m, owner_m)})
     finals.sort(key=lambda f: rank_key(f["metrics"]))
     chosen = [f for f in finals if f["ok"]][:top]
