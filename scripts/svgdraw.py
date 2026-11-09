@@ -80,11 +80,12 @@ USABLE_KEY = "usable board area (pedals stay inside)"
 
 
 def usable_area(layout):
-    """The usable board area (`layout["usable"]`, board.json `bounds`: where pedals may sit) as a dashed teal outline; nothing when the
-    project has no bounds (they equal the board's edges)."""
+    """The usable board area (`layout["usable"]`, board.json `bounds`: where pedals may sit) as a dashed teal outline, one per piece of a
+    composed board (`layout["usable_rects"]`); nothing when the project has no bounds (they equal the board's edges)."""
     if not design.has_bounds(layout):
         return []
-    return [rect(*layout["usable"], fill="none", stroke=USABLE_COLOUR, stroke_dasharray="6 3", stroke_width=0.9, class_="usable-area")]
+    return [rect(*r, fill="none", stroke=USABLE_COLOUR, stroke_dasharray="6 3", stroke_width=0.9, class_="usable-area")
+            for r in layout.get("usable_rects") or [layout["usable"]]]
 
 
 def routing_area(x0, y0, x1, y1):
@@ -588,7 +589,7 @@ def render(ctx, names, overlay=None, legend=None, images=None):
         return None
     cfg = r.get("settings") or {}
     diameter, max_stack = cfg.get("diameter_mm", 3.5), cfg.get("max_stack", 2)
-    bx = design.footprint(layout["board"])
+    bx = design.layout_board_rect(layout)   # the extent of the board (its pieces' bounding box)
     ax0, ay0, ax1 = grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell
     left, right = min(bx[0], ax0) - PAD, max(bx[2], ax1) + PAD
     top = ay0 - PAD
@@ -600,7 +601,7 @@ def render(ctx, names, overlay=None, legend=None, images=None):
     cable_list = ctx.get("cable_list") or []
     colours, ends = cable_colours(cable_list), jack_ends(layout, cable_list)
 
-    body = [board(bx)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + usable_area(layout)
+    body = [board(r) for r in design.layout_board_rects(layout)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + usable_area(layout)
     ax0, ay0, ax1, ay1 = routing.area_rect(bx, r.get("front_y") or bx[3], cfg) if cfg else (ax0, ay0, ax1, r.get("front_y") or bx[3])
     body.append(routing_area(ax0, ay0, ax1, ay1))
     for o in layout["obstacles"]:
@@ -662,7 +663,7 @@ def render_power(ctx, names):
     power = power_cable_list(cable_list)
     if not grid or not layout or not power:
         return None
-    bx = design.footprint(layout["board"])
+    bx = design.layout_board_rect(layout)   # the extent of the board (its pieces' bounding box)
     ax0, ay0, ax1 = grid.x0, grid.y0, grid.x0 + grid.nx * grid.cell
     left, right, top = min(bx[0], ax0) - PAD, max(bx[2], ax1) + PAD, ay0 - PAD
     shapes = layout.get("shapes") or {}
@@ -672,7 +673,7 @@ def render_power(ctx, names):
     labels = {s["inst"]["id"]: s["inst"].get("label") or s["inst"]["id"] for s in ctx.get("supplies") or []}
     placement = layout.get("inst_placement") or {}
 
-    body = [board(bx)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + usable_area(layout)
+    body = [board(r) for r in design.layout_board_rects(layout)] + holes(layout.get("holes")) + edge_segments(layout.get("edge_segments")) + usable_area(layout)
     body.append('<g class="pedals-faint" opacity="0.45">')
     for o in layout["obstacles"]:
         if o["id"] not in supply_ids:

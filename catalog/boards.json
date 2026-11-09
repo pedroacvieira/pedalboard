@@ -1,6 +1,23 @@
 {
   "_doc": "Pedalboard holes per Pedal Playground board IMAGE file name (e.g. fender-pro-medium.png). holes: rectangles [x0, y0, x1, y1], fractions (0..1) of the UNROTATED image, origin top-left, 4 decimals; each lies entirely inside a transparent slot / cutout of the board image (conservative: never bigger than the hole). hole_transit_mm: extra cable length for one pass through the deck (down or up); NOT derived, an estimate until measured. Written ONLY by scripts/boards.py (holes); no image is stored.",
   "boards": {
+    "daddario-xpnd-1-extension.png": {
+      "holes": [
+        [0.0147, 0.3643, 0.2747, 0.6285],
+        [0.3517, 0.3643, 0.6483, 0.6285]
+      ],
+      "hole_transit_mm": 15,
+      "notes": "hole_transit_mm: unverified estimate (owner, 2026-10-26)"
+    },
+    "daddario-xpnd-1.png": {
+      "holes": [
+        [0.0113, 0.4053, 0.3258, 0.5947],
+        [0.3877, 0.3791, 0.6123, 0.5947],
+        [0.6742, 0.3791, 0.9887, 0.5947]
+      ],
+      "hole_transit_mm": 15,
+      "notes": "hole_transit_mm: unverified estimate (owner, 2026-10-26)"
+    },
     "fender-pro-medium.png": {
       "holes": [
         [0.2886, 0.0422, 0.7114, 0.0572],

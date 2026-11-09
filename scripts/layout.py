@@ -183,7 +183,7 @@ def _shift(r, dx, dy):
     return (r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy)
 
 
-def in_area(area, o, st, radius, usable, board=None):
+def in_area(area, o, st, radius, usable, board=None, pieces=None):
     """Whether the exit of plug option `o` of the pedal at `st` lies in the routing area `area` (`routing.area_box`: the board +
     margin). Only a plug of an OVERHANGING jack (its point outside the usable area `usable` at the back or a side: `routing.jack_overhangs`;
     `o["jack"]`, relative to the pedal's centre) or a plug that reaches past the board footprint `board` (None: `usable`) at the back or a
@@ -197,7 +197,9 @@ def in_area(area, o, st, radius, usable, board=None):
         return False
     x, y = st[0], st[1]
     moved = {"exit": (px, py), "rects": [(p, _shift(q, x, y)) for p, q in o["rects"]]}
-    if not routing.jack_overhangs(usable, (jk[0] + x, jk[1] + y)) and not routing.reaches_out(usable if board is None else board, moved):
+    urects, brects = pieces or (None, None)   # a composed board: the union of the pieces decides, as the build's `routing.plug_zones`
+    if (not routing.jack_overhangs(usable, (jk[0] + x, jk[1] + y), urects)
+            and not routing.reaches_out(usable if board is None else board, moved, brects)):
         return False
     radius = o["diam"] / 2 if o.get("diam") else radius
     return any(q[0] + x - radius <= px <= q[2] + x + radius and q[1] + y - radius <= py <= q[3] + y + radius for _, q in o["rects"])
@@ -218,7 +220,7 @@ class Model:
     [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None, bodies=None):
+                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None, bodies=None, board_pieces=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -233,11 +235,14 @@ class Model:
         self.outlines = outlines = outlines_mod.load() if outlines is None else outlines   # read once
         self.bodies = bodies
         lay = jacks.layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, [], [], outlines=outlines,
-                                      board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies)
+                                      board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies, board_pieces=board_pieces)
         if lay["board"] is None:
             raise ValueError("the layout has no pedalboard item")
-        self.board = design.footprint(lay["board"])
-        self.usable = lay["usable"]   # where the BODIES of pedals and on-board supplies may sit (the board footprint without bounds)
+        self.board = lay["board_rect"]   # the board's extent (one piece: its footprint; a composed board: the bounding box of its pieces)
+        self.usable = lay["usable"]   # where the BODIES of pedals and on-board supplies may sit (the board footprint without bounds; composed: the bounding box)
+        # a composed board's (usable rects, footprints) for the plug-area test (`in_area`); None with one piece (the plain test)
+        self.pieces = (lay["usable_rects"], lay["board_rects"]) if len(lay["board_rects"]) > 1 else None
+        self.usable_rects = lay["usable_rects"]   # the usable rect of each piece: the bodies must lie inside their UNION (`inside_usable`, `free_distance`)
         self.placed = lay["placed"]
         self.inst_item, self.insts = lay["inst_item"], insts
         self.ids = [p for p in chain if p in self.placed]          # movable pedals, chain order
@@ -554,6 +559,8 @@ class Model:
     def inside_usable(self, f):
         """Whether the body rectangle `f` (x0, y0, x1, y1; `body`) lies inside the usable board area shrunk by `board_margin_mm`."""
         m, b = float(self.cfg["board_margin_mm"]), self.usable
+        if len(self.usable_rects) > 1:   # a composed board: inside the union of the pieces' usable rects (design.inside_union)
+            return design.inside_union((f[0] - m, f[1] - m, f[2] + m, f[3] + m), self.usable_rects, 1e-6)
         return not (f[0] < b[0] + m - 1e-6 or f[1] < b[1] + m - 1e-6 or f[2] > b[2] - m + 1e-6 or f[3] > b[3] - m + 1e-6)
 
     max_move = None             # set by the search level (hard limit, mm)
@@ -613,19 +620,19 @@ class Model:
         cands = self._cands(end, st)
         for o in cands:
             cost, hits, intr, nparts, ovsum = self._opt_clearance(end, o, st, n, obs, margin)
-            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost, self.board, self.rcfg["diameter_mm"] / 2, self.usable)
+            bad = area is not None and len(cands) > 1 and self._infeasible(o, st, n, obs, area, cost, self.board, self.rcfg["diameter_mm"] / 2, self.usable, self.pieces)
             rows.append(((bad, cost), cost, o, hits, intr, nparts, ovsum))
         return rows
 
     @staticmethod
-    def _infeasible(o, st, n, obs, area, cost, under=None, radius=0.0, usable=None):
+    def _infeasible(o, st, n, obs, area, cost, under=None, radius=0.0, usable=None, pieces=None):
         """Whether the cable of plug option `o` cannot leave it: the exit lies outside the routing area (for a plug of an overhanging jack or one past the board edge an exit
         inside its own footprint, grown by the cable `radius`, counts as inside: `in_area`, `usable`) or (only a plug with a clearance cost can have it there) strictly
         inside another item's outline. A plug pointing down continues under the board: its bend point is tested against the under area
         `under` (the board footprint; None: `area`) as the build's `routing.exit_feasible` does."""
         px, py = o["exit"][0] + st[0], o["exit"][1] + st[1]
         if under is None or not o["down"]:
-            if not in_area(area, o, st, radius, usable, under):
+            if not in_area(area, o, st, radius, usable, under, pieces):
                 return True
         elif not (under[0] <= px < under[2] and under[1] <= py < under[3]):
             return True
@@ -997,10 +1004,10 @@ class Model:
             combos = []   # (cost, index a, index b, length, a outside, b outside) of every combination of the two ends' options
             for ka, oa in enumerate(opa):
                 pa = (oa["exit"][0] + sa[0], oa["exit"][1] + sa[1])
-                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
+                outa = not oa["down"] and not in_area(area, oa, sa, self.rcfg["diameter_mm"] / 2, self.usable, self.board, self.pieces)
                 for kb, ob in enumerate(opb):
                     pb = (ob["exit"][0] + sb[0], ob["exit"][1] + sb[1])
-                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable, self.board)
+                    outb = not ob["down"] and not in_area(area, ob, sb, self.rcfg["diameter_mm"] / 2, self.usable, self.board, self.pieces)
                     if oa["down"] or ob["down"]:
                         span = self._under_span(oa, pa, ob, pb, holes, pw_near)
                     else:
@@ -1444,7 +1451,10 @@ def free_distance(model, state, n, axis):
     f = model.footprint(state[n], n)
     bd = model.body(state[n], n)
     b, m = model.usable, float(model.cfg["board_margin_mm"])
-    dist = {(1, 0): b[2] - m - bd[2], (-1, 0): bd[0] - (b[0] + m), (0, 1): b[3] - m - bd[3], (0, -1): bd[1] - (b[1] + m)}[axis]
+    if len(model.usable_rects) > 1:   # a composed board: how far the body (plus the margin) can slide inside the union of the pieces
+        dist = design.slide_room((bd[0] - m, bd[1] - m, bd[2] + m, bd[3] + m), model.usable_rects, axis, 1e-6)
+    else:
+        dist = {(1, 0): b[2] - m - bd[2], (-1, 0): bd[0] - (b[0] + m), (0, 1): b[3] - m - bd[3], (0, -1): bd[1] - (b[1] + m)}[axis]
     others = [model.footprint(st, k) for k, st in enumerate(state) if k != n] + [o for _, o in model.fixed_feet]
     for o in others:
         if axis[0]:

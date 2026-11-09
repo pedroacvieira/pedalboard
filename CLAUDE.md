@@ -81,6 +81,9 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   must stay inside (their jacks may overhang; `design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
   layout search and the drawings; the bounds never limit the cables (routing area = board + margin), under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
+  Optional `pieces` {"<board image file name>": {"boxes": [...], "bounds": {...}}} = the same two keys for the OTHER pieces of a
+  composed board (the top-level `boxes` / `bounds` stay the FIRST piece's; `boards.load_pieces`; an image that is no piece of the
+  layout = a build warning). Hand-written: the board editor edits the first piece only (and keeps `pieces` when it saves).
 - `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
   document (schema 3: items with image, width / height / x / y in inches, rotation in degrees; `design.parse_doc`; legacy v1
   saves `{"canvas": html}` still parse). Written ONLY by `scripts/fetch_playground.py` from the project's public share link
@@ -97,7 +100,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   layouts: v2 documents `parse_doc` / legacy `parse_canvas`, jack geometry in mm, `move` / `write_design` to edit a layout),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
   `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `boards.py` (board
-  holes from the board images + CLI, `load_edits`), `board_editor.py` (GUI: hole / filled boxes per project), `routing.py` (cable model, plug
+  holes from the board images + CLI, `load_edits`, `load_bounds`, `load_pieces`), `board_editor.py` (GUI: hole / filled boxes per project), `routing.py` (cable model, plug
   heads, side choice, grid router, smoothing, lanes, plug-head clearance), `svgdraw.py` (shared SVG drawing: board,
   pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
@@ -322,6 +325,20 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   for such a plug only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
   `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
   includes the bodies.
+- Composed boards (owner, 2026-11, `feat/board-pieces`, handover `docs/handovers/board-pieces.md`): a layout may hold several `pedalboard` items (the
+  bass board: a D'Addario XPND 1 + its extension, which slide on each other). The pieces are SUMMED and evaluated as ONE board: the deck
+  is the union of the footprints (pieces may overlap; a pedal may straddle a joint), under the deck cables pass freely between pieces.
+  `jacks.layout_from_items` returns `pieces`, `board_rects` (footprints), `board_rect` (their bounding box: the extent everywhere the single
+  footprint was used: `design.layout_board_rect(s)`), `usable_rects` (per piece `design.board_bounds` with ITS bounds), `usable` = their
+  bounding box, `holes` / `edge_segments` = every piece's, `board` = the first piece; `hole_transit_mm` / `edge_transit_mm` = the first
+  piece's entry that has one. Bounds test = the body inside the UNION of `usable_rects` (`design.inside_union`, `outside_union` -> (side,
+  mm) = the least single-axis shift that brings it inside, one rect = the worst side as before, `slide_room`; `jacks.outside_usable`,
+  `layout.Model.inside_usable` / `free_distance`; `has_bounds` = any piece's usable rect differs). Routing: `build_grid(..., pieces=)`
+  makes the cells farther than `edge_margin_mm` from every piece walls, `under_grid(..., pieces)` blocks the cells outside every piece,
+  `edge_links(..., pieces=)` takes border cells of the union (a joint is no edge), `jack_overhangs` / `reaches_out` (plug zones) test
+  against the union; `route_project` / `route_power` pass `layout["board_rects"]`. One piece = today, cell for cell. The layout surrogate's
+  `in_area` still uses the bounding boxes (a plug in the notch of an L is not seen as overhanging there). Drawings: every piece and every
+  usable rect. `boards.py` derives the holes of every piece's image.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 
 ## Working agreements with the owner
