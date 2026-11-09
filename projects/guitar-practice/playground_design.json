@@ -1,8 +1,8 @@
 {
  "name": "Practice Board",
  "view": {
-  "x": -885.9499999999999,
-  "y": -188,
+  "x": -764.75,
+  "y": -201,
   "zoom": 1.5
  },
  "items": [
@@ -35,8 +35,8 @@
    "rotation": 0
   },
   {
-   "x": 44.601874999999986,
-   "y": 14.225000000000003,
+   "x": 45.33104166666665,
+   "y": 14.25,
    "id": "7aafe810-98c4-4a59-a62b-6eec7b990fce",
    "kind": "pedal",
    "color": null,
@@ -49,8 +49,8 @@
    "rotation": 0
   },
   {
-   "x": 41.757708333333326,
-   "y": 16.025,
+   "x": 40.88770833333333,
+   "y": 16.1,
    "id": "f91b9e26-ae8c-4c80-8c55-297f202bcd0f",
    "kind": "pedal",
    "color": null,
@@ -63,8 +63,8 @@
    "rotation": 0
   },
   {
-   "x": 39.420208333333335,
-   "y": 14.225000000000001,
+   "x": 38.711875,
+   "y": 15.080000000000007,
    "id": "f59ac8d7-06ab-4cea-8ab3-c1078971b2f2",
    "kind": "pedal",
    "color": null,
@@ -77,7 +77,7 @@
    "rotation": 0
   },
   {
-   "x": 35.841875,
+   "x": 35.508541666666666,
    "y": 15.225000000000001,
    "id": "2fba51b0-7dcc-4891-af67-0a35f0b8c17a",
    "kind": "pedal",
@@ -92,7 +92,7 @@
   },
   {
    "x": 33.106875,
-   "y": 14.225000000000001,
+   "y": 15.080000000000004,
    "id": "d28f31a0-bd41-4ca9-af74-aceeb205a62b",
    "kind": "pedal",
    "color": null,
@@ -105,8 +105,8 @@
    "rotation": 0
   },
   {
-   "x": 48.796875,
-   "y": 14.225,
+   "x": 49.236875,
+   "y": 15.080000000000004,
    "id": "c5cbfcd6-ffbb-4fe9-9c65-66c4787fa57f",
    "kind": "pedal",
    "color": null,
@@ -116,6 +116,20 @@
    "width": 2,
    "custom": false,
    "height": 3.75,
+   "rotation": 0
+  },
+  {
+   "x": 42.868125,
+   "y": 15.225,
+   "id": "c158efdd-bab4-49a5-abd7-0e66e52844ea",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "ibanez-tube-screamer-mini",
+   "label": "Ibanez Tube Screamer Mini",
+   "width": 1.98,
+   "custom": false,
+   "height": 3.65,
    "rotation": 0
   }
  ],
@@ -143,6 +157,6 @@
    }
   ]
  },
- "savedAt": "2026-11-04T15:52:20.496Z",
+ "savedAt": "2026-11-09T15:21:08.677Z",
  "schemaVersion": 3
 }

@@ -51,6 +51,9 @@
       {"id": "bypass", "label": "Bypass", "x": 0.2174, "y": 0.8885, "type": "bypass"},
       {"id": "switch_2", "label": "Boost", "x": 0.7826, "y": 0.8853, "type": "boost"}
     ],
+    "ibanez_ts_mini": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5015, "y": 0.8221, "type": "bypass"}
+    ],
     "jhs_hard_drive": [
       {"id": "bypass", "label": "Bypass", "x": 0.4959, "y": 0.8912, "type": "bypass"}
     ],
@@ -63,6 +66,9 @@
     "monk": [
       {"id": "bypass", "label": "Bypass", "x": 0.2355, "y": 0.875, "type": "bypass"},
       {"id": "switch_2", "label": "Tap", "x": 0.7522, "y": 0.875, "type": "tap"}
+    ],
+    "mxr_bass_chorus_deluxe": [
+      {"id": "bypass", "label": "Bypass", "x": 0.5031, "y": 0.7176, "type": "bypass"}
     ],
     "mxr_bass_synth": [
       {"id": "bypass", "label": "Bypass", "x": 0.4982, "y": 0.7206, "type": "bypass"}

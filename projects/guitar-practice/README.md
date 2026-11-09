@@ -4,7 +4,14 @@
 
 - **Instrument:** guitar
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 0 warning(s) (`no_unknown` on)
+- **Validation:** OK, 2 warning(s) (`no_unknown` on)
+
+<details><summary>Validation messages</summary>
+
+- WARN clearance: polytune_2_mini.out (Output, facing left, ernie_ball_flat_patch_ra right-angle plug, cable exits left) is blocked by Beetronics Octahive: it reaches 2.6 mm into the plug's head
+- WARN clearance: carbon_copy.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at ditto_looper.in (ernie_ball_flat_patch_ra plug): 2.6 mm (its head into the head)
+
+</details>
 
 ## Signal chain
 
@@ -13,12 +20,13 @@ flowchart TB
     guitar(["Guitar"]):::endpoint
     polytune_2_mini["<b>1</b> &nbsp;TC Electronic PolyTune 2 Mini<br/>tuner"]:::c_tuner
     octahive["<b>2</b> &nbsp;Beetronics Octahive<br/>fuzz / boost"]:::c_fuzz___boost
-    duke_of_tone["<b>3</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
-    e_lady["<b>4</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
-    carbon_copy["<b>5</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
-    ditto_looper["<b>6</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
+    ibanez_ts_mini["<b>3</b> &nbsp;Ibanez Tube Screamer Mini<br/>drive / distortion"]:::c_drive___distortion
+    duke_of_tone["<b>4</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
+    e_lady["<b>5</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
+    carbon_copy["<b>6</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
+    ditto_looper["<b>7</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
     amp(["Amplifier"]):::endpoint
-    guitar --> polytune_2_mini --> octahive --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
+    guitar --> polytune_2_mini --> octahive --> ibanez_ts_mini --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
@@ -33,10 +41,11 @@ flowchart TB
 |--:|---|:-:|---|---|--:|---|:-:|---|
 | 1 | TC Electronic PolyTune 2 Mini | Yes | 9V | 9V | 40 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT2 |
 | 2 | Beetronics Octahive | Yes | 9V | 9V | 50 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
-| 3 | MXR Custom Shop Duke of Tone | Yes | 9-18V | 9V | 6 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
-| 4 | Mooer E-Lady | Yes | 9V | 9V | 10 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
-| 5 | MXR Carbon Copy | Yes | 9V | 9V | 26 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
-| 6 | TC Electronic Ditto Looper | Yes | 9V | 9V | 100 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
+| 3 | Ibanez Tube Screamer Mini | Yes | 9V | 9V | 18 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
+| 4 | MXR Custom Shop Duke of Tone | Yes | 9-18V | 9V | 6 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
+| 5 | Mooer E-Lady | Yes | 9V | 9V | 10 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
+| 6 | MXR Carbon Copy | Yes | 9V | 9V | 26 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
+| 7 | TC Electronic Ditto Looper | Yes | 9V | 9V | 100 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT5 |
 
 **To buy:** nothing
 
@@ -44,6 +53,8 @@ flowchart TB
 
 - **TC Electronic PolyTune 2 Mini** must be first in the chain (priority 100): Tuner first (owner layout 2026-11-04); true bypass, so the fuzz still sees the guitar directly when it is off `[project]`
 - **Beetronics Octahive** must be first in the chain: Fuzz first among the effects (only the tuner is ahead of it) `[project]`
+- **Ibanez Tube Screamer Mini** must come after Beetronics Octahive: Tube Screamer after the fuzz (owner's layout, 2026-11-09) `[project]`
+- **MXR Custom Shop Duke of Tone** must come after Ibanez Tube Screamer Mini: Duke of Tone after the Tube Screamer (owner's layout, 2026-11-09) `[project]`
 - **MXR Custom Shop Duke of Tone** must come after Beetronics Octahive: Duke of Tone after the fuzz (owned pedals only, 2026-11-04: the Pulp n' Peel and Hard Drive are not bought) `[project]`
 - **Mooer E-Lady** must come after MXR Custom Shop Duke of Tone: E-Lady after the Duke of Tone `[project]`
 - **MXR Carbon Copy** must come after Mooer E-Lady: Delay after the E-Lady `[project]`
@@ -57,6 +68,7 @@ flowchart TB
 
 - **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.
 - **Beetronics Octahive**: High-octave fuzz. Planned for the practice board. 70 mA per a site you found (source not recorded, not a manufacturer figure; Effects Database lists the v2 as 9V DC center-negative with no mA). The owner's unit is the V1 (owner, 2026-11-06). Power re-checked 2026-10-21: the v2 manual and Beetronics FAQ say 50 mA at 9V (v1: 10 mA, retailer only); 50 mA kept as the worst case (the V1 figure is retailer-only).
+- **Ibanez Tube Screamer Mini**: Owner's practice-board overdrive (owned). 100% analog TS808-type circuit (JRC4558), controls Overdrive / Tone / Level. Power: external DC 9 V only, no battery; 18 mA at 9 V, center-negative (Ibanez product page: 'Required Current: 18mA@9V', 'External DC 9 volt AC adapter (Center-negative)').
 - **MXR Custom Shop Duke of Tone**: Overdrive (CSP039). Planned for the practice board. 6 mA at 9V, no battery option; Dunlop recommends the ECB003 or an MXR Brick. One retailer mentions 18V for extra headroom, not confirmed by Dunlop, so allowed at 9V only here. Power re-checked 2026-10-21: Dunlop's product page says 18V gives extra headroom and clarity, so 9-18V (no current figure at 18V).
 - **Mooer E-Lady**: Analog flanger (Mooer Electric Lady). Planned for the practice board. 10 mA per retailers, 9V DC center-negative, no battery (too small to fit one), true bypass.
 - **MXR Carbon Copy**: Analog BBD delay (M169). 26 mA, 9V DC center-negative, true bypass (retailer specs; one UK retailer lists it as end of life). Planned for the practice board.
@@ -70,20 +82,22 @@ Every output and the pedals daisy-chained on it, grouped for power (not in signa
 flowchart LR
     subgraph psu1["Harley Benton PowerPlant ISO-5 Pro (the bass board's)"]
         direction TB
-        psu1_OUT1["<b>OUT1</b> · 9V<br/>56 / 300 mA"]:::out9
+        psu1_OUT1["<b>OUT1</b> · 9V<br/>74 / 300 mA"]:::out9
         psu1_OUT2["<b>OUT2</b> · 9V<br/>40 / 300 mA"]:::out9
         psu1_OUT3["<b>OUT3</b> · 9V<br/>10 / 300 mA"]:::out9
         psu1_OUT4["<b>OUT4</b> · 9V<br/>26 / 500 mA"]:::out9
         psu1_OUT5["<b>OUT5</b> · 9V<br/>100 / 500 mA"]:::out9
     end
     octahive["Beetronics Octahive<br/>fuzz / boost · 50 mA"]:::c_fuzz___boost
+    ibanez_ts_mini["Ibanez Tube Screamer Mini<br/>drive / distortion · 18 mA"]:::c_drive___distortion
     duke_of_tone["MXR Custom Shop Duke of Tone<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     polytune_2_mini["TC Electronic PolyTune 2 Mini<br/>tuner · 40 mA"]:::c_tuner
     e_lady["Mooer E-Lady<br/>modulation · 10 mA"]:::c_modulation
     carbon_copy["MXR Carbon Copy<br/>delay · 26 mA"]:::c_delay
     ditto_looper["TC Electronic Ditto Looper<br/>other · 100 mA"]:::c_other
     psu1_OUT1 --> octahive
-    octahive --> duke_of_tone
+    octahive --> ibanez_ts_mini
+    ibanez_ts_mini --> duke_of_tone
     psu1_OUT2 --> polytune_2_mini
     psu1_OUT3 --> e_lady
     psu1_OUT4 --> carbon_copy
@@ -109,22 +123,33 @@ Placement: under the board. Layout item: Harley Benton PowerPlant ISO-1AC Pro (6
 
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
-| **OUT1** (fixed) | 9V | Beetronics Octahive | 50 | 56 / 300 mA |
+| **OUT1** (fixed) | 9V | Beetronics Octahive | 50 | 74 / 300 mA |
+|  | 9V | Ibanez Tube Screamer Mini | 18 |  |
 |  | 9V | MXR Custom Shop Duke of Tone | 6 |  |
 | **OUT2** (fixed) | 9V | TC Electronic PolyTune 2 Mini | 40 | 40 / 300 mA |
 | **OUT3** (fixed) | 9V | Mooer E-Lady | 10 | 10 / 300 mA |
 | **OUT4** (switchable) | 9V | MXR Carbon Copy | 26 | 26 / 500 mA |
 | **OUT5** (switchable) | 9V | TC Electronic Ditto Looper | 100 | 100 / 500 mA |
-| | | **Harley Benton PowerPlant ISO-5 Pro total** | | **232 mA** |
+| | | **Harley Benton PowerPlant ISO-5 Pro total** | | **250 mA** |
 
-**All supplies combined:** 232 mA
+**All supplies combined:** 250 mA
 
 
 ## Jacks and cables
 
-Jack data: 7 of 7 catalog items set up (pedals and supplies in this project).
+Jack data: 8 of 8 catalog items set up (pedals and supplies in this project).
 
-No blocked cable space found (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side).
+Blocked cable space (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side):
+
+- `polytune_2_mini.out` is blocked by Beetronics Octahive: 2.6 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits left
+
+Plug collisions (a plug's head, barrel or cable run overlapping another jack's plug or fixed box; the side choice avoids them where it can):
+
+- carbon_copy.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at ditto_looper.in (ernie_ball_flat_patch_ra plug): 2.6 mm (its head into the head)
+
+DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagonally and its cable goes under the patch cables; not a collision, one pass per plug):
+
+- P1.1 (octahive.power) passes under the plug at octahive.out: plug it diagonally
 
 Cable lengths: see Cable routing.
 
@@ -137,6 +162,8 @@ Signal cables are routed on the board surface between the pedals: never in front
 
 `power.svg` shows the power wiring alone: the supplies as translucent red silhouettes (dashed when they hang under the board), the pedals faint, the power jacks and supply ports, the DC cables (dashed under the board, a ring at each hole, a square at each board edge) and a table of the power cables.
 
+Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. No outline: Ibanez Tube Screamer Mini.
+
 ![Signal routing](routing.svg)
 
 The picture (`routing.svg`) is drawn in mm and prints at 1:1 from a browser: the board, the routing area (dashed), the pedals, every jack (coloured by function, filled when used, the tick on the side the plug enters from), the plug heads (grey boxes) with their cable exits, the cables (one colour each; side by side in lanes where they share a corridor, white dashes where they are stacked; under the board: lighter and dashed, a ring at each hole pass, a square at each edge pass, the edge segments as thick purple lines on the board border), the footswitches and a legend table with each cable's minimum length. `uv run scripts/build.py --images` also writes the git-ignored `routing.local.svg` with the pedal images.
@@ -145,19 +172,21 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 
 | Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | polytune_2_mini.out | octahive.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 57 | routed |
-| S2 | signal | octahive.out | duke_of_tone.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 74 | routed |
-| S3 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 60 | routed |
-| S4 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | left / left | TS / TS | - | no | 72 | routed |
-| S5 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 67 | routed |
-| P1.1 | power | psu1.OUT1 | octahive.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 149 mm under, 19 mm on top | 208 | routed |
-| P1.2 | power | octahive.power | duke_of_tone.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | no (23 mm on top) | 72 | routed |
+| S1 | signal | polytune_2_mini.out | octahive.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 75 | routed |
+| S2 | signal | octahive.out | ibanez_ts_mini.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 82 | routed |
+| S3 | signal | ibanez_ts_mini.out | duke_of_tone.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 86 | routed |
+| S4 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 56 | routed |
+| S5 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | down / left | TS / TS | - | yes (1 hole, 16 mm) | 87 | routed |
+| S6 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 94 | routed |
+| P1.1 | power | psu1.OUT1 | octahive.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 148 mm under, 0 mm on top | 177 | routed |
+| P1.2 | power | octahive.power | ibanez_ts_mini.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 63 mm under, 0 mm on top | 121 | routed |
+| P1.3 | power | ibanez_ts_mini.power | duke_of_tone.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 32 mm under, 16 mm on top | 117 | routed |
 | P2 | power | psu1.OUT2 | polytune_2_mini.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 234 mm under, 58 mm on top | 332 | routed |
-| P3 | power | psu1.OUT3 | e_lady.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 25 mm on top | 243 | routed |
-| P4 | power | psu1.OUT4 | carbon_copy.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 102 mm under, 1 mm on top | 143 | routed |
-| P5 | power | psu1.OUT5 | ditto_looper.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 242 mm under, 0 mm on top | 271 | routed |
+| P3 | power | psu1.OUT3 | e_lady.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 1 mm on top | 219 | routed |
+| P4 | power | psu1.OUT4 | carbon_copy.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 112 mm under, 1 mm on top | 152 | routed |
+| P5 | power | psu1.OUT5 | ditto_looper.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 242 mm under, 1 mm on top | 283 | routed |
 
-Signal cable, minimum: 329 mm over 5 cables.
+Signal cable, minimum: 480 mm over 6 cables.
 
 ### DC cables to buy
 
@@ -165,34 +194,34 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 
 | DC cable | Style | Output | Route | Plugs | Min plug spacing per leg (mm) | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
-| P1 | serial | psu1_OUT1 | psu1.OUT1 -> octahive -> duke_of_tone | 3 | P1.1 208 / P1.2 72 | 280 | routed |
+| P1 | serial | psu1_OUT1 | psu1.OUT1 -> octahive -> ibanez_ts_mini -> duke_of_tone | 4 | P1.1 177 / P1.2 121 / P1.3 117 | 416 | routed |
 | P2 | serial | psu1_OUT2 | psu1.OUT2 -> polytune_2_mini | 2 | - | 332 | routed |
-| P3 | serial | psu1_OUT3 | psu1.OUT3 -> e_lady | 2 | - | 243 | routed |
-| P4 | serial | psu1_OUT4 | psu1.OUT4 -> carbon_copy | 2 | - | 143 | routed |
-| P5 | serial | psu1_OUT5 | psu1.OUT5 -> ditto_looper | 2 | - | 271 | routed |
+| P3 | serial | psu1_OUT3 | psu1.OUT3 -> e_lady | 2 | - | 219 | routed |
+| P4 | serial | psu1_OUT4 | psu1.OUT4 -> carbon_copy | 2 | - | 152 | routed |
+| P5 | serial | psu1_OUT5 | psu1.OUT5 -> ditto_looper | 2 | - | 283 | routed |
 
-DC cable, minimum: 1268 mm over 5 cables (5 serial, 0 forked).
+DC cable, minimum: 1402 mm over 5 cables (5 serial, 0 forked).
 
 ## Footswitches
 
-Footswitch data: 6 of 6 pedals (catalog/footswitches.json).
+Footswitch data: 7 of 7 pedals (catalog/footswitches.json).
 
 Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 12.3 (5 of 15 pairs closer than 100 mm). Closest pairs (8 of 15):
+Crowding: 57.5 (6 of 21 pairs closer than 100 mm). Closest pairs (8 of 21):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
 |---|---|---|---|--:|--:|
-| duke_of_tone.bypass | bypass | e_lady.bypass | bypass | 75.8 | 5.9 |
-| e_lady.bypass | bypass | carbon_copy.bypass | bypass | 83.0 | 2.9 |
-| carbon_copy.bypass | bypass | ditto_looper.bypass | bypass | 83.5 | 2.7 |
-| polytune_2_mini.bypass | bypass | octahive.bypass | bypass | 92.1 | 0.6 |
-| octahive.bypass | bypass | duke_of_tone.bypass | bypass | 96.1 | 0.2 |
-| duke_of_tone.bypass | bypass | carbon_copy.bypass | bypass | 139.2 | 0.0 |
-| e_lady.bypass | bypass | ditto_looper.bypass | bypass | 155.9 | 0.0 |
-| octahive.bypass | bypass | e_lady.bypass | bypass | 156.7 | 0.0 |
+| ibanez_ts_mini.bypass | bypass | duke_of_tone.bypass | bypass | 58.5 | 17.2 |
+| duke_of_tone.bypass | bypass | e_lady.bypass | bypass | 62.0 | 14.4 |
+| e_lady.bypass | bypass | carbon_copy.bypass | bypass | 68.6 | 9.8 |
+| carbon_copy.bypass | bypass | ditto_looper.bypass | bypass | 70.1 | 9.0 |
+| polytune_2_mini.bypass | bypass | octahive.bypass | bypass | 81.1 | 3.6 |
+| octahive.bypass | bypass | ibanez_ts_mini.bypass | bypass | 81.4 | 3.5 |
+| ibanez_ts_mini.bypass | bypass | e_lady.bypass | bypass | 109.8 | 0.0 |
+| duke_of_tone.bypass | bypass | carbon_copy.bypass | bypass | 126.0 | 0.0 |
 
 ### Suggested toppers
 
@@ -200,11 +229,11 @@ Chosen after the layout (never during the search), on bypass switches only (a ta
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|
-| 1 | e_lady.bypass (Bypass) | Mooer E-Lady | bypass | 3.3 | 9.0 |
-| 2 | carbon_copy.bypass (Bypass) | MXR Carbon Copy | bypass | 2.2 | 6.7 |
-| 3 | duke_of_tone.bypass (Bypass) | MXR Custom Shop Duke of Tone | bypass | 1.7 | 5.0 |
-| 4 | ditto_looper.bypass (Bypass) | TC Electronic Ditto Looper | bypass | 0.9 | 4.1 |
-| 5 | octahive.bypass (Bypass) | Beetronics Octahive | bypass | 0.5 | 3.6 |
+| 1 | duke_of_tone.bypass (Bypass) | MXR Custom Shop Duke of Tone | bypass | 6.8 | 50.8 |
+| 2 | e_lady.bypass (Bypass) | Mooer E-Lady | bypass | 5.4 | 45.3 |
+| 3 | carbon_copy.bypass (Bypass) | MXR Carbon Copy | bypass | 4.7 | 40.6 |
+| 4 | ibanez_ts_mini.bypass (Bypass) | Ibanez Tube Screamer Mini | bypass | 4.6 | 36.0 |
+| 5 | octahive.bypass (Bypass) | Beetronics Octahive | bypass | 2.6 | 33.5 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 

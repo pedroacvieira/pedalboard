@@ -34,19 +34,24 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 4 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
-| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 6 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
+| [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 2 warning(s) |
 
 ## Open issues
 
 ### Bass board
 
-- No playground_design.json: cable lengths and clearance are not checked
+- Footswitches not placed for 1 pedal(s): `uv run scripts/pedal_editor.py --list-missing bass --only footswitches`
 
 ### Guitar gig board
 
 - Plug collision: belle_epoch.jack_4 (Exp, extra jack, exp_trs_straight_baseline straight plug) collides with the plug at belle_epoch.out (ernie_ball_flat_patch_ra plug): 3.5 mm (its box into the cable run); move a pedal or set a plug side in `cables.overrides`
+
+### Guitar practice board
+
+- Blocked cable space: `polytune_2_mini.out` is blocked by Beetronics Octahive (2.6 mm into the head of the ernie_ball_flat_patch_ra plug, cable exits left); move one of the pedals apart
+- Plug collision: carbon_copy.out (Output, ernie_ball_flat_patch_ra right-angle plug, cable exits right) collides with the plug at ditto_looper.in (ernie_ball_flat_patch_ra plug): 2.6 mm (its head into the head); move a pedal or set a plug side in `cables.overrides`
 
 ### Known limitations
 
@@ -74,9 +79,11 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 |---|--:|---|--:|
 | TC Electronic PolyTune 2 Mini | 1 | bass, guitar-practice | - |
 | MXR Bass Synth | 1 | bass | 329 EUR |
+| MXR Bass Envelope Filter | 1 | bass | 180 EUR |
+| MXR Bass Chorus Deluxe | 1 | bass | 213 EUR |
 | Harley Benton PowerPlant ISO-5 Pro (power supply) | 1 | bass, guitar-practice | 49 EUR |
 
-**Known total:** 378 EUR (1 item(s) without a `price_eur`)
+**Known total:** 771 EUR (1 item(s) without a `price_eur`)
 
 ## Catalog pedals not in any project
 

@@ -2,12 +2,13 @@ flowchart TB
     guitar(["Guitar"]):::endpoint
     polytune_2_mini["<b>1</b> &nbsp;TC Electronic PolyTune 2 Mini<br/>tuner"]:::c_tuner
     octahive["<b>2</b> &nbsp;Beetronics Octahive<br/>fuzz / boost"]:::c_fuzz___boost
-    duke_of_tone["<b>3</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
-    e_lady["<b>4</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
-    carbon_copy["<b>5</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
-    ditto_looper["<b>6</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
+    ibanez_ts_mini["<b>3</b> &nbsp;Ibanez Tube Screamer Mini<br/>drive / distortion"]:::c_drive___distortion
+    duke_of_tone["<b>4</b> &nbsp;MXR Custom Shop Duke of Tone<br/>drive / distortion"]:::c_drive___distortion
+    e_lady["<b>5</b> &nbsp;Mooer E-Lady<br/>modulation"]:::c_modulation
+    carbon_copy["<b>6</b> &nbsp;MXR Carbon Copy<br/>delay"]:::c_delay
+    ditto_looper["<b>7</b> &nbsp;TC Electronic Ditto Looper<br/>other"]:::c_other
     amp(["Amplifier"]):::endpoint
-    guitar --> polytune_2_mini --> octahive --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
+    guitar --> polytune_2_mini --> octahive --> ibanez_ts_mini --> duke_of_tone --> e_lady --> carbon_copy --> ditto_looper --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_tuner fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b

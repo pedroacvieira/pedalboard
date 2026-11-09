@@ -1,0 +1,151 @@
+{
+ "name": "Bass Board",
+ "view": {
+  "x": -194.5367480468749,
+  "y": 114.56327636718754,
+  "zoom": 1.5
+ },
+ "items": [
+  {
+   "x": 22.48677057902018,
+   "y": 8.070486704508465,
+   "id": "e512d6f9-0a9d-4740-a84f-717d32ae2af9",
+   "kind": "pedalboard",
+   "color": null,
+   "flipX": false,
+   "image": "daddario-xpnd-1-extension",
+   "label": "D’Addario XPND 1 (Extension)",
+   "width": 10.75,
+   "custom": false,
+   "height": 5.5,
+   "rotation": 0
+  },
+  {
+   "x": 32.356875,
+   "y": 7.954999999999998,
+   "id": "bd6f15bd-00d0-4bc9-b777-36a71c69bfdd",
+   "kind": "pedalboard",
+   "color": null,
+   "flipX": false,
+   "image": "daddario-xpnd-1",
+   "label": "D’Addario XPND 1",
+   "width": 14,
+   "custom": false,
+   "height": 6.03,
+   "locked": false,
+   "rotation": 0
+  },
+  {
+   "x": 22.971351623535156,
+   "y": 8.970486704508465,
+   "id": "164ee080-c258-4019-b7d8-6842ff5dd736",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "tech21-vtbassdi",
+   "label": "Tech 21 NYC VT Bass DI",
+   "width": 5.03,
+   "custom": false,
+   "height": 3.7,
+   "rotation": 0
+  },
+  {
+   "x": 32.65562372843424,
+   "y": 8.635486704508464,
+   "id": "300a85d5-5787-471e-9f29-8ab78e7c9727",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "ehx-bass-big-muff-pi-2",
+   "label": "Electro-Harmonix Bass Big Muff Pi 2",
+   "width": 2.82,
+   "custom": false,
+   "height": 4.5,
+   "rotation": 0
+  },
+  {
+   "x": 43.2304849243164,
+   "y": 8.635486704508464,
+   "id": "cb96d237-2ad5-43ed-876c-a0b3e43c41f4",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "darkglass-hyper-luminal",
+   "label": "Darkglass Hyper Luminal",
+   "width": 2.92,
+   "custom": false,
+   "height": 4.37,
+   "rotation": 0
+  },
+  {
+   "x": 39.70583333333334,
+   "y": 8.570486704508465,
+   "id": "51990ca8-9da5-49a1-8296-a28b910d4fce",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mxr-mb301",
+   "label": "MXR Bass Synth",
+   "width": 2.67,
+   "custom": false,
+   "height": 4.5,
+   "rotation": 0
+  },
+  {
+   "x": 28.80078163146973,
+   "y": 8.505486704508465,
+   "id": "2f2f28f7-c098-47fb-a3de-4d72b0d1ff6d",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mxr-m83",
+   "label": "MXR Bass Chorus Deluxe",
+   "width": 2.67,
+   "custom": false,
+   "height": 4.5,
+   "rotation": 0,
+   "pedalType": "Modulation"
+  },
+  {
+   "x": 36.16418678283692,
+   "y": 8.570486704508465,
+   "id": "0bd3107b-0d99-45a3-ac93-581e4219c354",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mxr-m82",
+   "label": "MXR Bass Envelope Filter",
+   "width": 2.67,
+   "custom": false,
+   "height": 4.5,
+   "rotation": 0,
+   "pedalType": "Filter / Wah"
+  }
+ ],
+ "signal": {
+  "nodes": [
+   {
+    "id": "1e1828c3-0200-430c-9c99-14107e1a0ea4",
+    "type": "source",
+    "label": "Guitar",
+    "channels": "mono"
+   },
+   {
+    "id": "f6bd48bc-d60d-4134-b2e6-115af6e62f1b",
+    "type": "destination",
+    "label": "Amp",
+    "channels": "mono"
+   }
+  ],
+  "cables": [
+   {
+    "id": "476ee7f6-bc22-43ce-8f5d-40e32eff14a2",
+    "to": "f6bd48bc-d60d-4134-b2e6-115af6e62f1b",
+    "from": "1e1828c3-0200-430c-9c99-14107e1a0ea4",
+    "kind": "audio"
+   }
+  ]
+ },
+ "savedAt": "2026-11-09T15:18:21.163Z",
+ "schemaVersion": 3
+}

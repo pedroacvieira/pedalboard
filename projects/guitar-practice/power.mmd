@@ -1,20 +1,22 @@
 flowchart LR
     subgraph psu1["Harley Benton PowerPlant ISO-5 Pro (the bass board's)"]
         direction TB
-        psu1_OUT1["<b>OUT1</b> · 9V<br/>56 / 300 mA"]:::out9
+        psu1_OUT1["<b>OUT1</b> · 9V<br/>74 / 300 mA"]:::out9
         psu1_OUT2["<b>OUT2</b> · 9V<br/>40 / 300 mA"]:::out9
         psu1_OUT3["<b>OUT3</b> · 9V<br/>10 / 300 mA"]:::out9
         psu1_OUT4["<b>OUT4</b> · 9V<br/>26 / 500 mA"]:::out9
         psu1_OUT5["<b>OUT5</b> · 9V<br/>100 / 500 mA"]:::out9
     end
     octahive["Beetronics Octahive<br/>fuzz / boost · 50 mA"]:::c_fuzz___boost
+    ibanez_ts_mini["Ibanez Tube Screamer Mini<br/>drive / distortion · 18 mA"]:::c_drive___distortion
     duke_of_tone["MXR Custom Shop Duke of Tone<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     polytune_2_mini["TC Electronic PolyTune 2 Mini<br/>tuner · 40 mA"]:::c_tuner
     e_lady["Mooer E-Lady<br/>modulation · 10 mA"]:::c_modulation
     carbon_copy["MXR Carbon Copy<br/>delay · 26 mA"]:::c_delay
     ditto_looper["TC Electronic Ditto Looper<br/>other · 100 mA"]:::c_other
     psu1_OUT1 --> octahive
-    octahive --> duke_of_tone
+    octahive --> ibanez_ts_mini
+    ibanez_ts_mini --> duke_of_tone
     psu1_OUT2 --> polytune_2_mini
     psu1_OUT3 --> e_lady
     psu1_OUT4 --> carbon_copy

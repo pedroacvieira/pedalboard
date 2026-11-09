@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="557.7 188.6 638.0 199.2" width="638.0mm" height="199.2mm" font-family="sans-serif">
+<rect x="557.7" y="188.6" width="638.0" height="199.2" fill="#ffffff"/>
+<rect x="571.2" y="205.0" width="273.0" height="139.7" fill="#eceff1" stroke="#90a4ae" stroke-width="1" class="board"/>
+<rect x="821.9" y="202.1" width="355.6" height="153.2" fill="#eceff1" stroke="#90a4ae" stroke-width="1" class="board"/>
+<g class="holes" opacity="0.3">
+<rect x="575.2" y="255.9" width="71.0" height="36.9" fill="#90a4ae" class="hole"/>
+<rect x="667.2" y="255.9" width="81.0" height="36.9" fill="#90a4ae" class="hole"/>
+<rect x="844.2" y="264.1" width="93.5" height="29.0" fill="#90a4ae" class="hole"/>
+<rect x="959.7" y="260.1" width="79.9" height="33.0" fill="#90a4ae" class="hole"/>
+<rect x="1061.6" y="260.1" width="111.8" height="33.0" fill="#90a4ae" class="hole"/>
+</g>
+<g class="pedals-faint" opacity="0.45">
+<g class="pedal" data-id="164ee080-c258-4019-b7d8-6842ff5dd736">
+<rect x="583.5" y="227.9" width="127.8" height="94.0" transform="rotate(0 647.35 274.84)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M583.5 259.8 L584.5 259.8 L584.5 257.8 L586.5 257.8 L586.5 227.9 L708.2 227.9 L708.2 257.8 L710.2 257.8 L710.2 259.8 L711.2 259.8 L711.2 270.8 L709.2 270.8 L709.2 272.8 L708.2 272.8 L708.2 277.8 L709.2 277.8 L709.2 282.8 L711.2 282.8 L711.2 294.8 L709.2 294.8 L709.2 315.8 L708.2 315.8 L708.2 321.8 L586.5 321.8 L586.5 315.8 L584.5 315.8 L584.5 277.8 L586.5 277.8 L586.5 272.8 L584.5 272.8 L584.5 270.8 L583.5 270.8 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="647.4" y="276.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">SansAmp VT Bass DI</text>
+</g>
+<g class="pedal" data-id="300a85d5-5787-471e-9f29-8ab78e7c9727">
+<rect x="829.5" y="219.3" width="71.6" height="114.3" transform="rotate(0 865.27 276.49)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M829.5 272.5 L832.4 272.5 L832.4 269.5 L834.4 269.5 L834.4 222.3 L835.4 222.3 L835.4 219.3 L896.1 219.3 L896.1 269.5 L899.1 269.5 L899.1 272.5 L901.1 272.5 L901.1 281.5 L898.1 281.5 L898.1 284.5 L896.1 284.5 L896.1 332.6 L895.1 332.6 L895.1 333.6 L836.4 333.6 L836.4 332.6 L834.4 332.6 L834.4 287.5 L831.4 287.5 L831.4 286.5 L834.4 286.5 L834.4 284.5 L832.4 284.5 L832.4 281.5 L829.5 281.5 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="865.3" y="278.1" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Bass Big Muff Pi 2</text>
+</g>
+<g class="pedal" data-id="cb96d237-2ad5-43ed-876c-a0b3e43c41f4">
+<rect x="1098.1" y="219.3" width="74.2" height="111.0" transform="rotate(0 1135.14 274.84)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M1098.1 291.3 L1099.1 291.3 L1099.1 287.3 L1102.1 287.3 L1102.1 221.3 L1103.1 221.3 L1103.1 220.3 L1104.1 220.3 L1104.1 219.3 L1166.2 219.3 L1166.2 220.3 L1167.2 220.3 L1167.2 287.3 L1171.2 287.3 L1171.2 291.3 L1172.2 291.3 L1172.2 301.3 L1171.2 301.3 L1171.2 304.3 L1170.2 304.3 L1170.2 305.3 L1167.2 305.3 L1167.2 329.3 L1166.2 329.3 L1166.2 330.3 L1104.1 330.3 L1104.1 329.3 L1103.1 329.3 L1103.1 328.3 L1102.1 328.3 L1102.1 304.3 L1099.1 304.3 L1099.1 301.3 L1098.1 301.3 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="1135.1" y="276.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Hyper Luminal</text>
+</g>
+<g class="pedal" data-id="51990ca8-9da5-49a1-8296-a28b910d4fce">
+<rect x="1008.5" y="217.7" width="67.8" height="114.3" transform="rotate(0 1042.44 274.84)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M1008.5 264.8 L1011.5 264.8 L1011.5 217.7 L1073.4 217.7 L1073.4 263.8 L1074.4 263.8 L1074.4 264.8 L1076.3 264.8 L1076.3 278.9 L1073.4 278.9 L1073.4 331.0 L1072.4 331.0 L1072.4 332.0 L1012.5 332.0 L1012.5 331.0 L1010.5 331.0 L1010.5 317.0 L1008.5 317.0 L1008.5 303.9 L1011.5 303.9 L1011.5 278.9 L1010.5 278.9 L1010.5 277.9 L1008.5 277.9 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="1042.4" y="276.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Bass Synth</text>
+</g>
+<g class="pedal" data-id="2f2f28f7-c098-47fb-a3de-4d72b0d1ff6d">
+<rect x="731.5" y="216.0" width="67.8" height="114.3" transform="rotate(0 765.45 273.19)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M731.5 216.0 L799.4 216.0 L799.4 330.3 L731.5 330.3 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="765.4" y="274.8" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Bass Chorus Deluxe</text>
+</g>
+<g class="pedal" data-id="0bd3107b-0d99-45a3-ac93-581e4219c354">
+<rect x="918.6" y="217.7" width="67.8" height="114.3" transform="rotate(0 952.48 274.84)" fill="none" stroke="#455a64" stroke-width="0.3" stroke-dasharray="2 1.5" opacity="0.45" class="pedal-box"/>
+<path d="M918.6 217.7 L986.4 217.7 L986.4 332.0 L918.6 332.0 Z" fill="#cfd8dc" stroke="#455a64" stroke-width="0.6" stroke-linejoin="round" class="pedal-outline"/>
+<text x="952.5" y="276.4" font-size="4.5" text-anchor="middle" fill="#263238" class="pedal-name">Bass Envelope Filter</text>
+</g>
+</g>
+<rect x="796.3" y="280.5" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="798.8" y="271.5" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="800.2" y="268.3" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="576.2" y="240.6" width="11.0" height="11.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="578.7" y="251.6" width="6.0" height="9.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<rect x="580.1" y="260.6" width="3.2" height="3.2" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3" class="plug-head"/>
+<polyline points="865.4,219.3 865.4,213.8 883.1,213.8 898.7,217.6 898.7,265.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P2.2"/>
+<polyline points="898.7,265.6 582.7,263.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P2.2"/>
+<polyline points="582.7,263.6 581.7,263.8 581.7,246.1 587.2,246.1" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P2.2"/>
+<circle cx="898.7" cy="265.6" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P2.2"/>
+<circle cx="582.7" cy="263.6" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P2.2"/>
+<polyline points="983.3,287.4 988.8,287.4 898.7,265.6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2" class="power-under" data-id="P3.2"/>
+<polyline points="898.7,265.6 898.7,217.6 834.7,217.6 832.7,219.6 801.8,268.3 801.8,286.0 796.3,286.0" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2" class="power-cable" data-id="P3.2"/>
+<circle cx="898.7" cy="265.6" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5" class="power-hole" data-id="P3.2"/>
+<g class="jack" data-jack="power" data-used="1"><line x1="1166.8" y1="314.8" x2="1170.2" y2="314.8" stroke="#ef6c00" stroke-width="0.7"/><circle cx="1166.8" cy="314.8" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="1073.2" y1="287.6" x2="1076.6" y2="287.6" stroke="#ef6c00" stroke-width="0.7"/><circle cx="1073.2" cy="287.6" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="983.3" y1="287.4" x2="986.7" y2="287.4" stroke="#ef6c00" stroke-width="0.7"/><circle cx="983.3" cy="287.4" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="865.4" y1="219.3" x2="865.4" y2="215.9" stroke="#ef6c00" stroke-width="0.7"/><circle cx="865.4" cy="219.3" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="796.3" y1="286.0" x2="799.7" y2="286.0" stroke="#ef6c00" stroke-width="0.7"/><circle cx="796.3" cy="286.0" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<g class="jack" data-jack="power" data-used="1"><line x1="587.2" y1="246.1" x2="583.8" y2="246.1" stroke="#ef6c00" stroke-width="0.7"/><circle cx="587.2" cy="246.1" r="1.4" fill="#ef6c00" stroke="#ef6c00" stroke-width="0.6"/></g>
+<text x="583.2" y="262.3" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P2.2</text>
+<text x="803.3" y="266.8" font-size="2.6" text-anchor="start" fill="#6d4c41" stroke="#ffffff" stroke-width="0.91" paint-order="stroke" stroke-linejoin="round" font-weight="bold" class="power-label">P3.2</text>
+<rect x="567.7" y="363.5" width="8.0" height="4.0" fill="#e53935" fill-opacity="0.22" stroke="#e53935" stroke-width="0.6" stroke-dasharray="3 1.5"/><text x="577.7" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">power supply (dashed: under the board)</text>
+<line x1="644.7" y1="365.5" x2="648.2" y2="365.5" stroke="#1565c0" stroke-width="0.7"/><circle cx="647.2" cy="365.5" r="1.4" fill="#1565c0" stroke="#1565c0" stroke-width="0.6"/><text x="653.2" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">used power jack / supply port</text>
+<rect x="704.7" y="363.5" width="8.0" height="4.0" fill="#90a4ae" opacity="0.45" stroke="#37474f" stroke-width="0.3"/><text x="714.7" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">DC plug head</text>
+<g class="key-down"><circle cx="743.5" cy="365.5" r="1.9" fill="#37474f" fill-opacity="0.85" stroke="#ffffff" stroke-width="0.4"/><path d="M742.5 364.5 L744.5 366.5 M742.5 366.5 L744.5 364.5" stroke="#ffffff" stroke-width="0.5" fill="none"/></g><text x="749.5" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">plug points down into a hole</text>
+<rect x="799.4" y="363.5" width="8.0" height="4.0" fill="#90a4ae" opacity="0.3"/><text x="809.4" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">Board hole</text>
+<line x1="831.1" y1="365.5" x2="839.1" y2="365.5" stroke-linecap="round" stroke="#6d4c41" stroke-width="1.2"/><text x="841.1" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">brown: DC power cable (P#, or P#.n for the legs of a daisy chain: one label per leg), thinner than the patch cables</text>
+<line x1="1027.4" y1="365.5" x2="1035.4" y2="365.5" stroke-linecap="round" stroke="#6d4c41" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 2"/><text x="1037.4" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">dashed light brown: power cable under the board</text>
+<circle cx="1121.1" cy="365.5" r="2.0" fill="#ffffff" fill-opacity="0.6" stroke="#6d4c41" stroke-width="0.5"/><text x="1127.1" y="366.5" font-size="2.8" text-anchor="start" fill="#263238">ring: power cable through a hole</text>
+<g class="legend-row" data-id="P2"><line x1="567.7" y1="375.4" x2="574.7" y2="375.4" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="567.7" y1="375.4" x2="574.7" y2="375.4" stroke="#6d4c41" stroke-width="1.6" stroke-linecap="round"/><text x="576.7" y="376.4" font-size="2.8" text-anchor="start" fill="#6d4c41" font-weight="bold">P2</text><text x="584.7" y="376.4" font-size="2.8" text-anchor="start" fill="#263238">serial: Harley Benton PowerPlant ISO-5 Pro OUT2 -&gt; Bass Big Muff Pi 2 -&gt; SansAmp VT Bass DI</text><text x="775.7" y="376.4" font-size="2.8" text-anchor="end" fill="#263238" class="length">&gt;= 446 mm, 1 leg unrouted</text><text x="777.7" y="376.4" font-size="2.8" text-anchor="start" fill="#b71c1c">not routed</text></g>
+<g class="legend-row" data-id="P3"><line x1="799.4" y1="375.4" x2="806.4" y2="375.4" stroke="#1c2428" stroke-width="2.4" stroke-linecap="round"/><line x1="799.4" y1="375.4" x2="806.4" y2="375.4" stroke="#6d4c41" stroke-width="1.6" stroke-linecap="round"/><text x="808.4" y="376.4" font-size="2.8" text-anchor="start" fill="#6d4c41" font-weight="bold">P3</text><text x="816.4" y="376.4" font-size="2.8" text-anchor="start" fill="#263238">serial: Harley Benton PowerPlant ISO-5 Pro OUT3 -&gt; Bass Envelope Filter -&gt; Bass Chorus Deluxe</text><text x="1007.4" y="376.4" font-size="2.8" text-anchor="end" fill="#263238" class="length">&gt;= 325 mm, 1 leg unrouted</text><text x="1009.4" y="376.4" font-size="2.8" text-anchor="start" fill="#b71c1c">not routed</text></g>
+</svg>
