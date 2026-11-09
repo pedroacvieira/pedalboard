@@ -210,6 +210,34 @@ def board_holes(board_item, holes, edits=None):
     return out
 
 
+def composed_holes(board_rects, piece_holes):
+    """The holes of a composed board (pieces stacked where they overlap): a hole of one piece is a way through only where every OTHER
+    piece whose footprint covers it has a hole there too (a solid deck of another piece closes it). `board_rects` = the pieces'
+    footprints, `piece_holes` = their holes (canvas rects, `board_holes`), same order. One piece: its holes unchanged."""
+    out = []
+    for p, hs in enumerate(piece_holes):
+        for h in hs:
+            parts = [h]
+            for q, foot in enumerate(board_rects):
+                if q == p:
+                    continue
+                kept = []
+                for part in parts:
+                    kept += _rect_minus(part, foot)   # the part outside piece q stays
+                    inside = _clip(part, foot)
+                    if inside:                        # inside piece q only where q has a hole too
+                        kept += [c for c in (_clip(inside, g) for g in piece_holes[q]) if c]
+                parts = kept
+            out += parts
+    return out
+
+
+def _clip(a, b):
+    """The intersection of two rects, None when it has no area."""
+    r = (max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3]))
+    return r if r[0] < r[2] and r[1] < r[3] else None
+
+
 def board_bounds(board_item, bounds):
     """The usable area of a board (where pedals may sit) as a canvas rectangle (x0, y0, x1, y1) in mm.
 
@@ -284,6 +312,9 @@ def inside_union(rect, rects, tol=0.0):
     return True
 
 
+UNION_TOL = 1e-6   # mm: float noise at the seam of two abutting pieces (footprints are centre +- w/2) is no gap
+
+
 # the side a rect is "past" when it has to move that way: shifting right (+x) brings a rect that sticks out at the LEFT back inside
 _PUSH = {"left": (1, 0), "right": (-1, 0), "back": (0, 1), "front": (0, -1)}
 
@@ -309,7 +340,7 @@ def outside_union(rect, rects, tol=0.0):
         cands = {(v - a) * (dx or dy) for r in rects for v in ((r[0], r[2]) if dx else (r[1], r[3])) for a in mine}   # an edge of the shifted rect meets an edge of a piece
         for d in sorted(c for c in cands if c > 1e-9):
             moved = (rect[0] + dx * d, rect[1] + dy * d, rect[2] + dx * d, rect[3] + dy * d)
-            if inside_union(moved, rects, tol):
+            if inside_union(moved, rects, max(tol, UNION_TOL)):   # the shifted edge may miss a piece edge by an ulp
                 if best is None or d < best[1] - 1e-9:
                     best = (side, d)
                 break

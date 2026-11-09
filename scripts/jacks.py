@@ -300,16 +300,20 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     board_data = boards_mod.load() if board_data is None else board_data
     board_pieces = board_pieces or {}
     warnings.extend(boards_mod.unknown_pieces(board_pieces, [b.get("image") or "" for b in boards]))
-    holes, edge_segments, usable_rects, entries = [], [], [], []
+    holes, edge_segments, usable_rects, entries, piece_holes = [], [], [], [], []
     for n, piece in enumerate(boards):
         entry = board_data.get(piece.get("image") or "") or {}
         mine = board_pieces.get(piece.get("image") or "") or {}
-        edits, bounds = (board_edits, board_bounds) if n == 0 else (mine.get("boxes"), mine.get("bounds"))
-        holes += design.board_holes(piece, entry.get("holes"), edits)
+        # a `pieces` entry for the piece's image wins (also for the first piece: it does not depend on the layout order); else the
+        # top-level boxes / bounds belong to the FIRST piece (what the board editor edits)
+        edits, bounds = ((mine.get("boxes"), mine.get("bounds")) if mine else
+                         (board_edits, board_bounds) if n == 0 else (None, None))
+        piece_holes.append(design.board_holes(piece, entry.get("holes"), edits))
         edge_segments += design.board_edges(piece, edits)
         usable_rects.append(design.board_bounds(piece, bounds))
         entries.append(entry)
     board_rects = [design.footprint(b) for b in boards]
+    holes = design.composed_holes(board_rects, piece_holes)
     transit = {k: next((e[k] for e in entries if e.get(k) is not None), None) for k in ("hole_transit_mm", "edge_transit_mm")}
     return {"board": board, "pieces": boards, "board_rects": board_rects, "board_rect": design.bounding_rect(board_rects),
             "usable": design.bounding_rect(usable_rects), "usable_rects": usable_rects, "placed": placed, "obstacles": obstacles,
@@ -339,7 +343,7 @@ def outside_usable(lay):
         return []
     out = []
     for it in lay["obstacles"]:
-        past = design.outside_union((lay.get("bodies") or {}).get(it["id"]) or design.footprint(it), rects)
+        past = design.outside_union((lay.get("bodies") or {}).get(it["id"]) or design.footprint(it), rects, design.UNION_TOL)
         if past and past[1] > OUTSIDE_MIN_MM:
             out.append((it, *past))
     return out

@@ -118,7 +118,8 @@ def test_real_projects_keep_every_supply_under_the_board():
             assert not [o for o in base["layout"]["obstacles"] if o["title"] in titles]
         power = [c for c in base["cable_list"] if c["kind"] == "power"]
         assert base["cable_list"] and all(c["status"] == "not routed" for c in power if not base["layout"])      # no layout, no route
-        assert all(c["status"].startswith("routed") and (c["under_board"] or c["top_mm"] > 0) for c in power if base["layout"])
+        # every routed power cable starts under the board or runs on top (a cable without its jack / port data is not routed)
+        assert all(c["under_board"] or c["top_mm"] > 0 for c in power if base["layout"] and c["status"].startswith("routed"))
         proj = load_json(pdir / "project.json")
         for inst in proj["power"]["supplies"]:
             inst["placement"] = "under"

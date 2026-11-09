@@ -351,3 +351,58 @@ def test_the_board_editor_keeps_the_pieces_key_when_it_saves(tmp_path):
     assert saved["pieces"] == pieces and saved["bounds"] == {"left": 0.1} and len(saved["boxes"]) == 1
     board_editor.save_edits(tmp_path, [])
     assert json.loads((tmp_path / "board.json").read_text())["pieces"] == pieces
+
+
+# --- review fixes -------------------------------------------------------------------------------------------------------
+def test_float_noise_at_a_seam_is_no_gap():
+    """Footprints are centre +- w/2: two abutting pieces may miss each other by ~1e-13 mm. A body across the seam is inside for the build's
+    tolerance, and the least-shift search does not lose the exact shift to an ulp."""
+    seam = [(0.0, 0.0, 100.0, 50.0), (100.0 + 1e-13, 0.0, 200.0, 50.0)]
+    assert design.outside_union((80.0, 10.0, 120.0, 40.0), seam, design.UNION_TOL) is None
+    # 3.386 mm past the left edge of the union: the least shift is 3.386 to the right, not a larger one
+    side, mm = design.outside_union((-3.386, 10.0, 40.0, 40.0), seam, 0.0)
+    assert side == "left" and mm == pytest.approx(3.386)
+
+
+def test_a_hole_is_a_way_through_only_where_every_covering_piece_has_one():
+    """Two pieces overlapping in x 80..100: P's hole (70..95 x 10..20) is closed where Q's solid deck lies over it (80..95), unless Q has a
+    hole there too (Q's hole 90..120 x 0..30 keeps 90..95 open). A hole outside the overlap is unchanged."""
+    feet = [(0.0, 0.0, 100.0, 50.0), (80.0, 0.0, 180.0, 50.0)]
+    holes = design.composed_holes(feet, [[(70.0, 10.0, 95.0, 20.0)], [(90.0, 0.0, 120.0, 30.0)]])
+    area = sum((r[2] - r[0]) * (r[3] - r[1]) for r in holes)
+    # P keeps 70..80 (outside Q) and 90..95 (Q has a hole there): 10 x 10 + 5 x 10; Q keeps 100..120 x 0..30 and, inside P, only where P has
+    # a hole: 90..95 x 10..20 -> 20 x 30 + 5 x 10
+    assert area == pytest.approx(100 + 50 + 600 + 50)
+    assert design.composed_holes([P], [[(10.0, 10.0, 20.0, 20.0)]]) == [(10.0, 10.0, 20.0, 20.0)]
+
+
+def test_a_plug_straddling_the_front_does_not_reach_out_with_several_pieces_either():
+    """As with one piece the front never counts: a plug part that runs from inside the union past the board front is not 'reaching out'."""
+    o = {"exit": (50.0, 45.0), "rects": [("head", (40.0, 40.0, 60.0, 60.0))]}
+    board = design.bounding_rect(ROW)
+    assert routing.reaches_out(board, o, ROW) is False
+    assert routing.reaches_out(board, o) is False
+    out = {"exit": (50.0, 45.0), "rects": [("head", (40.0, -10.0, 60.0, 10.0))]}   # past the back: reaches out
+    assert routing.reaches_out(board, out, ROW) is True
+
+
+def test_the_surrogate_plug_area_test_takes_the_union():
+    """A jack in the notch of the L is outside the union of the usable rects (the build gives its plug a zone); with the bounding box alone
+    it would not be: `layout.in_area` with the pieces lets an exit inside the plug's own footprint count, as the build's grid does."""
+    o = {"exit": (75.0, 76.0), "jack": (75.0, 75.0), "rects": [("head", (70.0, 70.0, 80.0, 80.0))]}
+    area = (0.0, 0.0, 10.0, 10.0)   # the exit is not in the plain area
+    bbox = design.bounding_rect(L)
+    assert layout.in_area(area, o, (0.0, 0.0), 1.0, bbox, bbox) is False
+    assert layout.in_area(area, o, (0.0, 0.0), 1.0, bbox, bbox, (L, L)) is True
+
+
+def test_a_pieces_entry_for_the_first_pieces_image_wins_over_the_top_level():
+    """The top-level boxes / bounds belong to the first piece only when board.json has no `pieces` entry for its image."""
+    items = design.parse_canvas(canvas(("Board One", 0, 0, 4.0, 2.0, 0, "pedalboard")))
+    item = items[0]
+    lay_top = jacks.layout_from_items(items, [], [], {}, {}, {}, [], [], outlines={}, board_data={},
+                                      board_bounds={"left": 0.5}, bodies={})
+    lay_piece = jacks.layout_from_items(items, [], [], {}, {}, {}, [], [], outlines={}, board_data={}, board_bounds={"left": 0.5},
+                                        bodies={}, board_pieces={item.get("image") or "": {"bounds": {"left": 0.25}}})
+    assert lay_top["usable_rects"][0][0] == pytest.approx(design.footprint(item)[0] + 0.5 * item["w_mm"])
+    assert lay_piece["usable_rects"][0][0] == pytest.approx(design.footprint(item)[0] + 0.25 * item["w_mm"])

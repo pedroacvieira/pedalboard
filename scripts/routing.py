@@ -1722,7 +1722,8 @@ def reaches_out(board, o, rects=None):
     ex, ey = o["exit"]
     parts = [q for _, q in o["rects"]] + [(ex, ey, ex, ey)]
     if rects and len(rects) > 1:
-        return any(r[1] < board[3] and not design.inside_union(r, rects, e) for r in parts)
+        # the front never counts (as with one piece): clip each part at the board front before the union test
+        return any(not design.inside_union((r[0], r[1], r[2], min(r[3], board[3])), rects, e) for r in parts if r[1] < board[3])
     return any(r[0] < board[0] - e or r[2] > board[2] + e or r[1] < board[1] - e for r in parts)
 
 

@@ -42,8 +42,8 @@ def test_matching_polarity_is_clean(tmp_path):
 
 
 def test_center_positive_pedal_alone_needs_a_reversing_cable(tmp_path):
-    ctx = run(tmp_path, positive=["ehx_bass_big_muff_2"])
-    assert any("ehx_bass_big_muff_2 is center-positive" in w and "polarity-reversing cable" in w for w in ctx["warnings"])
+    ctx = run(tmp_path, positive=["mxr_bass_synth"])   # alone on its output (digital)
+    assert any("mxr_bass_synth is center-positive" in w and "polarity-reversing cable" in w for w in ctx["warnings"])
     assert not [e for e in ctx["errors"] if "center-" in e]
 
 
