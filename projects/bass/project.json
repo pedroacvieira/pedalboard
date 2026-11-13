@@ -12,11 +12,10 @@
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} },
-  "signal_chain": ["polytune_2_mini", "darkglass_hyper_luminal", "mxr_bass_synth", "mxr_bass_envelope_filter", "ehx_bass_big_muff_2", "mxr_bass_chorus_deluxe", "tech21_vt_bass_di"],
+  "signal_chain": ["darkglass_hyper_luminal", "mxr_bass_synth", "mxr_bass_envelope_filter", "ehx_bass_big_muff_2", "mxr_bass_chorus_deluxe", "tech21_vt_bass_di"],
   "rule_overrides": {},
   "rules": [
-    { "id": "polytune_2_mini.first", "pedal": "polytune_2_mini", "type": "position", "value": "first", "strength": "required", "priority": 50, "reason": "Tuner first (outranks the compressor's 'first')" },
-    { "id": "darkglass_hyper_luminal.first", "pedal": "darkglass_hyper_luminal", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first, right after the tuner" },
+    { "id": "darkglass_hyper_luminal.first", "pedal": "darkglass_hyper_luminal", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first (no tuner on the bass board, owner 2026-11-09)" },
     { "id": "mxr_bass_synth.before_group_gain", "pedal": "mxr_bass_synth", "type": "before_group", "group": "gain", "strength": "required", "reason": "Synth before the drive pedals" },
     { "id": "tech21_vt_bass_di.last", "pedal": "tech21_vt_bass_di", "type": "position", "value": "last", "strength": "required", "reason": "Preamp / DI last" },
     { "id": "mxr_bass_envelope_filter.before_group_gain", "pedal": "mxr_bass_envelope_filter", "type": "before_group", "group": "gain", "strength": "required", "reason": "Envelope filter before the drive pedals (owner's layout, 2026-11-09)" },
@@ -30,8 +29,8 @@
         "supply": "harley_benton_iso5_pro",
         "label": "Harley Benton PowerPlant ISO-5 Pro",
         "outputs": [
-          { "port": "OUT1", "voltage_v": 9, "pedals": ["polytune_2_mini"], "note": "Digital: alone" },
-          { "port": "OUT2", "voltage_v": 9, "pedals": ["ehx_bass_big_muff_2", "tech21_vt_bass_di"], "note": "Analog gain pair: fuzz + preamp / DI (2026-11-09: frees OUT3)" },
+          { "port": "OUT1", "voltage_v": 9, "pedals": ["tech21_vt_bass_di"], "note": "Analog preamp / DI, alone (no tuner on the bass board, owner 2026-11-09)" },
+          { "port": "OUT2", "voltage_v": 9, "pedals": ["ehx_bass_big_muff_2"], "note": "Analog fuzz, alone" },
           { "port": "OUT3", "voltage_v": 9, "pedals": ["mxr_bass_envelope_filter", "mxr_bass_chorus_deluxe"], "note": "Modulation pair: the BBD chorus never shares with gain pedals (2026-11-09)" },
           { "port": "OUT4", "voltage_v": 9, "pedals": ["mxr_bass_synth"], "note": "Digital: alone; 330 mA needs a 500 mA output" },
           { "port": "OUT5", "voltage_v": 9, "pedals": ["darkglass_hyper_luminal"], "note": "Digital: alone; 250 mA, regulated 9V only" }

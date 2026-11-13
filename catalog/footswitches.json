@@ -70,6 +70,9 @@
     "mxr_bass_chorus_deluxe": [
       {"id": "bypass", "label": "Bypass", "x": 0.5031, "y": 0.7176, "type": "bypass"}
     ],
+    "mxr_bass_envelope_filter": [
+      {"id": "bypass", "label": "Bypass", "x": 0.4982, "y": 0.7221, "type": "bypass"}
+    ],
     "mxr_bass_synth": [
       {"id": "bypass", "label": "Bypass", "x": 0.4982, "y": 0.7206, "type": "bypass"}
     ],

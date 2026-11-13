@@ -34,15 +34,11 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 4 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 6 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 2 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 2 warning(s) |
 
 ## Open issues
-
-### Bass board
-
-- Footswitches not placed for 1 pedal(s): `uv run scripts/pedal_editor.py --list-missing bass --only footswitches`
 
 ### Guitar gig board
 
@@ -70,20 +66,18 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 ## Shared gear
 
-- **TC Electronic PolyTune 2 Mini** is in bass, guitar-practice but you own 1
 - **Harley Benton PowerPlant ISO-5 Pro**: projects use 2 units (bass: 1, guitar-practice: 1) but you own 1
 
 ## Shopping list
 
 | Pedal | Units | Needed by | Price |
 |---|--:|---|--:|
-| TC Electronic PolyTune 2 Mini | 1 | bass, guitar-practice | - |
 | MXR Bass Synth | 1 | bass | 329 EUR |
 | MXR Bass Envelope Filter | 1 | bass | 180 EUR |
 | MXR Bass Chorus Deluxe | 1 | bass | 213 EUR |
 | Harley Benton PowerPlant ISO-5 Pro (power supply) | 1 | bass, guitar-practice | 49 EUR |
 
-**Known total:** 771 EUR (1 item(s) without a `price_eur`)
+**Known total:** 771 EUR
 
 ## Catalog pedals not in any project
 

@@ -7,8 +7,8 @@ with owner decisions and the suggested order, are in its "Next features" section
 
 ## What this repo is
 A data-driven planner for the owner's three pedalboards (projects): `guitar-gig` (Fender Professional Medium,
-2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (Rockboard Duo 2.1,
-Harley Benton PowerPlant ISO-5 Pro). Python 3.12, stdlib + Pillow (+ tkinter for the jack app) today. New
+2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (D'Addario XPND 1 + extension, a composed
+board; Harley Benton PowerPlant ISO-5 Pro; no tuner, owner 2026-11-09). Python 3.12, stdlib + Pillow (+ tkinter for the jack app) today. New
 dependencies are fine when there is a reason for each: Python ones via uv only, anything else (npm, system
 packages) only after asking the owner.
 Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.venv`): never `pip install` into the
@@ -337,7 +337,9 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   makes the cells farther than `edge_margin_mm` from every piece walls, `under_grid(..., pieces)` blocks the cells outside every piece,
   `edge_links(..., pieces=)` takes border cells of the union (a joint is no edge), `jack_overhangs` / `reaches_out` (plug zones) test
   against the union; `route_project` / `route_power` pass `layout["board_rects"]`. One piece = today, cell for cell. The layout surrogate's
-  `in_area` still uses the bounding boxes (a plug in the notch of an L is not seen as overhanging there). Drawings: every piece and every
+  `in_area` takes the same union (`Model.pieces`); its routing area `area_box` is the bounding box (an estimate). Seams: `design.UNION_TOL`
+  (float noise between abutting pieces is no gap). Holes where pieces overlap: a way through only where every covering piece has a hole
+  (`design.composed_holes`). A `pieces` entry for an image wins over the top-level keys, also for the first piece. Drawings: every piece and every
   usable rect. `boards.py` derives the holes of every piece's image.
 - `build.validate(..., route=False)` skips the cable router (data findings only; used by `--list-missing`).
 

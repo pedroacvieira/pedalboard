@@ -72,10 +72,9 @@ ideas · 5 data · 6 done.
       editor (type `edge`), else nothing to do.
 
 ### Bass (layout 2026-11-09: D'Addario XPND 1 + extension, one composed board)
-- State: chain PolyTune 2 Mini -> Hyper Luminal -> Bass Synth -> Bass Envelope Filter -> Bass Big Muff 2 -> Bass Chorus
-  Deluxe -> VT Bass DI (the two MXRs and the Synth not owned); 5 of 6 signal cables routed (359 mm).
-- [ ] Add the PolyTune 2 Mini and the ISO-5 Pro (stand-in ISO-1AC Pro) to the bass layout in Pedal Playground.
-- [ ] Footswitch of the MXR Bass Envelope Filter (`uv run pb pedal-editor mxr_bass_envelope_filter --footswitches`).
+- State: no tuner (owner, 2026-11-09); chain Hyper Luminal -> Bass Synth -> Bass Envelope Filter -> Bass Big Muff 2 -> Bass Chorus
+  Deluxe -> VT Bass DI (the two MXRs and the Synth not owned); all 5 signal cables routed.
+- [ ] Add the ISO-5 Pro (stand-in ISO-1AC Pro) to the bass layout in Pedal Playground.
 - [ ] P3.2 (Envelope Filter -> Chorus) runs 173 mm on top: no hole near the Chorus's power jack.
 - [ ] Board: the board editor edits only the first piece (`board.json` `pieces` by hand for the other); check the XPND
       holes by eye.
