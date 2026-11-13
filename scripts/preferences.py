@@ -164,6 +164,18 @@ def merge_legacy(project):
     return _collect(project)[0]
 
 
+def legacy_keys(project):
+    """The OLD keys `project` still uses for per-pedal wishes (README note, `pb migrate-preferences`): ["rules", "layout.pins", ...]."""
+    leg = _legacy(project)
+    used = {"order": "rules", "pin": "layout.pins", "rotations": "layout.rotations", "position": "layout.access.pedals", "toppers": "footswitches.toppers"}
+    return [key for field, key in used.items() if any(field in prof for prof in leg.values())]
+
+
+def row_key(r):
+    """The key of a preference row (`check`): <pedal>.<kind>[.<name>]; `propose_layout.metrics` stores {key: met} per layout."""
+    return f"{r['pedal']}.{r['kind']}" + (f".{r['name']}" if r.get("name") else "")
+
+
 def profiles(project):
     """{pedal id: profile}: `project["pedals"]` merged with the old keys, fields normalised (position: weight and strength
     defaults filled in when it has a side or a depth; rotations as given)."""
@@ -562,6 +574,7 @@ def check(ctx, cat_pedals):
     chain = ctx["chain"]
     sink = ctx["errors"] if (project.get("validation") or {}).get("strict_preferences") else ctx["warnings"]
     rows = ctx["preferences"] = []
+    ctx["pref_dormant"] = sorted(p for p in profiles(project) if p in cat_pedals and p not in chain)   # profiles / old keys of pedals not in the chain
     status = ctx.get("rule_status") or {}
     wishes = position_wishes(project, chain)
     fs_y = {}

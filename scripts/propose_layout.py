@@ -71,6 +71,10 @@ def metrics(ctx, model, state, move_factor):
         "io_mm": round(det["terms"]["io"][0], 1),
         "surrogate": round(total, 1),
         "terms": {k: round(v[1], 1) for k, v in det["terms"].items()},
+        # the profiles' wishes (`pedals.<id>`): {<pedal>.<kind>[.<name>]: met} (a row that is only an applied setting has none) and how many REQUIRED wishes
+        # are not met: a proposal must not have more than the owner's layout (`acceptable`)
+        "preferences": {preferences.row_key(r): r["met"] for r in ctx.get("preferences") or [] if r["met"] is not None},
+        "pref_required_unmet": sum(1 for r in ctx.get("preferences") or [] if r["met"] is False and r.get("strength") == "required"),
     }
     # final score: the surrogate with the routed signal length instead of its obstacle-free estimate, plus router
     # penalties (unroutable 1000, a power cable without a path 1000, over the stacking limit 50, squeezed 100 per cable)
@@ -87,15 +91,18 @@ def routing_problems(m):
 
 
 def rank_key(m):
-    return (m["errors"], m.get("outside", 0), m["blocked"], m["blocked_mm"], m.get("collisions", 0), routing_problems(m), m["fs_close"], m["score"])
+    return (m["errors"], m.get("outside", 0), m["blocked"], m["blocked_mm"], m.get("collisions", 0), routing_problems(m), m["fs_close"],
+            m.get("pref_required_unmet", 0), m["score"])
 
 
 def acceptable(m, owner):
     """No item outside the usable board area (the pre-processing moves every pedal of the owner's layout inside, pinned ones too);
-    not worse than the owner's layout on errors, blocked plugs, routing and footswitch pairs; better overall."""
+    not worse than the owner's layout on errors, blocked plugs, routing, footswitch pairs and unmet REQUIRED preference wishes
+    (`pedals.<id>`); better overall."""
     return (m["errors"] <= owner["errors"] and not m.get("outside") and m["blocked"] <= owner["blocked"]
             and m.get("collisions", 0) <= owner.get("collisions", 0)
             and routing_problems(m) <= routing_problems(owner) and m["fs_close"] <= owner["fs_close"]
+            and m.get("pref_required_unmet", 0) <= owner.get("pref_required_unmet", 0)
             and rank_key(m) < rank_key(owner))
 
 
@@ -336,7 +343,8 @@ def report(pdir, meta, owner):
         return (f"  {label:9} outside the usable area {m.get('outside', '?')}; blocked {m['blocked']} ({m['blocked_mm']:.1f} mm) {m['blocked_jacks']}; plug collisions "
                 f"{m.get('collisions', 0)}; routing problems "
                 f"{routing_problems(m)}; signal {m['signal_mm']:.0f} mm ({m['signal_routed']}/{m['signal_cables']} routed); "
-                f"power {m['power_mm']:.0f} mm routed{unrouted(m)}; footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
+                f"power {m['power_mm']:.0f} mm routed{unrouted(m)}; "
+                + (f"unmet required wishes {m['pref_required_unmet']}; " if m.get("pref_required_unmet") else "") + f"footswitch term {m['terms']['footswitch']:.0f} ({fs}); score {m['score']:.1f}")
     print(line("owner", owner))
     if not meta["proposals"]:
         print(f"  no better layout found ({meta['finalists']} finalist(s) checked)")

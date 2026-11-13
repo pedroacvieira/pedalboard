@@ -54,6 +54,21 @@ flowchart TB
 - **MXR Bass Chorus Deluxe** must come after Electro-Harmonix Bass Big Muff Pi 2: Chorus after the fuzz, before the preamp / DI (owner's layout, 2026-11-09) `[project]`
 - **Electro-Harmonix Bass Big Muff Pi 2** must come before all `overdrive` pedals: Fuzz comes before any drive pedal `[project]`
 
+### Preferences
+
+Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or power wish that is not met is a build warning; the layout search and the power assignment read all of them.
+
+| Pedal | Wish | Strength | Owner's layout |
+|---|---|---|---|
+| Darkglass Hyper Luminal | order: first in the chain | required | met |
+| MXR Bass Synth | order: before every gain pedal | required | met |
+| MXR Bass Envelope Filter | order: before every gain pedal | required | met |
+| Electro-Harmonix Bass Big Muff Pi 2 | order: before every overdrive pedal | required | met |
+| MXR Bass Chorus Deluxe | order: after ehx_bass_big_muff_2 | required | met |
+| Tech 21 SansAmp VT Bass DI | order: last in the chain | required | met |
+
+Old keys in use (`rules`): they still work; `uv run pb migrate-preferences bass` moves them into `pedals.<pedal id>`.
+
 ### Notes per pedal
 
 - **Darkglass Hyper Luminal**: Planned for the bass board. Analog VCA audio path controlled by a digital side-chain (time constants editable via the Darkglass Suite), so treated as DIGITAL: must not share an output. 250 mA at 9V DC center-negative, REGULATED supply only (unregulated or higher voltage can cause noise/damage); no battery option listed. Buffered bypass (per owner; the manufacturer is silent and retailers conflict). Reported discontinued or out of stock at several retailers.
