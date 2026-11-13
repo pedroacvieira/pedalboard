@@ -130,7 +130,7 @@ def evaluate(pdir, project, model, state, owner_ctx, cat, move_factor, board_dat
     start = {s["inst"]["id"]: s["inst"].get("outputs", []) for s in owner_ctx["supplies"]}
     try:
         wiring = power.assign(owner_ctx["chain"], owner_ctx["pedals"], insts, project, pts, ports,
-                              run_v=owner_ctx["run_v"], start=start, holes=holes, cfg=cfg)
+                              run_v=owner_ctx["run_v"], start=start, holes=holes, cfg=cfg, wishes=preferences.power_wishes(project, set(owner_ctx["chain"])))
         proj = copy.deepcopy(project)
         old = project.get("power", {}).get("supplies", [])
         place = {x["id"]: x["placement"] for x in old if "placement" in x}   # assign drops it: an on-board supply stays one

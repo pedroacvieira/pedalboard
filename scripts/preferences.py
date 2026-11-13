@@ -480,6 +480,24 @@ def position_wishes(project, ids=None):
     return out
 
 
+def power_wishes(project, ids=None):
+    """{pedal id: {"own_output", "supply", "port", "voltage_v", "required"}} of the pedals (`ids`: only these) whose profile has a power wish
+    (own_output true, a supply instance, a port of it, a voltage); `required` = strength required (default preferred). For `power.assign`
+    (`wishes=`) and `check`."""
+    out = {}
+    for pid, prof in profiles(project).items():
+        pw = prof.get("power")
+        if not isinstance(pw, dict) or (ids is not None and pid not in ids):
+            continue
+        sup = pw.get("supply") if isinstance(pw.get("supply"), str) else None
+        port = pw.get("port") if isinstance(pw.get("port"), str) else None
+        v = pw.get("voltage_v") if _num(pw.get("voltage_v")) else None
+        own = pw.get("own_output") is True
+        if own or sup or port or v is not None:
+            out[pid] = {"own_output": own, "supply": sup, "port": port, "voltage_v": v, "required": pw.get("strength", DEFAULT_STRENGTH) == "required"}
+    return out
+
+
 def past_middle(want, v, lo, hi):
     """How far (mm) the coordinate `v` lies past the middle of [lo, hi] on the wrong side for `want`: > 0 = not in the wanted half.
     left / back / avoid_front want the low half (x grows to the right, y to the FRONT of the board), right / front the high half."""
@@ -550,6 +568,8 @@ def check(ctx, cat_pedals):
     for p in ctx.get("footswitch_points") or []:
         fs_y.setdefault(p["cid"], []).append(p["y"])
     prof = profiles(project)
+    import power   # late: power imports routing
+    power_rows = {r["pedal"]: r for r in power.wish_findings(power_wishes(project, chain), ctx.get("supplies") or [])}   # the owner's hand wiring
     for pid in [p for p in chain if p in prof]:
         mine = prof[pid]
         pos = mine.get("position") if isinstance(mine.get("position"), dict) else {}
@@ -578,6 +598,12 @@ def check(ctx, cat_pedals):
             detail = {"overridden": "overridden by a higher priority", "disabled": "disabled (rule_overrides)"}.get(st, "")
             rows.append({"pedal": pid, "kind": "order", "name": name, "wish": rule_text(body), "strength": body.get("strength"), "met": met,
                          "detail": detail, "status": st})
+        if pid in power_rows:
+            r = power_rows[pid]
+            rows.append({"pedal": pid, "kind": "power", "wish": r["wish"], "strength": "required" if r["required"] else "preferred", "met": r["met"],
+                         "detail": f"on {r['got']}"})
+            if not r["met"] and r["required"]:
+                sink.append(f"preferences: {pid}: wants {r['wants']} (required); the wiring puts it on {r['got']}")
         if mine.get("pin") is True:
             rows.append({"pedal": pid, "kind": "pin", "wish": "does not move in the search", "strength": None, "met": None, "detail": "applied"})
         if mine.get("rotations") is not None:
