@@ -68,16 +68,16 @@ flowchart TB
 
 Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or power wish that is not met is a build warning; the layout search and the power assignment read all of them.
 
-| Pedal | Wish | Strength | Owner's layout |
-|---|---|---|---|
-| TC Electronic PolyTune 2 Mini | order: first in the chain | required | met |
-| Beetronics Octahive | order: first in the chain | required | met |
-| Ibanez Tube Screamer Mini | order: after octahive | required | met |
-| MXR Custom Shop Duke of Tone | order: after ibanez_ts_mini | required | met |
-| MXR Custom Shop Duke of Tone | order: after octahive | required | met |
-| Mooer E-Lady | order: after duke_of_tone | required | met |
-| MXR Carbon Copy | order: after e_lady | required | met |
-| TC Electronic Ditto Looper | order: last in the chain | required | met |
+| Pedal | Wish | Strength | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
+|---|---|---|---|---|---|---|
+| TC Electronic PolyTune 2 Mini | order: first in the chain | required | met | met | met | met |
+| Beetronics Octahive | order: first in the chain | required | met | met | met | met |
+| Ibanez Tube Screamer Mini | order: after octahive | required | met | met | met | met |
+| MXR Custom Shop Duke of Tone | order: after ibanez_ts_mini | required | met | met | met | met |
+| MXR Custom Shop Duke of Tone | order: after octahive | required | met | met | met | met |
+| Mooer E-Lady | order: after duke_of_tone | required | met | met | met | met |
+| MXR Carbon Copy | order: after e_lady | required | met | met | met | met |
+| TC Electronic Ditto Looper | order: last in the chain | required | met | met | met | met |
 
 Old keys in use (`rules`): they still work; `uv run pb migrate-preferences guitar-practice` moves them into `pedals.<pedal id>`.
 
@@ -195,12 +195,12 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 
 | Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | polytune_2_mini.out | octahive.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 75 | routed |
-| S2 | signal | octahive.out | ibanez_ts_mini.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 82 | routed |
-| S3 | signal | ibanez_ts_mini.out | duke_of_tone.in | ernie_ball_flat_patch_ra | right / left | TS / TS | - | no | 86 | routed |
-| S4 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 56 | routed |
-| S5 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | down / left | TS / TS | - | yes (1 hole, 16 mm) | 87 | routed |
-| S6 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | right / right | TS / TS | - | no | 94 | routed |
+| S1 | signal | polytune_2_mini.out | octahive.in | ernie_ball_flat_patch_ra | left / right (passes under its own plug) | TS / TS | - | no | 75 | routed |
+| S2 | signal | octahive.out | ibanez_ts_mini.in | ernie_ball_flat_patch_ra | right / left (passes under its own plug) | TS / TS | - | no | 82 | routed |
+| S3 | signal | ibanez_ts_mini.out | duke_of_tone.in | ernie_ball_flat_patch_ra | right (passes under its own plug) / left | TS / TS | - | no | 86 | routed |
+| S4 | signal | duke_of_tone.out | e_lady.in | ernie_ball_flat_patch_ra | right (passes under its own plug) / right (passes under its own plug) | TS / TS | - | no | 56 | routed |
+| S5 | signal | e_lady.out | carbon_copy.in | ernie_ball_flat_patch_ra | down / left (passes under its own plug) | TS / TS | - | yes (1 hole, 16 mm) | 87 | routed |
+| S6 | signal | carbon_copy.out | ditto_looper.in | ernie_ball_flat_patch_ra | right (passes under its own plug) / right (passes under its own plug) | TS / TS | - | no | 94 | routed |
 | P1.1 | power | psu1.OUT1 | octahive.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 148 mm under, 0 mm on top | 177 | routed |
 | P1.2 | power | octahive.power | ibanez_ts_mini.power | dc_ra_owner_baseline | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 63 mm under, 0 mm on top | 121 | routed |
 | P1.3 | power | ibanez_ts_mini.power | duke_of_tone.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 32 mm under, 16 mm on top | 117 | routed |
@@ -208,6 +208,8 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P3 | power | psu1.OUT3 | e_lady.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 178 mm under, 1 mm on top | 219 | routed |
 | P4 | power | psu1.OUT4 | carbon_copy.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 112 mm under, 1 mm on top | 152 | routed |
 | P5 | power | psu1.OUT5 | ditto_looper.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 242 mm under, 1 mm on top | 283 | routed |
+
+Passes under its own plug: S1, S2, S3, S4, S5, S6. Their routed path crosses the head or body of a plug at one of their own ends (a cable that turns back across the plug it leaves, or one that passes the far plug in a narrow gap); the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is measured along its path on the deck, with no extra length (information only; any other cable still crosses the plug over the top, up to `cables.max_over_plug`).
 
 Signal cable, minimum: 480 mm over 6 cables.
 

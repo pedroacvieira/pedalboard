@@ -55,7 +55,6 @@ Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mea
 | MXR Bass Synth | order: before every gain pedal | required | met |
 | MXR Bass Envelope Filter | order: before every gain pedal | required | met |
 | Electro-Harmonix Bass Big Muff Pi 2 | order: before every overdrive pedal | required | met |
-| MXR Bass Chorus Deluxe | order: after ehx_bass_big_muff_2 | required | met |
 | Tech 21 SansAmp VT Bass DI | order: last in the chain | required | met |
 
 Old keys in use (`rules`): they still work; `uv run pb migrate-preferences bass` moves them into `pedals.<pedal id>`.

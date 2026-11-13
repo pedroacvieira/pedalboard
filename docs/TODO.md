@@ -96,10 +96,12 @@ Every per-pedal wish in one place, editable with values, drop-downs and toggles 
 - [x] Until the web UI: edit project.json by hand (documented schema, CLAUDE.md and the root README).
 
 ### 3.2 `feat/u-turn-plugs`: a right-angle plug that turns its cable back
-No plan file yet (`docs/plans/u-turn-plugs.md`).
-- [ ] When a right-angle plug cannot point to the side its cable has to go, point it the other way and turn the cable
-      back: longer minimum length, the turned cable occupies both sides; the router considers it when the direct side
-      is blocked or worse (signal and DC plugs; the layout surrogate mirrors it).
+Plan `docs/plans/u-turn-plugs.md`; owner decision 2026-11-13: the cable MAY cross its own plug (one thin cable passes under it).
+- [x] A right-angle plug that cannot point to the side its cable goes to: the router already picks sides by fit, then length; the
+      turned cable crosses its own plug, which adds no length. Now reported (information only): `under_own_a` / `under_own_b`, the
+      README Exits column ("right (passes under its own plug)"), a build log line. Signal and DC plugs; the layout surrogate has no
+      keep-out and so agrees. Needs the owner's review of the practice board: all 6 signal cables pass under a plug of their own.
+- [ ] Owner: re-run the layout proposals (`propose_layout.py`) after the merge; nothing in the scores changed, only the report.
 
 ### 3.3 `feat/web-ui`: one local web app with tabs
 Replaces the Tkinter editors and the README-only views with a local browser app.

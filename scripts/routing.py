@@ -28,6 +28,8 @@ under the board through the board's holes (see the last paragraph):
   - the grid path is then reduced to its necessary corners (`smooth`: any-angle straight segments that stay as
     far from the pedals as the grid path did and cross no plug it did not cross); the minimum cable length
     follows the smoothed path;
+  - a cable whose plug points away from where it goes turns back across its own plug (the plug sits high enough on the pedal for one thin
+    cable to pass under it, owner 2026-11-13): no keep-out, no extra length; `passes_under_own_plug` reports it (`under_own_a` / `under_own_b`);
   - the clearance of every signal jack with a modelled plug is checked here (head footprint + barrel +
     straight cable run on the chosen side against the other pedals); other jacks keep the fixed box (jacks.py).
 Under the board (`cables.under_board`, default true): a second layer over the board footprint (same cells as the
@@ -1544,6 +1546,46 @@ def blocked_parts(opt, own_id, obstacles, shapes=None):
     return hits
 
 
+# --- a cable passing under its own plug (feat/u-turn-plugs, owner 2026-11-13) --------------------------------------------------
+UNDER_OWN_MIN_MM = 0.1   # a routed segment must run this far inside a plug's head / barrel to count as passing under it (touching does not)
+
+
+def plug_body_rects(o):
+    """The rects of a plug option its own cable may pass UNDER: a right-angle side option's `head` and `barrel`, a straight plug's `head`. A plug
+    pointing down, a fixed box and an option without a plug model have none (their cable goes down, or there is no plug). The `cable` run is
+    no plug body: the cable itself lies there."""
+    if o is None or o.get("down"):
+        return []
+    return [r for part, r in o["rects"] if part in ("head", "barrel")]
+
+
+def inside_length(p, q, r):
+    """How much of segment pq (mm) lies inside the rectangle r = (x0, y0, x1, y1) (Liang-Barsky): a segment along an edge or touching a corner has none."""
+    t0, t1 = 0.0, 1.0
+    for lo, hi, a, da in ((r[0], r[2], p[0], q[0] - p[0]), (r[1], r[3], p[1], q[1] - p[1])):
+        if da == 0:
+            if a <= lo or a >= hi:
+                return 0.0
+            continue
+        ta, tb = (lo - a) / da, (hi - a) / da
+        t0, t1 = max(t0, min(ta, tb)), min(t1, max(ta, tb))
+    return max(0.0, t1 - t0) * math.hypot(q[0] - p[0], q[1] - p[1])
+
+
+def passes_under_own_plug(o, polylines):
+    """Whether a cable passes under its own plug at option `o`: a segment of one of the cable's routed top polylines (`polylines`: lists of
+    points, the corners between the two exits) runs more than `UNDER_OWN_MIN_MM` inside the plug's head or barrel (`plug_body_rects`). The plug
+    sits high enough on the pedal for one thin cable to pass under it (owner, 2026-11-13): it adds no length (the cable is measured along its
+    path on the deck) and no climb; the cable is routed with its own plugs free (`route_all`, `smooth`), as always. Only information."""
+    rects = plug_body_rects(o)
+    return any(inside_length(p, q, r) > UNDER_OWN_MIN_MM for pts in polylines for p, q in zip(pts, pts[1:]) for r in rects)
+
+
+def under_own_cables(cables):
+    """[cable ids] of the routed cables that pass under at least one of their own plugs (`under_own_a` / `under_own_b`)."""
+    return [c["id"] for c in cables if c.get("under_own_a") or c.get("under_own_b")]
+
+
 def same_item_boxes(ka, parts_a, kb, parts_b):
     """Whether two footprints ("<id>.<jack id>" keys) are both fixed boxes (every part a "box") of the same item: such a pair is not a
     collision to report or to rank by, no plug choice can move them apart."""
@@ -2215,6 +2257,8 @@ def route_project(ctx, cat_pedals, cable_types=None):
                  edge_sides=sides, hole_points=hole_pts, edge_points=edge_pts, path=g["path"])
         c["_stretches"], c["_own"] = stretches, own
         c["_leads"] = (lead_a, lead_b)   # fixed geometry round the routed corners
+        tops = [st["points"] for st in stretches if st["layer"] == "top"]
+        c["under_own_a"], c["under_own_b"] = passes_under_own_plug(oa, tops), passes_under_own_plug(ob, tops)
         if c.get("_squeeze") and squeezed:
             c["status"] = "routed, squeezed (gap narrower than the cable)"
             sink.append(f"routing: {c['id']} ({c['from']} -> {c['to']}) only fits by squeezing about {squeezed:.0f} mm of cable "
@@ -2504,6 +2548,7 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
     nets, ends, port_start = [], {}, {}
     for c in pcables:
         c["status"] = "not routed"
+        c["under_own_a"] = c["under_own_b"] = False
         iid = c["from"].split(".")[0]
         tgt, src = by_key.get(c["to"]), by_key.get(c["from"])
         if tgt is None:
@@ -2573,6 +2618,8 @@ def route_power(ctx, cables, cable_types, cfg, grid, board, front_y, pedal_rects
         oa, ob, start_pt, a_key, b_key = ends[name]
         g = path_geometry(pgrid, path, oa, ob, start_pt, pedal_rects, under_rects, radius, plug_rects, {a_key, b_key})
         runs, stretches, top_mm, under_mm, lead_a, lead_b = g["runs"], g["stretches"], g["top_mm"], g["under_mm"], g["lead_a"], g["lead_b"]
+        tops = [st["points"] for st in stretches if st["layer"] == "top"]
+        c["under_own_a"], c["under_own_b"] = passes_under_own_plug(oa, tops), passes_under_own_plug(ob, tops)
         hole_pts, edge_pts, sides = layer_passes(pgrid, runs, links)
         draw = [{"layer": st["layer"], "points": (lead_a if k == 0 else []) + st["points"] + (lead_b if k == len(stretches) - 1 else [])}
                 for k, st in enumerate(stretches)]
