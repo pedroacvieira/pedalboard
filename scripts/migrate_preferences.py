@@ -11,6 +11,7 @@ was fresh before and nothing the layout search reads changed, its `inputs_sha1` 
 """
 import argparse
 import difflib
+import json
 import re
 import sys
 
@@ -47,13 +48,19 @@ def migrate_dir(pdir, dry_run=False, out=print):
     path = pdir / "project.json"
     text = path.read_text()
     old = load_json(path)
+    catalog = _catalog()
+    chain = [p for p in old.get("signal_chain", []) if isinstance(p, str)]
+    errors = preferences.validate(old, *catalog, chain)[0]   # the profiles as written, and a wish that old keys and profiles state differently
+    if errors:
+        out(f"{pdir.name}: nothing migrated, fix these first:\n  " + "\n  ".join(errors))
+        return False
     new = preferences.migrate(old)
-    errors = preferences.validate(new, *_catalog(), [p for p in new.get("signal_chain", [])])[0]
+    errors = preferences.validate(new, *catalog, chain)[0]
     if errors:
         out(f"{pdir.name}: the migrated project has errors, nothing written:\n  " + "\n  ".join(errors))
         return False
     body = dump_project(new)
-    if body == text:
+    if json.loads(text) == new:   # already migrated (whatever its formatting)
         out(f"{pdir.name}: nothing to migrate")
         return False
     if not same_wishes(old, new):

@@ -109,7 +109,7 @@ def _legacy(project):
         if isinstance(v, dict):
             pos = mine(pid).setdefault("position", {})
             if "want" in v:
-                pos["depth"] = v["want"]
+                pos["depth"] = "any" if v["want"] == "none" else v["want"]   # (the lowered form of depth `any`)
             if "weight" in v:
                 pos["weight"] = v["weight"]
     tops = (project.get("footswitches") or {}).get("toppers")
@@ -411,16 +411,20 @@ def migrate(project):
     `layout.access.pedals` of pedals (supply instances stay), `footswitches.toppers` ("<pedal>.<switch>"). Profile fields in
     the order of `KEYS`, pedals in chain order then alphabetically; empty containers left behind are removed (`rules` stays a
     list). `lower(migrate(p))` has the same wishes as `lower(p)`; the rule list is only ordered per pedal."""
-    merged, _ = _collect(project)
+    merged, _ = _collect(project)   # (conflicts: `validate` reports them; `migrate_preferences` refuses to migrate while there are any)
     out = copy.deepcopy(project)
     inst = _instance_ids(project)
     chain = [p for p in project.get("signal_chain") or [] if isinstance(p, str)]
+    raw = project.get("pedals") if isinstance(project.get("pedals"), dict) else {}
     pedals = {}
     for pid in _order_key(chain, merged):
         prof = merged[pid]
+        if pid in raw and not isinstance(raw[pid], dict):
+            pedals[pid] = copy.deepcopy(raw[pid])   # malformed: kept as written, `validate` reports it
+            continue
         ordered = {k: prof[k] for k in KEYS if k in prof}
         ordered.update({k: v for k, v in prof.items() if k not in ordered})
-        if ordered:
+        if ordered or pid in raw:   # (an empty profile the owner wrote stays)
             pedals[pid] = ordered
     if pedals:
         if "pedals" in out:

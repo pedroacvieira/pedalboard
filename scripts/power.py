@@ -494,7 +494,7 @@ def default_voltage(pc):
     return lo
 
 
-def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None, holes=None, cfg=None, wishes=None):
+def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None, holes=None, cfg=None, wishes=None, _soft=None):
     """Power wiring for one layout: every chain pedal on one supply output, daisy chains ordered for the shortest
     DC cable, under the project's power policy.
 
@@ -506,7 +506,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     measured with `hop_estimate` (power cables run under the board and come up through the hole nearest each pedal; an
     instance with `"under": False` starts its chain on top); without holes: Manhattan between the measure points.
     wishes: {pedal id: {"own_output", "supply", "port", "voltage_v", "required"}} (`preferences.power_wishes`, the profiles' `power`): the voltage
-    wish beats `run_v` (a preferred one only when some output offers it); a REQUIRED supply / port / own_output wish is a feasibility rule
+    wish beats `run_v` (a PREFERRED one is tried first and given up, costing its `PREFERENCE_COST_MM`, when no wiring exists with it); a REQUIRED supply / port / own_output wish is a feasibility rule
     (a start wiring that breaks it is dropped; no wiring left raises ValueError); a PREFERRED one costs `PREFERENCE_COST_MM` when unmet.
     Returns {"supplies": [project.json power.supplies entries], "length_mm", "warnings": [build warnings of the
     wiring], "errors": [], "preferences": [(pedal, wish text, met)]} or raises ValueError if no wiring satisfies the policy."""
@@ -514,11 +514,16 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     chain = [p for p in chain if p in pedals]
     run_v = dict(run_v or {})
     wishes = {p: w for p, w in (wishes or {}).items() if p in chain}
-    offered = {op["voltage_v"] for inst in insts for o in inst["sup"].get("outputs") or [] for op in o.get("options", []) if op.get("max_ma") is not None}
+    if _soft is None and any(w.get("voltage_v") is not None and not w["required"] for w in wishes.values()):
+        # a preferred voltage is a wish, not a rule: with it when a wiring exists, else the owner's / default voltage (the wish then counts as missed)
+        try:
+            return assign(chain, pedals, insts, project, points, port_points, run_v, start, holes, cfg, wishes, _soft=True)
+        except ValueError:
+            return assign(chain, pedals, insts, project, points, port_points, run_v, start, holes, cfg, wishes, _soft=False)
     volts = {}
     for p in chain:
         wv = (wishes.get(p) or {}).get("voltage_v")
-        use_wish = wv is not None and (wishes[p]["required"] or wv in offered)
+        use_wish = wv is not None and (wishes[p]["required"] or bool(_soft))
         volts[p] = wv if use_wish else run_v.get(p) or default_voltage(pedals[p]["power_consumption"])
     under_of = {inst["id"]: inst.get("under", True) for inst in insts}
     hop_cache = {}
