@@ -61,7 +61,7 @@ def metrics(ctx, model, state, move_factor):
         "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         # toppers are a finishing step the search ignores: proposals are compared on the PLAIN distances
         "fs_close": sum(1 for r in prs if r.get("too_close_plain")),
-        "fs_closest_mm": round(min(r["distance_mm"] for r in prs), 1) if prs else None,
+        "fs_closest_mm": round(min(r["distance_mm"] + r.get("step_mm", 0.0) for r in prs), 1) if prs else None,   # plain + height step: the distance `fs_close` uses
         "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding_plain") or 0.0, 1),
         "fs_reach": round((ctx.get("footswitch_settings") or {}).get("reach_plain") or 0.0, 1),   # sum of priority x shadow (mm), no toppers
         "fs_known": det["fs_known"],

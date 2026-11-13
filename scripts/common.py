@@ -33,7 +33,8 @@ def load_catalog():
     return pedals, supplies
 
 
-TOPPER_KEYS = ("toppers", "topper_bonus_mm", "max_toppers", "topper_min_gain")   # project footswitches settings, not proposal inputs
+TOPPER_KEYS = ("toppers", "topper_bonus_mm", "max_toppers", "topper_min_gain",
+               "reach_weight", "max_shadow_mm")   # project footswitches settings, not proposal inputs (toppers, suggestions, findings: post-layout)
 
 
 def proposal_inputs_sha1(pdir):
@@ -41,7 +42,7 @@ def proposal_inputs_sha1(pdir):
     catalog/cables.json, the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
     supplies, the outline entries (catalog/outlines.json) of the images in the design file, the board image's
     catalog/boards.json entry and the project's board.json (holes). Stored by propose_layout.py in proposals/meta.json;
-    build.py marks the proposals stale on a change. The project's footswitch topper settings (TOPPER_KEYS) are left out."""
+    build.py marks the proposals stale on a change. The project's footswitch topper, reach_weight and max_shadow_mm settings (TOPPER_KEYS) are left out."""
     import hashlib
     pdir = Path(pdir)
     import preferences   # late: a pure module, imported where it is used

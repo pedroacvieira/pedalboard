@@ -757,3 +757,19 @@ def test_gig_fixture_numbers_of_the_plan():
 
 def load_json_project(pdir):
     return json.loads((pdir / "project.json").read_text())
+
+
+def test_reach_texts_follow_the_weight_and_the_deck_rise(tmp_path):
+    """The Reach paragraph says the proposals minimise the shadow only while `layout.weights.reach` > 0; with a deck rise the height
+    column is labelled as the switch height including it."""
+    import build
+    md = "\n".join(build.footswitch_section(run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True), HP))
+    assert "the layout proposals minimise it (`layout.weights.reach`)." in md and "| Switch | Type | Height (mm) |" in md
+    zero = {"layout": {"weights": {"reach": 0}}}
+    md = "\n".join(build.footswitch_section(run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project=zero), HP))
+    assert "minimise it (`layout.weights.reach`)" not in md and "the layout proposals ignore it (`layout.weights.reach` is 0)." in md
+    rise = {"footswitches": {"deck_rise_mm": 10}}
+    md = "\n".join(build.footswitch_section(run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project=rise), HP))
+    assert "| Switch | Type | Switch height incl. deck rise (mm) |" in md and "The deck rises 10 mm" in md
+    off = "\n".join(build.footswitch_section(run(tmp_path, FRONT_B, ONE_EACH, pedals=HP), HP))
+    assert "layout.weights.reach" not in off and "Reach" not in off
