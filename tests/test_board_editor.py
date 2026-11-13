@@ -634,3 +634,179 @@ def test_the_app_names_a_pieces_entry_of_no_piece_and_keeps_it(tmp_path):
         assert set(saved["pieces"]) == {"a.png", "old.png"} and saved["pieces"]["old.png"]["boxes"] == [box("filled")]
     finally:
         app.destroy()
+
+
+# --- composed boards: the composed view (pure helpers) -----------------------------------------------------------------
+def piece(image, left, top, w, h, rot=0):
+    """A piece as `board_pieces_for` gives it, with a hand-made layout item (mm; w, h of the UNROTATED image)."""
+    item = {"id": image, "kind": "pedalboard", "image": image, "left_mm": left, "top_mm": top, "w_mm": w, "h_mm": h, "rot": rot}
+    return {"image": image, "w_mm": w, "h_mm": h, "item": item}
+
+
+@pytest.mark.parametrize("rot, canvas", [(0, (150, 125)), (90, (175, 50)), (180, (250, 75)), (270, (225, 150))])
+def test_canvas_to_piece_frac_inverts_jack_point(rot, canvas):
+    # image 200 x 100 mm at left 100, top 50 (centre 200, 100); the jack at (0.25, 0.75) of the unrotated image
+    item = piece("a.png", 100, 50, 200, 100, rot)["item"]
+    assert design.jack_point(item, 0.25, 0.75) == pytest.approx(canvas)            # hand-computed
+    assert be.canvas_to_piece_frac(item, *canvas) == pytest.approx((0.25, 0.75))
+    for f in ((0, 0), (1, 1), (0.1, 0.9), (0.5, 0.5)):
+        assert be.canvas_to_piece_frac(item, *design.jack_point(item, *f)) == pytest.approx(f)
+
+
+def test_rects_to_piece_fracs_clip_drop_empty_and_follow_the_rotation():
+    item = piece("a.png", 0, 0, 200, 100)["item"]
+    got = be.rects_to_piece_fracs(item, [(-10, 20, 50, 60), (210, 0, 250, 50), (150, 80, 300, 200)])
+    assert got == [pytest.approx((0.0, 0.2, 0.25, 0.6)), pytest.approx((0.75, 0.8, 1.0, 1.0))]
+    # rot 90: the canvas rect (50, -50, 100, 0) is the image's bottom-left corner area: (0, 0.5)-(0.25, 1)
+    rot = piece("a.png", 0, 0, 200, 100, 90)["item"]
+    assert be.rects_to_piece_fracs(rot, [(50, -50, 100, 0)]) == [pytest.approx((0.0, 0.5, 0.25, 1.0))]
+
+
+def covers(rects, fx, fy):
+    return any(r[0] <= fx <= r[2] and r[1] <= fy <= r[3] for r in rects)
+
+
+def test_composed_and_piece_effective_close_a_hole_under_another_pieces_solid_deck():
+    # P (0..100 x 0..50) and Q (80..180) overlap in x 80..100. P's hole 70..95 x 10..20, Q's hole 90..120 x 0..30 (canvas mm)
+    pieces = [piece("p.png", 0, 0, 100, 50), piece("q.png", 80, 0, 100, 50)]
+    derived = {"p.png": [[0.7, 0.2, 0.95, 0.4]], "q.png": [[0.1, 0.0, 0.4, 0.6]]}
+    edits = {"p.png": {"boxes": []}, "q.png": {"boxes": []}}
+    on_p = be.piece_effective(pieces, 0, derived, edits)
+    assert covers(on_p, 75 / 100, 15 / 50) and not covers(on_p, 85 / 100, 15 / 50) and covers(on_p, 92 / 100, 15 / 50)
+    assert all(0 <= v <= 1 for r in on_p for v in r)                                   # clipped to the piece
+    on_q = be.piece_effective(pieces, 1, derived, edits)
+    assert covers(on_q, (110 - 80) / 100, 10 / 50) and not covers(on_q, (85 - 80) / 100, 15 / 50) and covers(on_q, (92 - 80) / 100, 15 / 50)
+    assert not covers(on_q, (75 - 80) / 100, 15 / 50) and all(0 <= v <= 1 for r in on_q for v in r)
+    # abutting pieces: each keeps its own holes
+    pieces = [piece("p.png", 0, 0, 100, 50), piece("q.png", 100, 0, 100, 50)]
+    assert be.piece_effective(pieces, 0, derived, edits) == [pytest.approx((0.7, 0.2, 0.95, 0.4))]
+    # a box applies to its own piece only
+    edits = {"p.png": {"boxes": [box("filled", 0.7, 0.2, 0.95, 0.4)]}, "q.png": {"boxes": []}}
+    assert be.piece_effective(pieces, 0, derived, edits) == []
+    assert be.composed_effective(pieces, derived, edits)[0] == pytest.approx((100 + 10, 0, 100 + 40, 30))
+
+
+@pytest.mark.parametrize("rot", [0, 90, 180, 270])
+def test_piece_effective_of_one_piece_is_effective_holes_in_fractions(rot):
+    one = piece("a.png", 30, 20, 200, 100, rot)
+    derived = {"a.png": [[0.1, 0.1, 0.3, 0.3], [0.5, 0.5, 0.9, 0.9]]}
+    edits = {"a.png": {"boxes": [box("filled", 0.2, 0.0, 0.25, 1.0), box("hole", 0.6, 0.0, 0.7, 0.3)]}}
+    mm = be.effective_holes(derived["a.png"], edits["a.png"]["boxes"], 200.0, 100.0)
+    want = [(x0 / 200, y0 / 100, x1 / 200, y1 / 100) for x0, y0, x1, y1 in mm]
+    got = be.piece_effective([one], 0, derived, edits)
+    assert sorted(got) == pytest.approx(sorted(want))
+    assert be.piece_effective([{**one, "item": None}], 0, derived, edits) == pytest.approx(want)   # a board without a layout item
+
+
+def test_overlap_ghosts_and_joint_sides_abutting_overlapping_and_apart():
+    a = piece("a.png", 0, 0, 100, 50)
+    abut = [a, piece("b.png", 100, 0, 100, 50)]
+    assert be.overlap_ghosts(abut, 0) == [] and be.joint_sides(abut, 0) == [("right", 0.0, 1.0, "b.png")]
+    assert be.joint_sides(abut, 1) == [("left", 0.0, 1.0, "a.png")]
+    near = [a, piece("b.png", 100.19, 0, 100, 50)]                                     # the 0.19 mm gap of the bass pieces
+    assert be.joint_sides(near, 0) == [("right", 0.0, 1.0, "b.png")]
+    apart = [a, piece("b.png", 105, 0, 100, 50)]
+    assert be.joint_sides(apart, 0) == [] and be.overlap_ghosts(apart, 0) == []
+    over = [a, piece("b.png", 80, 0, 100, 50)]                                         # B covers A's x 80..100
+    assert be.overlap_ghosts(over, 0) == [(pytest.approx((0.8, 0.0, 1.0, 1.0)), "b.png")]
+    assert be.overlap_ghosts(over, 1) == [(pytest.approx((0.0, 0.0, 0.2, 1.0)), "a.png")]
+    assert ("right", pytest.approx(0.0), pytest.approx(1.0), "b.png") in be.joint_sides(over, 0)
+    corner = [a, piece("b.png", 100, 50, 100, 50)]                                     # only the corners touch
+    assert be.joint_sides(corner, 0) == []
+    assert be.joint_sides([{**a, "item": None}], 0) == [] and be.overlap_ghosts([{**a, "item": None}], 0) == []
+
+
+def test_joint_sides_follow_the_rotation_and_a_partial_overlap_along_the_side():
+    # A rotated 90 (image 200 x 100, centre 100, 50: footprint x 50..150, y -50..150); B abuts on the right with y 0..100. The canvas
+    # right side of A is the image's BACK (top) edge; B's y 0..100 are u = -50..50 -> fx 0.25..0.75
+    pieces = [piece("a.png", 0, 0, 200, 100, 90), piece("b.png", 150, 0, 100, 100)]
+    assert be.joint_sides(pieces, 0) == [("back", pytest.approx(0.25), pytest.approx(0.75), "b.png")]
+
+
+def test_the_bass_pieces_abut_in_a_joint_and_overlap_nowhere(tmp_path):
+    two = [{"id": "e", "kind": "pedalboard", "image": "daddario-xpnd-1-extension", "x": 21.599490475607226, "y": 8.070486704508465,
+            "width": 10.75, "height": 5.5, "rotation": 0},
+           {"id": "x", "kind": "pedalboard", "image": "daddario-xpnd-1", "x": 32.356875, "y": 7.954999999999998,
+            "width": 14, "height": 6.03, "rotation": 0}]
+    (tmp_path / "playground_design.json").write_text(json.dumps({"schemaVersion": 3, "items": two}))
+    pieces = be.board_pieces_for(tmp_path, {}, {})
+    assert be.overlap_ghosts(pieces, 0) == [] and be.overlap_ghosts(pieces, 1) == []
+    assert be.joint_sides(pieces, 0) == [("right", pytest.approx(0.0), pytest.approx(1.0), IMG2)]   # the extension's whole right side
+    (side, f0, f1, other), = be.joint_sides(pieces, 1)                                              # the XPND's left side, where the extension is
+    assert (side, other) == ("left", IMG1) and f0 == pytest.approx(0.11549 / 6.03, abs=1e-4) and f1 == pytest.approx(5.6155 / 6.03, abs=1e-4)
+
+
+def test_edge_on_joint_only_when_the_whole_segment_lies_on_it():
+    joints = [("right", 0.2, 0.8, "b.png")]
+    assert be.edge_on_joint(be.make_edge("right", 0.3, 0.7), joints) == "b.png"
+    assert be.edge_on_joint(be.make_edge("right", 0.1, 0.7), joints) is None       # partly a real board edge
+    assert be.edge_on_joint(be.make_edge("left", 0.3, 0.7), joints) is None
+    assert be.edge_on_joint(be.make_edge("right", 0.2, 0.8), joints) == "b.png"
+
+
+def test_piece_at_takes_the_topmost_piece_and_cycles_where_they_overlap():
+    pieces = [piece("a.png", 0, 0, 100, 50), piece("b.png", 80, 0, 100, 50), {"image": "n.png", "w_mm": 1, "h_mm": 1, "item": None}]
+    assert be.piece_at(pieces, 10, 10) == 0 and be.piece_at(pieces, 120, 10) == 1
+    assert be.piece_at(pieces, 90, 10) == 1                  # in the overlap: the later piece (drawn on top)
+    assert be.piece_at(pieces, 90, 10, after=1) == 0         # the next click: the one below
+    assert be.piece_at(pieces, 90, 10, after=0) == 1         # and round again
+    assert be.piece_at(pieces, 10, 10, after=1) == 0         # `after` is no candidate here: the topmost there
+    assert be.piece_at(pieces, 500, 500) is None and be.piece_at(pieces, 10, 80) is None
+
+
+# --- composed boards: the whole-board view in the window ----------------------------------------------------------------
+def two_item_app(tmp_path):
+    from PIL import Image
+    paths, pieces = {}, [piece("a.png", 0, 0, 200, 100), piece("b.png", 175, 10, 100, 50, 90)]
+    for p in pieces:
+        paths[p["image"]] = tmp_path / p["image"]
+        Image.new("RGBA", (int(p["w_mm"]), int(p["h_mm"])), (10, 10, 10, 255)).save(paths[p["image"]])
+    try:
+        return be.make_app(tmp_path, pieces, {"a.png": [[0.1, 0.1, 0.2, 0.2]]}, 0, paths), pieces
+    except Exception as e:  # noqa: BLE001
+        pytest.skip(f"no usable display: {e}")
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_app_overview_toggles_and_a_click_picks_the_piece_there(tmp_path):
+    app, pieces = two_item_app(tmp_path)
+    try:
+        app.update()
+        app._toggle_effective()
+        app.update()                                                  # E in the piece view (composed holes of this piece)
+        app._toggle_overview()
+        assert app.overview and "whole board" in app.status.cget("text")
+        app.update()                                                  # drawn: both images, rotated one included, edge / usable / holes
+        app.boxes.append(box())                                       # nothing is editable there: keys are ignored
+        app._guard(lambda: app.boxes.clear())
+        assert len(app.boxes) == 1
+        app._zoom(1.2)
+        app._toggle_overview()                                        # W again: back to the piece it came from
+        assert not app.overview and app.cur == 0
+        app._toggle_overview()
+        x0, y0, x1, y1 = design.footprint(pieces[1]["item"])         # a click in piece 2 (footprint 200..250 x -15..85)
+        assert app._overview_click((x0 + x1) / 2, (y0 + y1) / 2) == 1
+        assert not app.overview and app.cur == 1 and "piece 2/2" in app.title()
+        app._toggle_overview()
+        assert app._overview_click(5000, 5000) is None and app.overview   # outside every piece: stays in the overview
+        app._deselect()                                               # Esc leaves it without changing the piece
+        assert not app.overview and app.cur == 1
+    finally:
+        app.destroy()
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_app_says_when_an_edge_segment_lies_on_a_joint(tmp_path):
+    app, _ = two_item_app(tmp_path)
+    try:
+        app.update()
+        app.boxes.append(be.make_edge("right", 0.2, 0.4))             # piece 1's right side is a joint with b.png where b.png is
+        app.sel = 0
+        app._refresh()
+        text = app.status.cget("text")
+        assert "this side is a joint with b.png: no cable crossing there" in text
+        app.boxes[0] = be.make_edge("back", 0.1, 0.4)                 # the top side is a board edge
+        app._refresh()
+        assert "joint" not in app.status.cget("text")
+    finally:
+        app.destroy()
