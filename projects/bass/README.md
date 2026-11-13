@@ -4,12 +4,11 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 2 warning(s) (`no_unknown` on)
+- **Validation:** OK, 1 warning(s) (`no_unknown` on)
 
 <details><summary>Validation messages</summary>
 
-- WARN layout: supply psu1 (harley_benton_iso5_pro) is not in playground_design.json
-- WARN routing: P3.2 (mxr_bass_envelope_filter.power -> mxr_bass_chorus_deluxe.power) runs 173 mm on top of the board (power cables should stay under it: no usable hole or edge near the pedal's power jack)
+- WARN layout: mxr_bass_chorus_deluxe is in the signal chain but not in playground_design.json
 
 </details>
 
@@ -106,7 +105,7 @@ Draw figures are the worst-case values in `catalog/pedals.json`. Pedals are dais
 
 ### Harley Benton PowerPlant ISO-5 Pro
 
-Placement: under the board. Layout item: not in the layout.
+Placement: under the board. Layout item: Harley Benton PowerPlant ISO-1AC Pro (adb786af-4840-4f56-838c-7ce661cee62f).
 
 | Output | Voltage | Pedal | Draw (mA) | Output total |
 |---|--:|---|--:|--:|
@@ -130,7 +129,6 @@ No blocked cable space found (signal jacks with a cable type: the plug head plus
 DC plugs that pass under a signal plug (a right-angle DC plug is plugged diagonally and its cable goes under the patch cables; not a collision, one pass per plug):
 
 - P5 (darkglass_hyper_luminal.power) passes under the plug at darkglass_hyper_luminal.in: plug it diagonally
-- P3.2 (mxr_bass_chorus_deluxe.power) passes under the plug at mxr_bass_chorus_deluxe.in: plug it diagonally
 - P1 (tech21_vt_bass_di.power) passes under the plug at tech21_vt_bass_di.out: plug it diagonally
 
 Cable lengths: see Cable routing.
@@ -144,7 +142,7 @@ Signal cables are routed on the board surface between the pedals: never in front
 
 `power.svg` shows the power wiring alone: the supplies as translucent red silhouettes (dashed when they hang under the board), the pedals faint, the power jacks and supply ports, the DC cables (dashed under the board, a ring at each hole, a square at each board edge) and a table of the power cables.
 
-Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. No outline: MXR Bass Chorus Deluxe, MXR Bass Envelope Filter.
+Pedals are obstacles by their outlines (`catalog/outlines.json`), their Pedal Playground box where there is none. No outline: MXR Bass Envelope Filter.
 
 ![Signal routing](routing.svg)
 
@@ -154,19 +152,19 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 
 | Cable | Kind | From | To | Type | Exits | Tips | Polarity | Under board | Min length (mm) | Status |
 |---|---|---|---|---|---|---|---|:-:|--:|---|
-| S1 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | right / down | TS / TS | - | yes (1 hole, 16 mm) | 81 | routed |
+| S1 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | right / down | TS / TS | - | yes (1 hole, 15 mm) | 81 | routed |
 | S2 | signal | mxr_bass_synth.out | mxr_bass_envelope_filter.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 16 mm) | 70 | routed |
-| S3 | signal | mxr_bass_envelope_filter.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 13 mm) | 67 | routed |
-| S4 | signal | ehx_bass_big_muff_2.out | mxr_bass_chorus_deluxe.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 71 | routed |
-| S5 | signal | mxr_bass_chorus_deluxe.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 16 mm) | 70 | routed |
-| P1 | power | psu1.OUT1 | tech21_vt_bass_di.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (supply port position unknown) |
-| P2 | power | psu1.OUT2 | ehx_bass_big_muff_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (supply port position unknown) |
-| P3.1 | power | psu1.OUT3 | mxr_bass_envelope_filter.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (supply port position unknown) |
-| P3.2 | power | mxr_bass_envelope_filter.power | mxr_bass_chorus_deluxe.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 93 mm under, 173 mm on top | 325 | routed |
-| P4 | power | psu1.OUT4 | mxr_bass_synth.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (supply port position unknown) |
-| P5 | power | psu1.OUT5 | darkglass_hyper_luminal.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | yes | ? | not routed (supply port position unknown) |
+| S3 | signal | mxr_bass_envelope_filter.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 56 | routed |
+| S4 | signal | ehx_bass_big_muff_2.out | mxr_bass_chorus_deluxe.in | ernie_ball_flat_patch_ra | down / - | TS / TS | - | no | ? | not routed (jack or placement missing) |
+| S5 | signal | mxr_bass_chorus_deluxe.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / down | TS / TS | - | no | ? | not routed (jack or placement missing) |
+| P1 | power | psu1.OUT1 | tech21_vt_bass_di.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 333 mm under, 1 mm on top | 366 | routed |
+| P2 | power | psu1.OUT2 | ehx_bass_big_muff_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 111 mm under, 60 mm on top | 203 | routed |
+| P3.1 | power | psu1.OUT3 | mxr_bass_envelope_filter.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 92 mm under, 0 mm on top | 119 | routed |
+| P3.2 | power | mxr_bass_envelope_filter.power | mxr_bass_chorus_deluxe.power | dc_ra_2_1_low_profile | - / - | DC 2.1 mm / DC 2.1 mm | center_negative | no | ? | not routed (power jack or placement missing) |
+| P4 | power | psu1.OUT4 | mxr_bass_synth.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 148 mm under, 0 mm on top | 175 | routed |
+| P5 | power | psu1.OUT5 | darkglass_hyper_luminal.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 220 mm under, 12 mm on top | 265 | routed |
 
-Signal cable, minimum: 359 mm over 5 cables.
+Signal cable, minimum: 207 mm over 3 cables.
 
 ### DC cables to buy
 
@@ -174,11 +172,13 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 
 | DC cable | Style | Output | Route | Plugs | Min plug spacing per leg (mm) | Min length (mm) | Status |
 |---|---|---|---|--:|---|--:|---|
-| P1 | serial | psu1_OUT1 | psu1.OUT1 -> tech21_vt_bass_di | 2 | - | ? | not routed (supply port position unknown) |
-| P2 | serial | psu1_OUT2 | psu1.OUT2 -> ehx_bass_big_muff_2 | 2 | - | ? | not routed (supply port position unknown) |
-| P3 | serial | psu1_OUT3 | psu1.OUT3 -> mxr_bass_envelope_filter -> mxr_bass_chorus_deluxe | 3 | P3.1 ? / P3.2 325 | ? | not routed (supply port position unknown) |
-| P4 | serial | psu1_OUT4 | psu1.OUT4 -> mxr_bass_synth | 2 | - | ? | not routed (supply port position unknown) |
-| P5 | serial | psu1_OUT5 | psu1.OUT5 -> darkglass_hyper_luminal | 2 | - | ? | not routed (supply port position unknown) |
+| P1 | serial | psu1_OUT1 | psu1.OUT1 -> tech21_vt_bass_di | 2 | - | 366 | routed |
+| P2 | serial | psu1_OUT2 | psu1.OUT2 -> ehx_bass_big_muff_2 | 2 | - | 203 | routed |
+| P3 | serial | psu1_OUT3 | psu1.OUT3 -> mxr_bass_envelope_filter -> mxr_bass_chorus_deluxe | 3 | P3.1 119 / P3.2 ? | ? | not routed (power jack or placement missing) |
+| P4 | serial | psu1_OUT4 | psu1.OUT4 -> mxr_bass_synth | 2 | - | 175 | routed |
+| P5 | serial | psu1_OUT5 | psu1.OUT5 -> darkglass_hyper_luminal | 2 | - | 265 | routed |
+
+DC cable, minimum: 1010 mm over 4 cables (4 serial, 0 forked).
 
 ## Footswitches
 
@@ -188,18 +188,18 @@ Spacing is comfort, not a hard rule: switches of different pedals should be as f
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 10.3 (5 of 15 pairs closer than 100 mm). Closest pairs (8 of 15):
+Crowding: 4.1 (3 of 10 pairs closer than 100 mm). Closest pairs (8 of 10):
 
 | Switch | Type | Switch | Type | Distance (mm) | Crowding |
 |---|---|---|---|--:|--:|
-| mxr_bass_chorus_deluxe.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 73.2 | 7.2 |
-| mxr_bass_envelope_filter.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 87.0 | 1.7 |
+| mxr_bass_envelope_filter.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 83.5 | 2.7 |
 | mxr_bass_synth.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 90.0 | 1.0 |
 | darkglass_hyper_luminal.bypass | bypass | mxr_bass_synth.bypass | bypass | 93.9 | 0.4 |
-| ehx_bass_big_muff_2.bypass | bypass | mxr_bass_chorus_deluxe.bypass | bypass | 99.8 | 0.0 |
-| ehx_bass_big_muff_2.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 172.6 | 0.0 |
-| mxr_bass_synth.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 176.9 | 0.0 |
+| mxr_bass_synth.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 173.4 | 0.0 |
 | darkglass_hyper_luminal.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 183.2 | 0.0 |
+| ehx_bass_big_muff_2.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 201.9 | 0.0 |
+| darkglass_hyper_luminal.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 266.5 | 0.0 |
+| mxr_bass_envelope_filter.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 285.4 | 0.0 |
 
 ### Suggested toppers
 
@@ -207,13 +207,9 @@ Chosen after the layout (never during the search), on bypass switches only (a ta
 
 | # | Switch | Pedal | Type | Crowding removed | Crowding after |
 |--:|---|---|---|--:|--:|
-| 1 | mxr_bass_chorus_deluxe.bypass (Bypass) | MXR Bass Chorus Deluxe | bypass | 2.2 | 8.0 |
-| 2 | tech21_vt_bass_di.bypass (Bypass) | Tech 21 SansAmp VT Bass DI | bypass | 1.8 | 6.2 |
-| 3 | mxr_bass_envelope_filter.bypass (Bypass) | MXR Bass Envelope Filter | bypass | 1.7 | 4.6 |
-| 4 | mxr_bass_synth.bypass (Bypass) | MXR Bass Synth | bypass | 0.6 | 3.9 |
-| 5 | ehx_bass_big_muff_2.bypass (Bypass) | Electro-Harmonix Bass Big Muff Pi 2 | bypass | 0.6 | 3.4 |
-
-Stopped at the cap `footswitches.max_toppers` (5).
+| 1 | mxr_bass_envelope_filter.bypass (Bypass) | MXR Bass Envelope Filter | bypass | 2.0 | 2.1 |
+| 2 | ehx_bass_big_muff_2.bypass (Bypass) | Electro-Harmonix Bass Big Muff Pi 2 | bypass | 0.9 | 1.2 |
+| 3 | mxr_bass_synth.bypass (Bypass) | MXR Bass Synth | bypass | 0.6 | 0.6 |
 
 
 ## Layout proposals

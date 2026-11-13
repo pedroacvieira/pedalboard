@@ -1,13 +1,27 @@
 {
  "name": "Bass Board",
  "view": {
-  "x": -194.5367480468749,
-  "y": 114.56327636718754,
-  "zoom": 1.5
+  "x": -926.1214640683754,
+  "y": -88.63418232635559,
+  "zoom": 1.420448331604249
  },
  "items": [
   {
-   "x": 22.48677057902018,
+   "x": 33.23677057902018,
+   "y": 8.970486704508465,
+   "id": "adb786af-4840-4f56-838c-7ce661cee62f",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "harley-benton-iso1acpro",
+   "label": "Harley Benton PowerPlant ISO-1AC Pro",
+   "width": 5.24,
+   "custom": false,
+   "height": 3.46,
+   "rotation": 0
+  },
+  {
+   "x": 21.599490475607226,
    "y": 8.070486704508465,
    "id": "e512d6f9-0a9d-4740-a84f-717d32ae2af9",
    "kind": "pedalboard",
@@ -36,8 +50,8 @@
    "rotation": 0
   },
   {
-   "x": 22.971351623535156,
-   "y": 8.970486704508465,
+   "x": 21.94449047560723,
+   "y": 8.850486704508466,
    "id": "164ee080-c258-4019-b7d8-6842ff5dd736",
    "kind": "pedal",
    "color": null,
@@ -50,8 +64,8 @@
    "rotation": 0
   },
   {
-   "x": 32.65562372843424,
-   "y": 8.635486704508464,
+   "x": 32.791656672150054,
+   "y": 8.719999999999999,
    "id": "300a85d5-5787-471e-9f29-8ab78e7c9727",
    "kind": "pedal",
    "color": null,
@@ -90,21 +104,6 @@
    "custom": false,
    "height": 4.5,
    "rotation": 0
-  },
-  {
-   "x": 28.80078163146973,
-   "y": 8.505486704508465,
-   "id": "2f2f28f7-c098-47fb-a3de-4d72b0d1ff6d",
-   "kind": "pedal",
-   "color": null,
-   "flipX": false,
-   "image": "mxr-m83",
-   "label": "MXR Bass Chorus Deluxe",
-   "width": 2.67,
-   "custom": false,
-   "height": 4.5,
-   "rotation": 0,
-   "pedalType": "Modulation"
   },
   {
    "x": 36.16418678283692,
@@ -146,6 +145,6 @@
    }
   ]
  },
- "savedAt": "2026-11-09T15:18:21.163Z",
+ "savedAt": "2026-11-13T11:42:09.604Z",
  "schemaVersion": 3
 }

@@ -6,7 +6,7 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "dc6131e36ea06f8284dc8c8d138415d417c21881",
+ "inputs_sha1": "51308475edcf0d26a317ab42d6931de865ca8e5a",
  "chain": [
   "sun_face",
   "danelectro_3699",
@@ -14,56 +14,56 @@
   "polytune_3",
   "mini_ego",
   "fulldrive_2",
-  "phase_95",
   "retrovibe",
+  "phase_95",
   "red_muck",
   "ratsbane",
   "protein",
+  "tumnus_deluxe",
   "analog_chorus",
   "reticon",
   "monk",
   "belle_epoch",
-  "tumnus_deluxe",
   "boss_dd200"
  ],
- "runtime_s": 45.2,
- "finalists": 3,
+ "runtime_s": 25.4,
+ "finalists": 4,
  "owner": {
   "errors": 0,
   "warnings": 1,
   "blocked": 0,
   "blocked_mm": 0,
   "blocked_jacks": [],
-  "collisions": 0,
-  "outside": 1,
+  "collisions": 1,
+  "outside": 0,
   "unroutable": 0,
   "squeezed": 0,
   "overflow": 0,
   "fs_close": 0,
-  "fs_closest_mm": 45.0,
-  "fs_crowding": 215.0,
+  "fs_closest_mm": 54.3,
+  "fs_crowding": 170.7,
   "fs_known": true,
-  "signal_mm": 2313.9,
+  "signal_mm": 2712.5,
   "signal_routed": 16,
   "signal_cables": 16,
-  "power_mm": 3085.5,
+  "power_mm": 3211.1,
   "power_unrouted": 0,
-  "io_mm": 36.0,
-  "surrogate": 3737.1,
+  "io_mm": 10.7,
+  "surrogate": 4391.2,
   "terms": {
-   "clearance": 99.6,
+   "clearance": 391.9,
    "routing_area": 0.0,
-   "signal": 2495.8,
-   "power": 458.5,
-   "footswitch": 430.0,
-   "io": 36.0,
-   "flow": 22.1,
-   "access": 161.5,
-   "rotation": 40.0,
+   "signal": 2949.2,
+   "power": 442.3,
+   "footswitch": 341.4,
+   "io": 10.7,
+   "flow": 37.1,
+   "access": 140.5,
+   "rotation": 80.0,
    "move": 0.0,
-   "touch": -6.6
+   "touch": -1.9
   },
-  "score": 3555.1
+  "score": 4154.5
  },
  "owner_power": {
   "supplies": [
@@ -95,16 +95,16 @@
      },
      {
       "port": "SW_A",
-      "voltage_v": 18,
+      "voltage_v": 9,
       "pedals": [
-       "reticon"
+       "analog_chorus"
       ]
      },
      {
       "port": "SW_B",
-      "voltage_v": 9,
+      "voltage_v": 18,
       "pedals": [
-       "analog_chorus"
+       "reticon"
       ]
      }
     ]
@@ -118,27 +118,27 @@
       "port": "F1",
       "voltage_v": 9,
       "pedals": [
-       "red_muck",
-       "tumnus_deluxe"
+       "retrovibe"
       ]
      },
      {
       "port": "F2",
       "voltage_v": 9,
       "pedals": [
-       "phase_95",
-       "protein",
-       "ratsbane"
+       "beano",
+       "danelectro_3699",
+       "sun_face"
       ]
      },
      {
       "port": "F3",
       "voltage_v": 9,
       "pedals": [
-       "retrovibe",
-       "beano",
-       "danelectro_3699",
-       "sun_face"
+       "phase_95",
+       "ratsbane",
+       "tumnus_deluxe",
+       "protein",
+       "red_muck"
       ]
      },
      {
@@ -159,7 +159,7 @@
     ]
    }
   ],
-  "length_mm": 4821.9,
+  "length_mm": 4789.0,
   "error": null
  },
  "proposals": [
@@ -179,61 +179,61 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 45.0,
-    "fs_crowding": 212.9,
+    "fs_closest_mm": 54.3,
+    "fs_crowding": 145.5,
     "fs_known": true,
-    "signal_mm": 2264.1,
+    "signal_mm": 2737.0,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 3022.6,
+    "power_mm": 3169.4,
     "power_unrouted": 0,
-    "io_mm": 36.0,
-    "surrogate": 3691.1,
+    "io_mm": 10.7,
+    "surrogate": 4067.5,
     "terms": {
-     "clearance": 57.1,
+     "clearance": 46.6,
      "routing_area": 0.0,
-     "signal": 2418.3,
-     "power": 428.1,
-     "footswitch": 425.7,
-     "io": 36.0,
-     "flow": 21.2,
-     "access": 165.0,
-     "rotation": 40.0,
-     "move": 108.0,
-     "touch": -8.3
+     "signal": 2923.6,
+     "power": 427.6,
+     "footswitch": 290.9,
+     "io": 10.7,
+     "flow": 36.3,
+     "access": 139.4,
+     "rotation": 80.0,
+     "move": 112.4,
+     "touch": -0.0
     },
-    "score": 3536.9
+    "score": 3880.9
    },
    "moved": [
     {
-     "pedal": "retrovibe",
-     "dx_mm": 1.1,
-     "dy_mm": -8.6,
-     "distance_mm": 8.7,
+     "pedal": "beano",
+     "dx_mm": -4.9,
+     "dy_mm": 12.3,
+     "distance_mm": 13.2,
      "rot_from": 0,
      "rot_to": 0
     },
     {
-     "pedal": "ratsbane",
-     "dx_mm": 14.7,
-     "dy_mm": 0.4,
-     "distance_mm": 14.7,
+     "pedal": "phase_95",
+     "dx_mm": -15.9,
+     "dy_mm": -1.8,
+     "distance_mm": 16.0,
      "rot_from": 270,
      "rot_to": 270
     },
     {
-     "pedal": "monk",
-     "dx_mm": 0.4,
-     "dy_mm": 0.6,
-     "distance_mm": 0.7,
+     "pedal": "protein",
+     "dx_mm": -6.6,
+     "dy_mm": -27.2,
+     "distance_mm": 28.0,
      "rot_from": 0,
      "rot_to": 0
     },
     {
-     "pedal": "tumnus_deluxe",
-     "dx_mm": 10.2,
-     "dy_mm": -12.0,
-     "distance_mm": 15.7,
+     "pedal": "belle_epoch",
+     "dx_mm": 3.3,
+     "dy_mm": -3.1,
+     "distance_mm": 4.5,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -268,16 +268,16 @@
        },
        {
         "port": "SW_A",
-        "voltage_v": 18,
+        "voltage_v": 9,
         "pedals": [
-         "reticon"
+         "analog_chorus"
         ]
        },
        {
         "port": "SW_B",
-        "voltage_v": 9,
+        "voltage_v": 18,
         "pedals": [
-         "analog_chorus"
+         "reticon"
         ]
        }
       ]
@@ -291,24 +291,24 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "red_muck"
+         "ratsbane",
+         "protein",
+         "tumnus_deluxe"
         ]
        },
        {
         "port": "F2",
         "voltage_v": 9,
         "pedals": [
+         "retrovibe",
          "phase_95",
-         "protein",
-         "ratsbane",
-         "tumnus_deluxe"
+         "red_muck"
         ]
        },
        {
         "port": "F3",
         "voltage_v": 9,
         "pedals": [
-         "retrovibe",
          "beano",
          "danelectro_3699",
          "sun_face"
@@ -332,7 +332,7 @@
       ]
      }
     ],
-    "length_mm": 4527.2,
+    "length_mm": 4693.2,
     "warnings": [],
     "error": null
    }
@@ -353,45 +353,77 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 45.0,
-    "fs_crowding": 216.4,
+    "fs_closest_mm": 54.3,
+    "fs_crowding": 147.4,
     "fs_known": true,
-    "signal_mm": 2300.1,
+    "signal_mm": 2697.0,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 3053.8,
+    "power_mm": 3177.0,
     "power_unrouted": 0,
-    "io_mm": 36.0,
-    "surrogate": 3731.1,
+    "io_mm": 10.7,
+    "surrogate": 4076.4,
     "terms": {
-     "clearance": 81.0,
+     "clearance": 46.6,
      "routing_area": 0.0,
-     "signal": 2479.2,
-     "power": 432.0,
-     "footswitch": 432.9,
-     "io": 36.0,
-     "flow": 22.1,
-     "access": 161.4,
-     "rotation": 40.0,
-     "move": 53.1,
-     "touch": -6.6
+     "signal": 2874.9,
+     "power": 430.0,
+     "footswitch": 294.9,
+     "io": 10.7,
+     "flow": 35.9,
+     "access": 140.9,
+     "rotation": 80.0,
+     "move": 162.7,
+     "touch": -0.2
     },
-    "score": 3552.0
+    "score": 3898.5
    },
    "moved": [
     {
-     "pedal": "ratsbane",
-     "dx_mm": 14.7,
-     "dy_mm": 0.4,
-     "distance_mm": 14.7,
+     "pedal": "beano",
+     "dx_mm": 0.2,
+     "dy_mm": 5.0,
+     "distance_mm": 5.0,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "mini_ego",
+     "dx_mm": -2.2,
+     "dy_mm": 8.2,
+     "distance_mm": 8.5,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "phase_95",
+     "dx_mm": -14.8,
+     "dy_mm": 3.9,
+     "distance_mm": 15.3,
      "rot_from": 270,
      "rot_to": 270
     },
     {
-     "pedal": "monk",
-     "dx_mm": 0.4,
-     "dy_mm": 0.6,
-     "distance_mm": 0.7,
+     "pedal": "ratsbane",
+     "dx_mm": 3.2,
+     "dy_mm": 5.3,
+     "distance_mm": 6.2,
+     "rot_from": 270,
+     "rot_to": 270
+    },
+    {
+     "pedal": "protein",
+     "dx_mm": -11.1,
+     "dy_mm": -21.0,
+     "distance_mm": 23.8,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "belle_epoch",
+     "dx_mm": 3.3,
+     "dy_mm": -3.1,
+     "distance_mm": 4.5,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -426,16 +458,16 @@
        },
        {
         "port": "SW_A",
-        "voltage_v": 18,
+        "voltage_v": 9,
         "pedals": [
-         "reticon"
+         "analog_chorus"
         ]
        },
        {
         "port": "SW_B",
-        "voltage_v": 9,
+        "voltage_v": 18,
         "pedals": [
-         "analog_chorus"
+         "reticon"
         ]
        }
       ]
@@ -449,24 +481,24 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "red_muck"
+         "ratsbane",
+         "protein",
+         "tumnus_deluxe"
         ]
        },
        {
         "port": "F2",
         "voltage_v": 9,
         "pedals": [
+         "retrovibe",
          "phase_95",
-         "protein",
-         "ratsbane",
-         "tumnus_deluxe"
+         "red_muck"
         ]
        },
        {
         "port": "F3",
         "voltage_v": 9,
         "pedals": [
-         "retrovibe",
          "beano",
          "danelectro_3699",
          "sun_face"
@@ -490,7 +522,7 @@
       ]
      }
     ],
-    "length_mm": 4517.6,
+    "length_mm": 4684.5,
     "warnings": [],
     "error": null
    }
@@ -511,37 +543,53 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 45.0,
-    "fs_crowding": 216.1,
+    "fs_closest_mm": 54.3,
+    "fs_crowding": 163.3,
     "fs_known": true,
-    "signal_mm": 2312.8,
+    "signal_mm": 2729.1,
     "signal_routed": 16,
     "signal_cables": 16,
-    "power_mm": 3085.3,
+    "power_mm": 3199.4,
     "power_unrouted": 0,
-    "io_mm": 36.0,
-    "surrogate": 3744.9,
+    "io_mm": 10.7,
+    "surrogate": 4132.6,
     "terms": {
-     "clearance": 81.0,
+     "clearance": 65.6,
      "routing_area": 0.0,
-     "signal": 2494.8,
-     "power": 458.7,
-     "footswitch": 432.1,
-     "io": 36.0,
-     "flow": 22.1,
-     "access": 161.5,
-     "rotation": 40.0,
-     "move": 25.1,
-     "touch": -6.6
+     "signal": 2950.6,
+     "power": 435.9,
+     "footswitch": 326.6,
+     "io": 10.7,
+     "flow": 37.4,
+     "access": 143.2,
+     "rotation": 80.0,
+     "move": 82.8,
+     "touch": -0.2
     },
-    "score": 3562.8
+    "score": 3911.0
    },
    "moved": [
     {
-     "pedal": "monk",
-     "dx_mm": 0.4,
-     "dy_mm": 0.6,
-     "distance_mm": 0.7,
+     "pedal": "mini_ego",
+     "dx_mm": -2.2,
+     "dy_mm": 5.9,
+     "distance_mm": 6.3,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "protein",
+     "dx_mm": -6.6,
+     "dy_mm": -27.2,
+     "distance_mm": 28.0,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "belle_epoch",
+     "dx_mm": 3.3,
+     "dy_mm": -3.1,
+     "distance_mm": 4.5,
      "rot_from": 0,
      "rot_to": 0
     }
@@ -576,16 +624,16 @@
        },
        {
         "port": "SW_A",
-        "voltage_v": 18,
+        "voltage_v": 9,
         "pedals": [
-         "reticon"
+         "analog_chorus"
         ]
        },
        {
         "port": "SW_B",
-        "voltage_v": 9,
+        "voltage_v": 18,
         "pedals": [
-         "analog_chorus"
+         "reticon"
         ]
        }
       ]
@@ -599,7 +647,8 @@
         "port": "F1",
         "voltage_v": 9,
         "pedals": [
-         "red_muck",
+         "ratsbane",
+         "protein",
          "tumnus_deluxe"
         ]
        },
@@ -607,16 +656,15 @@
         "port": "F2",
         "voltage_v": 9,
         "pedals": [
+         "retrovibe",
          "phase_95",
-         "protein",
-         "ratsbane"
+         "red_muck"
         ]
        },
        {
         "port": "F3",
         "voltage_v": 9,
         "pedals": [
-         "retrovibe",
          "beano",
          "danelectro_3699",
          "sun_face"
@@ -640,7 +688,7 @@
       ]
      }
     ],
-    "length_mm": 4823.8,
+    "length_mm": 4738.7,
     "warnings": [],
     "error": null
    }

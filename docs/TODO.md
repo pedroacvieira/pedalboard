@@ -54,17 +54,19 @@ ideas · 5 data · 6 done.
       placeholder, owner 2026-11-06); the Belle's output plug's cable run still crosses it (3.5 mm). Fix: a slimmer angled plug
       on S16, or measure the Ernie Ball plug and the expression cable's straight plug first.
 - EV-30 = a floor device (2026-11-13): `floor` in project.json drives the three Exp jacks; not on the board.
-- [ ] Re-run the proposals: stale since the power rewiring (`uv run pb propose guitar-gig`, then build). Before the
-      rewiring: proposal 1 = Retrovibe, Ratsbane, Tumnus, Monk (signal -50 mm, DC -63 mm).
-- [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset
-      5.0 mm on the right only (every other pedal's insets match its jack sides); find out why (`wampler-tumnus-deluxe.png`).
+- [ ] Proposals (rerun 2026-11-13, README "Layout proposals"): all three move the Belle Epoch 4.5 mm (clears the Exp collision:
+      0 collisions) and cut crowding 171 -> 146..163; #1 moves Beano, Phase 95, Protein, Belle (signal +25 mm, crowding 146),
+      #2 six pedals (signal -15 mm, crowding 147). Owner picks one (or not), moves the pedals in Pedal Playground, fetch.
+- Tumnus Deluxe body (checked 2026-11-13): the 5 mm right inset is correct: the image shows the side-mounted buffered / true
+  bypass switch sticking out on the right (60 px of 860 at ~63 % of the height); every jack is on the top edge.
 - [ ] Toppers: left automatic for now (owner, 2026-11-04); the owner picks them later (`footswitches.toppers`). Suggestions
       are bypass switches only; a tap switch in the middle of the board (the Monk's) only by hand.
 
-### Practice (layout 2026-11-04, owned gear only)
-- State: PolyTune 2 Mini -> Octahive -> Duke of Tone -> E-Lady -> Carbon Copy -> Ditto on the bass rig's Duo 2.1 and
-  ISO-5 Pro (shared between the two rigs: the "shared" warnings are expected); all 5 signal and 5 DC cables routed
-  (DC 1268 mm), 0 blocked plugs, 0 collisions.
+### Practice (layout 2026-11-09, owned gear only)
+- State (2026-11-13): PolyTune 2 Mini -> Octahive -> Tube Screamer Mini -> Duke of Tone -> E-Lady -> Carbon Copy -> Ditto on
+  the Duo 2.1 (the bass board is the XPND now) and the ISO-5 Pro (also on the bass board: the "shared" warning stays until a
+  second supply); Cry Baby GCB95F as a floor device; all 6 signal (480 mm) and 5 DC cables (1402 mm) routed. Two warnings
+  (2.6 mm each): the Octahive reaches into the PolyTune's output plug; Carbon Copy out collides with Ditto in.
 - [ ] Supply position: under the board between the Carbon Copy and the Octahive today. The owner said "behind the
       board": if that means off the back edge, move it in Pedal Playground and draw a back edge crossing in the board
       editor (type `edge`), else nothing to do.
