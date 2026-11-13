@@ -433,7 +433,7 @@
       "clocked_noise": true,
       "buffered_bypass": false,
       "buffer_switchable": true,
-      "bypass_info": {"confidence": "retailer", "source": "Andertons; Sweetwater / Reverb (search)", "url": "https://www.andertons.co.uk/catalinbread-belle-epoch-deluxe-tape-echo-pedal-black-silver/", "notes": "Switchable by an internal switch under the bottom plate: true bypass or 'Trails' (buffered: a discrete preamp always in the signal, repeats decay after switching off). Factory default disputed (one review says Trails, the original Belle Epoch manual says true bypass); the owner's setting is unverified (catalog = true bypass)."},
+      "bypass_info": {"confidence": "owner", "source": "Andertons; Sweetwater / Reverb (search)", "url": "https://www.andertons.co.uk/catalinbread-belle-epoch-deluxe-tape-echo-pedal-black-silver/", "notes": "Switchable by an internal switch under the bottom plate: true bypass or 'Trails' (buffered: a discrete preamp always in the signal, repeats decay after switching off). Factory default disputed (one review says Trails, the original Belle Epoch manual says true bypass); the owner keeps it on TRUE BYPASS (owner, 2026-11-13: it sits right before the DD-200, so its preamp is engaged only when the pedal is on)."},
       "tags": ["delay"],
       "playground_title": "Catalinbread Belle Epoch Deluxe (Black Edition)",
       "power_consumption": { "current_ma": 200, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": true, "polarity": "center_negative" },
@@ -855,7 +855,7 @@
       "clocked_noise": false,
       "buffered_bypass": true,
       "buffer_switchable": true,
-      "bypass_info": {"confidence": "maker", "source": "Wampler (tumnus-deluxe)", "url": "https://www.wamplerpedals.com/products/overdrive/tumnus-deluxe/", "notes": "Side-mounted buffered / true bypass switch; the buffer acts whether the pedal is on or off. Factory default not found; the owner's setting is unverified (catalog = buffered)."},
+      "bypass_info": {"confidence": "owner", "source": "Wampler (tumnus-deluxe)", "url": "https://www.wamplerpedals.com/products/overdrive/tumnus-deluxe/", "notes": "Side-mounted buffered / true bypass switch; the buffer acts whether the pedal is on or off. Factory default not found; the owner runs it BUFFERED (owner, 2026-11-13)."},
       "tags": ["gain", "overdrive", "master", "eq"],
       "playground_title": "Wampler Tumnus Deluxe",
       "power_consumption": { "current_ma": 70, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": false, "polarity": "center_negative" },
@@ -1046,6 +1046,7 @@
     {
       "id": "boss_ev30",
       "owned": true,
+      "floor_device": true,
       "instruments": ["guitar"],
       "brand": "BOSS",
       "name": "EV-30 Dual Expression Pedal",
@@ -1059,7 +1060,7 @@
       "height_mm": 92,
       "height_info": {"measure": "overall", "confidence": "maker", "source": "BOSS EV-30 specifications", "url": "https://www.boss.info/global/products/ev-30/specifications/", "notes": "'Maximum height 92 mm' (treadle fully up); body 80 W x 192 D x 58 H mm. A treadle, not a footswitch: the footswitch rule does not apply."},
       "dependencies": [],
-      "comments": "Expression controller (owner, 2026-11-06), NOT in any signal chain: passive, no power, no audio path (so buffer / power fields do not apply). Two TRS outputs, EXP 1 OUT and EXP 2 OUT, each with its own MIN knob; a POLARITY switch on EXP 2 only (BOSS specifications page: 80 x 192 x 58 mm, max height 92 mm, 780 g, 1 m stereo cable included). In guitar-gig it drives the Exp jacks of the Retrovibe, the Belle Epoch and the DD-200, one or two at a time (two outputs; the owner re-patches), so all three Exp jacks are in jacks.extra_used. Expression cables are not routed or measured yet (docs/TODO.md)."
+      "comments": "Expression controller (owner, 2026-11-06), a FLOOR DEVICE (floor_device; owner 2026-11-13: not on any board, used with any board and with several pedals per board), NOT in any signal chain: passive, no power, no audio path (so buffer / power fields do not apply). Two TRS outputs, EXP 1 OUT and EXP 2 OUT, each with its own MIN knob; a POLARITY switch on EXP 2 only (BOSS specifications page: 80 x 192 x 58 mm, max height 92 mm, 780 g, 1 m stereo cable included). In guitar-gig it drives the Exp jacks of the Retrovibe, the Belle Epoch and the DD-200, one or two at a time (two outputs; the owner re-patches), guitar-gig lists it in `floor` with the three Exp jacks it drives. Expression cables are not routed or measured yet (docs/TODO.md)."
     },
     {
       "id": "ibanez_ts_mini",
@@ -1137,6 +1138,26 @@
         "confidence": "page",
         "notes": "Thomann page: 180 EUR incl. VAT, 'Sofort lieferbar' (B-stock from 166 EUR also listed, ignored)."
       }
+    },
+    {
+      "id": "dunlop_cry_baby_gcb95f",
+      "owned": true,
+      "floor_device": true,
+      "instruments": ["guitar"],
+      "brand": "Dunlop",
+      "name": "Cry Baby GCB95F Classic",
+      "digital": false,
+      "clocked_noise": false,
+      "buffered_bypass": false,
+      "buffer_switchable": false,
+      "bypass_info": {"confidence": "maker", "source": "Dunlop product page: 'True bypass switching.'", "url": "https://www.jimdunlop.com/cry-baby-classic-wah/", "notes": "True bypass, no buffer. Firehouse Guitars, effektpedaler.dk and Gear4music say the same."},
+      "tags": ["filter", "wah"],
+      "playground_title": "Dunlop Cry Baby Standard Wah",
+      "power_consumption": {"current_ma": 2.5, "min_voltage_v": 9, "max_voltage_v": 9, "needs_isolated_output": false, "polarity": "center_negative"},
+      "height_mm": 63.5,
+      "height_info": {"measure": "overall", "confidence": "retailer", "source": "Firehouse Guitars (GCB95F listing): '2.5\" H x 4\" W x 10\" D', 2 lbs", "url": "https://www.firehouseguitars.com/product/22943198/dunlop-gcb95f-cry-baby-classic-wah-effects-pedal/", "notes": "2.5 in = 63.5 mm. Same enclosure as the GCB95: a retailer listing of the Dunlop GCB95 specs gives 2.5 in (64 mm) high, eBay 63.5 mm, Stompbox Garden 65 mm. Conflicting: effektpedaler.dk (GCB95F) 75 mm high x 100 wide x 255 deep, 1595 g, and Musicstore (GCB95) 75 mm, probably the highest point of the treadle or the feet. No source says whether the figure is heel or toe down (the treadle rocks, so the height changes with the position); unverified, the real toe-down / heel-down heights are not published."},
+      "dependencies": [],
+      "comments": "Dunlop GCB95F Cry Baby Classic (Fasel inductor, re-tuned Standard circuit, more subtle sweep; Dunlop product page). The owner's; a floor device that sits on the floor, on no board. Instruments: guitar only, the Dunlop page does not say it suits bass (the bass version is the 105Q). Passive-style analog wah, no BBD/DSP: digital false, clocked_noise false. Power: Dunlop page says 9 V battery (bottom of the pedal), ECB003 adapter, or DC Brick / Iso-Brick / Mini Iso-Brick; 9 V only. Current 2.5 mA per Firehouse Guitars and Gear4music via search summary of the Dunlop manual (not read directly: the manual PDF at jimdunlop.com/content/manuals/GCB95F.pdf is an image-only ad); effektpedaler.dk says 2 mA, used 2.5 mA as the worst case. Center-negative per effektpedaler.dk (retailer; the standard GCB95 is listed center negative too). Pedal Playground has no GCB95F entry: 'Cry Baby Standard Wah' (image dunlop-gcb95, 4 x 10 in) is the same enclosure and used as the stand-in. Dunlop gives no dimensions."
     }
   ]
 }

@@ -79,7 +79,14 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 **Known total:** 771 EUR
 
+## Floor devices
+
+Pedals that sit on the floor, not on a board, and go with any board (catalog `floor_device`; a project lists the ones it uses in `floor`). Never counted as shared gear.
+
+- **BOSS EV-30 Dual Expression Pedal**: guitar-gig
+- **Dunlop Cry Baby GCB95F Classic**: guitar-gig, guitar-practice
+
 ## Catalog pedals not in any project
 
-JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork, BOSS EV-30 Dual Expression Pedal
+JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
 
