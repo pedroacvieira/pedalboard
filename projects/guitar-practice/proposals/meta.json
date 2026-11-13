@@ -16,7 +16,7 @@
   "carbon_copy",
   "ditto_looper"
  ],
- "runtime_s": 9.7,
+ "runtime_s": 13.2,
  "finalists": 6,
  "owner": {
   "errors": 0,
@@ -32,8 +32,9 @@
   "squeezed": 0,
   "overflow": 0,
   "fs_close": 0,
-  "fs_closest_mm": 58.5,
-  "fs_crowding": 57.5,
+  "fs_closest_mm": 58.9,
+  "fs_crowding": 50.6,
+  "fs_reach": 0.0,
   "fs_known": true,
   "signal_mm": 479.6,
   "signal_routed": 6,
@@ -41,13 +42,14 @@
   "power_mm": 1185.1,
   "power_unrouted": 0,
   "io_mm": 0.0,
-  "surrogate": 1381.5,
+  "surrogate": 1367.7,
   "terms": {
    "clearance": 588.2,
    "routing_area": 0.0,
    "signal": 486.6,
    "power": 128.1,
-   "footswitch": 115.1,
+   "footswitch": 101.2,
+   "reach": 0.0,
    "io": 0.0,
    "flow": 0.0,
    "access": 63.7,
@@ -67,7 +69,7 @@
    "ditto_looper.order.last": true
   },
   "pref_required_unmet": 0,
-  "score": 1374.6
+  "score": 1360.8
  },
  "owner_power": {
   "supplies": [
@@ -136,167 +138,30 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 67.4,
-    "fs_crowding": 39.6,
+    "fs_closest_mm": 67.9,
+    "fs_crowding": 29.2,
+    "fs_reach": 0.0,
     "fs_known": true,
-    "signal_mm": 341.6,
+    "signal_mm": 348.6,
     "signal_routed": 6,
     "signal_cables": 6,
-    "power_mm": 1238.3,
+    "power_mm": 1209.1,
     "power_unrouted": 0,
     "io_mm": 0.0,
-    "surrogate": 795.0,
+    "surrogate": 781.0,
     "terms": {
      "clearance": 20.4,
      "routing_area": 0.0,
-     "signal": 371.8,
-     "power": 151.4,
-     "footswitch": 79.3,
-     "io": 0.0,
-     "flow": 0.0,
-     "access": 63.9,
-     "position": 0.0,
-     "rotation": 0.0,
-     "move": 108.1,
-     "touch": -0.0
-    },
-    "preferences": {
-     "polytune_2_mini.order.first": true,
-     "octahive.order.first": true,
-     "ibanez_ts_mini.order.after_octahive": true,
-     "duke_of_tone.order.after_ibanez_ts_mini": true,
-     "duke_of_tone.order.after_octahive": true,
-     "e_lady.order.after_duke_of_tone": true,
-     "carbon_copy.order.after_e_lady": true,
-     "ditto_looper.order.last": true
-    },
-    "pref_required_unmet": 0,
-    "score": 764.7
-   },
-   "moved": [
-    {
-     "pedal": "polytune_2_mini",
-     "dx_mm": 4.1,
-     "dy_mm": 0.2,
-     "distance_mm": 4.1,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "ibanez_ts_mini",
-     "dx_mm": 1.1,
-     "dy_mm": -15.9,
-     "distance_mm": 15.9,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "e_lady",
-     "dx_mm": 1.7,
-     "dy_mm": -14.4,
-     "distance_mm": 14.5,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "ditto_looper",
-     "dx_mm": -4.4,
-     "dy_mm": -3.7,
-     "distance_mm": 5.8,
-     "rot_from": 0,
-     "rot_to": 0
-    }
-   ],
-   "power": {
-    "supplies": [
-     {
-      "id": "psu1",
-      "supply": "harley_benton_iso5_pro",
-      "label": "Harley Benton PowerPlant ISO-5 Pro (the bass board's)",
-      "outputs": [
-       {
-        "port": "OUT1",
-        "voltage_v": 9,
-        "pedals": [
-         "ditto_looper"
-        ]
-       },
-       {
-        "port": "OUT2",
-        "voltage_v": 9,
-        "pedals": [
-         "carbon_copy",
-         "e_lady"
-        ]
-       },
-       {
-        "port": "OUT3",
-        "voltage_v": 9,
-        "pedals": [
-         "duke_of_tone",
-         "ibanez_ts_mini"
-        ]
-       },
-       {
-        "port": "OUT4",
-        "voltage_v": 9,
-        "pedals": [
-         "octahive"
-        ]
-       },
-       {
-        "port": "OUT5",
-        "voltage_v": 9,
-        "pedals": [
-         "polytune_2_mini"
-        ]
-       }
-      ]
-     }
-    ],
-    "length_mm": 1703.0,
-    "warnings": [],
-    "error": null
-   }
-  },
-  {
-   "n": 2,
-   "file": "2.json",
-   "svg": "2.svg",
-   "metrics": {
-    "errors": 0,
-    "warnings": 0,
-    "blocked": 0,
-    "blocked_mm": 0,
-    "blocked_jacks": [],
-    "collisions": 0,
-    "outside": 0,
-    "unroutable": 0,
-    "squeezed": 0,
-    "overflow": 0,
-    "fs_close": 0,
-    "fs_closest_mm": 67.4,
-    "fs_crowding": 33.5,
-    "fs_known": true,
-    "signal_mm": 354.0,
-    "signal_routed": 6,
-    "signal_cables": 6,
-    "power_mm": 1219.0,
-    "power_unrouted": 0,
-    "io_mm": 0.0,
-    "surrogate": 796.9,
-    "terms": {
-     "clearance": 20.4,
-     "routing_area": 0.0,
-     "signal": 384.2,
-     "power": 152.1,
-     "footswitch": 66.9,
+     "signal": 379.0,
+     "power": 150.0,
+     "footswitch": 58.5,
+     "reach": 0.0,
      "io": 0.0,
      "flow": 0.0,
      "access": 62.8,
      "position": 0.0,
      "rotation": 0.0,
-     "move": 110.4,
+     "move": 110.3,
      "touch": -0.0
     },
     "preferences": {
@@ -310,7 +175,7 @@
      "ditto_looper.order.last": true
     },
     "pref_required_unmet": 0,
-    "score": 766.7
+    "score": 750.6
    },
    "moved": [
     {
@@ -326,153 +191,6 @@
      "dx_mm": 1.1,
      "dy_mm": -15.9,
      "distance_mm": 15.9,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "e_lady",
-     "dx_mm": 5.6,
-     "dy_mm": -25.7,
-     "distance_mm": 26.3,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "ditto_looper",
-     "dx_mm": -4.4,
-     "dy_mm": -3.7,
-     "distance_mm": 5.8,
-     "rot_from": 0,
-     "rot_to": 0
-    }
-   ],
-   "power": {
-    "supplies": [
-     {
-      "id": "psu1",
-      "supply": "harley_benton_iso5_pro",
-      "label": "Harley Benton PowerPlant ISO-5 Pro (the bass board's)",
-      "outputs": [
-       {
-        "port": "OUT1",
-        "voltage_v": 9,
-        "pedals": [
-         "carbon_copy"
-        ]
-       },
-       {
-        "port": "OUT2",
-        "voltage_v": 9,
-        "pedals": [
-         "e_lady"
-        ]
-       },
-       {
-        "port": "OUT3",
-        "voltage_v": 9,
-        "pedals": [
-         "ditto_looper"
-        ]
-       },
-       {
-        "port": "OUT4",
-        "voltage_v": 9,
-        "pedals": [
-         "polytune_2_mini"
-        ]
-       },
-       {
-        "port": "OUT5",
-        "voltage_v": 9,
-        "pedals": [
-         "octahive",
-         "duke_of_tone",
-         "ibanez_ts_mini"
-        ]
-       }
-      ]
-     }
-    ],
-    "length_mm": 1741.7,
-    "warnings": [],
-    "error": null
-   }
-  },
-  {
-   "n": 3,
-   "file": "3.json",
-   "svg": "3.svg",
-   "metrics": {
-    "errors": 0,
-    "warnings": 0,
-    "blocked": 0,
-    "blocked_mm": 0,
-    "blocked_jacks": [],
-    "collisions": 0,
-    "outside": 0,
-    "unroutable": 0,
-    "squeezed": 0,
-    "overflow": 0,
-    "fs_close": 0,
-    "fs_closest_mm": 70.5,
-    "fs_crowding": 32.4,
-    "fs_known": true,
-    "signal_mm": 350.9,
-    "signal_routed": 6,
-    "signal_cables": 6,
-    "power_mm": 1238.4,
-    "power_unrouted": 0,
-    "io_mm": 0.0,
-    "surrogate": 772.2,
-    "terms": {
-     "clearance": 6.3,
-     "routing_area": 0.0,
-     "signal": 352.3,
-     "power": 159.7,
-     "footswitch": 64.9,
-     "io": 0.0,
-     "flow": 0.0,
-     "access": 50.1,
-     "position": 0.0,
-     "rotation": 0.0,
-     "move": 140.7,
-     "touch": -1.8
-    },
-    "preferences": {
-     "polytune_2_mini.order.first": true,
-     "octahive.order.first": true,
-     "ibanez_ts_mini.order.after_octahive": true,
-     "duke_of_tone.order.after_ibanez_ts_mini": true,
-     "duke_of_tone.order.after_octahive": true,
-     "e_lady.order.after_duke_of_tone": true,
-     "carbon_copy.order.after_e_lady": true,
-     "ditto_looper.order.last": true
-    },
-    "pref_required_unmet": 0,
-    "score": 770.8
-   },
-   "moved": [
-    {
-     "pedal": "polytune_2_mini",
-     "dx_mm": 4.1,
-     "dy_mm": -24.0,
-     "distance_mm": 24.4,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "octahive",
-     "dx_mm": 7.4,
-     "dy_mm": 2.7,
-     "distance_mm": 7.9,
-     "rot_from": 0,
-     "rot_to": 0
-    },
-    {
-     "pedal": "ibanez_ts_mini",
-     "dx_mm": 6.7,
-     "dy_mm": -13.1,
-     "distance_mm": 14.7,
      "rot_from": 0,
      "rot_to": 0
     },
@@ -540,7 +258,305 @@
       ]
      }
     ],
-    "length_mm": 1688.8,
+    "length_mm": 1680.4,
+    "warnings": [],
+    "error": null
+   }
+  },
+  {
+   "n": 2,
+   "file": "2.json",
+   "svg": "2.svg",
+   "metrics": {
+    "errors": 0,
+    "warnings": 0,
+    "blocked": 0,
+    "blocked_mm": 0,
+    "blocked_jacks": [],
+    "collisions": 0,
+    "outside": 0,
+    "unroutable": 0,
+    "squeezed": 0,
+    "overflow": 0,
+    "fs_close": 0,
+    "fs_closest_mm": 67.8,
+    "fs_crowding": 34.1,
+    "fs_reach": 0.0,
+    "fs_known": true,
+    "signal_mm": 337.1,
+    "signal_routed": 6,
+    "signal_cables": 6,
+    "power_mm": 1236.9,
+    "power_unrouted": 0,
+    "io_mm": 0.9,
+    "surrogate": 763.3,
+    "terms": {
+     "clearance": 6.3,
+     "routing_area": 0.0,
+     "signal": 342.5,
+     "power": 158.5,
+     "footswitch": 68.2,
+     "reach": 0.0,
+     "io": 0.9,
+     "flow": 0.0,
+     "access": 51.4,
+     "position": 0.0,
+     "rotation": 0.0,
+     "move": 137.1,
+     "touch": -1.8
+    },
+    "preferences": {
+     "polytune_2_mini.order.first": true,
+     "octahive.order.first": true,
+     "ibanez_ts_mini.order.after_octahive": true,
+     "duke_of_tone.order.after_ibanez_ts_mini": true,
+     "duke_of_tone.order.after_octahive": true,
+     "e_lady.order.after_duke_of_tone": true,
+     "carbon_copy.order.after_e_lady": true,
+     "ditto_looper.order.last": true
+    },
+    "pref_required_unmet": 0,
+    "score": 757.9
+   },
+   "moved": [
+    {
+     "pedal": "polytune_2_mini",
+     "dx_mm": -0.9,
+     "dy_mm": -23.5,
+     "distance_mm": 23.5,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "octahive",
+     "dx_mm": 2.3,
+     "dy_mm": 3.2,
+     "distance_mm": 4.0,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "ibanez_ts_mini",
+     "dx_mm": 3.3,
+     "dy_mm": -12.5,
+     "distance_mm": 12.9,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "e_lady",
+     "dx_mm": 1.7,
+     "dy_mm": -14.4,
+     "distance_mm": 14.5,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "ditto_looper",
+     "dx_mm": -4.4,
+     "dy_mm": -3.7,
+     "distance_mm": 5.8,
+     "rot_from": 0,
+     "rot_to": 0
+    }
+   ],
+   "power": {
+    "supplies": [
+     {
+      "id": "psu1",
+      "supply": "harley_benton_iso5_pro",
+      "label": "Harley Benton PowerPlant ISO-5 Pro (the bass board's)",
+      "outputs": [
+       {
+        "port": "OUT1",
+        "voltage_v": 9,
+        "pedals": [
+         "ditto_looper"
+        ]
+       },
+       {
+        "port": "OUT2",
+        "voltage_v": 9,
+        "pedals": [
+         "carbon_copy",
+         "e_lady"
+        ]
+       },
+       {
+        "port": "OUT3",
+        "voltage_v": 9,
+        "pedals": [
+         "duke_of_tone",
+         "ibanez_ts_mini"
+        ]
+       },
+       {
+        "port": "OUT4",
+        "voltage_v": 9,
+        "pedals": [
+         "octahive"
+        ]
+       },
+       {
+        "port": "OUT5",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_2_mini"
+        ]
+       }
+      ]
+     }
+    ],
+    "length_mm": 1676.8,
+    "warnings": [],
+    "error": null
+   }
+  },
+  {
+   "n": 3,
+   "file": "3.json",
+   "svg": "3.svg",
+   "metrics": {
+    "errors": 0,
+    "warnings": 0,
+    "blocked": 0,
+    "blocked_mm": 0,
+    "blocked_jacks": [],
+    "collisions": 0,
+    "outside": 0,
+    "unroutable": 0,
+    "squeezed": 0,
+    "overflow": 0,
+    "fs_close": 0,
+    "fs_closest_mm": 62.2,
+    "fs_crowding": 41.5,
+    "fs_reach": 0.0,
+    "fs_known": true,
+    "signal_mm": 354.7,
+    "signal_routed": 6,
+    "signal_cables": 6,
+    "power_mm": 1237.7,
+    "power_unrouted": 0,
+    "io_mm": 0.0,
+    "surrogate": 781.5,
+    "terms": {
+     "clearance": 0.0,
+     "routing_area": 0.0,
+     "signal": 359.3,
+     "power": 153.5,
+     "footswitch": 83.0,
+     "reach": 0.0,
+     "io": 0.0,
+     "flow": 0.0,
+     "access": 52.4,
+     "position": 0.0,
+     "rotation": 0.0,
+     "move": 135.0,
+     "touch": -1.8
+    },
+    "preferences": {
+     "polytune_2_mini.order.first": true,
+     "octahive.order.first": true,
+     "ibanez_ts_mini.order.after_octahive": true,
+     "duke_of_tone.order.after_ibanez_ts_mini": true,
+     "duke_of_tone.order.after_octahive": true,
+     "e_lady.order.after_duke_of_tone": true,
+     "carbon_copy.order.after_e_lady": true,
+     "ditto_looper.order.last": true
+    },
+    "pref_required_unmet": 0,
+    "score": 776.9
+   },
+   "moved": [
+    {
+     "pedal": "polytune_2_mini",
+     "dx_mm": 4.1,
+     "dy_mm": -24.0,
+     "distance_mm": 24.4,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "octahive",
+     "dx_mm": 7.4,
+     "dy_mm": 3.2,
+     "distance_mm": 8.1,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "ibanez_ts_mini",
+     "dx_mm": 3.3,
+     "dy_mm": -9.1,
+     "distance_mm": 9.7,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "e_lady",
+     "dx_mm": 1.1,
+     "dy_mm": 1.9,
+     "distance_mm": 2.2,
+     "rot_from": 0,
+     "rot_to": 0
+    },
+    {
+     "pedal": "ditto_looper",
+     "dx_mm": -4.4,
+     "dy_mm": -3.7,
+     "distance_mm": 5.8,
+     "rot_from": 0,
+     "rot_to": 0
+    }
+   ],
+   "power": {
+    "supplies": [
+     {
+      "id": "psu1",
+      "supply": "harley_benton_iso5_pro",
+      "label": "Harley Benton PowerPlant ISO-5 Pro (the bass board's)",
+      "outputs": [
+       {
+        "port": "OUT1",
+        "voltage_v": 9,
+        "pedals": [
+         "ditto_looper"
+        ]
+       },
+       {
+        "port": "OUT2",
+        "voltage_v": 9,
+        "pedals": [
+         "carbon_copy",
+         "e_lady"
+        ]
+       },
+       {
+        "port": "OUT3",
+        "voltage_v": 9,
+        "pedals": [
+         "duke_of_tone",
+         "ibanez_ts_mini"
+        ]
+       },
+       {
+        "port": "OUT4",
+        "voltage_v": 9,
+        "pedals": [
+         "octahive"
+        ]
+       },
+       {
+        "port": "OUT5",
+        "voltage_v": 9,
+        "pedals": [
+         "polytune_2_mini"
+        ]
+       }
+      ]
+     }
+    ],
+    "length_mm": 1656.5,
     "warnings": [],
     "error": null
    }

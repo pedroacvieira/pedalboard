@@ -219,7 +219,7 @@ Chosen after the layout (never during the search), on bypass switches only (a ta
 
 ## Layout proposals
 
-Made by `uv run scripts/propose_layout.py bass --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 3.6 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+Made by `uv run scripts/propose_layout.py bass --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 4.8 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
 
 | | Owner's layout | Proposal 1 |
 |---|--:|--:|
@@ -227,15 +227,15 @@ Made by `uv run scripts/propose_layout.py bass --max-change fix --seed 1` (max_c
 | Blocked plugs | 0 (0.0 mm) | 0 (0.0 mm) |
 | Plug collisions | 0 | 0 |
 | Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 |
-| Footswitch crowding (lower is better) | 4 | 4 |
-| Closest footswitch pair (mm) | 83.5 | 83.5 |
-| Footswitch shadow (sum, mm) | ? | ? |
+| Footswitch crowding (lower is better) | 3 | 3 |
+| Closest footswitch pair (mm) | 86.6 | 86.6 |
+| Footswitch shadow (sum, mm) | 0.0 | 0.0 |
 | Signal cables, routed minimum (mm) | 405 | 394 |
 | Power cables, routed minimum (mm) | 1132 | 1117 |
 | First input / last output to the board edges (mm) | 14 | 24 |
 | Required preference wishes not met | 0 | 0 |
 | Build errors / warnings | 0 / 0 | 0 / 0 |
-| Score (lower is better) | 616 | 616 |
+| Score (lower is better) | 613 | 613 |
 
 All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.
 

@@ -14,7 +14,7 @@
   "ehx_bass_big_muff_2",
   "tech21_vt_bass_di"
  ],
- "runtime_s": 3.6,
+ "runtime_s": 4.8,
  "finalists": 1,
  "owner": {
   "errors": 0,
@@ -28,8 +28,9 @@
   "squeezed": 0,
   "overflow": 0,
   "fs_close": 0,
-  "fs_closest_mm": 83.5,
-  "fs_crowding": 4.1,
+  "fs_closest_mm": 86.6,
+  "fs_crowding": 2.6,
+  "fs_reach": 0.0,
   "fs_known": true,
   "signal_mm": 404.7,
   "signal_routed": 4,
@@ -37,13 +38,14 @@
   "power_mm": 1132.3,
   "power_unrouted": 0,
   "io_mm": 14.0,
-  "surrogate": 627.1,
+  "surrogate": 624.1,
   "terms": {
    "clearance": 0.0,
    "routing_area": 0.0,
    "signal": 415.6,
    "power": 176.6,
-   "footswitch": 8.2,
+   "footswitch": 5.2,
+   "reach": 0.0,
    "io": 14.0,
    "flow": 0.0,
    "access": 12.7,
@@ -60,7 +62,7 @@
    "tech21_vt_bass_di.order.last": true
   },
   "pref_required_unmet": 0,
-  "score": 616.2
+  "score": 613.1
  },
  "owner_power": {
   "supplies": [
@@ -127,8 +129,9 @@
     "squeezed": 0,
     "overflow": 0,
     "fs_close": 0,
-    "fs_closest_mm": 83.5,
-    "fs_crowding": 4.1,
+    "fs_closest_mm": 86.6,
+    "fs_crowding": 2.6,
+    "fs_reach": 0.0,
     "fs_known": true,
     "signal_mm": 393.8,
     "signal_routed": 4,
@@ -136,13 +139,14 @@
     "power_mm": 1116.9,
     "power_unrouted": 0,
     "io_mm": 23.9,
-    "surrogate": 620.7,
+    "surrogate": 617.7,
     "terms": {
      "clearance": 0.0,
      "routing_area": 0.0,
      "signal": 398.6,
      "power": 150.1,
-     "footswitch": 8.2,
+     "footswitch": 5.2,
+     "reach": 0.0,
      "io": 23.9,
      "flow": 0.0,
      "access": 11.0,
@@ -159,7 +163,7 @@
      "tech21_vt_bass_di.order.last": true
     },
     "pref_required_unmet": 0,
-    "score": 615.9
+    "score": 612.9
    },
    "moved": [
     {
