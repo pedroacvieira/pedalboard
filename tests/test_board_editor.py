@@ -371,3 +371,156 @@ def test_the_app_bounds_mode_edits_only_the_selected_line(tmp_path):
         app.update()
     finally:
         app.destroy()
+
+
+# --- composed boards: which edits belong to which piece (data layer) ---------------------------------------------------
+IMG1, IMG2 = "daddario-xpnd-1-extension.png", "daddario-xpnd-1.png"
+
+
+def two_piece_design(tmp_path, order=(IMG1, IMG2)):
+    """A playground_design.json (v2 document) with two pedalboard items of the given images, abutting, 100 x 50 mm each."""
+    items = [{"id": f"b{i}", "kind": "pedalboard", "image": img, "width": 100 / IN_MM, "height": 50 / IN_MM, "x": i * 100 / IN_MM, "y": 0, "rotation": 0}
+             for i, img in enumerate(order)]
+    (tmp_path / "playground_design.json").write_text(json.dumps({"schemaVersion": 3, "items": items}))
+
+
+def test_piece_edits_pieces_entry_wins_also_for_the_first_image():
+    top, top_b = [box()], {"left": 0.1, "back": 0.0, "front": 1.0, "right": 1.0}
+    mine = {"A.png": {"boxes": [box("filled")], "bounds": {"left": 0.0, "right": 0.9, "back": 0.0, "front": 1.0}}}
+    got = boards.piece_edits(top, top_b, mine, ["A.png", "B.png"])
+    assert got["A.png"] == {"boxes": [box("filled")], "bounds": mine["A.png"]["bounds"]}      # not the top level
+    assert got["B.png"] == {"boxes": [], "bounds": EDGE}
+
+
+def test_piece_edits_top_level_belongs_to_the_first_image_only():
+    got = boards.piece_edits([box()], {"left": 0.1, "back": 0.0, "front": 1.0, "right": 1.0}, {}, ["A.png", "B.png"])
+    assert got["A.png"]["boxes"] == [box()] and got["A.png"]["bounds"]["left"] == 0.1
+    assert got["B.png"] == {"boxes": [], "bounds": EDGE}
+    assert boards.piece_edits(None, None, None, ["A.png"]) == {"A.png": {"boxes": [], "bounds": EDGE}}
+
+
+def test_piece_edits_a_repeated_image_is_decided_by_its_first_occurrence():
+    got = boards.piece_edits([box()], None, {}, ["A.png", "A.png"])
+    assert list(got) == ["A.png"] and got["A.png"]["boxes"] == [box()]
+    got = boards.piece_edits([box()], None, {}, ["B.png", "A.png", "B.png"])
+    assert got["A.png"]["boxes"] == [] and got["B.png"]["boxes"] == [box()]
+
+
+def test_board_pieces_for_lists_every_pedalboard_item_in_layout_order(tmp_path):
+    two_piece_design(tmp_path)
+    pieces = be.board_pieces_for(tmp_path, {}, {})
+    assert [p["image"] for p in pieces] == [IMG1, IMG2]
+    assert pieces[0]["w_mm"] == pytest.approx(100) and pieces[0]["h_mm"] == pytest.approx(50) and pieces[0]["item"]["id"] == "b0"
+    assert be.board_image_for(tmp_path, {}, {}) == (IMG1, pytest.approx(100), pytest.approx(50))
+    two_piece_design(tmp_path, (IMG2, IMG1))   # the order is the layout's
+    assert be.board_image_for(tmp_path, {}, {})[0] == IMG2
+
+
+def test_board_pieces_for_without_a_layout_is_one_piece_from_the_database(tmp_path):
+    db = {"Rock Duo": {"Image": "rock-duo.png", "Width": 2.0, "Height": 1.0}}
+    (p,) = be.board_pieces_for(tmp_path, {"board": {"brand": "Rock", "model": "Duo"}}, db)
+    assert p["image"] == "rock-duo.png" and p["item"] is None and p["w_mm"] == pytest.approx(2 * IN_MM)
+
+
+def test_resolve_piece_by_image_with_or_without_png_or_number():
+    pieces = [{"image": IMG1}, {"image": IMG2}]
+    assert be.resolve_piece(pieces, "daddario-xpnd-1") == 1
+    assert be.resolve_piece(pieces, IMG2) == 1
+    assert be.resolve_piece(pieces, "2") == 1 and be.resolve_piece(pieces, "1") == 0
+    assert be.resolve_piece(pieces, "daddario-xpnd-1-extension") == 0
+    with pytest.raises(ValueError, match=f"1 {IMG1}; 2 {IMG2}"):
+        be.resolve_piece(pieces, "nope")
+    with pytest.raises(ValueError):
+        be.resolve_piece(pieces, "3")
+
+
+def test_piece_label_marks_a_repeated_image():
+    pieces = [{"image": "a.png", "w_mm": 273.1, "h_mm": 139.7}, {"image": "a.png", "w_mm": 273.1, "h_mm": 139.7}]
+    assert be.piece_label(pieces, 0) == "1  a.png  273 x 140 mm"
+    assert be.piece_label(pieces, 1).endswith("(same image as piece 1)")
+
+
+def test_split_for_save_one_piece_is_the_top_level_and_moves_a_hand_written_entry():
+    e = {"A.png": {"boxes": [box()], "bounds": {"back": 0.0, "front": 1.0, "left": 0.1, "right": 1.0}}}
+    boxes, bounds, pieces, notes = be.split_for_save(e, ["A.png"], {}, [], None)
+    assert boxes == [box()] and bounds["left"] == 0.1 and pieces is None and notes == []
+    # a hand-written pieces entry for that very image moves to the top level; the entry of another image stays
+    raw = {"A.png": {"boxes": [box()]}, "old.png": {"boxes": [box("filled")]}}
+    boxes, bounds, pieces, notes = be.split_for_save(e, ["A.png"], raw, [], None)
+    assert pieces == {"old.png": raw["old.png"]} and len(notes) == 1 and "pieces.A.png" in notes[0]
+
+
+def test_split_for_save_two_pieces_go_under_pieces_and_the_top_level_is_empty():
+    full = {"back": 0.0, "front": 1.0, "left": 0.0, "right": 0.98}
+    e = {"A.png": {"boxes": [], "bounds": full}, "B.png": {"boxes": [box()], "bounds": dict(EDGE)}, "C.png": {"boxes": [], "bounds": dict(EDGE)}}
+    boxes, bounds, pieces, notes = be.split_for_save(e, ["A.png", "B.png", "C.png"], {}, [], None)
+    assert boxes == [] and bounds is None and notes == []
+    assert set(pieces) == {"A.png", "B.png"}   # C has no edits: no entry
+    # an entry of an image that is no piece is kept as it is
+    raw = {"gone.png": {"boxes": [box("filled")]}}
+    assert be.split_for_save(e, ["A.png", "B.png"], raw, [], None)[2]["gone.png"] == raw["gone.png"]
+
+
+def test_split_for_save_migrates_or_drops_the_top_level_of_a_composed_board():
+    e = {"A.png": {"boxes": [box()], "bounds": dict(EDGE)}, "B.png": {"boxes": [], "bounds": dict(EDGE)}}
+    # no pieces entry for the first image: the loaded edits (= the top level) are saved under it, the top level is cleared
+    boxes, bounds, pieces, notes = be.split_for_save(e, ["A.png", "B.png"], {}, [box()], None)
+    assert boxes == [] and bounds is None and list(pieces) == ["A.png"]
+    assert notes == ["moved the top-level edits into pieces.A.png"]
+    # an entry for the first image exists: the top level was dead data
+    boxes, bounds, pieces, notes = be.split_for_save(e, ["A.png", "B.png"], {"A.png": {"boxes": []}}, [box("filled")], None)
+    assert boxes == [] and notes == ["dropped the top-level edits: they were shadowed by pieces.A.png"]
+    # nothing at the top level: no note
+    assert be.split_for_save(e, ["A.png", "B.png"], {}, [], None)[3] == []
+
+
+def test_dumps_edits_with_pieces_one_box_per_line_sorted_and_no_edge_bounds():
+    pieces = {"b.png": {"boxes": [box("filled", 0.1, 0.2, 0.3, 0.4)], "bounds": dict(EDGE)},
+              "a.png": {"boxes": [be.make_edge("back", 0.1, 0.9), box()], "bounds": {"back": 0.0, "front": 1.0, "left": 0.0, "right": 0.98}}}
+    text = be.dumps_edits([], None, pieces)
+    lines = text.splitlines()
+    assert text.index('"a.png"') < text.index('"b.png"')
+    assert '      "bounds": {"right": 0.98},' in lines
+    assert sum(1 for line in lines if line.strip().startswith('{"type"')) == 3          # every box on its own line
+    data = json.loads(text)
+    assert "bounds" not in data["pieces"]["b.png"] and data["boxes"] == [] and "bounds" not in data
+    assert data["pieces"]["a.png"]["boxes"][0] == {"type": "edge", "side": "back", "from": 0.1, "to": 0.9}
+    assert be.dumps_edits([], None, {}) == be.dumps_edits([]) == be.dumps_edits([], None, None)
+
+
+def test_saved_pieces_are_read_back_by_the_build_rule(tmp_path):
+    e = {IMG1: {"boxes": [be.make_edge("back", 0.1, 0.9)], "bounds": {"back": 0.0, "front": 1.0, "left": 0.0, "right": 0.97}},
+         IMG2: {"boxes": [box()], "bounds": dict(EDGE)}}
+    boxes, bounds, pieces, _ = be.split_for_save(e, [IMG1, IMG2], {}, [], None)
+    be.save_edits(tmp_path, boxes, bounds, pieces)
+    for order in ([IMG1, IMG2], [IMG2, IMG1]):   # independent of the layout order
+        w = []
+        got = boards.load_piece_edits(tmp_path, order, w)
+        assert w == [] and got == e
+    assert boards.load_edits(tmp_path) == [] and boards.load_bounds(tmp_path) == EDGE
+
+
+def test_a_one_line_pieces_value_is_rewritten_in_the_new_style_with_the_same_content(tmp_path):
+    pieces = {"q.png": {"boxes": [box()], "bounds": {"right": 0.8}}, "p.png": {"boxes": []}}
+    (tmp_path / "board.json").write_text(json.dumps({"boxes": [], "pieces": pieces}))
+    assert boards.load_pieces(tmp_path)["q.png"]["bounds"]["right"] == 0.8
+    be.save_edits(tmp_path, [])
+    text = (tmp_path / "board.json").read_text()
+    assert len(text.splitlines()) > 10 and text.index('"p.png"') < text.index('"q.png"')
+    saved = json.loads(text)["pieces"]
+    assert saved["q.png"] == {"boxes": [box()], "bounds": {"right": 0.8}} and saved["p.png"] == {"boxes": []}
+    assert be.dumps_edits([], None, saved) == text   # and is stable
+
+
+def test_data_crossing_errors_take_a_pieces_entry_for_the_board_image(tmp_path, monkeypatch):
+    import common
+    import jacks
+    monkeypatch.setattr(common, "database", lambda name: {"Rock Duo": {"Image": "rock.png"}})
+    seen = {}
+    monkeypatch.setattr(jacks, "crossing_errors", lambda project, supplies, holes, edge, name: seen.update(holes=holes, edge=edge) or [])
+    ctx = {"project": {"board": {"brand": "Rock", "model": "Duo"}}, "dir": tmp_path}
+    data = {"rock.png": {"holes": []}}
+    jacks.data_crossing_errors(ctx, data, [], {"rock.png": {"boxes": [be.make_edge("back", 0.1, 0.5)], "bounds": dict(EDGE)}})
+    assert seen["edge"] is True
+    jacks.data_crossing_errors(ctx, data, [], None)
+    assert seen["edge"] is False

@@ -362,13 +362,12 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     board_pieces = board_pieces or {}
     warnings.extend(boards_mod.unknown_pieces(board_pieces, [b.get("image") or "" for b in boards]))
     holes, edge_segments, usable_rects, entries, piece_holes = [], [], [], [], []
+    # the edits of each piece by the one rule the board editor shares (`boards.piece_edits`): a `pieces` entry for the image wins (also
+    # for the first piece: it does not depend on the layout order); else the top-level boxes / bounds belong to the FIRST piece
+    mine_of = boards_mod.piece_edits(board_edits, board_bounds, board_pieces, [b.get("image") or "" for b in boards])
     for n, piece in enumerate(boards):
         entry = board_data.get(piece.get("image") or "") or {}
-        mine = board_pieces.get(piece.get("image") or "") or {}
-        # a `pieces` entry for the piece's image wins (also for the first piece: it does not depend on the layout order); else the
-        # top-level boxes / bounds belong to the FIRST piece (what the board editor edits)
-        edits, bounds = ((mine.get("boxes"), mine.get("bounds")) if mine else
-                         (board_edits, board_bounds) if n == 0 else (None, None))
+        edits, bounds = (mine_of[piece.get("image") or ""][k] for k in ("boxes", "bounds"))
         piece_holes.append(design.board_holes(piece, entry.get("holes"), edits))
         edge_segments += design.board_edges(piece, edits)
         usable_rects.append(design.board_bounds(piece, bounds))
@@ -455,7 +454,7 @@ def layout_crossing_errors(ctx, lay, radius):
     return crossing_errors(project, ctx.get("supplies", []), holes, edge, _project_name(ctx))
 
 
-def data_crossing_errors(ctx, board_data, edits):
+def data_crossing_errors(ctx, board_data, edits, pieces=None):
     """`crossing_errors` without a layout, from the data: the project's board image (found in Pedal Playground's pedalboards
     database as "Brand Model"), its derived holes (`board_data`) with the project's board.json boxes, and the edge segments
     (not the front ones unless `cables.route_in_front`). Nothing is reported when the image or its entry in catalog/boards.json
@@ -470,6 +469,7 @@ def data_crossing_errors(ctx, board_data, edits):
     entry = (board_data or {}).get(image or "")
     if entry is None:
         return []
+    edits = boards_mod.piece_edits(edits, None, pieces, [image])[image]["boxes"]   # a `pieces` entry for the image counts too
     unit = {"left_mm": 0.0, "top_mm": 0.0, "w_mm": 1.0, "h_mm": 1.0, "rot": 0}
     holes = True if design.board_holes(unit, entry.get("holes"), edits) else None
     edge = any(e["type"] == "edge" and (e["side"] != "front" or cables.get("route_in_front")) for e in edits)
@@ -562,7 +562,8 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
         ctx["layout_source"] = "injected"
     if items is None:
         ctx["jack_notes"].append("no playground_design.json: cable lengths and clearance are not checked")
-        errors.extend(data_crossing_errors(ctx, boards_mod.load() if board_data is None else board_data, boards_mod.load_edits(ctx["dir"], warnings)))
+        errors.extend(data_crossing_errors(ctx, boards_mod.load() if board_data is None else board_data, boards_mod.load_edits(ctx["dir"], warnings),
+                                           boards_mod.load_pieces(ctx["dir"], warnings)))
         return
     lay = layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warnings, clear_sink, outlines=outlines,
                             board_data=board_data, board_edits=boards_mod.load_edits(ctx["dir"], warnings),

@@ -410,6 +410,30 @@ def load_pieces(project_dir, warnings=None):
     return out
 
 
+def piece_edits(top_boxes, top_bounds, pieces, images):
+    """{image: {"boxes", "bounds"}} for every image of `images` (the pedalboard images of the layout, layout order): the edits the BUILD
+    uses for it. A `pieces` entry (`load_pieces`) wins, also for the first piece (it does not depend on the layout order); else the
+    top-level boxes / bounds (`load_edits` / `load_bounds`) belong to the FIRST image; else no boxes and the image edges. A repeated
+    image: its first occurrence decides (one entry per image)."""
+    out = {}
+    for n, image in enumerate(images):
+        if image in out:
+            continue
+        mine = (pieces or {}).get(image)
+        if mine:
+            out[image] = {"boxes": list(mine.get("boxes") or []), "bounds": dict(mine.get("bounds") or BOUNDS_EDGE)}
+        elif n == 0:
+            out[image] = {"boxes": list(top_boxes or []), "bounds": dict(top_bounds or BOUNDS_EDGE)}
+        else:
+            out[image] = {"boxes": [], "bounds": dict(BOUNDS_EDGE)}
+    return out
+
+
+def load_piece_edits(project_dir, images, warnings=None):
+    """`piece_edits` of a project's board.json for `images` (the same rule as the build)."""
+    return piece_edits(load_edits(project_dir, warnings), load_bounds(project_dir, warnings), load_pieces(project_dir, warnings), images)
+
+
 def unknown_pieces(pieces, images):
     """Warnings for the keys of `pieces` (`load_pieces`) that are no pedalboard image of the layout (`images`: their file names)."""
     return [f"board.json: pieces.{name} is not a pedalboard image of the layout (its pieces: {', '.join(images) or 'none'}), ignored"

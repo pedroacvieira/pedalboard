@@ -66,24 +66,55 @@ DOC = ("Corrections of the board holes of this project and the places where cabl
        "width from the left for back / front): cables may go from under the board round the board edge only along such a "
        "segment (and through the holes). 'bounds' = four lines (back, front, left, right; fractions of the same image, back / front "
        "from its top edge, left / right from its left edge; a side that is missing is the image edge): where pedals may sit "
-       "(cables and under-board supplies are not limited by it). Written ONLY by scripts/board_editor.py.")
+       "(cables and under-board supplies are not limited by it). 'pieces' = the same two keys per board image ({image file name: "
+       "{boxes, bounds}}) for the pieces of a composed board (several pedalboard items): fractions of each piece's own unrotated "
+       "image, independent of the layout order; a board with one piece keeps its edits at the top level. Written ONLY by "
+       "scripts/board_editor.py.")
 
 
 # --- which board, which image (pure) -------------------------------------------------------------
-def board_image_for(project_dir, project, db):
-    """(image file name, w_mm, h_mm) of the project's board: the `pedalboard` item of its playground_design.json when
-    there is one (with an image), else Pedal Playground's database `db` ({"Brand Model": entry}, entry has Image,
-    Width and Height in inches) looked up with project["board"]. Raises ValueError when neither knows the board."""
+def board_pieces_for(project_dir, project, db):
+    """Every board piece of the project, layout order: [{"image", "w_mm", "h_mm", "item"}] (`item` = the parsed `pedalboard` item of its
+    playground_design.json, for the overview), one per `pedalboard` item with an image. Without such an item: ONE piece from Pedal
+    Playground's database `db` ({"Brand Model": entry}, entry has Image, Width and Height in inches) looked up with project["board"],
+    `item` None. Raises ValueError when neither knows the board."""
     f = Path(project_dir) / "playground_design.json"
     if f.exists():
-        item = next((it for it in design.parse_design(f) if it["kind"] == "pedalboard" and it.get("image")), None)
-        if item is not None:
-            return item["image"], item["w_mm"], item["h_mm"]
+        pieces = [{"image": it["image"], "w_mm": it["w_mm"], "h_mm": it["h_mm"], "item": it}
+                  for it in design.parse_design(f) if it["kind"] == "pedalboard" and it.get("image")]
+        if pieces:
+            return pieces
     b = project.get("board") or {}
     entry = db.get(f"{b.get('brand')} {b.get('model')}")
     if not entry or not entry.get("Image"):
         raise ValueError(f"board {b.get('brand')} {b.get('model')} is not in Pedal Playground's database")
-    return entry["Image"], entry["Width"] * IN_MM, entry["Height"] * IN_MM
+    return [{"image": entry["Image"], "w_mm": entry["Width"] * IN_MM, "h_mm": entry["Height"] * IN_MM, "item": None}]
+
+
+def board_image_for(project_dir, project, db):
+    """(image file name, w_mm, h_mm) of the project's FIRST board piece (`board_pieces_for`)."""
+    p = board_pieces_for(project_dir, project, db)[0]
+    return p["image"], p["w_mm"], p["h_mm"]
+
+
+def resolve_piece(pieces, arg):
+    """Index into `pieces` for `--piece`: the image file name with or without `.png`, or the 1-based layout number. ValueError naming the
+    choices otherwise."""
+    arg = str(arg).strip()
+    if arg.isdigit() and 1 <= int(arg) <= len(pieces):
+        return int(arg) - 1
+    for i, p in enumerate(pieces):
+        if arg in (p["image"], Path(p["image"]).stem):
+            return i
+    raise ValueError(f"no board piece {arg!r}; the pieces are: " + "; ".join(f"{i + 1} {p['image']}" for i, p in enumerate(pieces)))
+
+
+def piece_label(pieces, i):
+    """The selector text of piece `i`: '1  daddario-xpnd-1-extension.png  273 x 140 mm', plus '(same image as piece N)' for a repeated image."""
+    p = pieces[i]
+    first = next(j for j, q in enumerate(pieces) if q["image"] == p["image"])
+    same = f"  (same image as piece {first + 1})" if first != i else ""
+    return f"{i + 1}  {p['image']}  {p['w_mm']:.0f} x {p['h_mm']:.0f} mm{same}"
 
 
 # --- coordinates (pure) --------------------------------------------------------------------------
@@ -303,33 +334,116 @@ def bounds_set(bounds):
 
 
 # --- the file (pure) -----------------------------------------------------------------------------
+def _box_line(b, indent):
+    pad = " " * indent
+    if b.get("type") == "edge" and all(k in b for k in ("side", "from", "to")):
+        return f'{pad}{{"type": "edge", "side": {json.dumps(b["side"])}, "from": {round(b["from"], DECIMALS)}, "to": {round(b["to"], DECIMALS)}}}'
+    try:
+        v = [round(b[k], DECIMALS) for k in ("x0", "y0", "x1", "y1")]
+        return f'{pad}{{"type": {json.dumps(b["type"])}, "x0": {v[0]}, "y0": {v[1]}, "x1": {v[2]}, "y1": {v[3]}}}'
+    except (KeyError, TypeError):   # not a box of ours (a hand-written entry of a piece that is no longer in the layout): kept as it is
+        return pad + json.dumps(b, ensure_ascii=False)
+
+
+def _boxes_text(boxes, indent):
+    lines = [_box_line(b, indent + 2) for b in boxes]
+    return "[\n" + ",\n".join(lines) + "\n" + " " * indent + "]" if lines else "[]"
+
+
+def _bounds_text(bounds):
+    """`{"left": 0.1}`: the sides of a bounds dict that differ from the image edge (None when none does)."""
+    if not isinstance(bounds, dict):
+        return None if bounds is None else json.dumps(bounds, ensure_ascii=False)
+
+    def num(v):
+        return round(v, DECIMALS) if isinstance(v, (int, float)) and not isinstance(v, bool) else v
+    items = [f'"{s}": {json.dumps(num(bounds[s]))}' for s in BOUND_SIDES if s in bounds and num(bounds[s]) != BOUNDS_EDGE[s]]
+    items += [f"{json.dumps(k)}: {json.dumps(v)}" for k, v in bounds.items() if k not in BOUND_SIDES]   # junk of a hand-written entry: kept
+    return "{" + ", ".join(items) + "}" if items else None
+
+
+def pieces_text(pieces):
+    """The `pieces` value of board.json (`{image: {"boxes", "bounds"}}`) as text at indent 2: sorted by image name, `bounds` (only the
+    sides off the image edge, no key when none) then `boxes`, one box per line, 4 decimals."""
+    entries = []
+    for image in sorted(pieces):
+        e = pieces[image]
+        if not isinstance(e, dict):
+            entries.append(f"    {json.dumps(image)}: {json.dumps(e, ensure_ascii=False)}")
+            continue
+        parts = []
+        bt = _bounds_text(e.get("bounds"))
+        if bt is not None:
+            parts.append(f'      "bounds": {bt}')
+        boxes = e.get("boxes", [])
+        parts.append(f'      "boxes": {_boxes_text(boxes, 6) if isinstance(boxes, list) else json.dumps(boxes)}')
+        for k in e:   # other keys of a hand-written entry: kept
+            if k not in ("bounds", "boxes"):
+                parts.append(f"      {json.dumps(k)}: {json.dumps(e[k], ensure_ascii=False)}")
+        entries.append(f"    {json.dumps(image)}: {{\n" + ",\n".join(parts) + "\n    }")
+    return "{\n" + ",\n".join(entries) + "\n  }"
+
+
 def dumps_edits(boxes, bounds=None, pieces=None):
     """board.json text: a `_doc`, the `bounds` (only the sides that differ from the image edge; no key when none does), then
-    one entry per line with 4 decimals (like catalog/outlines.json). `pieces`: the raw `pieces` value of the file (the edits of the further
-    pieces of a composed board, which this editor does not edit), written back unchanged."""
-    lines = []
-    for b in boxes:
-        if b["type"] == "edge":
-            lines.append(f'    {{"type": "edge", "side": {json.dumps(b["side"])}, "from": {round(b["from"], DECIMALS)}, "to": {round(b["to"], DECIMALS)}}}')
-            continue
-        v = [round(b[k], DECIMALS) for k in ("x0", "y0", "x1", "y1")]
-        lines.append(f'    {{"type": {json.dumps(b["type"])}, "x0": {v[0]}, "y0": {v[1]}, "x1": {v[2]}, "y1": {v[3]}}}')
-    body = "[\n" + ",\n".join(lines) + "\n  ]" if lines else "[]"
+    one entry per line with 4 decimals (like catalog/outlines.json). `pieces`: {board image: {"boxes", "bounds"}} for the pieces of a
+    composed board (written like the top level, sorted by image name; None / {} = no key)."""
+    body = _boxes_text(boxes, 2)
     full = full_bounds(bounds)
     sides = bounds_set(full)
     bounds_line = ('  "bounds": {' + ", ".join(f'"{side}": {round(full[side], DECIMALS)}' for side in sides) + "},\n") if sides else ""
-    pieces_line = f',\n  "pieces": {json.dumps(pieces, ensure_ascii=False)}' if pieces else ""
+    pieces_line = f',\n  "pieces": {pieces_text(pieces)}' if pieces else ""
     return "{\n" + f'  "_doc": {json.dumps(DOC, ensure_ascii=False)},\n{bounds_line}  "boxes": {body}{pieces_line}\n' + "}\n"
 
 
-def save_edits(project_dir, boxes, bounds=None):
-    """Write projects/<name>/board.json atomically (.tmp + os.replace); returns the path."""
+KEEP = object()   # save_edits(pieces=KEEP): keep the `pieces` the file has
+
+
+def split_for_save(edits, images, file_pieces, top_boxes, top_bounds):
+    """Where each piece's edits go in board.json: (boxes, bounds, pieces, notes).
+
+    `edits`: {image: {"boxes", "bounds"}} for the pieces of the layout (`boards.piece_edits`), `images`: their file names in layout
+    order, `file_pieces`: the raw `pieces` already in the file (its entries for images that are no piece of the layout are KEPT),
+    `top_boxes` / `top_bounds`: the file's top-level edits. ONE piece: top-level boxes / bounds, no `pieces` entry for it. SEVERAL
+    pieces: every piece with edits under `pieces[image]` (independent of the layout order), the top level empty; top-level edits the
+    file has are moved into the first image's entry (or dropped when that image already had a `pieces` entry). `notes`: human-readable
+    lines about what moved or was dropped."""
+    file_pieces = file_pieces if isinstance(file_pieces, dict) else {}
+    uniq = list(dict.fromkeys(images))
+    kept = {k: v for k, v in file_pieces.items() if k not in uniq}
+    notes = []
+    if len(uniq) <= 1:
+        image = uniq[0] if uniq else None
+        e = edits.get(image) or {"boxes": [], "bounds": None}
+        if image in file_pieces:
+            notes.append(f"moved pieces.{image} to the top level (a board with one piece keeps its edits there)")
+        return e["boxes"], e["bounds"], kept or None, notes
+    pieces = dict(kept)
+    for image in uniq:
+        e = edits.get(image) or {"boxes": [], "bounds": None}
+        if e["boxes"] or bounds_set(e["bounds"]):
+            pieces[image] = {"boxes": e["boxes"], "bounds": e["bounds"]}
+    if top_boxes or bounds_set(top_bounds):
+        first = uniq[0]
+        if first in file_pieces:
+            notes.append(f"dropped the top-level edits: they were shadowed by pieces.{first}")
+        else:
+            notes.append(f"moved the top-level edits into pieces.{first}")
+    return [], None, pieces or None, notes
+
+
+def save_edits(project_dir, boxes, bounds=None, pieces=KEEP):
+    """Write projects/<name>/board.json atomically (.tmp + os.replace); returns the path. `pieces`: KEEP (default) = the file's `pieces`
+    stay as they are; a dict {image: {"boxes", "bounds"}} = write that; None / {} = no `pieces` key."""
     path = Path(project_dir) / EDITS_FILE
     tmp = path.with_name(path.name + ".tmp")
-    try:   # the edits of further board pieces are not ours to change: keep them
-        pieces = json.loads(path.read_text()).get("pieces")
-    except (OSError, ValueError, AttributeError):
-        pieces = None
+    if pieces is KEEP:   # the edits of further board pieces are not ours to change here: keep them
+        try:
+            pieces = json.loads(path.read_text()).get("pieces")
+        except (OSError, ValueError, AttributeError):
+            pieces = None
+        if not isinstance(pieces, dict):
+            pieces = None
     tmp.write_text(dumps_edits(boxes, bounds, pieces))
     os.replace(tmp, path)
     return path
