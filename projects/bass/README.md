@@ -185,28 +185,36 @@ Spacing is comfort, not a hard rule: switches of different pedals should be as f
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 4.1 (3 of 10 pairs closer than 100 mm). Closest pairs (8 of 10):
+Heights (`height_mm` in the catalog = the footswitch top above the pedal's base; all values below are estimates, not a 3D model): two switches at different heights are harder to hit with one stomp, so a pair's effective distance also gains the height step = 0.5 x the height difference, at most 10 mm of difference (`footswitches.height_gain`, `footswitches.height_cap_mm`; toppers do not enter the step). A pedal without `height_mm` has no step and no shadow. `footswitches.heights: false` switches the height model off.
 
-| Switch | Type | Switch | Type | Distance (mm) | Crowding |
-|---|---|---|---|--:|--:|
-| mxr_bass_envelope_filter.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 83.5 | 2.7 |
-| mxr_bass_synth.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 90.0 | 1.0 |
-| darkglass_hyper_luminal.bypass | bypass | mxr_bass_synth.bypass | bypass | 93.9 | 0.4 |
-| mxr_bass_synth.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 173.4 | 0.0 |
-| darkglass_hyper_luminal.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 183.2 | 0.0 |
-| ehx_bass_big_muff_2.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 201.9 | 0.0 |
-| darkglass_hyper_luminal.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 266.5 | 0.0 |
-| mxr_bass_envelope_filter.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 285.4 | 0.0 |
+Crowding: 2.6 (3 of 10 pairs closer than 100 mm, effective distance). Closest pairs (8 of 10):
+
+| Switch | Type | Switch | Type | Distance (mm) | Step (mm) | Effective (mm) | Crowding |
+|---|---|---|---|--:|--:|--:|--:|
+| mxr_bass_envelope_filter.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 83.5 | 3.1 | 86.6 | 1.8 |
+| mxr_bass_synth.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 90.0 | 1.5 | 91.5 | 0.7 |
+| darkglass_hyper_luminal.bypass | bypass | mxr_bass_synth.bypass | bypass | 93.9 | 3.5 | 97.4 | 0.1 |
+| mxr_bass_synth.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 173.4 | 1.6 | 175.1 | 0.0 |
+| darkglass_hyper_luminal.bypass | bypass | mxr_bass_envelope_filter.bypass | bypass | 183.2 | 2.0 | 185.2 | 0.0 |
+| ehx_bass_big_muff_2.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 201.9 | 1.2 | 203.2 | 0.0 |
+| darkglass_hyper_luminal.bypass | bypass | ehx_bass_big_muff_2.bypass | bypass | 266.5 | 5.0 | 271.5 | 0.0 |
+| mxr_bass_envelope_filter.bypass | bypass | tech21_vt_bass_di.bypass | bypass | 285.4 | 1.9 | 287.3 | 0.0 |
+
+### Reach
+
+A low switch is harder to reach when a taller switch stands in the path of the foot: a switch on another pedal at most 190 mm in front of it (`footswitches.foot_length_mm`) and within 40 mm sideways (`footswitches.foot_width_mm` 80) shades it by its height minus the switch's own, minus the rise of the sole toward the front (tan 5 deg per mm, `footswitches.foot_pitch_deg`); estimates, unverified. Only switch caps count as obstacles (the footswitch is the pedal's tallest point), a topper adds its height to its switch. Reach = the sum of priority x shadow = 0.0 mm; the layout proposals minimise it (`layout.weights.reach`).
+
+No switch is shadowed.
 
 ### Suggested toppers
 
-Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
+Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding plus shadow (crowding + `footswitches.reach_weight` 1 x reach; a topper in front of a switch deepens its shadow, which counts against it) first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding plus shadow (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
 
-| # | Switch | Pedal | Type | Crowding removed | Crowding after |
-|--:|---|---|---|--:|--:|
-| 1 | mxr_bass_envelope_filter.bypass (Bypass) | MXR Bass Envelope Filter | bypass | 2.0 | 2.1 |
-| 2 | ehx_bass_big_muff_2.bypass (Bypass) | Electro-Harmonix Bass Big Muff Pi 2 | bypass | 0.9 | 1.2 |
-| 3 | mxr_bass_synth.bypass (Bypass) | MXR Bass Synth | bypass | 0.6 | 0.6 |
+| # | Switch | Pedal | Type | Crowding removed | Shadow removed (mm) | Crowding after |
+|--:|---|---|---|--:|--:|--:|
+| 1 | mxr_bass_envelope_filter.bypass (Bypass) | MXR Bass Envelope Filter | bypass | 1.6 | 0.0 | 1.0 |
+| 2 | ehx_bass_big_muff_2.bypass (Bypass) | Electro-Harmonix Bass Big Muff Pi 2 | bypass | 0.6 | 0.0 | 0.4 |
+| 3 | mxr_bass_synth.bypass (Bypass) | MXR Bass Synth | bypass | 0.2 | 0.0 | 0.2 |
 
 
 ## Layout proposals

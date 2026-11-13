@@ -436,10 +436,13 @@ def test_isolated_need_and_unknown_max_ma_are_one_policy_for_build_and_assign():
 
 
 def test_surrogate_crowding_equals_the_builds_on_the_gig_layout():
+    """The flat model (`footswitches.heights: false`): plain distances, as before the height step."""
     pedals, supplies = load_catalog()
     fs_data = footswitches.read_file()["footswitches"]
-    ctx = build.validate(GIG, pedals, supplies, footswitch_data=fs_data)
-    m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
+    proj = load_json(GIG / "project.json")
+    proj["footswitches"] = {**(proj.get("footswitches") or {}), "heights": False}
+    ctx = build.validate(GIG, pedals, supplies, footswitch_data=fs_data, project=proj)
+    m = layout.Model(proj, design.parse_design(GIG / "playground_design.json"), pedals,
                      supplies, jacks.read_file()["jacks"], fs_data, load_cable_types())
     raw = m.score(m.owner, detail=True)[1]["terms"]["footswitch"][0]
     assert ctx["footswitch_settings"]["crowding"] > 0 and raw == pytest.approx(ctx["footswitch_settings"]["crowding"])

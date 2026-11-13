@@ -233,30 +233,38 @@ Spacing is comfort, not a hard rule: switches of different pedals should be as f
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 57.5 (6 of 21 pairs closer than 100 mm). Closest pairs (8 of 21):
+Heights (`height_mm` in the catalog = the footswitch top above the pedal's base; all values below are estimates, not a 3D model): two switches at different heights are harder to hit with one stomp, so a pair's effective distance also gains the height step = 0.5 x the height difference, at most 10 mm of difference (`footswitches.height_gain`, `footswitches.height_cap_mm`; toppers do not enter the step). A pedal without `height_mm` has no step and no shadow. `footswitches.heights: false` switches the height model off.
 
-| Switch | Type | Switch | Type | Distance (mm) | Crowding |
-|---|---|---|---|--:|--:|
-| ibanez_ts_mini.bypass | bypass | duke_of_tone.bypass | bypass | 58.5 | 17.2 |
-| duke_of_tone.bypass | bypass | e_lady.bypass | bypass | 62.0 | 14.4 |
-| e_lady.bypass | bypass | carbon_copy.bypass | bypass | 68.6 | 9.8 |
-| carbon_copy.bypass | bypass | ditto_looper.bypass | bypass | 70.1 | 9.0 |
-| polytune_2_mini.bypass | bypass | octahive.bypass | bypass | 81.1 | 3.6 |
-| octahive.bypass | bypass | ibanez_ts_mini.bypass | bypass | 81.4 | 3.5 |
-| ibanez_ts_mini.bypass | bypass | e_lady.bypass | bypass | 109.8 | 0.0 |
-| duke_of_tone.bypass | bypass | carbon_copy.bypass | bypass | 126.0 | 0.0 |
+Crowding: 50.6 (6 of 21 pairs closer than 100 mm, effective distance). Closest pairs (8 of 21):
+
+| Switch | Type | Switch | Type | Distance (mm) | Step (mm) | Effective (mm) | Crowding |
+|---|---|---|---|--:|--:|--:|--:|
+| ibanez_ts_mini.bypass | bypass | duke_of_tone.bypass | bypass | 58.5 | 0.4 | 58.9 | 16.9 |
+| duke_of_tone.bypass | bypass | e_lady.bypass | bypass | 62.0 | 2.0 | 64.0 | 13.0 |
+| carbon_copy.bypass | bypass | ditto_looper.bypass | bypass | 70.1 | 0.5 | 70.6 | 8.7 |
+| e_lady.bypass | bypass | carbon_copy.bypass | bypass | 68.6 | 2.5 | 71.1 | 8.3 |
+| polytune_2_mini.bypass | bypass | octahive.bypass | bypass | 81.1 | 5.0 | 86.1 | 1.9 |
+| octahive.bypass | bypass | ibanez_ts_mini.bypass | bypass | 81.4 | 5.0 | 86.4 | 1.9 |
+| ibanez_ts_mini.bypass | bypass | e_lady.bypass | bypass | 109.8 | 1.6 | 111.3 | 0.0 |
+| duke_of_tone.bypass | bypass | carbon_copy.bypass | bypass | 126.0 | 4.5 | 130.5 | 0.0 |
+
+### Reach
+
+A low switch is harder to reach when a taller switch stands in the path of the foot: a switch on another pedal at most 190 mm in front of it (`footswitches.foot_length_mm`) and within 40 mm sideways (`footswitches.foot_width_mm` 80) shades it by its height minus the switch's own, minus the rise of the sole toward the front (tan 5 deg per mm, `footswitches.foot_pitch_deg`); estimates, unverified. Only switch caps count as obstacles (the footswitch is the pedal's tallest point), a topper adds its height to its switch. Reach = the sum of priority x shadow = 0.0 mm; the layout proposals minimise it (`layout.weights.reach`).
+
+No switch is shadowed.
 
 ### Suggested toppers
 
-Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
+Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding plus shadow (crowding + `footswitches.reach_weight` 1 x reach; a topper in front of a switch deepens its shadow, which counts against it) first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding plus shadow (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
 
-| # | Switch | Pedal | Type | Crowding removed | Crowding after |
-|--:|---|---|---|--:|--:|
-| 1 | duke_of_tone.bypass (Bypass) | MXR Custom Shop Duke of Tone | bypass | 6.8 | 50.8 |
-| 2 | e_lady.bypass (Bypass) | Mooer E-Lady | bypass | 5.4 | 45.3 |
-| 3 | carbon_copy.bypass (Bypass) | MXR Carbon Copy | bypass | 4.7 | 40.6 |
-| 4 | ibanez_ts_mini.bypass (Bypass) | Ibanez Tube Screamer Mini | bypass | 4.6 | 36.0 |
-| 5 | octahive.bypass (Bypass) | Beetronics Octahive | bypass | 2.6 | 33.5 |
+| # | Switch | Pedal | Type | Crowding removed | Shadow removed (mm) | Crowding after |
+|--:|---|---|---|--:|--:|--:|
+| 1 | duke_of_tone.bypass (Bypass) | MXR Custom Shop Duke of Tone | bypass | 6.5 | 0.0 | 44.1 |
+| 2 | e_lady.bypass (Bypass) | Mooer E-Lady | bypass | 5.0 | 0.0 | 39.1 |
+| 3 | carbon_copy.bypass (Bypass) | MXR Carbon Copy | bypass | 4.4 | 0.0 | 34.6 |
+| 4 | ibanez_ts_mini.bypass (Bypass) | Ibanez Tube Screamer Mini | bypass | 4.1 | 0.0 | 30.5 |
+| 5 | ditto_looper.bypass (Bypass) | TC Electronic Ditto Looper | bypass | 2.0 | 0.0 | 28.5 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 

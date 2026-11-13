@@ -389,30 +389,38 @@ Spacing is comfort, not a hard rule: switches of different pedals should be as f
 
 Toppers (a larger, higher cap on a switch) are a finishing step after the layout; the layout search ignores them. A topper adds 4.5 mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair its switch is in (both switches of a pair: twice); crowding uses the effective distance. No toppers are set.
 
-Crowding: 170.7 (20 of 269 pairs closer than 100 mm). Closest pairs (8 of 269):
+Heights (`height_mm` in the catalog = the footswitch top above the pedal's base; all values below are estimates, not a 3D model): two switches at different heights are harder to hit with one stomp, so a pair's effective distance also gains the height step = 0.5 x the height difference, at most 10 mm of difference (`footswitches.height_gain`, `footswitches.height_cap_mm`; toppers do not enter the step). A pedal without `height_mm` has no step and no shadow. `footswitches.heights: false` switches the height model off.
 
-| Switch | Type | Switch | Type | Distance (mm) | Crowding |
-|---|---|---|---|--:|--:|
-| danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 54.3 | 20.9 |
-| belle_epoch.switch_2 | function | boss_dd200.switch_2 | tap | 54.9 | 16.3 |
-| red_muck.switch_2 | boost | protein.bypass | bypass | 55.9 | 19.4 |
-| mini_ego.bypass | bypass | retrovibe.bypass | bypass | 56.9 | 18.5 |
-| tumnus_deluxe.bypass | bypass | monk.switch_2 | tap | 61.0 | 15.2 |
-| analog_chorus.bypass | bypass | belle_epoch.bypass | bypass | 61.8 | 14.6 |
-| beano.bypass | bypass | phase_95.bypass | bypass | 62.1 | 14.4 |
-| fulldrive_2.bypass | bypass | red_muck.bypass | bypass | 63.3 | 13.5 |
+Crowding: 147.0 (18 of 269 pairs closer than 100 mm, effective distance). Closest pairs (8 of 269):
+
+| Switch | Type | Switch | Type | Distance (mm) | Step (mm) | Effective (mm) | Crowding |
+|---|---|---|---|--:|--:|--:|--:|
+| belle_epoch.switch_2 | function | boss_dd200.switch_2 | tap | 54.9 | 1.0 | 55.9 | 15.5 |
+| danelectro_3699.bypass | bypass | fulldrive_2.switch_2 | boost | 54.3 | 2.2 | 56.6 | 18.9 |
+| red_muck.switch_2 | boost | protein.bypass | bypass | 55.9 | 2.1 | 58.1 | 17.6 |
+| mini_ego.bypass | bypass | retrovibe.bypass | bypass | 56.9 | 1.6 | 58.6 | 17.1 |
+| tumnus_deluxe.bypass | bypass | monk.switch_2 | tap | 61.0 | 2.0 | 63.0 | 13.7 |
+| beano.bypass | bypass | phase_95.bypass | bypass | 62.1 | 1.4 | 63.4 | 13.4 |
+| analog_chorus.bypass | bypass | belle_epoch.bypass | bypass | 61.8 | 5.0 | 66.8 | 11.0 |
+| fulldrive_2.bypass | bypass | red_muck.bypass | bypass | 63.3 | 3.8 | 67.1 | 10.8 |
+
+### Reach
+
+A low switch is harder to reach when a taller switch stands in the path of the foot: a switch on another pedal at most 190 mm in front of it (`footswitches.foot_length_mm`) and within 40 mm sideways (`footswitches.foot_width_mm` 80) shades it by its height minus the switch's own, minus the rise of the sole toward the front (tan 5 deg per mm, `footswitches.foot_pitch_deg`); estimates, unverified. Only switch caps count as obstacles (the footswitch is the pedal's tallest point), a topper adds its height to its switch. Reach = the sum of priority x shadow = 0.0 mm; the layout proposals minimise it (`layout.weights.reach`).
+
+No switch is shadowed.
 
 ### Suggested toppers
 
-Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
+Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost switch never), greedily: the topper that removes the most crowding plus shadow (crowding + `footswitches.reach_weight` 1 x reach; a topper in front of a switch deepens its shadow, which counts against it) first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the higher priority type, then nearer the front), at most 5 in all (`footswitches.max_toppers`), stopping when a topper would remove less than 2 % of the crowding plus shadow (`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.
 
-| # | Switch | Pedal | Type | Crowding removed | Crowding after |
-|--:|---|---|---|--:|--:|
-| 1 | mini_ego.bypass (Bypass) | Wampler Mini Ego Compressor | bypass | 7.0 | 163.7 |
-| 2 | belle_epoch.bypass (Bypass) | Catalinbread Belle Epoch Deluxe | bypass | 5.6 | 158.1 |
-| 3 | beano.bypass (Bypass) | AnalogMan Beano Boost | bypass | 5.6 | 152.5 |
-| 4 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 5.0 | 147.6 |
-| 5 | tumnus_deluxe.bypass (Bypass) | Wampler Tumnus Deluxe | bypass | 4.9 | 142.7 |
+| # | Switch | Pedal | Type | Crowding removed | Shadow removed (mm) | Crowding after |
+|--:|---|---|---|--:|--:|--:|
+| 1 | mini_ego.bypass (Bypass) | Wampler Mini Ego Compressor | bypass | 6.5 | 0.0 | 140.5 |
+| 2 | beano.bypass (Bypass) | AnalogMan Beano Boost | bypass | 5.2 | 0.0 | 135.3 |
+| 3 | belle_epoch.bypass (Bypass) | Catalinbread Belle Epoch Deluxe | bypass | 4.7 | 0.0 | 130.6 |
+| 4 | tumnus_deluxe.bypass (Bypass) | Wampler Tumnus Deluxe | bypass | 4.3 | 0.0 | 126.3 |
+| 5 | reticon.bypass (Bypass) | PastFX Reticon Flanger | bypass | 4.1 | 0.0 | 122.1 |
 
 Stopped at the cap `footswitches.max_toppers` (5).
 

@@ -24,13 +24,19 @@ def sw(fid="bypass", x=0.5, y=0.8, type="bypass", **kw):
     return {"id": fid, "label": fid.title(), "x": x, "y": y, "type": type, **kw}
 
 
-def run(tmp_path, specs, fs_data, project=None, items=None):
-    """jacks.check (for the layout) then footswitches.check on a two-pedal chain a -> b."""
+def run(tmp_path, specs, fs_data, project=None, items=None, heights=False, pedals=None):
+    """jacks.check (for the layout) then footswitches.check on a two-pedal chain a -> b. The hand-made pedals have no
+    height_mm, so the height model is off here (`footswitches.heights: false` = the flat model, a regression guard) unless
+    `heights=True`."""
+    project = dict(project or {})
+    if not heights:
+        project["footswitches"] = {"heights": False, **(project.get("footswitches") or {})}
     (tmp_path / "playground_design.json").write_text(json.dumps({"canvas": canvas(*specs)}))
-    ctx = {"project": project or {}, "dir": tmp_path, "key": "t", "errors": [], "warnings": [], "chain": ["a", "b"],
-           "pedals": PEDALS, "supplies": []}
-    jacks.check(ctx, PEDALS, {}, DATA, cable_types={}, items=items)
-    fsw.check(ctx, PEDALS, fs_data)
+    pedals = pedals or PEDALS
+    ctx = {"project": project, "dir": tmp_path, "key": "t", "errors": [], "warnings": [], "chain": ["a", "b"],
+           "pedals": pedals, "supplies": []}
+    jacks.check(ctx, pedals, {}, DATA, cable_types={}, items=items)
+    fsw.check(ctx, pedals, fs_data)
     return ctx
 
 
@@ -617,3 +623,111 @@ def test_height_settings_defaults_and_bad_values():
     s, problems = fsw.height_settings({"footswitches": {"height_gain": 0, "foot_pitch_deg": 0, "max_shadow_mm": 3,
                                                          "heights": False, "deck_rise_mm": 20}})
     assert problems == [] and s["height_gain"] == 0.0 and s["max_shadow_mm"] == 3.0 and s["heights"] is False and s["deck_rise_mm"] == 20.0
+
+
+# --- heights in the build (check, suggestions, README) ---------------------------------------------
+NO_FOOT = {"foot_width_mm": 80.0, "foot_length_mm": 190.0, "foot_pitch_deg": 0.0}
+
+
+def test_suggestions_weigh_shadow_against_crowding():
+    """Pitch 0, comfort 100, bonus 10. l (40 mm) at (0, 0); t (60 mm) 100 mm in front of it at (0, 100) shades l by 20 mm;
+    m (function, 60 mm) at (60, 100) is 60 mm from t (crowding 16, pair priority 1) and outside l's corridor (60 > 40).
+    Crowding alone: t gains 16 - 9 = 7 (m is no candidate: bypass only). With reach weight 1: a topper on t raises its cap to 70, l's
+    shadow to 30: 7 - 10 = -3; a topper on l: shadow 20 -> 10, gain 10 -> l. Then t is still -3: stop (objective 36 -> 26).
+    Weight 0.2: t gains 7 - 2 = 5 (shadow removed -10), l only 2: t first, then l (2)."""
+    pts, prs = _synthetic(("l.s", "bypass", 0, 0), ("t.s", "bypass", 0, 100), ("m.s", "function", 60, 100))
+    h = {"l.s": (40.0, 40.0), "t.s": (60.0, 60.0), "m.s": (60.0, 60.0)}
+    kw = dict(heights=h, shadow_cfg=NO_FOOT)
+    plain = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0)
+    assert [(s["key"], round(s["gain"], 3)) for s in plain["suggestions"]] == [("t.s", 7.0)]
+    assert fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, **kw, reach_weight=0.0) == plain   # weight 0: today's result
+    out = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, **kw, reach_weight=1.0)
+    assert out["before"] == pytest.approx(36.0) and out["crowding_before"] == pytest.approx(16.0) and out["reach_before"] == pytest.approx(20.0)
+    (s,) = out["suggestions"]
+    assert s["key"] == "l.s" and s["gain"] == pytest.approx(10.0) and s["crowding_gain"] == pytest.approx(0.0)
+    assert s["shadow_removed_mm"] == pytest.approx(10.0) and s["crowding_after"] == pytest.approx(16.0)
+    assert out["after"] == pytest.approx(26.0) and out["reach_after"] == pytest.approx(10.0)
+    out = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, **kw, reach_weight=0.2)
+    assert [(s["key"], round(s["gain"], 3), round(s["shadow_removed_mm"], 3)) for s in out["suggestions"]] == \
+        [("t.s", 5.0, -10.0), ("l.s", 2.0, 10.0)]
+
+
+# a (40 mm) at the back, b (60 mm) 112.889 mm in front of it (200 px = 112.889 mm), the switches at the same x
+HP = {"a": {**PEDALS["a"], "height_mm": 40.0}, "b": {**PEDALS["b"], "height_mm": 60.0}}
+FRONT_B = [A(), ("T B", 0, 200, 2.0, 4.0, 0, "pedal")]
+SHADOW_A = 20.0 - math.tan(math.radians(5)) * 112.889
+
+
+def test_heights_off_is_the_flat_model(tmp_path):
+    """`footswitches.heights: false`: no step, no shadow, the old crowding and README (even with heights in the catalog)."""
+    ctx = run(tmp_path, [A(), B()], ONE_EACH, pedals=HP)
+    (pair,) = ctx["footswitch_pairs"]
+    assert pair["step_mm"] == 0.0 and pair["effective_mm"] == pytest.approx(76.2) and pair["crowding"] == pytest.approx(23.8 ** 2 / 100)
+    st = ctx["footswitch_settings"]
+    assert st["heights"] is False and st["reach"] == 0.0 and st["reach_plain"] == 0.0
+    import build
+    md = "\n".join(build.footswitch_section(ctx, HP))
+    assert "Step (mm)" not in md and "### Reach" not in md and "Shadow removed" not in md
+    on = run(tmp_path, [A(), B()], ONE_EACH, pedals=HP, heights=True)     # 76.2 mm apart, 40 vs 60 mm: step 0.5 x 10 = 5
+    (pair,) = on["footswitch_pairs"]
+    assert pair["step_mm"] == pytest.approx(5.0) and pair["effective_mm"] == pytest.approx(81.2)
+    assert pair["crowding_plain"] == pytest.approx(18.8 ** 2 / 100) and fsw.pair_text(pair) == \
+        "81.2 mm apart (effective with height step, 76.2 mm plain)"
+
+
+def test_check_fills_heights_steps_and_shadows(tmp_path):
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True)
+    (pair,) = ctx["footswitch_pairs"]
+    assert pair["step_mm"] == pytest.approx(5.0) and pair["effective_mm"] == pytest.approx(112.889 + 5.0, abs=0.01)
+    pa, pb = {p["key"]: p for p in ctx["footswitch_points"]}["a.bypass"], {p["key"]: p for p in ctx["footswitch_points"]}["b.bypass"]
+    assert pa["height_mm"] == 40.0 and pa["shadow_mm"] == pytest.approx(SHADOW_A, abs=0.01) and pa["shadow_by"] == "b.bypass"
+    assert pa["shadow_plain_mm"] == pytest.approx(SHADOW_A, abs=0.01) and pa["depth_mm"] is None   # no board: no depth
+    assert pb["shadow_mm"] == 0.0 and pb["shadow_by"] is None
+    st = ctx["footswitch_settings"]
+    assert st["reach"] == pytest.approx(SHADOW_A, abs=0.01) and st["reach_plain"] == st["reach"] and st["heights_missing"] == []
+    assert ctx["warnings"] == [] and ctx["errors"] == []
+    # a topper on a: its shadow drops by the 4.5 mm height, plain stays
+    top = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project={"footswitches": {"toppers": ["a.bypass"]}})
+    pa = {p["key"]: p for p in top["footswitch_points"]}["a.bypass"]
+    assert pa["shadow_mm"] == pytest.approx(SHADOW_A - 4.5, abs=0.01) and pa["shadow_plain_mm"] == pytest.approx(SHADOW_A, abs=0.01)
+    assert top["footswitch_pairs"][0]["effective_mm"] == pytest.approx(112.889 + 5.0 + 4.5, abs=0.01)   # topper bonus + step
+    assert top["footswitch_settings"]["reach_plain"] == pytest.approx(SHADOW_A, abs=0.01)
+
+
+def test_readme_shows_step_reach_and_shadow_removed(tmp_path):
+    import build
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True)
+    md = "\n".join(build.footswitch_section(ctx, HP))
+    assert "| Switch | Type | Switch | Type | Distance (mm) | Step (mm) | Effective (mm) | Crowding |" in md
+    assert "| a.bypass | bypass | b.bypass | bypass | 112.9 | 5.0 | 117.9 | 0.0 |" in md
+    assert "### Reach" in md and "| Switch | Type | Height (mm) | From the front (mm) | Shadowed by | Shadow (mm) |" in md
+    assert f"| a.bypass | bypass | 40.0 | - | b.bypass | {SHADOW_A:.1f} |" in md
+    # the suggestion: a topper on a removes 4.5 mm of shadow (no crowding to remove)
+    assert "| # | Switch | Pedal | Type | Crowding removed | Shadow removed (mm) | Crowding after |" in md
+    assert "| 1 | a.bypass (Bypass) | T A | bypass | 0.0 | 4.5 | 0.0 |" in md
+    none = "\n".join(build.footswitch_section(run(tmp_path, [A(), B(left=400)], ONE_EACH, pedals=HP, heights=True), HP))
+    assert "No switch is shadowed." in none
+
+
+def test_unknown_height_is_one_aggregated_warning(tmp_path):
+    both = [m for m in run(tmp_path, FRONT_B, ONE_EACH, heights=True)["warnings"] if "height unknown" in m]
+    assert both == ["footswitches: height unknown for 2 of 2 pedals (a, b): height step and shadow skipped for them"]
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, heights=True, pedals={"a": HP["a"], "b": PEDALS["b"]})
+    assert [m for m in ctx["warnings"] if "height unknown" in m] == \
+        ["footswitches: height unknown for 1 of 2 pedals (b): height step and shadow skipped for them"]
+    assert ctx["footswitch_pairs"][0]["step_mm"] == 0.0 and ctx["footswitch_settings"]["reach"] == 0.0
+    assert ctx["footswitch_settings"]["heights_missing"] == ["b"]
+    assert not any("height unknown" in m for m in run(tmp_path, FRONT_B, ONE_EACH)["warnings"])   # heights off: silent
+
+
+def test_max_shadow_is_a_warning_and_an_error_when_strict(tmp_path):
+    proj = {"footswitches": {"max_shadow_mm": 5}}
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project=proj)
+    msg = f"footswitch: a.bypass is shadowed by b.bypass ({SHADOW_A:.1f} mm, max 5)"
+    assert msg in ctx["warnings"] and ctx["errors"] == []
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project={**proj, "validation": {"strict_footswitches": True}})
+    assert msg in ctx["errors"]
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project={"footswitches": {"max_shadow_mm": 11}})
+    assert not any("is shadowed" in m for m in ctx["warnings"] + ctx["errors"])
+    ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project={"footswitches": {"height_gain": 2}})
+    assert any("footswitches.height_gain must be a number in 0..1" in e for e in ctx["errors"])
