@@ -24,6 +24,12 @@ on the pair (both switches: 2x); crowding and `min_distance_mm` use d_eff. The l
 plain distances). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
 crowding (at most `max_toppers` in all, default MAX_TOPPERS, stopping when the next gain is below `topper_min_gain` x the crowding),
 on bypass switches only (TOPPER_TYPES; a tap switch gets one by hand, never a boost one: owner, 2026-11-04).
+
+Heights (owner 2026-11-13, plan docs/plans/switch-height.md; estimates, `footswitches.heights: false` = off): H = the pedal's `height_mm`
+(+ the deck rise). A pair gains a STEP in its effective distance, `step_mm` = height_gain x min(|Ha - Hb|, height_cap_mm) (toppers do not enter
+it); a switch is SHADOWED (`shadow_map`) by a taller switch of another pedal in the foot strip in front of it (foot_width / foot_length /
+foot_pitch; toppers raise H_t); reach = sum of priority x shadow (`reach_cost`). `check` reports both, `suggest_toppers` weighs reach
+(`reach_weight`), the layout surrogate uses the step and a `reach` term. HEIGHT_DEFAULTS / `height_settings` hold the keys.
 """
 import json
 import math
@@ -215,22 +221,137 @@ def topper_settings(project, switch_keys, no_data=()):
     return {"toppers": keep, "bonus_mm": float(bonus), "max_toppers": cap, "min_gain": float(gain)}, problems, notes
 
 
+def pair_distance(distance_mm, n_toppers, bonus_mm, step_mm=0.0):
+    """d_eff = d + bonus per topper on the pair (0, 1 or 2) + the pair's height step (`step_mm`, 0 without heights)."""
+    return distance_mm + n_toppers * bonus_mm + step_mm
+
+
 def effective_distance(distance_mm, n_toppers, bonus_mm):
-    """d_eff = d + bonus per topper on the pair (0, 1 or 2)."""
-    return distance_mm + n_toppers * bonus_mm
+    """d_eff = d + bonus per topper on the pair (0, 1 or 2); no height step (`pair_distance` has one)."""
+    return pair_distance(distance_mm, n_toppers, bonus_mm)
 
 
-def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None, types=TOPPER_TYPES):
+# --- heights: step and reach (plan docs/plans/switch-height.md) ----------------------------------
+# All estimates (owner decisions 2026-11-13, the plan's recommended defaults).
+HEIGHT_DEFAULTS = {"heights": True,          # False = the flat model (no step, no shadow)
+                   "height_gain": 0.5,       # mm of effective distance per mm of height step (half: a step protects one way only)
+                   "height_cap_mm": 10.0,    # the step counts up to this
+                   "deck_rise_mm": 0.0,      # the deck's back edge above its front edge (0 = flat)
+                   "foot_width_mm": 80.0,    # width of the sole strip in front of a switch
+                   "foot_length_mm": 190.0,  # how far forward the sole reaches (ball to heel)
+                   "foot_pitch_deg": 5.0,    # the sole rises toward the front by tan(pitch) mm per mm
+                   "reach_weight": 1.0,      # topper suggestions: one mm of shadow (x priority) against crowding
+                   "max_shadow_mm": None}    # a larger shadow is a finding (None = no limit)
+
+
+def height_settings(project):
+    """(settings, problems) of the height model from project `footswitches` (keys of HEIGHT_DEFAULTS). A bad value is a
+    problem (an error for the caller) and falls back to its default; unknown keys are ignored."""
+    cfg = project.get("footswitches") or {}
+    out, problems = dict(HEIGHT_DEFAULTS), []
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    ranges = {"height_gain": (0, 1), "height_cap_mm": (0, None), "deck_rise_mm": (0, None), "foot_width_mm": (0, None),
+              "foot_length_mm": (0, None), "foot_pitch_deg": (0, 45), "reach_weight": (0, None)}
+    for k, v in cfg.items():
+        if k not in HEIGHT_DEFAULTS:
+            continue
+        if k == "heights":
+            if isinstance(v, bool):
+                out[k] = v
+            else:
+                problems.append(f"footswitches.heights must be true or false, got {v!r}")
+        elif k == "max_shadow_mm":
+            if v is None or (num(v) and v >= 0):
+                out[k] = None if v is None else float(v)
+            else:
+                problems.append(f"footswitches.max_shadow_mm must be a number >= 0 (mm) or null (no limit), got {v!r}")
+        else:
+            lo, hi = ranges[k]
+            if num(v) and v >= lo and (hi is None or v <= hi):
+                out[k] = float(v)
+            else:
+                span = f"in {lo}..{hi}" if hi is not None else f">= {lo}"
+                problems.append(f"footswitches.{k} must be a number {span}, got {v!r}")
+    return out, problems
+
+
+def step_mm(h_a, h_b, gain, cap_mm):
+    """Height step of a pair counted as distance: gain x min(|Ha - Hb|, cap); 0 when a height is unknown (None)."""
+    if h_a is None or h_b is None:
+        return 0.0
+    return gain * min(abs(h_a - h_b), cap_mm)
+
+
+def switch_heights(pts, cat_pedals, toppers, topper_mm, board_rect=None, deck_rise_mm=0.0):
+    """{switch key: (H, H_t)}: H = the pedal's `height_mm` (the switch top) + the deck's rise at the switch
+    (deck_rise_mm x (y_front - y) / board depth, y_front = board_rect[3]; 0 on a flat deck), H_t = H + topper_mm when the
+    key is in `toppers`. An unknown height gives (None, None)."""
+    out = {}
+    rise = 0.0
+    for p in pts:
+        h = (cat_pedals.get(p["cid"]) or {}).get("height_mm")
+        if h is None:
+            out[p["key"]] = (None, None)
+            continue
+        if deck_rise_mm and board_rect and board_rect[3] > board_rect[1]:
+            rise = deck_rise_mm * (board_rect[3] - p["y"]) / (board_rect[3] - board_rect[1])
+        else:
+            rise = 0.0
+        out[p["key"]] = (h + rise, h + rise + (topper_mm if p["key"] in toppers else 0.0))
+    return out
+
+
+def shadow_map(pts, h, cfg):
+    """{key: (shadow_mm, shadowed_by key or None)} for a plain {key: height or None} map. A switch q on ANOTHER pedal with
+    |x_q - x_s| <= foot_width/2 and 0 < y_q - y_s <= foot_length (y grows toward the front) shades s by
+    H(q) - H(s) - tan(pitch) x (y_q - y_s) when that is positive; the largest wins. Unknown heights are skipped."""
+    tan = math.tan(math.radians(cfg["foot_pitch_deg"]))
+    half, length = cfg["foot_width_mm"] / 2, cfg["foot_length_mm"]
+    out = {}
+    for s in pts:
+        best, by = 0.0, None
+        hs = h.get(s["key"])
+        if hs is not None:
+            for q in pts:
+                hq = h.get(q["key"])
+                dy = q["y"] - s["y"]
+                if hq is None or q["cid"] == s["cid"] or not 0 < dy <= length or abs(q["x"] - s["x"]) > half:
+                    continue
+                v = hq - hs - tan * dy
+                if v > best + 1e-12:
+                    best, by = v, q["key"]
+        out[s["key"]] = (best, by)
+    return out
+
+
+def shadows(pts, heights, cfg, toppers=True):
+    """`shadow_map` on the heights of `switch_heights`: with `toppers` True the topper heights H_t count (the owner's
+    toppers), False the plain H. {key: (shadow_mm, shadowed_by)}."""
+    return shadow_map(pts, {k: v[1 if toppers else 0] for k, v in heights.items()}, cfg)
+
+
+def reach_cost(pts, shadow, prio):
+    """Sum over switches of priority(type) x shadow (mm); `shadow` = a `shadow_map` result."""
+    return sum(prio.get(p["type"], 0.0) * shadow[p["key"]][0] for p in pts)
+
+
+def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None, types=TOPPER_TYPES,
+                    heights=None, shadow_cfg=None, reach_weight=0.0):
     """Greedy topper suggestions (pure; post-layout, never during the search). `max_toppers` default MAX_TOPPERS (None =
     no cap), `min_gain` default TOPPER_MIN_GAIN, both read when called (one source with `topper_settings`).
 
-    `pts` = points (key, type, y), `prs` = pairs (a, b, a_type, b_type, plain distance_mm), `existing` = keys that
-    already have a topper (they count towards `max_toppers`). Each step tries a topper on every switch that is in at
-    least one crowded pair (d_eff < comfort) and whose type is in `types` (None = any) and takes the largest crowding reduction (computed from that switch's own
-    pairs only); ties: the switch in more crowded pairs, then the higher type priority, then nearer the front (larger
-    y). Stops at the cap, when no crowding is left, or when the best gain < min_gain x the crowding before suggesting
-    (fixed at the start). Returns {"before": crowding with `existing`, "after": crowding with all, "suggestions":
-    [{key, type, gain, crowding_after}]}."""
+    `pts` = points (key, type, y; with cid and x too when `heights` is given), `prs` = pairs (a, b, a_type, b_type, plain
+    distance_mm, optional step_mm = the pair's height step), `existing` = keys that already have a topper (they count towards
+    `max_toppers`). The objective is crowding + `reach_weight` x reach (reach = sum of priority x shadow, `reach_cost`); the
+    reach part needs `heights` ({key: (H, H_t)}, `switch_heights`: only the plain H is read, a topper adds `bonus_mm`) and
+    `shadow_cfg` (foot keys of HEIGHT_DEFAULTS), without them or with weight 0 it is the crowding alone. Each step tries a topper
+    on every switch that is in at least one crowded pair (d_eff < comfort) or, with reach, is shadowed, whose type is in `types`
+    (None = any), and takes the largest objective reduction (the candidate's own pairs plus the change of every shadow); ties: the
+    switch in more crowded pairs, then the higher type priority, then nearer the front (larger y), then the larger shadow removed.
+    Stops at the cap, when no objective is left, or when the best gain < min_gain x the objective before suggesting (fixed at the
+    start). Returns {"before": objective with `existing`, "after": objective with all, "crowding_before", "crowding_after",
+    "reach_before", "reach_after" (mm-weighted), "suggestions": [{key, type, gain (objective), crowding_gain, shadow_removed_mm
+    (plain sum over all switches, negative when it shades others), crowding_after}]}."""
     max_toppers = MAX_TOPPERS if max_toppers == "default" else max_toppers
     min_gain = TOPPER_MIN_GAIN if min_gain is None else min_gain
     have = set(existing)
@@ -240,41 +361,70 @@ def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppe
         w = pair_priority(prio, r["a_type"], r["b_type"])
         own.setdefault(r["a"], []).append((r, w))
         own.setdefault(r["b"], []).append((r, w))
+    use_reach = bool(heights) and shadow_cfg is not None and reach_weight > 0
+
+    def pair_dist(r, toppers):
+        return pair_distance(r["distance_mm"], (r["a"] in toppers) + (r["b"] in toppers), bonus_mm, r.get("step_mm", 0.0))
 
     def pair_crowding(r, w, toppers):
-        return crowding(effective_distance(r["distance_mm"], (r["a"] in toppers) + (r["b"] in toppers), bonus_mm),
-                        w, comfort_mm)
+        return crowding(pair_dist(r, toppers), w, comfort_mm)
 
-    before = current = sum(pair_crowding(r, pair_priority(prio, r["a_type"], r["b_type"]), have) for r in prs)
+    def shadow_of(toppers):
+        h = {k: (None if v[0] is None else v[0] + (bonus_mm if k in toppers else 0.0)) for k, v in heights.items()}
+        return shadow_map(pts, h, shadow_cfg)
+
+    def reach_of(sh):
+        return reach_weight * reach_cost(pts, sh, prio)
+
+    crowd = crowd0 = sum(pair_crowding(r, pair_priority(prio, r["a_type"], r["b_type"]), have) for r in prs)
+    sh_now = shadow_of(have) if use_reach else None
+    reach = reach0 = reach_of(sh_now) if use_reach else 0.0
+    before = crowd + reach
+    objective = before
     out = []
     limit = None if max_toppers is None else max(0, max_toppers - len(have))
     while before > 0 and (limit is None or len(out) < limit):
         best = None
-        for k, mine in own.items():
+        for k in list(own) + ([k for k in info if k not in own] if use_reach else []):
             if k in have or (types is not None and info[k]["type"] not in types):
                 continue
-            n = sum(1 for r, _ in mine
-                    if effective_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus_mm) < comfort_mm)
-            if not n:
+            mine = own.get(k, [])
+            n = sum(1 for r, _ in mine if pair_dist(r, have) < comfort_mm)
+            if not n and not (use_reach and sh_now[k][0] > 0):
                 continue
             with_k = have | {k}
-            gain = sum(pair_crowding(r, w, have) - pair_crowding(r, w, with_k) for r, w in mine)
-            key = (round(gain, 9), n, prio.get(info[k]["type"], 0.0), info[k]["y"])
+            cgain = sum(pair_crowding(r, w, have) - pair_crowding(r, w, with_k) for r, w in mine)
+            rgain, removed = 0.0, 0.0
+            if use_reach:
+                sh_k = shadow_of(with_k)
+                rgain = reach_of(sh_now) - reach_of(sh_k)
+                removed = sum(sh_now[q][0] - sh_k[q][0] for q in sh_now)
+            gain = cgain + rgain
+            key = (round(gain, 9), n, prio.get(info[k]["type"], 0.0), info[k]["y"], round(removed, 9))
             if best is None or key > best[0]:
-                best = (key, k, gain)
+                best = (key, k, gain, cgain, removed)
         if best is None or best[2] < min_gain * before or best[2] <= 1e-9:
             break
-        _, k, gain = best
+        _, k, gain, cgain, removed = best
         have.add(k)
-        current -= gain
-        out.append({"key": k, "type": info[k]["type"], "gain": gain, "crowding_after": current})
-    return {"before": before, "after": current, "suggestions": out}
+        crowd -= cgain
+        objective -= gain
+        if use_reach:
+            sh_now = shadow_of(have)
+            reach = reach_of(sh_now)
+        out.append({"key": k, "type": info[k]["type"], "gain": gain, "crowding_gain": cgain, "shadow_removed_mm": removed,
+                    "crowding_after": crowd})
+    return {"before": before, "after": objective, "crowding_before": crowd0, "crowding_after": crowd,
+            "reach_before": reach0, "reach_after": reach, "suggestions": out}
 
 
 def pair_text(r):
-    """'86.2 mm apart (effective with toppers, 76.2 mm plain)' or '76.2 mm apart' for a checked pair."""
-    if r.get("toppers"):
-        return f"{r['effective_mm']:.1f} mm apart (effective with toppers, {r['distance_mm']:.1f} mm plain)"
+    """'86.2 mm apart (effective with toppers, 76.2 mm plain)' (also 'with a height step' / 'with toppers and a height step')
+    or '76.2 mm apart' for a checked pair."""
+    step = r.get("step_mm") or 0.0
+    if r.get("toppers") or step > 1e-9:
+        what = " and ".join((["toppers"] if r.get("toppers") else []) + (["height step"] if step > 1e-9 else []))
+        return f"{r['effective_mm']:.1f} mm apart (effective with {what}, {r['distance_mm']:.1f} mm plain)"
     return f"{r['distance_mm']:.1f} mm apart"
 
 
@@ -318,8 +468,10 @@ def check(ctx, cat_pedals, fs_data):
     `effective_mm` = distance_mm + topper bonus per topper; each with `distance_mm` (plain), `toppers` (0..2),
     `crowding` (effective), `crowding_plain`, `too_close` (effective < min_distance_mm), `too_close_plain`),
     footswitch_settings (min_distance_mm, comfort_mm, crowding = the sum with toppers, crowding_plain = without,
-    toppers, topper_bonus_mm, max_toppers, topper_min_gain, layout), footswitch_suggestions (`suggest_toppers`
-    result, None without a layout). Missing data and pairs closer than an optional minimum (on the effective
+    toppers, topper_bonus_mm, max_toppers, topper_min_gain, the height keys (`height_settings`), reach / reach_plain /
+    heights_missing, layout), footswitch_suggestions (`suggest_toppers`
+    result, None without a layout). With heights on: points add height_mm / height_t_mm / shadow_mm / shadow_plain_mm / shadow_by /
+    depth_mm, pairs add `step_mm` (`effective_mm` and the crowding include it; `crowding_plain` has the step, no toppers). Missing data and pairs closer than an optional minimum (on the effective
     distance) are warnings unless validation.require_footswitches / strict_footswitches are set; topper problems:
     see `topper_settings`.
     Run after jacks.check (it uses ctx['layout']).
@@ -337,11 +489,14 @@ def check(ctx, cat_pedals, fs_data):
                                               {c for c in chain if c not in fs_data})
     errors += tproblems
     warnings += tnotes
+    hset, hproblems = height_settings(project)
+    errors += hproblems
     ctx.update(footswitch_setup={}, footswitch_fixes=[], footswitch_points=[], footswitch_pairs=[],
                footswitch_suggestions=None,
                footswitch_settings={"min_distance_mm": limit, "comfort_mm": comfort, "crowding": None, "layout": False,
                                     "crowding_plain": None, "toppers": tset["toppers"], "topper_bonus_mm": tset["bonus_mm"],
-                                    "max_toppers": tset["max_toppers"], "topper_min_gain": tset["min_gain"]})
+                                    "max_toppers": tset["max_toppers"], "topper_min_gain": tset["min_gain"],
+                                    **hset, "reach": None, "reach_plain": None, "heights_missing": []})
 
     missing = []
     for cid in chain:
@@ -366,25 +521,50 @@ def check(ctx, cat_pedals, fs_data):
     prio = priorities(project)
     ctx["footswitch_points"] = pts
     have, bonus = set(tset["toppers"]), tset["bonus_mm"]
+    heights_on = hset["heights"]
+    hts = switch_heights(pts, cat_pedals, have, bonus, layout.get("board_rect"), hset["deck_rise_mm"]) if heights_on else {}
+    y_front = (layout.get("board_rect") or (None,) * 4)[3]
+    sh_t = shadows(pts, hts, hset, True) if heights_on else {}
+    sh_p = shadows(pts, hts, hset, False) if heights_on else {}
     for p in pts:
-        p["topper"] = p["key"] in have
+        k = p["key"]
+        p["topper"] = k in have
+        p["height_mm"], p["height_t_mm"] = hts.get(k, (None, None))
+        p["shadow_mm"], p["shadow_by"] = sh_t.get(k, (0.0, None))
+        p["shadow_plain_mm"] = sh_p.get(k, (0.0, None))[0]
+        p["depth_mm"] = None if y_front is None else y_front - p["y"]
+    if heights_on:
+        miss = sorted({p["cid"] for p in pts if p["height_mm"] is None})
+        if miss:
+            ctx["footswitch_settings"]["heights_missing"] = miss
+            warnings.append(f"footswitches: height unknown for {len(miss)} of {len({p['cid'] for p in pts})} pedals "
+                            f"({', '.join(miss)}): height step and shadow skipped for them")
     for r in prs:
         prr = pair_priority(prio, r["a_type"], r["b_type"])
         r["toppers"] = (r["a"] in have) + (r["b"] in have)
-        r["effective_mm"] = effective_distance(r["distance_mm"], r["toppers"], bonus)
-        r["crowding_plain"] = crowding(r["distance_mm"], prr, comfort)
+        r["step_mm"] = step_mm(hts[r["a"]][0], hts[r["b"]][0], hset["height_gain"], hset["height_cap_mm"]) if heights_on else 0.0
+        r["effective_mm"] = pair_distance(r["distance_mm"], r["toppers"], bonus, r["step_mm"])
+        r["crowding_plain"] = crowding(r["distance_mm"] + r["step_mm"], prr, comfort)
         r["crowding"] = crowding(r["effective_mm"], prr, comfort)
         r["too_close"] = limit is not None and r["effective_mm"] < limit - 1e-6
-        r["too_close_plain"] = limit is not None and r["distance_mm"] < limit - 1e-6
+        r["too_close_plain"] = limit is not None and r["distance_mm"] + r["step_mm"] < limit - 1e-6
         if r["too_close"]:
             dist_sink.append(f"footswitch: {r['a']} and {r['b']} are {pair_text(r)} (min {limit:g} mm)")
     prs.sort(key=lambda r: (r["effective_mm"], r["a"], r["b"]))
     ctx["footswitch_pairs"] = prs
     ctx["footswitch_settings"].update(crowding=sum(r["crowding"] for r in prs),
-                                      crowding_plain=sum(r["crowding_plain"] for r in prs), layout=True)
-    sug = suggest_toppers(pts, prs, prio, comfort, bonus, have, tset["max_toppers"], tset["min_gain"])
+                                      crowding_plain=sum(r["crowding_plain"] for r in prs), layout=True,
+                                      reach=reach_cost(pts, sh_t, prio) if heights_on else 0.0,
+                                      reach_plain=reach_cost(pts, sh_p, prio) if heights_on else 0.0)
+    cap_mm = hset["max_shadow_mm"]
+    if heights_on and cap_mm is not None:
+        for p in pts:
+            if p["shadow_mm"] > cap_mm + 1e-6:
+                dist_sink.append(f"footswitch: {p['key']} is shadowed by {p['shadow_by']} ({p['shadow_mm']:.1f} mm, max {cap_mm:g})")
+    sug = suggest_toppers(pts, prs, prio, comfort, bonus, have, tset["max_toppers"], tset["min_gain"],
+                          heights=hts if heights_on else None, shadow_cfg=hset if heights_on else None,
+                          reach_weight=hset["reach_weight"])
     ctx["footswitch_suggestions"] = sug
     chosen = {s["key"] for s in sug["suggestions"]}
     for p in pts:
         p["suggested"] = p["key"] in chosen
-

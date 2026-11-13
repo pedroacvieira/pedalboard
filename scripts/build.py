@@ -764,39 +764,83 @@ def footswitch_section(ctx, cat_pedals):
            f"A topper adds {bonus:g} mm (`footswitches.topper_bonus_mm`; default: the height a topper adds, a rough proxy, unverified) to the effective distance of every pair "
            "its switch is in (both switches of a pair: twice); crowding uses the effective distance. "
            + (f"Toppers set (`footswitches.toppers`): {', '.join(toppers)}." if toppers else "No toppers are set."), ""]
+    heights = st.get("heights")
+    if heights:
+        md += ["Heights (`height_mm` in the catalog = the footswitch top above the pedal's base; all values below are estimates, "
+               "not a 3D model): two switches at different heights are harder to hit with one stomp, so a pair's effective distance "
+               f"also gains the height step = {st['height_gain']:g} x the height difference, at most {st['height_cap_mm']:g} mm of "
+               "difference (`footswitches.height_gain`, `footswitches.height_cap_mm`; toppers do not enter the step). "
+               "A pedal without `height_mm` has no step and no shadow. `footswitches.heights: false` switches the height model off.", ""]
+        if st.get("heights_missing"):
+            md += [f"Height unknown: {', '.join(st['heights_missing'])}.", ""]
     prs = ctx.get("footswitch_pairs") or []
     if not prs:
         return md + ["No pair of footswitches on different pedals is known yet.", ""]
     crowded = sum(1 for r in prs if r["crowding"] > 0)
     plain = st.get("crowding_plain")
+    stepped = any(r.get("step_mm") for r in prs)
     md += [f"Crowding: {st['crowding']:.1f}"
            + (f" with {len(toppers)} topper(s) ({plain:.1f} without toppers)" if toppers else "")
            + f" ({crowded} of {len(prs)} pairs closer than {comfort:g} mm"
-           + (", effective distance" if toppers else "") + "). "
+           + (", effective distance" if toppers or stepped else "") + "). "
            f"Closest pairs ({min(len(prs), footswitches.TOP_PAIRS)} of {len(prs)}):", ""]
-    eff = bool(toppers)
-    md += ["| Switch | Type | Switch | Type | Distance (mm) |" + (" Effective (mm) |" if eff else "") + " Crowding |"
+    eff = bool(toppers) or stepped
+    md += ["| Switch | Type | Switch | Type | Distance (mm) |" + (" Step (mm) |" if stepped else "")
+           + (" Effective (mm) |" if eff else "") + " Crowding |"
            + (" Status |" if lim is not None else ""),
-           "|---|---|---|---|--:|" + ("--:|" if eff else "") + "--:|" + ("---|" if lim is not None else "")]
+           "|---|---|---|---|--:|" + ("--:|" if stepped else "") + ("--:|" if eff else "") + "--:|" + ("---|" if lim is not None else "")]
     mark = lambda k: f"{k} (topper)" if k in toppers else k
     for r in prs[:footswitches.TOP_PAIRS]:
         md.append(f"| {mark(r['a'])} | {r['a_type']} | {mark(r['b'])} | {r['b_type']} | {r['distance_mm']:.1f} |"
+                  + (f" {r.get('step_mm', 0.0):.1f} |" if stepped else "")
                   + (f" {r['effective_mm']:.1f} |" if eff else "") + f" {r['crowding']:.1f} |"
                   + (f" {'too close' if r['too_close'] else 'ok'} |" if lim is not None else ""))
     md.append("")
     if lim is not None:
         close = sum(1 for r in prs if r["too_close"])
         md += [f"{close} pair(s) closer than the minimum." if close else "No pair is closer than the minimum.", ""]
+    pts = ctx.get("footswitch_points") or []
+    if heights:
+        shaded = sorted((p for p in pts if p.get("shadow_mm", 0) > 1e-6), key=lambda p: (-p["shadow_mm"], p["key"]))
+        import layout   # late: layout does not import build
+        reach_w = layout.settings(ctx["project"])["weights"]["reach"]
+        hcol = "Switch height incl. deck rise (mm)" if st.get("deck_rise_mm") else "Height (mm)"
+        md += ["### Reach", "",
+               f"A low switch is harder to reach when a taller switch stands in the path of the foot: a switch on another pedal at most "
+               f"{st['foot_length_mm']:g} mm in front of it (`footswitches.foot_length_mm`) and within {st['foot_width_mm'] / 2:g} mm sideways "
+               f"(`footswitches.foot_width_mm` {st['foot_width_mm']:g}) shades it by its height minus the switch's own, minus the rise of the "
+               f"sole toward the front (tan {st['foot_pitch_deg']:g} deg per mm, `footswitches.foot_pitch_deg`); estimates, unverified. "
+               "Only switch caps count as obstacles (the footswitch is the pedal's tallest point), a topper adds its height to its switch. "
+               + (f"The deck rises {st['deck_rise_mm']:g} mm from front to back (`footswitches.deck_rise_mm`). " if st.get("deck_rise_mm") else "")
+               + f"Reach = the sum of priority x shadow = {st['reach']:.1f} mm"
+               + (f" ({st['reach_plain']:.1f} mm without toppers)" if toppers else "")
+               + ("; the layout proposals minimise it (`layout.weights.reach`)." if reach_w > 0 else "; the layout proposals ignore it (`layout.weights.reach` is 0)."), ""]
+        if not shaded:
+            md += ["No switch is shadowed.", ""]
+        else:
+            md += [f"| Switch | Type | {hcol} | From the front (mm) | Shadowed by | Shadow (mm) |" + (" Without toppers (mm) |" if toppers else ""),
+                   "|---|---|--:|--:|---|--:|" + ("--:|" if toppers else "")]
+            for p in shaded:
+                md.append(f"| {p['key']} | {p['type']} | {p['height_mm']:.1f} | {'-' if p['depth_mm'] is None else format(p['depth_mm'], '.0f')} | {p['shadow_by']} | {p['shadow_mm']:.1f} |"
+                          + (f" {p['shadow_plain_mm']:.1f} |" if toppers else ""))
+            md.append("")
+        if st.get("max_shadow_mm") is not None:
+            md += [f"Limit: {st['max_shadow_mm']:g} mm (`footswitches.max_shadow_mm`)."
+                   + (" Shadows above it are findings." if shaded else ""), ""]
     sug = ctx.get("footswitch_suggestions")
     if sug is not None:
         cap, nset = st.get("max_toppers"), len(toppers)
+        reach_on = bool(heights) and st.get("reach_weight", 0) > 0
         intro = ("Chosen after the layout (never during the search), on bypass switches only (a tap switch gets one by hand, a boost "
-                 "switch never), greedily: the topper that removes the most crowding "
-                 "first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the "
+                 "switch never), greedily: the topper that removes the most "
+                 + ("crowding plus shadow (crowding + `footswitches.reach_weight` "
+                    f"{st['reach_weight']:g} x reach; a topper in front of a switch deepens its shadow, which counts against it) " if reach_on else "crowding ")
+                 + "first (a switch in several close pairs helps them all; ties: the switch in more crowded pairs, then the "
                  "higher priority type, then nearer the front), "
                  + (f"at most {cap} in all (`footswitches.max_toppers`)" if cap is not None else "no cap (`footswitches.max_toppers`)")
-                 + f", stopping when a topper would remove less than {st['topper_min_gain'] * 100:g} % of the crowding "
-                 "(`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.")
+                 + f", stopping when a topper would remove less than {st['topper_min_gain'] * 100:g} % of the "
+                 + ("crowding plus shadow " if reach_on else "crowding ")
+                 + "(`footswitches.topper_min_gain`). Not applied: list the ones you want in `footswitches.toppers`.")
         md += ["### Suggested toppers", "", intro, ""]
         if not sug["suggestions"]:
             if sug["before"] <= 0:
@@ -809,13 +853,15 @@ def footswitch_section(ctx, cat_pedals):
                 why = "None suggested: no topper removes enough crowding."
             md += [why, ""]
         else:
-            labels = {p["key"]: p for p in ctx.get("footswitch_points") or []}
-            md += ["| # | Switch | Pedal | Type | Crowding removed | Crowding after |", "|--:|---|---|---|--:|--:|"]
+            labels = {p["key"]: p for p in pts}
+            md += ["| # | Switch | Pedal | Type | Crowding removed |" + (" Shadow removed (mm) |" if reach_on else "") + " Crowding after |",
+                   "|--:|---|---|---|--:|" + ("--:|" if reach_on else "") + "--:|"]
             for i, s in enumerate(sug["suggestions"], 1):
                 p = labels[s["key"]]
                 c = cat_pedals[p["cid"]]
                 md.append(f"| {i} | {s['key']} ({p['label']}) | {c.get('brand', '')} {c.get('name', p['cid'])} | {s['type']} "
-                          f"| {s['gain']:.1f} | {s['crowding_after']:.1f} |")
+                          f"| {s['crowding_gain']:.1f} |" + (f" {s['shadow_removed_mm']:.1f} |" if reach_on else "")
+                          + f" {s['crowding_after']:.1f} |")
             md.append("")
             if cap is not None and nset + len(sug["suggestions"]) >= cap:
                 md += [f"Stopped at the cap `footswitches.max_toppers` ({cap}).", ""]
@@ -908,6 +954,8 @@ def proposals_section(ctx, cat_pedals):
             ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
              + " (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
+            *([("Footswitch shadow (sum, mm)", lambda m: "no data" if not m.get("fs_known") else ("?" if m.get("fs_reach") is None else f"{m['fs_reach']:.1f}"))]
+              if (ctx.get("footswitch_settings") or {}).get("heights", True) else []),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
             ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}" + (f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else "")),
             ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),
@@ -1076,6 +1124,7 @@ def open_issues(ctxs, jacks_data):
 
 
 def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
+    heights_any = any((c.get("footswitch_settings") or {}).get("heights", True) for c in ctxs)   # the footswitch height model is on for a project
     md = [
         "# Pedalboard planner",
         "",
@@ -1103,7 +1152,8 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "uv run pytest tests                       geometry and jack-check tests",
         "```",
         "",
-        f"Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default {footswitches.TOPPER_BONUS_MM:g} mm: the height a topper adds, a rough proxy, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.",
+        f"Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default {footswitches.TOPPER_BONUS_MM:g} mm: the height a topper adds, a rough proxy, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding"
+        + (" (and shadow). Heights (`height_mm` of the catalog; `footswitches.heights: false` = off, estimates): a pair at different heights gains a step in its effective distance (`footswitches.height_gain` 0.5 x the difference, at most `footswitches.height_cap_mm` 10 mm of it; toppers do not enter it), and a switch with a taller switch of another pedal in the path of the foot in front of it is shadowed (`footswitches.foot_width_mm` 80, `footswitches.foot_length_mm` 190, `footswitches.foot_pitch_deg` 5, `footswitches.deck_rise_mm` 0, `footswitches.reach_weight` 1, optional `footswitches.max_shadow_mm` = a finding; the layout proposals minimise it with `layout.weights.reach`)." if heights_any else "."),
         "",
         "Per-pedal wishes live in `pedals.<pedal id>` of project.json, every field optional: `position` {`side` left|right|any, `depth` front|back|avoid_front|any, "
         "`weight` (score per mm, default 0.3), `strength` preferred|required}, `pin`, `rotations` ([0, 90, 270], \"any\" or \"current\"), `order` {`<name>`: an ordering rule "

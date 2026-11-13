@@ -275,12 +275,20 @@ def test_toppers_never_make_proposals_stale_and_the_table_says_without_toppers(t
     ctx = build.validate(pdir, pedals, supplies)
     md = "\n".join(build.proposals_section(ctx, pedals))
     assert "**Stale:**" not in md and "| Footswitch crowding, without toppers (lower is better) |" in md
+    post = {"reach_weight": 3.0, "max_shadow_mm": 5}
+    proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), **post}}))
+    assert proposal_inputs_sha1(pdir) == base                           # reach_weight / max_shadow_mm act after the layout: no inputs either
     proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), "comfort_mm": 90}}))
     assert proposal_inputs_sha1(pdir) != base                           # another footswitch setting is
+    proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), "height_gain": 0.25}}))
+    assert proposal_inputs_sha1(pdir) != base                           # so is a height setting the search reads
     proj_path.write_text(json.dumps(proj))
     assert proposal_inputs_sha1(pdir) == base
     md = "\n".join(build.proposals_section(build.validate(pdir, pedals, supplies), pedals))
-    assert "| Footswitch crowding (lower is better) |" in md
+    assert "| Footswitch crowding (lower is better) |" in md and "| Footswitch shadow (sum, mm) |" in md
+    proj_path.write_text(json.dumps({**proj, "footswitches": {**proj.get("footswitches", {}), "heights": False}}))   # flat model: today's table
+    md = "\n".join(build.proposals_section(build.validate(pdir, pedals, supplies), pedals))
+    assert "| Footswitch crowding (lower is better) |" in md and "Footswitch shadow" not in md
 
 
 def test_footswitch_metrics_use_the_plain_distances():
@@ -292,9 +300,14 @@ def test_footswitch_metrics_use_the_plain_distances():
            {"distance_mm": 95.0, "effective_mm": 95.0, "too_close": False, "too_close_plain": False}]
     prs.sort(key=lambda r: r["effective_mm"], reverse=True)   # the closest plain pair is not first
     ctx = {"errors": [], "warnings": [], "violations": [], "footswitch_pairs": prs, "cable_list": [],
-           "footswitch_settings": {"crowding": 3.2, "crowding_plain": 12.34}}
+           "footswitch_settings": {"crowding": 3.2, "crowding_plain": 12.34, "reach": 1.0, "reach_plain": 4.26}}
     out = pl.metrics(ctx, m, m.owner, 1.0)
     assert out["fs_closest_mm"] == 60.0 and out["fs_close"] == 2 and out["fs_crowding"] == 12.3
+    assert out["fs_reach"] == 4.3      # the plain shadow sum (no toppers)
+    # the closest pair and `fs_close` use the same distance: plain + the height step (no toppers)
+    prs2 = [{"distance_mm": 70.0, "step_mm": 5.0, "effective_mm": 75.0, "too_close": False, "too_close_plain": False},
+            {"distance_mm": 62.0, "step_mm": 5.0, "effective_mm": 67.0, "too_close": False, "too_close_plain": False}]
+    assert pl.metrics({**ctx, "footswitch_pairs": prs2}, m, m.owner, 1.0)["fs_closest_mm"] == 67.0
 
 
 def test_a_proposal_keeps_the_owners_power_overrides_under_valid_cable_ids(tmp_path):

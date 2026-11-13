@@ -48,6 +48,12 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
                  maximised against the other terms, the closest pairs count most. With an optional
                  `footswitches.min_distance_mm` also footswitch_min 20 / mm below it + footswitch_pair 100 per pair
                  (times the priority). No footswitch data -> 0
+                 A pair's distance d is the EFFECTIVE one: plain + the height step (`footswitches.step_mm`: height_gain 0.5 x
+                 the difference of the two switch heights, at most height_cap_mm 10 of it; unknown heights and `footswitches.heights:
+                 false` = no step), as in the build (toppers are not searched)
+  reach          1 x sum over switches of priority x shadow (mm): a switch is shaded by a taller switch of another pedal inside the
+                 foot strip in front of it (footswitches.shadow_map: foot_width 80 / foot_length 190 / foot_pitch 5 deg, deck_rise);
+                 repair issues like a crowded pair. 0 without heights
   io             1 / mm: first pedal's input to the right board edge + last pedal's output to the nearest of the
                  left, right and back edges
   flow           0.1 / mm a pedal's centre lies to the right of the previous pedal's (signal flows right to left)
@@ -85,7 +91,7 @@ RECT_BITS_MAX = 10000
 SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
-           "footswitch": 2.0, "footswitch_min": 20.0, "footswitch_pair": 100.0, "io": 1.0, "flow": 0.1, "access": 1.0,
+           "footswitch": 2.0, "footswitch_min": 20.0, "footswitch_pair": 100.0, "reach": 1.0, "io": 1.0, "flow": 0.1, "access": 1.0,
            "position": 1.0, "preference_miss": 100.0, "preference_miss_mm": 20.0, "rotation_used": 10.0, "rotation_new": 40.0, "move": 0.2, "move_pedal": 25.0, "rotate_change": 20.0,
            "touch": 0.02}
 ACCESS = {
@@ -338,6 +344,10 @@ class Model:
         limit, self.fs_comfort, _, _ = footswitches.spacing_settings(project)
         self.fs_limit = limit if fs_limit is None else fs_limit
         self.fs_priority = footswitches.priorities(project)
+        # heights (`footswitches.heights`, plan docs/plans/switch-height.md): the pedal's switch top, the step in a pair's distance and the
+        # shadow (reach term) use the same functions as the build; toppers are not searched. None = unknown (skipped)
+        self.fs_h = footswitches.height_settings(project)[0]
+        self.fs_height = [(cat_pedals.get(p) or {}).get("height_mm") if self.fs_h["heights"] else None for p in self.ids]
         self.access = [access_rule({**cat_pedals[p], "id": p}, [f["type"] for f in self.fs_data.get(p) or []],
                                    self.cfg["access"]) for p in self.ids[:self.n_ped]] + [None] * len(on_board)
         # position wishes of the profiles (`pedals.<id>.position`): per movable pedal {"side", "depth", "weight", "required"} or None. The pull
@@ -951,7 +961,7 @@ class Model:
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
                 [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for _, f in self.fixed_feet]
-        terms = dict.fromkeys(("clearance", "routing_area", "signal", "power", "footswitch", "io", "flow", "access", "position",
+        terms = dict.fromkeys(("clearance", "routing_area", "signal", "power", "footswitch", "reach", "io", "flow", "access", "position",
                                "rotation", "move", "touch"), 0.0)
         raw = dict.fromkeys(terms, 0.0)
         blocked, outside, fs_close, sig_lengths, issues = [], [], [], {}, []
@@ -1118,15 +1128,21 @@ class Model:
                 if here is not None and style != routing.FORKED:   # forked: every cable starts at the port
                     prev, under, prev_mm = here, dn, here_mm
         terms["power"] = w["power"] * raw["power"]
-        # footswitch spacing
+        # footswitch spacing (the pair's distance gains the height step) and reach (shadows)
         if self.fs_known:
+            fsh, rise, depth = self.fs_h, self.fs_h["deck_rise_mm"], b[3] - b[1]
             pts = [(n, g2[0] + state[n][0], g2[1] + state[n][1], g2[2], g2[3]) for n, g in enumerate(geo) for g2 in g["fs"]]
+            hts = [None if self.fs_height[p[0]] is None else self.fs_height[p[0]] + (rise * (b[3] - p[2]) / depth if rise and depth > 0 else 0.0)
+                   for p in pts]
             lim, comfort = self.fs_limit, self.fs_comfort
             for i, p in enumerate(pts):
-                for q in pts[i + 1:]:
+                for j in range(i + 1, len(pts)):
+                    q = pts[j]
                     if p[0] == q[0]:
                         continue
                     d = math.hypot(p[1] - q[1], p[2] - q[2])
+                    if fsh["heights"]:
+                        d += footswitches.step_mm(hts[i], hts[j], fsh["height_gain"], fsh["height_cap_mm"])
                     if d >= comfort and (lim is None or d >= lim):
                         continue
                     fac = footswitches.pair_priority(self.fs_priority, p[3], q[3])
@@ -1139,6 +1155,16 @@ class Model:
                         terms["footswitch"] += fac * (w["footswitch_min"] * (lim - d) + w["footswitch_pair"])
                         fs_close.append({"a": p[4], "b": q[4], "distance_mm": d})
                         issues.append((p[0], self.titles[q[0]], lim - d))
+            if fsh["heights"] and w["reach"] and any(h is not None for h in hts):
+                sp = [{"key": p[4], "cid": p[0], "x": p[1], "y": p[2], "type": p[3]} for p in pts]
+                shade = footswitches.shadow_map(sp, {p[4]: h for p, h in zip(pts, hts)}, fsh)
+                raw["reach"] = footswitches.reach_cost(sp, shade, self.fs_priority)
+                terms["reach"] = w["reach"] * raw["reach"]
+                owner_of = {p[4]: p[0] for p in pts}
+                for p in pts:
+                    mm, by = shade[p[4]]
+                    if mm > 0:   # a repair move of the shaded pedal or the shading one (the move operator picks either)
+                        issues.append((p[0], self.titles[owner_of[by]], min(mm, CROWD_STEP_MM)))
         # io: first input to the right edge, last output to the nearest of left / right / back
         if self.n_ped and self.ids[0] == chain[0] and geo[0]["in"]:
             x = geo[0]["in"][0] + state[0][0]

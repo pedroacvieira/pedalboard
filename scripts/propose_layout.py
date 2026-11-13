@@ -61,8 +61,9 @@ def metrics(ctx, model, state, move_factor):
         "overflow": sum("stacking limit" in s or "plug limit" in s for s in status),
         # toppers are a finishing step the search ignores: proposals are compared on the PLAIN distances
         "fs_close": sum(1 for r in prs if r.get("too_close_plain")),
-        "fs_closest_mm": round(min(r["distance_mm"] for r in prs), 1) if prs else None,
+        "fs_closest_mm": round(min(r["distance_mm"] + r.get("step_mm", 0.0) for r in prs), 1) if prs else None,   # plain + height step: the distance `fs_close` uses
         "fs_crowding": round((ctx.get("footswitch_settings") or {}).get("crowding_plain") or 0.0, 1),
+        "fs_reach": round((ctx.get("footswitch_settings") or {}).get("reach_plain") or 0.0, 1),   # sum of priority x shadow (mm), no toppers
         "fs_known": det["fs_known"],
         "signal_mm": round(sum(c["min_mm"] for c in sig if c["min_mm"] is not None), 1),
         "signal_routed": sum(1 for c in sig if c["min_mm"] is not None), "signal_cables": len(sig),
@@ -184,7 +185,7 @@ def print_score(model, owner_ctx):
     total, det = model.score(model.owner, detail=True)
     print(f"Surrogate score of the owner's layout: {total:.1f} (lower is better; weights: project layout.weights)")
     print(f"  {'term':14} {'raw':>10} {'weighted':>10}")
-    units = {"clearance": "mm", "routing_area": "exits", "signal": "mm", "power": "mm", "footswitch": "mm", "io": "mm",
+    units = {"clearance": "mm", "routing_area": "exits", "signal": "mm", "power": "mm", "footswitch": "mm", "reach": "mm", "io": "mm",
              "flow": "mm", "access": "mm x w", "position": "mm x w", "rotation": "pedals", "move": "mm", "touch": "mm"}
     for k, (raw, wt) in det["terms"].items():
         print(f"  {k:14} {raw:>10.1f} {wt:>10.1f}  {units.get(k, '')}")
