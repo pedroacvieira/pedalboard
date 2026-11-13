@@ -253,6 +253,11 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   expression|patch) a box of head depth + one cable diameter x head width (`jacks.extra_plug_box`, mirrored in `layout.py`; owner
   2026-11-06: every expression cable is straight on the board side; gig: `exp_trs_straight_baseline`, a 40 x 12 mm placeholder). The
   cable itself is not routed or measured.
+- Floor devices (owner, 2026-11-13, `feat/floor-devices`): pedals that sit on the floor, not on a board, and go with any board (the
+  BOSS EV-30 expression pedal, the Dunlop Cry Baby GCB95F): catalog `floor_device: true`; never in a `signal_chain` (error); a project lists
+  the ones it uses in `floor` [{"device", "controls": ["<pedal>.<jack>", ...], "note"}]: the jacks a device drives count as used extra
+  jacks (`jacks.with_floor` merges them into `jacks.extra_used` in `build.validate` and `propose_layout`; `jacks.floor_findings`
+  validates). README: project "Floor devices", root "Floor devices" (never shared gear). Their cables are not routed or measured.
 - Generated files (READMEs, .mmd, .svg) are never edited by hand; change the generator/data.
 - Layout injection: `build.validate(..., items=...)` checks a parsed layout instead of `playground_design.json`
   (`ctx["layout_source"]` file|injected); `playground_design.json` is the owner's layout: only `fetch_playground.py` writes it.

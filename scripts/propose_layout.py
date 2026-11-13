@@ -225,7 +225,7 @@ def main(argv=None):
     board_data, board_edits = boards.load(), boards.load_edits(pdir)   # likewise (catalog/boards.json, the project's board.json)
     board_bounds, board_pieces = boards.load_bounds(pdir), boards.load_pieces(pdir)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
-    project = load_json(pdir / "project.json")
+    project = jacks.with_floor(load_json(pdir / "project.json"))   # the jacks the floor devices drive are used extra jacks
     if args.pin:
         project.setdefault("layout", {})["pins"] = sorted(set(project.get("layout", {}).get("pins", [])) | set(args.pin))
     design_doc = load_json(pdir / "playground_design.json")

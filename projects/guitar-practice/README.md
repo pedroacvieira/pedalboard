@@ -74,6 +74,12 @@ flowchart TB
 - **MXR Carbon Copy**: Analog BBD delay (M169). 26 mA, 9V DC center-negative, true bypass (retailer specs; one UK retailer lists it as end of life). Planned for the practice board.
 - **TC Electronic Ditto Looper**: Looper. Planned for the practice board. 100 mA is the minimum supply rating (retailers/Rockboard), not a measured draw. 9V DC center-negative, no battery. One reviewer saw a nominal-9V supply output higher than 9V and kill it: use a regulated/isolated output.
 
+### Floor devices
+
+Not on the board (they sit on the floor and are shared by every board, `floor` in project.json); the jacks they drive count as used extra jacks (clearance and plug checks). Their cables are not routed or measured.
+
+- **Dunlop Cry Baby GCB95F Classic** drives nothing on this board: Wah on the floor, in the signal path off the board (its position and cable are not modelled; owner, 2026-11-13)
+
 ## Powering
 
 Every output and the pedals daisy-chained on it, grouped for power (not in signal order); colors are the effect categories, a red border marks an 18V output.

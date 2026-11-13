@@ -138,6 +138,13 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - **Catalinbread Belle Epoch Deluxe**: Tape echo emulation. Analog EP-3-style circuitry around a 24-bit digital delay line, so treated as DIGITAL. Catalinbread lists 9V DC ONLY at 200 mA (it steps up to an internal rail itself): the original plan had it on 18V, which could damage it, so it is on a 9V output here. Give it a clean isolated output. Spelled 'Epoque' in the original plan.
 - **BOSS DD-200 Digital Delay**: In guitar-gig (replaced the DD-8, owner layout 2026-11-04). Digital delay with 2 footswitches, memories, MIDI, 60 s looper. BOSS spec page (boss.info/global/products/dd-200/specifications): current draw 225 mA (high), power = 3 AA batteries or PSA-S series AC adaptor (sold separately), bypass 'Buffered bypass' ('Analog dry through and buffered bypass'). Center-negative: confirmed by the owner (2026-11-05; also a UK retailer listing and the PSA-S adaptor BOSS specifies, Roland support). The BOSS page gives no DC voltage; 9 V DC is from Thomann (unverified against the manual). Digital: must not share an output; 225 mA needs an output rated for it.
 
+### Floor devices
+
+Not on the board (they sit on the floor and are shared by every board, `floor` in project.json); the jacks they drive count as used extra jacks (clearance and plug checks). Their cables are not routed or measured.
+
+- **BOSS EV-30 Dual Expression Pedal** drives `retrovibe.jack_4`, `belle_epoch.jack_4`, `boss_dd200.jack_6`: Two outputs: one or two of these at a time, re-patched by hand (owner, 2026-11-06)
+- **Dunlop Cry Baby GCB95F Classic** drives nothing on this board: Wah on the floor, in the signal path off the board (its position and cable are not modelled; owner, 2026-11-13)
+
 ## Powering
 
 Every output and the pedals daisy-chained on it, grouped for power (not in signal order); colors are the effect categories, a red border marks an 18V output.

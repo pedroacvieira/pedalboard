@@ -54,6 +54,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     `outline_data` / `body_data`: usable catalog/outlines.json entries (outlines, bodies; read if None). `board_data`: usable catalog/boards.json
     entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
+    project = jacks.with_floor(project)   # the jacks the floor devices drive count as used extra jacks
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
     no_unknown = project.get("validation", {}).get("no_unknown", True)
@@ -286,7 +287,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     ctx["feeds"] = {pid: oid for pid, oid in powered.items()}
     ctx["run_v"] = run_v
     cable_types = load_cable_types()
-    jacks.check(ctx, cat_pedals, cat_supplies, jacks.read_file()["jacks"] if jacks_data is None else jacks_data,
+    jacks_data = jacks.read_file()["jacks"] if jacks_data is None else jacks_data
+    errors.extend(jacks.floor_findings(project, cat_pedals, jacks_data, chain))
+    jacks.check(ctx, cat_pedals, cat_supplies, jacks_data,
                 cable_types=cable_types, defer=True, items=items, outlines=outline_data, board_data=board_data, bodies=body_data)
     if route:
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
@@ -887,6 +890,15 @@ def project_readme(ctx, cat_pedals):
         md += [f"- `{o['winner']}` overrides `{o['loser']}` for: " + "; ".join(o["pairs"]) for o in ctx["overrides"]]
     md += ["", "### Notes per pedal", ""]
     md += [f"- **{pedal_name(pedals[pid])}**: {pedals[pid].get('comments', '')}" for pid in chain]
+    floor = [f for f in (pr.get("floor") if isinstance(pr.get("floor"), list) else [])
+             if isinstance(f, dict) and isinstance(f.get("device"), str) and f["device"] in cat_pedals]
+    if floor:
+        md += ["", "### Floor devices", "",
+               "Not on the board (they sit on the floor and are shared by every board, `floor` in project.json); the jacks they drive "
+               "count as used extra jacks (clearance and plug checks). Their cables are not routed or measured.", ""]
+        for f in floor:
+            ctl = ", ".join(f"`{k}`" for k in (f.get("controls") if isinstance(f.get("controls"), list) else [])) or "nothing on this board"
+            md.append(f"- **{nm(f['device'])}** drives {ctl}" + (f": {f['note']}" if f.get("note") else ""))
 
     md += ["", "## Powering", ""]
     if not ctx["supplies"]:
@@ -1077,7 +1089,18 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         md += ["", "**Ownership unknown (fill in `owned`):** " + "; ".join(unknown_owned)]
 
     # catalog not placed anywhere
-    free = [pedal_name(p) for pid, p in cat_pedals.items() if pid not in usage]
+    floor_used = {}
+    for c in ctxs:
+        floor = c["project"].get("floor")
+        for f in floor if isinstance(floor, list) else []:
+            if isinstance(f, dict) and isinstance(f.get("device"), str):
+                floor_used.setdefault(f["device"], []).append(c["key"])
+    floor_devs = [pid for pid, p in cat_pedals.items() if p.get("floor_device")]
+    md += ["", "## Floor devices", "", "Pedals that sit on the floor, not on a board, and go with any board (catalog `floor_device`; a project lists the "
+           "ones it uses in `floor`). Never counted as shared gear.", ""]
+    md += [f"- **{pedal_name(cat_pedals[pid])}**{'' if cat_pedals[pid].get('owned') else ' (not owned)'}: "
+           f"{', '.join(floor_used.get(pid, [])) or 'no project uses it yet'}" for pid in floor_devs] or ["None."]
+    free = [pedal_name(p) for pid, p in cat_pedals.items() if pid not in usage and not p.get("floor_device")]
     md += ["", "## Catalog pedals not in any project", "", ", ".join(free) or "None.", ""]
     return "\n".join(md) + "\n", global_warn
 

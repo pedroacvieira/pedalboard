@@ -152,6 +152,67 @@ def default_power_type(project):
     return routing.settings(project)["power_type"]
 
 
+def floor_controls(project):
+    """{pedal id: [jack ids]} the project's floor devices drive (`project.floor` [{"device", "controls": ["<pedal>.<jack>", ...]}]):
+    a floor device (catalog `floor_device`: an expression pedal, a wah... that sits on the floor, not on a board, and is shared by
+    every board) plugged into a pedal's extra jack makes that jack used. Malformed entries are skipped (`floor_findings` reports them)."""
+    out = {}
+    for f in project.get("floor") or [] if isinstance(project.get("floor"), list) else []:
+        for key in (f.get("controls") or []) if isinstance(f, dict) and isinstance(f.get("controls"), list) else []:
+            if isinstance(key, str) and "." in key:
+                pid, jid = key.split(".", 1)
+                out.setdefault(pid, []).append(jid)
+    return out
+
+
+def with_floor(project):
+    """`project` with the jacks its floor devices drive (`floor_controls`) added to `jacks.extra_used` (each once, a copy; the project
+    itself when it has no floor devices): every check of used jacks (clearance, plugs, collisions, drawings, the layout search) then
+    covers them. Idempotent."""
+    ctl = floor_controls(project)
+    if not ctl:
+        return project
+    jset = dict(project.get("jacks") or {})
+    used = {k: list(v) for k, v in (jset.get("extra_used") or {}).items()}
+    for pid, ids in ctl.items():
+        for jid in ids:
+            if jid not in used.setdefault(pid, []):
+                used[pid].append(jid)
+    jset["extra_used"] = used
+    return {**project, "jacks": jset}
+
+
+def floor_findings(project, cat_pedals, jacks_data, chain):
+    """Errors about `project.floor`: a list of {"device": catalog id with `floor_device` true, "controls": ["<pedal>.<jack>"] of
+    chain pedals' existing jacks, optional "note"}; a floor device in the signal chain is an error too (it is not on the board)."""
+    errs, floor = [], project.get("floor")
+    for pid in chain:
+        if (cat_pedals.get(pid) or {}).get("floor_device"):
+            errs.append(f"floor: {pid} is a floor device (catalog floor_device): list it in the project's `floor`, not in signal_chain")
+    if floor is None:
+        return errs
+    if not isinstance(floor, list):
+        return errs + ["floor must be a list of {\"device\", \"controls\", \"note\"}"]
+    for n, f in enumerate(floor):
+        dev = f.get("device") if isinstance(f, dict) else None
+        if not isinstance(dev, str) or dev not in cat_pedals:
+            errs.append(f"floor[{n}]: device {dev!r} is not in catalog/pedals.json")
+            continue
+        if not cat_pedals[dev].get("floor_device"):
+            errs.append(f"floor[{n}]: {dev} is no floor device (set floor_device true in catalog/pedals.json)")
+        ctl = f.get("controls") or []   # none / null = drives nothing on this board
+        if not isinstance(ctl, list):
+            errs.append(f"floor[{n}].controls must be a list of \"<pedal>.<jack>\"")
+            continue
+        for key in ctl:
+            pid, _, jid = str(key).partition(".")
+            if pid not in chain:
+                errs.append(f"floor[{n}].controls: {key}: {pid} is not in the signal chain")
+            elif jacks_data.get(pid) is not None and _jack_by_id(jacks_data[pid], jid) is None:
+                errs.append(f"floor[{n}].controls: {key}: {pid} has no jack '{jid}'")
+    return errs
+
+
 EXTRA_PLUG_ROLES = ("expression", "patch")   # the cable types an extra jack's plug may take (cables.extra_type / extra_types)
 
 

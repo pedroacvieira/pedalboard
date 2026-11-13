@@ -21,6 +21,9 @@
     }
   },
   "playground": { "scale": 45, "share": "https://pedalplayground.com/?p=a8jcsud7" },
+  "floor": [
+    { "device": "dunlop_cry_baby_gcb95f", "note": "Wah on the floor, in the signal path off the board (its position and cable are not modelled; owner, 2026-11-13)" }
+  ],
   "signal_chain": ["polytune_2_mini", "octahive", "ibanez_ts_mini", "duke_of_tone", "e_lady", "carbon_copy", "ditto_looper"],
   "rule_overrides": {},
   "rules": [

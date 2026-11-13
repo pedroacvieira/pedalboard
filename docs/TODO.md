@@ -53,9 +53,7 @@ ideas · 5 data · 6 done.
 - [ ] **Belle Epoch Exp vs output plug**: the Exp jacks now take a straight plug (`exp_trs_straight_baseline`, 40 x 12 mm
       placeholder, owner 2026-11-06); the Belle's output plug's cable run still crosses it (3.5 mm). Fix: a slimmer angled plug
       on S16, or measure the Ernie Ball plug and the expression cable's straight plug first.
-- [ ] **Place the EV-30** (`boss_ev30`, catalog 2026-11-06) in Pedal Playground and mark its two TRS jacks
-      (`uv run pb pedal-editor boss_ev30`). It is an obstacle on the board but not routed yet.
-- [ ] **Tumnus Deluxe / Belle Epoch buffer setting**: owner checks the pedals (catalog keeps Tumnus buffered, Belle true).
+- EV-30 = a floor device (2026-11-13): `floor` in project.json drives the three Exp jacks; not on the board.
 - [ ] Re-run the proposals: stale since the power rewiring (`uv run pb propose guitar-gig`, then build). Before the
       rewiring: proposal 1 = Retrovibe, Ratsbane, Tumnus, Monk (signal -50 mm, DC -63 mm).
 - [ ] **Tumnus Deluxe body: 5 mm right inset unexplained (check the image)**: the body from the alpha mask is inset
