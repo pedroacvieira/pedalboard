@@ -918,3 +918,53 @@ def test_the_surrogate_uses_the_straight_extra_plug_as_the_build_does():
     typed = {**base, "cables": {**base["cables"], "extra_type": "exp"}}
     _, det = layout.Model(typed, layout_items, PEDALS, {}, AUX_JACKS, {}, types, outlines={}).score(state, margin=0, detail=True)
     assert det["terms"]["clearance"][0] > plain["terms"]["clearance"][0]
+
+
+# --- heights: the step in the footswitch term and the reach term -------------------------------------
+PEDALS_H = {**PEDALS, "a": {**PEDALS["a"], "height_mm": 40.0}, "b": {**PEDALS["b"], "height_mm": 60.0}}
+
+
+def hmodel(specs, fs, project_extra=None):
+    proj = {"signal_chain": ["a", "b"], "cables": {"type": "t"}, "jacks": {}, **(project_extra or {})}
+    items = design.parse_canvas(canvas(BOARD, *specs))
+    return layout.Model(proj, items, PEDALS_H, {}, JACKS, fs, TYPES)
+
+
+def test_the_height_step_and_the_reach_term_hand_case():
+    """Pedals 50.8 x 25.4 mm: a (40 mm switch height) at the back, b (60 mm) 50.8 mm in front of it, the switches at the same x.
+    Step 0.5 x min(20, 10) = 5 -> d_eff 55.8, crowding 44.2^2 / 100 = 19.5364 (flat: 49.2^2 / 100 = 24.2064). Shadow of a:
+    20 - tan(5 deg) x 50.8 = 15.556 (weight 1, bypass priority 1). b moved sideways by 41 mm (> half the 80 mm strip): no shadow,
+    reach 0; the pair is then 65.3 mm apart + 5."""
+    pair = {"a": [sw()], "b": [sw()]}
+    specs = [ped("T A", 0, 0, h=1.0), ped("T B", 0, 90, h=1.0)]
+    m = hmodel(specs, pair)
+    state = m.owner
+    _, det = m.score(state, detail=True)
+    shadow = 20.0 - math.tan(math.radians(5)) * 50.8
+    assert det["terms"]["footswitch"][0] == pytest.approx(44.2 ** 2 / 100)
+    assert det["terms"]["reach"] == pytest.approx((shadow, shadow)) and round(shadow, 3) == 15.556
+    side = [state[0], (state[1][0] + 41.0, state[1][1], state[1][2])]
+    _, away = m.score(side, detail=True)
+    assert away["terms"]["reach"] == (0.0, 0.0)
+    d = math.hypot(41.0, 50.8) + 5.0
+    assert away["terms"]["footswitch"][0] == pytest.approx((100 - d) ** 2 / 100)
+    # the weight scales it, 0 switches it off; heights off = the flat model
+    assert hmodel(specs, pair, {"layout": {"weights": {"reach": 3.0}}}).score(state, detail=True)[1]["terms"]["reach"] == pytest.approx((shadow, 3 * shadow))
+    assert hmodel(specs, pair, {"layout": {"weights": {"reach": 0}}}).score(state, detail=True)[1]["terms"]["reach"] == (0.0, 0.0)
+    off = hmodel(specs, pair, {"footswitches": {"heights": False}}).score(state, detail=True)[1]["terms"]
+    assert off["reach"] == (0.0, 0.0) and off["footswitch"][0] == pytest.approx(49.2 ** 2 / 100)
+    _, issues = m.score(state)
+    assert any(t == "T B" and mm > 0 for _, t, mm in issues)    # a repair issue for the shaded pedal
+
+
+def test_surrogate_step_and_reach_equal_the_builds_on_the_gig_layout():
+    pedals, supplies = load_catalog()
+    fs_data = footswitches.read_file()["footswitches"]
+    ctx = build.validate(GIG, pedals, supplies, footswitch_data=fs_data)
+    m = layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
+                     supplies, jacks.read_file()["jacks"], fs_data, load_cable_types())
+    terms = m.score(m.owner, detail=True)[1]["terms"]
+    st = ctx["footswitch_settings"]
+    assert st["heights"] and st["crowding_plain"] > 0 and terms["footswitch"][0] == pytest.approx(st["crowding_plain"])
+    assert st["reach_plain"] > 0 and terms["reach"][0] == pytest.approx(st["reach_plain"])
+    assert any(r["step_mm"] > 0 for r in ctx["footswitch_pairs"])

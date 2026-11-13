@@ -951,6 +951,7 @@ def proposals_section(ctx, cat_pedals):
             ("Footswitch crowding" + (", without toppers" if (ctx.get("footswitch_settings") or {}).get("toppers") else "")
              + " (lower is better)", lambda m: "no data" if not m.get("fs_known") else f"{m.get('fs_crowding', 0):.0f}"),
             ("Closest footswitch pair (mm)", lambda m: "-" if m.get("fs_closest_mm") is None else f"{m['fs_closest_mm']:.1f}"),
+            ("Footswitch shadow (sum, mm)", lambda m: "no data" if not m.get("fs_known") else ("?" if m.get("fs_reach") is None else f"{m['fs_reach']:.1f}")),
             ("Signal cables, routed minimum (mm)", lambda m: f"{m['signal_mm']:.0f}"),
             ("Power cables, routed minimum (mm)", lambda m: f"{m['power_mm']:.0f}" + (f" (+{m['power_unrouted']} not routed)" if m.get("power_unrouted") else "")),
             ("First input / last output to the board edges (mm)", lambda m: f"{m['io_mm']:.0f}"),

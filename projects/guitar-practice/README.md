@@ -281,6 +281,7 @@ Made by `uv run scripts/propose_layout.py guitar-practice --max-change fix --see
 | Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
 | Footswitch crowding (lower is better) | 58 | 40 | 34 | 32 |
 | Closest footswitch pair (mm) | 58.5 | 67.4 | 67.4 | 70.5 |
+| Footswitch shadow (sum, mm) | ? | ? | ? | ? |
 | Signal cables, routed minimum (mm) | 480 | 342 | 354 | 351 |
 | Power cables, routed minimum (mm) | 1185 | 1238 | 1219 | 1238 |
 | First input / last output to the board edges (mm) | 0 | 0 | 0 | 0 |

@@ -229,6 +229,7 @@ Made by `uv run scripts/propose_layout.py bass --max-change fix --seed 1` (max_c
 | Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 |
 | Footswitch crowding (lower is better) | 4 | 4 |
 | Closest footswitch pair (mm) | 83.5 | 83.5 |
+| Footswitch shadow (sum, mm) | ? | ? |
 | Signal cables, routed minimum (mm) | 405 | 394 |
 | Power cables, routed minimum (mm) | 1132 | 1117 |
 | First input / last output to the board edges (mm) | 14 | 24 |
