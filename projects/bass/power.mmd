@@ -3,20 +3,18 @@ flowchart LR
         direction TB
         psu1_OUT1["<b>OUT1</b> · 9V<br/>6 / 300 mA"]:::out9
         psu1_OUT2["<b>OUT2</b> · 9V<br/>25 / 300 mA"]:::out9
-        psu1_OUT3["<b>OUT3</b> · 9V<br/>36 / 300 mA"]:::out9
+        psu1_OUT3["<b>OUT3</b> · 9V<br/>6 / 300 mA"]:::out9
         psu1_OUT4["<b>OUT4</b> · 9V<br/>330 / 500 mA"]:::out9
         psu1_OUT5["<b>OUT5</b> · 9V<br/>250 / 500 mA"]:::out9
     end
     tech21_vt_bass_di["Tech 21 SansAmp VT Bass DI<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     ehx_bass_big_muff_2["Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost · 25 mA"]:::c_fuzz___boost
     mxr_bass_envelope_filter["MXR Bass Envelope Filter<br/>modulation · 6 mA"]:::c_modulation
-    mxr_bass_chorus_deluxe["MXR Bass Chorus Deluxe<br/>modulation · 30 mA"]:::c_modulation
     mxr_bass_synth["MXR Bass Synth<br/>other · 330 mA"]:::c_other
     darkglass_hyper_luminal["Darkglass Hyper Luminal<br/>compressor · 250 mA"]:::c_compressor
     psu1_OUT1 --> tech21_vt_bass_di
     psu1_OUT2 --> ehx_bass_big_muff_2
     psu1_OUT3 --> mxr_bass_envelope_filter
-    mxr_bass_envelope_filter --> mxr_bass_chorus_deluxe
     psu1_OUT4 --> mxr_bass_synth
     psu1_OUT5 --> darkglass_hyper_luminal
     classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b

@@ -246,5 +246,91 @@ Stopped at the cap `footswitches.max_toppers` (5).
 
 ## Layout proposals
 
-None yet: `uv run scripts/propose_layout.py guitar-practice` searches for better pedal positions (it never changes playground_design.json).
+Made by `uv run scripts/propose_layout.py guitar-practice --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 9.1 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+
+| | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
+|---|--:|--:|--:|--:|
+| Outside the usable area | 0 | 0 | 0 | 0 |
+| Blocked plugs | 1 (2.6 mm) | 0 (0.0 mm) | 0 (0.0 mm) | 0 (0.0 mm) |
+| Plug collisions | 1 | 0 | 0 | 0 |
+| Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Footswitch crowding (lower is better) | 58 | 40 | 34 | 32 |
+| Closest footswitch pair (mm) | 58.5 | 67.4 | 67.4 | 70.5 |
+| Signal cables, routed minimum (mm) | 480 | 342 | 354 | 351 |
+| Power cables, routed minimum (mm) | 1185 | 1238 | 1219 | 1238 |
+| First input / last output to the board edges (mm) | 0 | 0 | 0 | 0 |
+| Build errors / warnings | 0 / 2 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Score (lower is better) | 1375 | 765 | 767 | 771 |
+
+All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.
+
+### Proposal 1
+
+Layout document: [proposals/1.json](proposals/1.json); blocked plugs fixed: `polytune_2_mini.out`.
+
+![Proposal 1](proposals/1.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| TC Electronic PolyTune 2 Mini | +4.1 | +0.2 | 4.1 | 0 deg |
+| Ibanez Tube Screamer Mini | +1.1 | -15.9 | 15.9 | 0 deg |
+| Mooer E-Lady | +1.7 | -14.4 | 14.5 | 0 deg |
+| TC Electronic Ditto Looper | -4.4 | -3.7 | 5.8 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT1 | 9V | TC Electronic Ditto Looper |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT2 | 9V | MXR Carbon Copy, Mooer E-Lady |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT3 | 9V | MXR Custom Shop Duke of Tone, Ibanez Tube Screamer Mini |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT4 | 9V | Beetronics Octahive |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT5 | 9V | TC Electronic PolyTune 2 Mini |
+
+### Proposal 2
+
+Layout document: [proposals/2.json](proposals/2.json); blocked plugs fixed: `polytune_2_mini.out`.
+
+![Proposal 2](proposals/2.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| TC Electronic PolyTune 2 Mini | +4.1 | +0.2 | 4.1 | 0 deg |
+| Ibanez Tube Screamer Mini | +1.1 | -15.9 | 15.9 | 0 deg |
+| Mooer E-Lady | +5.6 | -25.7 | 26.3 | 0 deg |
+| TC Electronic Ditto Looper | -4.4 | -3.7 | 5.8 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT1 | 9V | MXR Carbon Copy |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT2 | 9V | Mooer E-Lady |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT3 | 9V | TC Electronic Ditto Looper |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT4 | 9V | TC Electronic PolyTune 2 Mini |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT5 | 9V | Beetronics Octahive, MXR Custom Shop Duke of Tone, Ibanez Tube Screamer Mini |
+
+### Proposal 3
+
+Layout document: [proposals/3.json](proposals/3.json); blocked plugs fixed: `polytune_2_mini.out`.
+
+![Proposal 3](proposals/3.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| TC Electronic PolyTune 2 Mini | +4.1 | -24.0 | 24.4 | 0 deg |
+| Beetronics Octahive | +7.4 | +2.7 | 7.9 | 0 deg |
+| Ibanez Tube Screamer Mini | +6.7 | -13.1 | 14.7 | 0 deg |
+| Mooer E-Lady | +5.6 | -25.7 | 26.3 | 0 deg |
+| MXR Carbon Copy | +4.0 | +3.3 | 5.2 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT1 | 9V | MXR Carbon Copy |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT2 | 9V | Mooer E-Lady |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT3 | 9V | TC Electronic Ditto Looper |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT4 | 9V | TC Electronic PolyTune 2 Mini |
+| Harley Benton PowerPlant ISO-5 Pro (the bass board's) | OUT5 | 9V | Beetronics Octahive, MXR Custom Shop Duke of Tone, Ibanez Tube Screamer Mini |
 

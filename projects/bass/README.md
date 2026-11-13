@@ -4,13 +4,7 @@
 
 - **Instrument:** bass
 - **Board:** Rockboard by Warwick Duo 2.1 (461 x 146 mm)
-- **Validation:** OK, 1 warning(s) (`no_unknown` on)
-
-<details><summary>Validation messages</summary>
-
-- WARN layout: mxr_bass_chorus_deluxe is in the signal chain but not in playground_design.json
-
-</details>
+- **Validation:** OK, 0 warning(s) (`no_unknown` on)
 
 ## Signal chain
 
@@ -21,10 +15,9 @@ flowchart TB
     mxr_bass_synth["<b>2</b> &nbsp;MXR Bass Synth<br/>other"]:::c_other
     mxr_bass_envelope_filter["<b>3</b> &nbsp;MXR Bass Envelope Filter<br/>modulation"]:::c_modulation
     ehx_bass_big_muff_2["<b>4</b> &nbsp;Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost"]:::c_fuzz___boost
-    mxr_bass_chorus_deluxe["<b>5</b> &nbsp;MXR Bass Chorus Deluxe<br/>modulation"]:::c_modulation
-    tech21_vt_bass_di["<b>6</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>drive / distortion"]:::c_drive___distortion
+    tech21_vt_bass_di["<b>5</b> &nbsp;Tech 21 SansAmp VT Bass DI<br/>drive / distortion"]:::c_drive___distortion
     amp(["Amplifier"]):::endpoint
-    guitar --> darkglass_hyper_luminal --> mxr_bass_synth --> mxr_bass_envelope_filter --> ehx_bass_big_muff_2 --> mxr_bass_chorus_deluxe --> tech21_vt_bass_di --> amp
+    guitar --> darkglass_hyper_luminal --> mxr_bass_synth --> mxr_bass_envelope_filter --> ehx_bass_big_muff_2 --> tech21_vt_bass_di --> amp
     classDef endpoint fill:#263238,stroke:#263238,color:#ffffff
     classDef c_compressor fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#1b1b1b
     classDef c_fuzz___boost fill:#ffccbc,stroke:#d84315,stroke-width:2px,color:#1b1b1b
@@ -40,10 +33,9 @@ flowchart TB
 | 2 | MXR Bass Synth | No | 9V | 9V | 330 mA | True | Yes | Harley Benton PowerPlant ISO-5 Pro · OUT4 |
 | 3 | MXR Bass Envelope Filter | No | 9V | 9V | 6 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
 | 4 | Electro-Harmonix Bass Big Muff Pi 2 | Yes | 9-12V | 9V | 25 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT2 |
-| 5 | MXR Bass Chorus Deluxe | No | 9V | 9V | 30 mA | True | No | Harley Benton PowerPlant ISO-5 Pro · OUT3 |
-| 6 | Tech 21 SansAmp VT Bass DI | Yes | 9V | 9V | 6 mA | Buffered | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
+| 5 | Tech 21 SansAmp VT Bass DI | Yes | 9V | 9V | 6 mA | Buffered | No | Harley Benton PowerPlant ISO-5 Pro · OUT1 |
 
-**To buy:** MXR Bass Synth, MXR Bass Envelope Filter, MXR Bass Chorus Deluxe
+**To buy:** MXR Bass Synth, MXR Bass Envelope Filter
 
 ### Ordering rules
 
@@ -51,7 +43,6 @@ flowchart TB
 - **MXR Bass Synth** must come before all `gain` pedals: Synth before the drive pedals `[project]`
 - **Tech 21 SansAmp VT Bass DI** must be last in the chain: Preamp / DI last `[project]`
 - **MXR Bass Envelope Filter** must come before all `gain` pedals: Envelope filter before the drive pedals (owner's layout, 2026-11-09) `[project]`
-- **MXR Bass Chorus Deluxe** must come after Electro-Harmonix Bass Big Muff Pi 2: Chorus after the fuzz, before the preamp / DI (owner's layout, 2026-11-09) `[project]`
 - **Electro-Harmonix Bass Big Muff Pi 2** must come before all `overdrive` pedals: Fuzz comes before any drive pedal `[project]`
 
 ### Notes per pedal
@@ -60,7 +51,6 @@ flowchart TB
 - **MXR Bass Synth**: Planned for the bass board; on the to-buy list. MB301. 330 mA at 9V DC center-negative per retailer specs; cannot run on a battery. Has a DSP, so treated as DIGITAL: must not share an output (per owner; one retailer lists it as analog). True bypass (per owner).
 - **MXR Bass Envelope Filter**: MXR M82, to buy for the bass board. All-analog envelope filter (not BBD, no DSP): digital false, clocked_noise false. Controls Dry, FX, Decay, Q, Sens. Dunlop manual: 6 mA at 9 V DC (Minitone's 8 mA disagrees; the maker figure is used); center-negative per effektpedaler.dk and ModularGrid; battery, ECB003 adapter or DC Brick also work. 'Filter' tag is new in this catalog (modulation + filter).
 - **Electro-Harmonix Bass Big Muff Pi 2**: Planned for the bass board. 2026 small-enclosure reissue (not the original large Bass Big Muff Pi: that one draws 7 mA). ehx.com says 25 mA in the power section and 20 mA in the spec list (planning on 25); 9V DC center-negative, do not exceed 12V; battery included. Analog circuit, true bypass via mechanical relay. Power re-checked 2026-10-21: EHX says do not exceed 12VDC at the jack, so 9-12V.
-- **MXR Bass Chorus Deluxe**: MXR M83, to buy for the bass board. Analog bucket-brigade (BBD) chorus / flanger with X-Over (no effect below about 100 Hz), so clocked_noise true, digital false (Dunlop manual: 'Analog bucket brigade technology'). Supply: 9 V DC, 30 mA (Dunlop manual 'Current Draw 30 mA, Power Supply 9 volts DC'; Amazon's 9 mA looks like an error). Polarity center-negative is the MXR standard but NOT stated in the manual or Bonedo (unverified; also battery or Dunlop ECB003 / Brick). Internal switch: mono true bypass or TRS stereo hardwire bypass (stereo output is not planned). Three status LEDs.
 - **Tech 21 SansAmp VT Bass DI**: Planned for the bass board. Preamp / stompbox / XLR DI with a Drive control, so it counts as a gain / overdrive pedal. About 6 mA at 9V DC center-negative (100 mA minimum supply rating per the manual); also runs on 9V battery or 24-48V phantom power. 100% analog. Not true bypass: with the SansAmp circuit off it acts as an active transparent direct box, so the input buffer and XLR driver stay active (the manual does not call it 'buffered' explicitly).
 
 ## Powering
@@ -73,20 +63,18 @@ flowchart LR
         direction TB
         psu1_OUT1["<b>OUT1</b> · 9V<br/>6 / 300 mA"]:::out9
         psu1_OUT2["<b>OUT2</b> · 9V<br/>25 / 300 mA"]:::out9
-        psu1_OUT3["<b>OUT3</b> · 9V<br/>36 / 300 mA"]:::out9
+        psu1_OUT3["<b>OUT3</b> · 9V<br/>6 / 300 mA"]:::out9
         psu1_OUT4["<b>OUT4</b> · 9V<br/>330 / 500 mA"]:::out9
         psu1_OUT5["<b>OUT5</b> · 9V<br/>250 / 500 mA"]:::out9
     end
     tech21_vt_bass_di["Tech 21 SansAmp VT Bass DI<br/>drive / distortion · 6 mA"]:::c_drive___distortion
     ehx_bass_big_muff_2["Electro-Harmonix Bass Big Muff Pi 2<br/>fuzz / boost · 25 mA"]:::c_fuzz___boost
     mxr_bass_envelope_filter["MXR Bass Envelope Filter<br/>modulation · 6 mA"]:::c_modulation
-    mxr_bass_chorus_deluxe["MXR Bass Chorus Deluxe<br/>modulation · 30 mA"]:::c_modulation
     mxr_bass_synth["MXR Bass Synth<br/>other · 330 mA"]:::c_other
     darkglass_hyper_luminal["Darkglass Hyper Luminal<br/>compressor · 250 mA"]:::c_compressor
     psu1_OUT1 --> tech21_vt_bass_di
     psu1_OUT2 --> ehx_bass_big_muff_2
     psu1_OUT3 --> mxr_bass_envelope_filter
-    mxr_bass_envelope_filter --> mxr_bass_chorus_deluxe
     psu1_OUT4 --> mxr_bass_synth
     psu1_OUT5 --> darkglass_hyper_luminal
     classDef out9 fill:#ffffff,stroke:#455a64,stroke-width:2px,color:#1b1b1b
@@ -111,18 +99,17 @@ Placement: under the board. Layout item: Harley Benton PowerPlant ISO-1AC Pro (a
 |---|--:|---|--:|--:|
 | **OUT1** (fixed) | 9V | Tech 21 SansAmp VT Bass DI | 6 | 6 / 300 mA |
 | **OUT2** (fixed) | 9V | Electro-Harmonix Bass Big Muff Pi 2 | 25 | 25 / 300 mA |
-| **OUT3** (fixed) | 9V | MXR Bass Envelope Filter | 6 | 36 / 300 mA |
-|  | 9V | MXR Bass Chorus Deluxe | 30 |  |
+| **OUT3** (fixed) | 9V | MXR Bass Envelope Filter | 6 | 6 / 300 mA |
 | **OUT4** (switchable) | 9V | MXR Bass Synth | 330 | 330 / 500 mA |
 | **OUT5** (switchable) | 9V | Darkglass Hyper Luminal | 250 | 250 / 500 mA |
-| | | **Harley Benton PowerPlant ISO-5 Pro total** | | **647 mA** |
+| | | **Harley Benton PowerPlant ISO-5 Pro total** | | **617 mA** |
 
-**All supplies combined:** 647 mA
+**All supplies combined:** 617 mA
 
 
 ## Jacks and cables
 
-Jack data: 7 of 7 catalog items set up (pedals and supplies in this project).
+Jack data: 6 of 6 catalog items set up (pedals and supplies in this project).
 
 No blocked cable space found (signal jacks with a cable type: the plug head plus its cable exit on the side the router chose (see Cable routing); power jacks: the DC plug head plus its cable exit on the less blocked side; other jacks: 6.3 mm outward, 7 mm to each side).
 
@@ -155,16 +142,14 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | S1 | signal | darkglass_hyper_luminal.out | mxr_bass_synth.in | ernie_ball_flat_patch_ra | right / down | TS / TS | - | yes (1 hole, 15 mm) | 81 | routed |
 | S2 | signal | mxr_bass_synth.out | mxr_bass_envelope_filter.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 16 mm) | 70 | routed |
 | S3 | signal | mxr_bass_envelope_filter.out | ehx_bass_big_muff_2.in | ernie_ball_flat_patch_ra | left / right | TS / TS | - | no | 56 | routed |
-| S4 | signal | ehx_bass_big_muff_2.out | mxr_bass_chorus_deluxe.in | ernie_ball_flat_patch_ra | down / - | TS / TS | - | no | ? | not routed (jack or placement missing) |
-| S5 | signal | mxr_bass_chorus_deluxe.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | - / down | TS / TS | - | no | ? | not routed (jack or placement missing) |
+| S4 | signal | ehx_bass_big_muff_2.out | tech21_vt_bass_di.in | ernie_ball_flat_patch_ra | down / down | TS / TS | - | yes (no pass, 144 mm) | 198 | routed |
 | P1 | power | psu1.OUT1 | tech21_vt_bass_di.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 333 mm under, 1 mm on top | 366 | routed |
 | P2 | power | psu1.OUT2 | ehx_bass_big_muff_2.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 111 mm under, 60 mm on top | 203 | routed |
-| P3.1 | power | psu1.OUT3 | mxr_bass_envelope_filter.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 92 mm under, 0 mm on top | 119 | routed |
-| P3.2 | power | mxr_bass_envelope_filter.power | mxr_bass_chorus_deluxe.power | dc_ra_2_1_low_profile | - / - | DC 2.1 mm / DC 2.1 mm | center_negative | no | ? | not routed (power jack or placement missing) |
+| P3 | power | psu1.OUT3 | mxr_bass_envelope_filter.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 92 mm under, 0 mm on top | 119 | routed |
 | P4 | power | psu1.OUT4 | mxr_bass_synth.power | dc_ra_2_1_low_profile | - / down | DC 2.1 mm / DC 2.1 mm | center_negative | no pass; 148 mm under, 0 mm on top | 175 | routed |
 | P5 | power | psu1.OUT5 | darkglass_hyper_luminal.power | dc_ra_2_1_low_profile | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 220 mm under, 12 mm on top | 265 | routed |
 
-Signal cable, minimum: 207 mm over 3 cables.
+Signal cable, minimum: 405 mm over 4 cables.
 
 ### DC cables to buy
 
@@ -174,15 +159,15 @@ Each row is one DC cable P#. A **serial** output is one cable that runs from the
 |---|---|---|---|--:|---|--:|---|
 | P1 | serial | psu1_OUT1 | psu1.OUT1 -> tech21_vt_bass_di | 2 | - | 366 | routed |
 | P2 | serial | psu1_OUT2 | psu1.OUT2 -> ehx_bass_big_muff_2 | 2 | - | 203 | routed |
-| P3 | serial | psu1_OUT3 | psu1.OUT3 -> mxr_bass_envelope_filter -> mxr_bass_chorus_deluxe | 3 | P3.1 119 / P3.2 ? | ? | not routed (power jack or placement missing) |
+| P3 | serial | psu1_OUT3 | psu1.OUT3 -> mxr_bass_envelope_filter | 2 | - | 119 | routed |
 | P4 | serial | psu1_OUT4 | psu1.OUT4 -> mxr_bass_synth | 2 | - | 175 | routed |
 | P5 | serial | psu1_OUT5 | psu1.OUT5 -> darkglass_hyper_luminal | 2 | - | 265 | routed |
 
-DC cable, minimum: 1010 mm over 4 cables (4 serial, 0 forked).
+DC cable, minimum: 1129 mm over 5 cables (5 serial, 0 forked).
 
 ## Footswitches
 
-Footswitch data: 6 of 6 pedals (catalog/footswitches.json).
+Footswitch data: 5 of 5 pedals (catalog/footswitches.json).
 
 Spacing is comfort, not a hard rule: switches of different pedals should be as far apart as the other goals allow. Crowding of a pair = priority x (comfort - distance)^2 / comfort for pairs closer than the comfort distance (100 mm, `footswitches.comfort_mm`; distance centre to centre; priority per switch type, `footswitches.priority`); lower is better, the layout proposals minimise it. No minimum distance is set. Switches on the same pedal are not checked. Type: bypass (turns the pedal, or one side of it, on and off), tap (tap tempo), boost (a boost / extra-gain stomp), function (any other switch).
 

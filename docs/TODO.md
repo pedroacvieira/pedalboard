@@ -29,7 +29,6 @@ ideas · 5 data · 6 done.
       `cables.power_type`).
 
 ### Decisions
-- [ ] Answer the open questions of `docs/plans/pedal-position.md`.
 - [ ] Load a proposal into Pedal Playground 2.0 (parked, owner 2026-11-02): the site has no file load (a hidden importer,
       no button) and no save to file. It reads `localStorage["pp:playground:v3"]` on start (not logged in), so a
       proposal could be loaded from the console (untested); or write it into the owner's account as a new playground
@@ -67,15 +66,11 @@ ideas · 5 data · 6 done.
   the Duo 2.1 (the bass board is the XPND now) and the ISO-5 Pro (also on the bass board: the "shared" warning stays until a
   second supply); Cry Baby GCB95F as a floor device; all 6 signal (480 mm) and 5 DC cables (1402 mm) routed. Two warnings
   (2.6 mm each): the Octahive reaches into the PolyTune's output plug; Carbon Copy out collides with Ditto in.
-- [ ] Supply position: under the board between the Carbon Copy and the Octahive today. The owner said "behind the
-      board": if that means off the back edge, move it in Pedal Playground and draw a back edge crossing in the board
-      editor (type `edge`), else nothing to do.
+- Supply under the board (owner, 2026-11-13: that is what "behind the board" meant).
 
 ### Bass (layout 2026-11-09: D'Addario XPND 1 + extension, one composed board)
-- State: no tuner (owner, 2026-11-09); chain Hyper Luminal -> Bass Synth -> Bass Envelope Filter -> Bass Big Muff 2 -> Bass Chorus
-  Deluxe -> VT Bass DI (the two MXRs and the Synth not owned); all 5 signal cables routed.
-- [ ] Add the ISO-5 Pro (stand-in ISO-1AC Pro) to the bass layout in Pedal Playground.
-- [ ] P3.2 (Envelope Filter -> Chorus) runs 173 mm on top: no hole near the Chorus's power jack.
+- State: no tuner (owner, 2026-11-09); chain Hyper Luminal -> Bass Synth -> Bass Envelope Filter -> Bass Big Muff 2 -> VT Bass DI
+  (the Envelope Filter and the Synth not owned; the Chorus Deluxe off the board for now, owner 2026-11-13).
 - [ ] Board: the board editor edits only the first piece (`board.json` `pieces` by hand for the other); check the XPND
       holes by eye.
 

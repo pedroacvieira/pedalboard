@@ -34,7 +34,7 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 
 | Project | Instrument | Board | Pedals | Supplies | Status |
 |---|---|---|--:|---|---|
-| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 6 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 1 warning(s) |
+| [Bass board](projects/bass/README.md) | bass | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 5 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 0 warning(s) |
 | [Guitar gig board](projects/guitar-gig/README.md) | guitar | Fender Professional (Medium) (610 x 332 mm) | 17 | 2 x Strymon Ojai R30 | OK, 1 warning(s) |
 | [Guitar practice board](projects/guitar-practice/README.md) | guitar | Rockboard by Warwick Duo 2.1 (461 x 146 mm) | 7 | 1 x Harley Benton PowerPlant ISO-5 Pro | OK, 2 warning(s) |
 
@@ -74,10 +74,9 @@ Jacks: pedals with no jack setup, and cable space blocked in `playground_design.
 |---|--:|---|--:|
 | MXR Bass Synth | 1 | bass | 329 EUR |
 | MXR Bass Envelope Filter | 1 | bass | 180 EUR |
-| MXR Bass Chorus Deluxe | 1 | bass | 213 EUR |
 | Harley Benton PowerPlant ISO-5 Pro (power supply) | 1 | bass, guitar-practice | 49 EUR |
 
-**Known total:** 771 EUR
+**Known total:** 558 EUR
 
 ## Floor devices
 
@@ -88,5 +87,5 @@ Pedals that sit on the floor, not on a board, and go with any board (catalog `fl
 
 ## Catalog pedals not in any project
 
-JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork
+JHS Double Dragon, JHS Flight Delay, JHS Hard Drive, JHS Pulp 'N' Peel V4, BOSS DD-8 Digital Delay, JHS Angry Charlie V3, JHS The Violet, Electro-Harmonix Pico POG, Electro-Harmonix Pico Pitch Fork, MXR Bass Chorus Deluxe
 

@@ -1,0 +1,162 @@
+{
+ "name": "Practice Board - proposal 1",
+ "view": {
+  "x": -764.75,
+  "y": -201,
+  "zoom": 1.5
+ },
+ "items": [
+  {
+   "x": 39.13770833333333,
+   "y": 15.225000000000001,
+   "id": "69d1b8e5-3b68-4656-8e60-86f39fc210cb",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "harley-benton-iso1acpro",
+   "label": "Harley Benton PowerPlant ISO-1AC Pro",
+   "width": 5.24,
+   "custom": false,
+   "height": 3.46,
+   "rotation": 0
+  },
+  {
+   "x": 33.106875,
+   "y": 14.125,
+   "id": "9ff871e1-c6d2-4320-a52f-fb02ff6a90df",
+   "kind": "pedalboard",
+   "color": null,
+   "flipX": false,
+   "image": "rockboard-duo-21",
+   "label": "Rockboard by Warwick Duo 2.1",
+   "width": 18.13,
+   "custom": false,
+   "height": 5.75,
+   "rotation": 0
+  },
+  {
+   "x": 45.33104166666665,
+   "y": 14.25,
+   "id": "7aafe810-98c4-4a59-a62b-6eec7b990fce",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "beetronics-octahive",
+   "label": "Beetronics Octahive",
+   "width": 3.76,
+   "custom": false,
+   "height": 5.5,
+   "rotation": 0
+  },
+  {
+   "x": 40.88770833333333,
+   "y": 16.1,
+   "id": "f91b9e26-ae8c-4c80-8c55-297f202bcd0f",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mxr-csp039",
+   "label": "MXR Custom Shop Duke of Tone",
+   "width": 1.74,
+   "custom": false,
+   "height": 3.7,
+   "rotation": 0
+  },
+  {
+   "x": 38.77777777777778,
+   "y": 14.511111111111111,
+   "id": "f59ac8d7-06ab-4cea-8ab3-c1078971b2f2",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mooer-e-lady",
+   "label": "Mooer E-lady",
+   "width": 1.67,
+   "custom": false,
+   "height": 3.75,
+   "rotation": 0
+  },
+  {
+   "x": 35.508541666666666,
+   "y": 15.225000000000001,
+   "id": "2fba51b0-7dcc-4891-af67-0a35f0b8c17a",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "mxr-m169",
+   "label": "MXR Carbon Copy",
+   "width": 2.67,
+   "custom": false,
+   "height": 4.5,
+   "rotation": 0
+  },
+  {
+   "x": 32.93333333333333,
+   "y": 14.933333333333334,
+   "id": "d28f31a0-bd41-4ca9-af74-aceeb205a62b",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "tc-ditto",
+   "label": "TC Electronic Ditto Looper",
+   "width": 2,
+   "custom": false,
+   "height": 3.75,
+   "rotation": 0
+  },
+  {
+   "x": 49.4,
+   "y": 15.088888888888889,
+   "id": "c5cbfcd6-ffbb-4fe9-9c65-66c4787fa57f",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "tc-poly2mini",
+   "label": "TC Electronic Polytune 2 Mini",
+   "width": 2,
+   "custom": false,
+   "height": 3.75,
+   "rotation": 0
+  },
+  {
+   "x": 42.91111111111111,
+   "y": 14.6,
+   "id": "c158efdd-bab4-49a5-abd7-0e66e52844ea",
+   "kind": "pedal",
+   "color": null,
+   "flipX": false,
+   "image": "ibanez-tube-screamer-mini",
+   "label": "Ibanez Tube Screamer Mini",
+   "width": 1.98,
+   "custom": false,
+   "height": 3.65,
+   "rotation": 0
+  }
+ ],
+ "signal": {
+  "nodes": [
+   {
+    "id": "a4eb0c9a-e6b1-4f5f-b6b0-d84eaa0b7c3a",
+    "type": "source",
+    "label": "Guitar",
+    "channels": "mono"
+   },
+   {
+    "id": "d0d9a2ab-72ca-4e3c-b28c-846da0d6835d",
+    "type": "destination",
+    "label": "Amp",
+    "channels": "mono"
+   }
+  ],
+  "cables": [
+   {
+    "id": "a5fbdde1-5207-4714-a431-32ff812ba827",
+    "to": "d0d9a2ab-72ca-4e3c-b28c-846da0d6835d",
+    "from": "a4eb0c9a-e6b1-4f5f-b6b0-d84eaa0b7c3a",
+    "kind": "audio"
+   }
+  ]
+ },
+ "savedAt": "2026-11-13T11:59:14.715Z",
+ "schemaVersion": 3
+}

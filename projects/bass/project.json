@@ -12,14 +12,13 @@
     "supplies_layer": "under"
   },
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} },
-  "signal_chain": ["darkglass_hyper_luminal", "mxr_bass_synth", "mxr_bass_envelope_filter", "ehx_bass_big_muff_2", "mxr_bass_chorus_deluxe", "tech21_vt_bass_di"],
+  "signal_chain": ["darkglass_hyper_luminal", "mxr_bass_synth", "mxr_bass_envelope_filter", "ehx_bass_big_muff_2", "tech21_vt_bass_di"],
   "rule_overrides": {},
   "rules": [
     { "id": "darkglass_hyper_luminal.first", "pedal": "darkglass_hyper_luminal", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first (no tuner on the bass board, owner 2026-11-09)" },
     { "id": "mxr_bass_synth.before_group_gain", "pedal": "mxr_bass_synth", "type": "before_group", "group": "gain", "strength": "required", "reason": "Synth before the drive pedals" },
     { "id": "tech21_vt_bass_di.last", "pedal": "tech21_vt_bass_di", "type": "position", "value": "last", "strength": "required", "reason": "Preamp / DI last" },
     { "id": "mxr_bass_envelope_filter.before_group_gain", "pedal": "mxr_bass_envelope_filter", "type": "before_group", "group": "gain", "strength": "required", "reason": "Envelope filter before the drive pedals (owner's layout, 2026-11-09)" },
-    { "id": "mxr_bass_chorus_deluxe.after_ehx_bass_big_muff_2", "pedal": "mxr_bass_chorus_deluxe", "type": "after", "pedals": ["ehx_bass_big_muff_2"], "strength": "required", "reason": "Chorus after the fuzz, before the preamp / DI (owner's layout, 2026-11-09)" },
     { "id": "ehx_bass_big_muff_2.before_group_overdrive", "pedal": "ehx_bass_big_muff_2", "type": "before_group", "group": "overdrive", "strength": "required", "reason": "Fuzz comes before any drive pedal" }
   ],
   "power": {
@@ -31,7 +30,7 @@
         "outputs": [
           { "port": "OUT1", "voltage_v": 9, "pedals": ["tech21_vt_bass_di"], "note": "Analog preamp / DI, alone (no tuner on the bass board, owner 2026-11-09)" },
           { "port": "OUT2", "voltage_v": 9, "pedals": ["ehx_bass_big_muff_2"], "note": "Analog fuzz, alone" },
-          { "port": "OUT3", "voltage_v": 9, "pedals": ["mxr_bass_envelope_filter", "mxr_bass_chorus_deluxe"], "note": "Modulation pair: the BBD chorus never shares with gain pedals (2026-11-09)" },
+          { "port": "OUT3", "voltage_v": 9, "pedals": ["mxr_bass_envelope_filter"], "note": "Envelope filter, alone (the Chorus Deluxe is off the board for now, owner 2026-11-13)" },
           { "port": "OUT4", "voltage_v": 9, "pedals": ["mxr_bass_synth"], "note": "Digital: alone; 330 mA needs a 500 mA output" },
           { "port": "OUT5", "voltage_v": 9, "pedals": ["darkglass_hyper_luminal"], "note": "Digital: alone; 250 mA, regulated 9V only" }
         ]
