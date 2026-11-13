@@ -54,7 +54,11 @@ Surrogate score (lower is better, "mm-equivalent"), weights in project.json `lay
   access         1 x rule weight / mm: depth (footswitches' mean, else the centre) from the front edge ("front"),
                  from the back edge ("back"), or into the front half ("avoid_front"); rules per tag, per switch
                  type (a tap switch: front, and it cancels avoid_front; a boost switch: front) and per-pedal
-                 overrides (`layout.access`)
+                 overrides (`layout.access`; the profile's `position.depth` lowers to one, `any` = no depth wish at all)
+  position       1 x weight / mm (profile `position.side` left / right, weight default 0.3): the BODY centre's distance from that edge of
+                 the board; plus, for a REQUIRED side or depth wish whose reference point (body centre x / footswitch mean y, else centre)
+                 is not in the wanted half: preference_miss 100 + preference_miss_mm 20 per mm past the middle line (steep penalty, not a
+                 hard constraint: the search starts from the owner's layout; proposals are gated on it, `propose_layout.acceptable`)
   rotation       0 for 0 deg, rotation_used 10 for an angle another pedal on the board has, rotation_new 40 else
   move           0.2 / mm centre displacement from the owner's layout + move_pedal 25 per moved pedal +
                  rotate_change 20 per changed rotation (times the level's move factor): move few pedals, little
@@ -68,6 +72,7 @@ import design
 import footswitches
 import outlines as outlines_mod
 import power
+import preferences
 import routing
 from common import px_to_mm
 
@@ -81,7 +86,7 @@ SQRT2_1 = math.sqrt(2) - 1
 
 WEIGHTS = {"clearance": 50.0, "clearance_margin": 10.0, "clearance_hit": 100.0, "routing_area": 200.0, "signal": 1.0, "detour": 0.6, "power": 0.1,
            "footswitch": 2.0, "footswitch_min": 20.0, "footswitch_pair": 100.0, "io": 1.0, "flow": 0.1, "access": 1.0,
-           "rotation_used": 10.0, "rotation_new": 40.0, "move": 0.2, "move_pedal": 25.0, "rotate_change": 20.0,
+           "position": 1.0, "preference_miss": 100.0, "preference_miss_mm": 20.0, "rotation_used": 10.0, "rotation_new": 40.0, "move": 0.2, "move_pedal": 25.0, "rotate_change": 20.0,
            "touch": 0.02}
 ACCESS = {
     "tags": {"tuner": {"want": "back", "weight": 0.5},
@@ -110,7 +115,7 @@ DEFAULTS = {"pins": [], "rotations": {"default": [0, 90, 270]}, "board_margin_mm
 
 def settings(project):
     """Layout settings: DEFAULTS + project `layout` (weights, pair factors and access merged key by key)."""
-    given = project.get("layout") or {}
+    given = preferences.lower(project).get("layout") or {}   # the per-pedal profiles (`pedals.<id>`) fill pins / rotations / access
     s = {**DEFAULTS, **{k: v for k, v in given.items() if k not in ("weights", "access", "search")}}
     s["weights"] = {**WEIGHTS, **(given.get("weights") or {})}
     acc = given.get("access") or {}
@@ -124,7 +129,8 @@ def access_rule(pedal, switch_types, acc):
     """The accessibility rule {"want", "weight"} of one pedal (None: no preference): a per-pedal override, else the
     strongest rule of its tags and its switch types (tap tempo, boost); a tap-tempo switch cancels "avoid_front"."""
     if pedal["id"] in acc["pedals"]:
-        return acc["pedals"][pedal["id"]]
+        rule = acc["pedals"][pedal["id"]]
+        return None if rule.get("want") == "none" else rule   # "none" (profile depth `any`): no depth wish at all, the tag rules do not apply either
     rules = [acc["tags"][t] for t in pedal.get("tags", []) if t in acc["tags"]]
     if "tap" in switch_types:
         rules = [r for r in rules if r["want"] != "avoid_front"]
@@ -334,6 +340,10 @@ class Model:
         self.fs_priority = footswitches.priorities(project)
         self.access = [access_rule({**cat_pedals[p], "id": p}, [f["type"] for f in self.fs_data.get(p) or []],
                                    self.cfg["access"]) for p in self.ids[:self.n_ped]] + [None] * len(on_board)
+        # position wishes of the profiles (`pedals.<id>.position`): per movable pedal {"side", "depth", "weight", "required"} or None. The pull
+        # of a depth wish is the access rule above (lowered `layout.access`); the side pull and the penalty of a REQUIRED miss are the `position` term
+        wishes = preferences.position_wishes(project, set(self.ids[:self.n_ped]))
+        self.position = [wishes.get(p) for p in self.ids[:self.n_ped]] + [None] * len(on_board)
         self._geom = {}
         for n, p in enumerate(self.ids):
             for r in self.allowed[n]:
@@ -941,7 +951,7 @@ class Model:
         r, wd = self.rcfg["diameter_mm"] / 2, w["detour"]
         grown = [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for f in feet] + \
                 [(f[0] - r, f[1] - r, f[2] + r, f[3] + r) for _, f in self.fixed_feet]
-        terms = dict.fromkeys(("clearance", "routing_area", "signal", "power", "footswitch", "io", "flow", "access",
+        terms = dict.fromkeys(("clearance", "routing_area", "signal", "power", "footswitch", "io", "flow", "access", "position",
                                "rotation", "move", "touch"), 0.0)
         raw = dict.fromkeys(terms, 0.0)
         blocked, outside, fs_close, sig_lengths, issues = [], [], [], {}, []
@@ -1152,6 +1162,27 @@ class Model:
             d = {"front": b[3] - y, "back": y - b[1], "avoid_front": max(0.0, y - mid)}.get(rule["want"], 0.0)
             raw["access"] += max(0.0, d) * rule["weight"]
         terms["access"] = w["access"] * raw["access"]
+        # position wishes (profiles): a side wish pulls the BODY centre toward that edge of the board (weight x mm, as access does for the
+        # depth); a REQUIRED wish (side or depth) whose reference point is not in the wanted half also costs preference_miss + preference_miss_mm / mm
+        # beyond the middle line (a steep penalty, not a hard constraint: the owner's own layout may break it and the search starts from it)
+        unmet = []
+        for n, wish in enumerate(self.position):
+            if not wish:
+                continue
+            if wish["side"]:
+                bd = self.body(state[n], n)
+                x = (bd[0] + bd[2]) / 2
+                raw["position"] += max(0.0, (x - b[0]) if wish["side"] == "left" else (b[2] - x)) * wish["weight"]
+                past = preferences.past_middle(wish["side"], x, b[0], b[2])
+                if wish["required"] and past > 1e-9:
+                    unmet.append({"pedal": self.ids[n], "kind": "position.side", "mm": past})
+            if wish["depth"] and wish["required"]:
+                fs = geo[n]["fs"]
+                y = (sum(f[1] for f in fs) / len(fs) if fs else 0.0) + state[n][1]
+                past = preferences.past_middle(wish["depth"], y, b[1], b[3])
+                if past > 1e-9:
+                    unmet.append({"pedal": self.ids[n], "kind": "position.depth", "mm": past})
+        terms["position"] = w["position"] * raw["position"] + sum(w["preference_miss"] + w["preference_miss_mm"] * u["mm"] for u in unmet)
         # rotation preference
         for n, st in enumerate(state):
             if st[2] == 0:
@@ -1183,7 +1214,7 @@ class Model:
         if not detail:
             return total, issues
         return total, {"terms": {k: (raw[k], terms[k]) for k in terms}, "blocked": blocked, "collisions": collisions, "plug_under": passes_under, "plugs": {k: {"side": o["side"], "type": o.get("type"), "down": o["down"]} for k, _, o in self._chosen(recs)},
-                       "outside": outside,
+                       "outside": outside, "preferences": unmet,
                        "fs_close": fs_close, "signal": sig_lengths, "issues": issues,
                        "fs_known": self.fs_known, "fs_limit": self.fs_limit}
 

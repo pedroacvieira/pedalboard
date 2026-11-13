@@ -9,7 +9,7 @@ catalog/pedals.json           everything that is part of a pedal (specs, bypass,
 catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own
 catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)
 catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)
-projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring
+projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring, per-pedal preferences (pedals.<id>)
 projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary
 projects/<name>/playground_design.json   the owner's Pedal Playground layout (scripts/fetch_playground.py; older versions in playground_history/, git-ignored)
 ```
@@ -25,6 +25,8 @@ uv run pytest tests                       geometry and jack-check tests
 ```
 
 Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default 4.5 mm: the height a topper adds, a rough proxy, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.
+
+Per-pedal wishes live in `pedals.<pedal id>` of project.json, every field optional: `position` {`side` left|right|any, `depth` front|back|avoid_front|any, `weight` (score per mm, default 0.3), `strength` preferred|required}, `pin`, `rotations` ([0, 90, 270], "any" or "current"), `order` {`<name>`: an ordering rule without id / pedal; its id is `<pedal>.<name>`}, `power` {`own_output`, `supply`, `port`, `voltage_v`, `strength`}, `toppers` (switch ids), `note`. Each project README has a "Preferences" table: is every wish met in the owner's layout and in each layout proposal; a required position or power wish that is not met is a warning (an error with `validation.strict_preferences`). The layout search and the power assignment read the wishes. The older per-pedal keys (`rules` entries, `layout.pins`, `layout.rotations.<id>`, `layout.access.pedals`, `footswitches.toppers`) still work; `uv run scripts/migrate_preferences.py [project...] [--dry-run]` moves them into the profiles.
 
 Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.
 

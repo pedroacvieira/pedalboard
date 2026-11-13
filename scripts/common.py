@@ -44,8 +44,13 @@ def proposal_inputs_sha1(pdir):
     build.py marks the proposals stale on a change. The project's footswitch topper settings (TOPPER_KEYS) are left out."""
     import hashlib
     pdir = Path(pdir)
-    project = load_json(pdir / "project.json")
-    # toppers are a finishing step after the layout: they never make proposals stale
+    import preferences   # late: a pure module, imported where it is used
+    # the per-pedal profiles (`pedals.<id>`) fill the old keys first: a wish means the same written either way; a profile's note and toppers
+    # are no inputs (toppers are a finishing step after the layout: they never make proposals stale)
+    project = preferences.lower(load_json(pdir / "project.json"))
+    if isinstance(project.get("pedals"), dict):
+        project = {**project, "pedals": {pid: {k: v for k, v in prof.items() if k not in ("note", "toppers")} if isinstance(prof, dict) else prof
+                                         for pid, prof in project["pedals"].items()}}
     fcfg = {k: v for k, v in (project.get("footswitches") or {}).items() if k not in TOPPER_KEYS}
     project = {k: v for k, v in project.items() if k != "footswitches"}
     if fcfg:
@@ -216,6 +221,44 @@ def dumps_per_line(doc, key, mapping, key_order):
         lines.append("    ]" + comma)
     lines += ["  }", "}"]
     return "\n".join(lines) + "\n"
+
+
+DUMP_WIDTH = 280   # `dump_project`: the longest one-line object in the live project.json files is 268 characters (hand-written style)
+NESTED_WIDTH = 160   # ... and an object / list that holds non-empty objects or lists stays on one line only up to this
+
+
+def _always_expanded(path):
+    """`dump_project`: containers that never stay on one line: the profiles `pedals`, `pedals.<id>` and their `order` (one field / one rule per line)."""
+    return path[:1] == ("pedals",) and (len(path) in (1, 2) or (len(path) == 3 and path[2] == "order"))
+
+
+def dump_project(doc, width=DUMP_WIDTH):
+    """project.json text in the repo's hand-written style: top-level keys indented by two spaces, `{ "k": v }` objects and `[...]` lists on
+    one line when they fit in `width` characters (a list of plain values: however long), else one entry (key) per line;
+    `pedals.<id>` and its `order` always one entry per line. Reads back as `doc`. (The live files were formatted by hand: they do
+    not round-trip byte for byte, a few long one-line rules would expand.)"""
+    def flat(v):
+        if isinstance(v, dict):
+            return "{ " + ", ".join(f"{json.dumps(k, ensure_ascii=False)}: {flat(x)}" for k, x in v.items()) + " }" if v else "{}"
+        if isinstance(v, list):
+            return "[" + ", ".join(flat(x) for x in v) + "]"
+        return json.dumps(v, ensure_ascii=False)
+
+    def put(v, indent, lead, path):
+        """`v` after `lead` (the text before it on its first line) at `indent` spaces of indentation."""
+        def deep(x):   # a non-empty object, or a list that holds objects / lists
+            return bool(x) and (isinstance(x, dict) or (isinstance(x, list) and any(isinstance(y, (dict, list)) for y in x)))
+        nested = deep(v)
+        holds = nested and any(deep(x) or (isinstance(v, list) and isinstance(x, dict) and x) for x in (v.values() if isinstance(v, dict) else v))
+        if not nested or (indent > 0 and not _always_expanded(path) and len(" " * indent + lead + flat(v)) <= (NESTED_WIDTH if holds else width)):
+            return flat(v)
+        pad = " " * (indent + 2)
+        if isinstance(v, dict):
+            keys = [pad + json.dumps(k, ensure_ascii=False) + ": " for k in v]
+            rows = [k + put(x, indent + 2, k, path + (name,)) for k, (name, x) in zip(keys, v.items())]
+            return "{\n" + ",\n".join(rows) + "\n" + " " * indent + "}"
+        return "[\n" + ",\n".join(pad + put(x, indent + 2, pad, path + (n,)) for n, x in enumerate(v)) + "\n" + " " * indent + "]"
+    return put(doc, 0, "", ()) + "\n"
 
 
 def _to_png(data, source):

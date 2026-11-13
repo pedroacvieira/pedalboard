@@ -118,6 +118,39 @@ Pedals in an earlier section come before pedals in a later one (priority -10); p
 - `polytune_3.first` overrides `mini_ego.first` for: mini_ego before polytune_3
 - `mini_ego.after_fuzz` overrides `mini_ego.first` for: mini_ego before sun_face; mini_ego before beano; mini_ego before danelectro_3699
 
+### Preferences
+
+Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or power wish that is not met is a build warning; the layout search and the power assignment read all of them.
+
+| Pedal | Wish | Strength | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
+|---|---|---|---|---|---|---|
+| Danelectro 3699 Fuzz | order: after sun_face | preferred | met | met | met | met |
+| Danelectro 3699 Fuzz | order: before beano | required | met | met | met | met |
+| AnalogMan Beano Boost | order: after sun_face | required | met | met | met | met |
+| TC Electronic PolyTune 3 Mini | order: after sun_face, beano, danelectro_3699 | required | met | met | met | met |
+| TC Electronic PolyTune 3 Mini | order: first in the chain | required | met | met | met | met |
+| Wampler Mini Ego Compressor | order: after sun_face, beano, danelectro_3699 | required | met | met | met | met |
+| Wampler Mini Ego Compressor | order: first in the chain | required | met | met | met | met |
+| Fulltone Full-Drive 2 Mosfet | order: before phase_95, retrovibe | required | met | met | met | met |
+| JAM Pedals Retrovibe | order: before protein, ratsbane | required | met | met | met | met |
+| JAM Pedals Retrovibe | order: before phase_95 | required | met | met | met | met |
+| JAM Pedals Retrovibe | order: before red_muck | required | met | met | met | met |
+| MXR Phase 95 | order: before ratsbane | required | met | met | met | met |
+| MXR Phase 95 | order: before red_muck | required | met | met | met | met |
+| Browne Protein V3 | order: after ratsbane | required | met | met | met | met |
+| Wampler Tumnus Deluxe | order: after every gain pedal | required | met | met | met | met |
+| MXR Analog Chorus | order: after every gain pedal | required | met | met | met | met |
+| PastFX Reticon Flanger | order: after every gain pedal | required | met | met | met | met |
+| JAM Pedals Harmonious Monk Mk2 | order: after every modulation pedal | required | met | met | met | met |
+| Catalinbread Belle Epoch Deluxe | order: after every gain pedal | required | met | met | met | met |
+| Catalinbread Belle Epoch Deluxe | order: before boss_dd200 | required | met | met | met | met |
+| BOSS DD-200 Digital Delay | order: last in the chain | required | met | met | met | met |
+| BOSS DD-200 Digital Delay | order: after every gain pedal | required | met | met | met | met |
+
+Dormant (pedals not in the signal chain): `double_dragon`.
+
+Old keys in use (`rules`): they still work; `uv run pb migrate-preferences guitar-gig` moves them into `pedals.<pedal id>`.
+
 ### Notes per pedal
 
 - **AnalogMan Sun Face BC183**: Silicon Fuzz Face, unbuffered: must be FIRST in the chain, guitar straight into it. Ships battery-only; check your unit has the optional DC jack. Silicon version is negative ground so sharing power is OK, but AnalogMan warns a supply can add hum/oscillation. 'Under 1 mA' is from the shared Fuzz Face page. Power re-checked 2026-10-21: no source publishes a current draw, so 1 mA is unverified; AnalogMan never forbids higher than 9V but gives no range either.

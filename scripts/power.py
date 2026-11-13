@@ -17,6 +17,55 @@ import re
 import design
 import routing
 WARNING_COST_MM = 1000.0   # a wiring with one more build warning must save more than this much DC cable
+PREFERENCE_COST_MM = 300.0   # a wiring that breaks a pedal's PREFERRED power wish (`pedals.<id>.power`) must save more than this much DC cable: below a
+#                              build warning (a wish yields to the policy), above 30 cm (a wish beats a little cable)
+
+
+def wish_misses(wish, members, inst_id, port, voltage=None):
+    """What a slot breaks of one pedal's power wish ({"own_output", "supply", "port", "voltage_v", "required"}, `preferences.power_wishes`):
+    [] = met, else the parts that are not, e.g. ["own output", "18 V"]. members: the pedals on the slot (instance `inst_id`, `port`);
+    `voltage`: its voltage (None: not judged)."""
+    out = []
+    if wish.get("own_output") and len(members) > 1:
+        out.append("own output")
+    if wish.get("supply") and wish["supply"] != inst_id:
+        out.append(f"supply {wish['supply']}")
+    if wish.get("port") and wish["port"] != port:
+        out.append(f"port {wish['supply']}.{wish['port']}" if wish.get("supply") else f"port {wish['port']}")
+    if wish.get("voltage_v") is not None and voltage is not None and abs(wish["voltage_v"] - voltage) > 1e-9:
+        out.append(f"{wish['voltage_v']:g} V")
+    return out
+
+
+def wish_text(wish):
+    """What a power wish asks for, one line: "own output, supply psu1, port psu1.F1, 18 V"."""
+    parts = ["own output"] if wish.get("own_output") else []
+    if wish.get("supply"):
+        parts.append(f"supply {wish['supply']}")
+    if wish.get("port"):
+        parts.append(f"port {wish['supply']}.{wish['port']}" if wish.get("supply") else f"port {wish['port']}")
+    if wish.get("voltage_v") is not None:
+        parts.append(f"{wish['voltage_v']:g} V")
+    return ", ".join(parts)
+
+
+def wish_findings(wishes, supplies_rows):
+    """Unmet power wishes of a wiring: [{"pedal", "wish" (text), "wants" (the unmet parts), "got" ("psu2.F1 with x, y" / "... alone"), "required",
+    "met"}] for every pedal of `wishes` that the wiring powers. supplies_rows: [{"inst": {"id"}, "rows": [{"port", "voltage_v", "pedals"}]}]
+    (the build's `ctx["supplies"]`)."""
+    out = []
+    for s in supplies_rows:
+        for r in s["rows"]:
+            for p in r.get("pedals") or []:
+                w = wishes.get(p)
+                if not w:
+                    continue
+                bad = wish_misses(w, r["pedals"], s["inst"]["id"], r["port"], r.get("voltage_v"))
+                others = [q for q in r["pedals"] if q != p]
+                out.append({"pedal": p, "wish": wish_text(w), "wants": ", ".join(bad), "required": w["required"], "met": not bad,
+                            "got": f"{s['inst']['id']}.{r['port']}" + (f" at {r['voltage_v']:g} V" if r.get("voltage_v") is not None and any(b.endswith(" V") for b in bad) else "")
+                                   + (f" with {', '.join(others)}" if others else " alone")})
+    return out
 
 
 def volt_range(pc):
@@ -445,7 +494,7 @@ def default_voltage(pc):
     return lo
 
 
-def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None, holes=None, cfg=None):
+def assign(chain, pedals, insts, project, points, port_points, run_v=None, start=None, holes=None, cfg=None, wishes=None, _soft=None):
     """Power wiring for one layout: every chain pedal on one supply output, daisy chains ordered for the shortest
     DC cable, under the project's power policy.
 
@@ -456,12 +505,26 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     holes: a `HoleIndex` (or `Crossings`) of the usable crossing points (`hole_sample` minus the pedals, see `usable_holes`) and cfg {"top_cost", "transit_mm"}: the daisy chains are then
     measured with `hop_estimate` (power cables run under the board and come up through the hole nearest each pedal; an
     instance with `"under": False` starts its chain on top); without holes: Manhattan between the measure points.
+    wishes: {pedal id: {"own_output", "supply", "port", "voltage_v", "required"}} (`preferences.power_wishes`, the profiles' `power`): the voltage
+    wish beats `run_v` (a PREFERRED one is tried first and given up, costing its `PREFERENCE_COST_MM`, when no wiring exists with it); a REQUIRED supply / port / own_output wish is a feasibility rule
+    (a start wiring that breaks it is dropped; no wiring left raises ValueError); a PREFERRED one costs `PREFERENCE_COST_MM` when unmet.
     Returns {"supplies": [project.json power.supplies entries], "length_mm", "warnings": [build warnings of the
-    wiring], "errors": []} or raises ValueError if no wiring satisfies the policy."""
+    wiring], "errors": [], "preferences": [(pedal, wish text, met)]} or raises ValueError if no wiring satisfies the policy."""
     sensitive, strength, group_18v = policy_settings(project)
     chain = [p for p in chain if p in pedals]
     run_v = dict(run_v or {})
-    volts = {p: run_v.get(p) or default_voltage(pedals[p]["power_consumption"]) for p in chain}
+    wishes = {p: w for p, w in (wishes or {}).items() if p in chain}
+    if _soft is None and any(w.get("voltage_v") is not None and not w["required"] for w in wishes.values()):
+        # a preferred voltage is a wish, not a rule: with it when a wiring exists, else the owner's / default voltage (the wish then counts as missed)
+        try:
+            return assign(chain, pedals, insts, project, points, port_points, run_v, start, holes, cfg, wishes, _soft=True)
+        except ValueError:
+            return assign(chain, pedals, insts, project, points, port_points, run_v, start, holes, cfg, wishes, _soft=False)
+    volts = {}
+    for p in chain:
+        wv = (wishes.get(p) or {}).get("voltage_v")
+        use_wish = wv is not None and (wishes[p]["required"] or bool(_soft))
+        volts[p] = wv if use_wish else run_v.get(p) or default_voltage(pedals[p]["power_consumption"])
     under_of = {inst["id"]: inst.get("under", True) for inst in insts}
     hop_cache = {}
     cfg = cfg or {}
@@ -494,7 +557,8 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
             else:
                 vs = {volts[p] for p in members}
                 v = next(iter(vs))
-                if len(vs) > 1 or opts.get(v) is None:   # as the build: an option without max_ma is not available
+                broken_wish = any(wishes[p]["required"] and wish_misses(wishes[p], members, inst, port, volts[p]) for p in members if p in wishes)
+                if len(vs) > 1 or opts.get(v) is None or broken_wish:   # as the build: an option without max_ma is not available
                     cache[key] = (False, [], 0.0, [])
                 else:
                     errs, warns, _ = output_findings(f"{inst}_{port}", sorted(members), v, opts[v], pol, pedals, sensitive,
@@ -506,17 +570,22 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
                     cache[key] = (not errs, warns, length, order)
         return cache[key]
 
+    def unmet(n, members):
+        """The pedals on slot n whose wish is not met there: [(pedal, parts)] (required ones never get here, `slot_check`)."""
+        return [(p, bad) for p in members if p in wishes for bad in [wish_misses(wishes[p], members, slots[n][0], slots[n][1], volts[p])] if bad]
+
     def total(state):
-        length, warns = 0.0, []
+        length, warns, missed = 0.0, [], 0
         for n, members in enumerate(state):
             ok, w, ln, _ = slot_check(n, members)
             if not ok:
                 return None
             length += ln
             warns += w
+            missed += len(unmet(n, members)) if wishes else 0
         if group_18v:
             warns += merge_18v_findings(rows_of(state), pedals)
-        return length + WARNING_COST_MM * len(warns), length, warns
+        return length + WARNING_COST_MM * len(warns) + PREFERENCE_COST_MM * missed, length, warns
 
     def rows_of(state):
         out = []
@@ -544,7 +613,8 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
 
     def greedy():
         """Cheapest feasible slot per pedal (most constrained pedals first), backtracking on a dead end."""
-        alone = lambda p: pedals[p].get("digital") is not False or pedals[p]["power_consumption"].get("needs_isolated_output")
+        alone = lambda p: (pedals[p].get("digital") is not False or pedals[p]["power_consumption"].get("needs_isolated_output")
+                           or (wishes.get(p) or {}).get("own_output"))
         order = sorted(chain, key=lambda p: (not alone(p), -(pedals[p]["power_consumption"].get("current_ma") or 0), p))
         state, budget = [[] for _ in slots], [20000]
 
@@ -588,7 +658,9 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
             entry["label"] = inst["label"]
         entry["outputs"] = by_inst[inst["id"]]
         supplies.append(entry)
-    return {"supplies": supplies, "length_mm": length, "warnings": warns, "errors": []}
+    missed = {p for n, members in enumerate(state) for p, _ in unmet(n, members)}
+    return {"supplies": supplies, "length_mm": length, "warnings": warns, "errors": [],
+            "preferences": [(p, wish_text(w), p not in missed) for p, w in wishes.items()]}
 
 
 def improve(state, total):

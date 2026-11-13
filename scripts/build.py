@@ -16,6 +16,7 @@ import footswitches
 import jacks
 import outlines
 import power
+import preferences
 import routing
 import svgdraw
 from power import volt_range
@@ -55,6 +56,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
     project = jacks.with_floor(project)   # the jacks the floor devices drive count as used extra jacks
+    fs_all = footswitches.usable(footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
+    raw_project = project
+    project = preferences.lower(raw_project, fs_all)   # the per-pedal profiles (`pedals.<id>`) fill the old keys every reader uses
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
     no_unknown = project.get("validation", {}).get("no_unknown", True)
@@ -92,6 +96,13 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
             need(f"{pid}.{'.'.join(path)}", dig(p, path))
         if project.get("instrument") and p.get("instruments") and project["instrument"] not in p["instruments"]:
             warnings.append(f"instrument: {pid} is tagged {p['instruments']} but the project is for {project['instrument']}")
+
+    # ----- per-pedal preference profiles (pedals.<id>) ----------------------
+    perrors, pwarnings, pnotes = preferences.validate(raw_project, cat_pedals, cat_supplies, fs_all, chain)
+    errors += perrors
+    warnings += pwarnings
+    ctx["pref_notes"] = pnotes
+    ctx["pref_legacy"] = preferences.legacy_keys(raw_project)
 
     # ----- ordering rules -------------------------------------------------
     rules = [{**r, "pedal": pid, "origin": "catalog"} for pid in chain for r in pedals[pid].get("dependencies", [])]
@@ -210,8 +221,15 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         preds = {o for rr in active if rr["pedal"] == pid and rr["type"] == "after" for o in rr["pedals"] if o in pos}
         extra = [o for o in chain[:me] if o not in preds]
         if extra:
+            broken[(r["id"], r["strength"])] = extra
             (errors if r["strength"] == "required" else warnings).append(
                 f"order ({r['strength']}): {r['id']}: {pid} could be earlier: {', '.join(extra)} come first but are not required to")
+
+    # per rule: how the chain stands (the preference table of `preferences.check` reads it; the findings above are unchanged)
+    kept_ids, lost_ids, broken_ids = {c["id"] for c in kept}, {lose for _, lose in overridden}, {rid for rid, _ in broken}
+    ctx["rule_status"] = {**{r["id"]: "skipped" for r in skipped}, **{r["id"]: "disabled" for r in disabled},
+                          **{r["id"]: "broken" if r["id"] in broken_ids else "overridden" if r["id"] in lost_ids and r["id"] not in kept_ids else "met"
+                             for r in active}}
 
     # ----- power ----------------------------------------------------------
     policy = project.get("power_policy", {})
@@ -295,7 +313,8 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
         jacks.report_fixed_box(ctx)
-    footswitches.check(ctx, cat_pedals, footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
+    footswitches.check(ctx, cat_pedals, fs_all)
+    preferences.check(ctx, cat_pedals)
     return ctx
 
 
@@ -775,6 +794,56 @@ def footswitch_section(ctx, cat_pedals):
     return md
 
 
+def preferences_section(ctx, cat_pedals):
+    """README "Preferences" (after the ordering rules): one row per wish of `pedals.<id>` (and of the old keys that mean the same): where the
+    owner's layout stands and, unless they are stale, where every layout proposal does (`proposals/meta.json` metrics["preferences"])."""
+    rows = ctx.get("preferences") or []
+    dormant = ctx.get("pref_dormant") or []
+    if not rows and not dormant:
+        return ["", "### Preferences", "", "No preferences set (`pedals.<pedal id>` in project.json)."]
+    nm = lambda pid: pedal_name(cat_pedals[pid]) if pid in cat_pedals else pid
+    props = []
+    meta_path = ctx["dir"] / "proposals" / "meta.json"
+    if meta_path.exists():
+        meta = load_json(meta_path)
+        if meta.get("inputs_sha1") == proposal_inputs_sha1(ctx["dir"]) and meta.get("chain") == ctx["chain"]:
+            props = meta.get("proposals") or []
+
+    def cell(r, met="owner"):
+        met = r["met"] if met == "owner" else met
+        if met is True:
+            return "met"
+        if met is False:
+            return "**not met**" + (f" ({r['detail']})" if r.get("detail") and r["met"] is False else "")
+        return "applied" if r.get("detail") == "applied" else "-"
+
+    def proposal_cell(r, p):
+        if r["met"] is None or r["kind"] == "order":
+            return cell(r)   # applied settings; the proposals keep the chain
+        known = (p.get("metrics") or {}).get("preferences")
+        if known is None:
+            return "?"       # made before the preferences existed
+        key = preferences.row_key(r)
+        return cell({**r, "detail": ""}, known[key]) if key in known else "-"
+
+    head = ["Pedal", "Wish", "Strength", "Owner's layout"] + [f"Proposal {p['n']}" for p in props]
+    md = ["", "### Preferences", "",
+          "Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the "
+          "wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), "
+          "the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or "
+          "power wish that is not met is a build warning; the layout search and the power assignment read all of them.", "",
+          "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    for r in rows:
+        wish = f"{r['kind'].replace('position.', 'position ')}: {r['wish']}"
+        md.append("| " + " | ".join([nm(r["pedal"]), wish, r["strength"] or "-", cell(r)] + [proposal_cell(r, p) for p in props]) + " |")
+    if dormant:
+        md += ["", "Dormant (pedals not in the signal chain): " + ", ".join(f"`{d}`" for d in dormant) + "."]
+    if ctx.get("pref_legacy"):
+        md += ["", "Old keys in use (" + ", ".join(f"`{k}`" for k in ctx["pref_legacy"]) + "): they still work; "
+               f"`uv run pb migrate-preferences {ctx['key']}` moves them into `pedals.<pedal id>`."]
+    return md
+
+
 def proposals_section(ctx, cat_pedals):
     """README section from projects/<name>/proposals/meta.json (written by scripts/propose_layout.py; the search
     never runs here): before/after figures, moved pedals, each proposal's power wiring, stale detection."""
@@ -817,6 +886,8 @@ def proposals_section(ctx, cat_pedals):
             ("Build errors / warnings", lambda m: f"{m['errors']} / {m['warnings']}"),
             ("Score (lower is better)", lambda m: f"{m['score']:.0f}")]
     owner = meta["owner"]
+    if owner.get("pref_required_unmet") is not None:   # (proposals made before the preferences have no such figure)
+        rows.insert(-2, ("Required preference wishes not met", lambda m: f"{m.get('pref_required_unmet', '?')}"))
     md += ["| | Owner's layout | " + " | ".join(f"Proposal {p['n']}" for p in props) + " |",
            "|---|--:|" + "--:|" * len(props)]
     for label, f in rows:
@@ -888,6 +959,7 @@ def project_readme(ctx, cat_pedals):
     if ctx.get("overrides"):
         md += ["", "### Overridden by priority", ""]
         md += [f"- `{o['winner']}` overrides `{o['loser']}` for: " + "; ".join(o["pairs"]) for o in ctx["overrides"]]
+    md += preferences_section(ctx, cat_pedals)
     md += ["", "### Notes per pedal", ""]
     md += [f"- **{pedal_name(pedals[pid])}**: {pedals[pid].get('comments', '')}" for pid in chain]
     floor = [f for f in (pr.get("floor") if isinstance(pr.get("floor"), list) else [])
@@ -988,7 +1060,7 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "catalog/power_supplies.json   supply models: outputs, voltages, current limits, how many you own",
         "catalog/jacks.json           jack positions per pedal/supply (fractions of the Pedal Playground image, mm in reports)",
         "catalog/footswitches.json    footswitch positions per pedal ([] = no footswitch; spacing checked on the layout)",
-        "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring",
+        "projects/<name>/project.json  everything that can change: board, chain order, project rules, power wiring, per-pedal preferences (pedals.<id>)",
         "projects/<name>/README.md     generated plan, signal-chain and power diagrams, power summary",
         "projects/<name>/playground_design.json   the owner's Pedal Playground layout (scripts/fetch_playground.py; older versions in playground_history/, git-ignored)",
         "```",
@@ -1004,6 +1076,14 @@ def root_readme(ctxs, cat_pedals, cat_supplies, jacks_data):
         "```",
         "",
         f"Footswitches: spacing is comfort, so the layout proposals push switches of different pedals apart (crowding = priority x (comfort - distance)^2 / comfort below `footswitches.comfort_mm`, default 100 mm). An optional `footswitches.min_distance_mm` makes closer pairs findings. Missing footswitch data and pairs below the minimum are warnings unless `validation.require_footswitches` / `validation.strict_footswitches` are set. Toppers (`footswitches.toppers`, a finishing step after the layout; the search ignores them) add `footswitches.topper_bonus_mm` (default {footswitches.TOPPER_BONUS_MM:g} mm: the height a topper adds, a rough proxy, unverified) per topper to a pair's effective distance; the build suggests the few that remove the most crowding.",
+        "",
+        "Per-pedal wishes live in `pedals.<pedal id>` of project.json, every field optional: `position` {`side` left|right|any, `depth` front|back|avoid_front|any, "
+        "`weight` (score per mm, default 0.3), `strength` preferred|required}, `pin`, `rotations` ([0, 90, 270], \"any\" or \"current\"), `order` {`<name>`: an ordering rule "
+        "without id / pedal; its id is `<pedal>.<name>`}, `power` {`own_output`, `supply`, `port`, `voltage_v`, `strength`}, `toppers` (switch ids), `note`. "
+        "Each project README has a \"Preferences\" table: is every wish met in the owner's layout and in each layout proposal; a required position or power wish that "
+        "is not met is a warning (an error with `validation.strict_preferences`). The layout search and the power assignment read the wishes. The older per-pedal keys "
+        "(`rules` entries, `layout.pins`, `layout.rotations.<id>`, `layout.access.pedals`, `footswitches.toppers`) still work; "
+        "`uv run scripts/migrate_preferences.py [project...] [--dry-run]` moves them into the profiles.",
         "",
         "Every project has `validation.no_unknown` on by default: any missing (`null`) value for a pedal, supply or board the project uses fails the build until you fill it in.",
         "",

@@ -64,6 +64,23 @@ flowchart TB
 
 - `polytune_2_mini.first` overrides `octahive.first` for: octahive before polytune_2_mini
 
+### Preferences
+
+Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or power wish that is not met is a build warning; the layout search and the power assignment read all of them.
+
+| Pedal | Wish | Strength | Owner's layout |
+|---|---|---|---|
+| TC Electronic PolyTune 2 Mini | order: first in the chain | required | met |
+| Beetronics Octahive | order: first in the chain | required | met |
+| Ibanez Tube Screamer Mini | order: after octahive | required | met |
+| MXR Custom Shop Duke of Tone | order: after ibanez_ts_mini | required | met |
+| MXR Custom Shop Duke of Tone | order: after octahive | required | met |
+| Mooer E-Lady | order: after duke_of_tone | required | met |
+| MXR Carbon Copy | order: after e_lady | required | met |
+| TC Electronic Ditto Looper | order: last in the chain | required | met |
+
+Old keys in use (`rules`): they still work; `uv run pb migrate-preferences guitar-practice` moves them into `pedals.<pedal id>`.
+
 ### Notes per pedal
 
 - **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.

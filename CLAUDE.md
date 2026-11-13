@@ -71,7 +71,15 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   (default 100), optional `footswitches.min_distance_mm` (mm, default none) and `footswitches.priority` (spacing
   weight per switch type), `layout` (optional: pins,
   rotations, max_change, max_move_mm, clearance_margin_mm, weights, access, search), `validation` flags
-  (`require_footswitches`, `strict_footswitches`, `strict_bounds` among them).
+  (`require_footswitches`, `strict_footswitches`, `strict_bounds`, `strict_preferences` among them).
+- `projects/<name>/project.json` `pedals` (per-pedal preference profiles; owner 2026-11-13, plan `docs/plans/pedal-preferences.md`): `pedals.<pedal id>` holds
+  every per-pedal wish, all fields optional (a missing field = no wish; a later web UI shows one form per pedal):
+  `position` {`side` left|right|any, `depth` front|back|avoid_front|any (`any` cancels the tag / switch default too), `weight` (>= 0, default 0.3), `strength`
+  preferred (default)|required}, `pin` (bool), `rotations` ([0|90|270] | "any" | "current"; 180 never), `order` {`<name>`: a rule entry without `id` /
+  `pedal` (`type`, its fields, `strength`, `priority`, `reason`); the rule id is `<pedal>.<name>`}, `power` {`own_output` (bool), `supply` (an instance id of
+  `power.supplies`), `port` (needs `supply`), `voltage_v`, `strength`}, `toppers` [switch ids], `note` (README only). What stays outside the profile:
+  `signal_chain`, `sections`, `rule_overrides`, `layout.rotations.default`, `layout.access.tags` / `switches`, `layout.weights`, the hand power wiring
+  `power.supplies[].outputs[]`, on-board supply instances in `layout.pins`, `footswitches.*` but `toppers`.
 - `projects/<name>/board.json` (optional): the owner's hole corrections, `boxes` [{type hole|filled, x0..y1 fractions of the
   board image}] applied in order on the derived holes (filled closes, hole opens, later wins; `design.board_holes`),
   and edge crossings `{type edge, side left|right|back|front, from, to}` (fractions along that side of the unrotated
@@ -106,13 +114,15 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `fetch_playground.py` (the shared layout from
-  Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~700 tests, ~150 s, hand-computed geometry cases
+  Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold),
+  `preferences.py` (pure: the per-pedal profiles: `profiles`, `lower`, `validate`, `migrate`, position / power wishes, `check`),
+  `migrate_preferences.py` (one-off: old per-pedal keys -> `pedals.<id>`; `common.dump_project` writes project.json in the repo's style).
+- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~820 tests, ~300 s, hand-computed geometry cases
   (`PEDALBOARD_SLOW=1` adds the full guitar-gig search). Tests that depend on the gig's layout, wiring or proposals use the
   FROZEN copy `tests/fixtures/guitar-gig/` (`conftest.gig_copy` / `GIG_FIXTURE`), never the live project (the owner fetches
   new layouts all the time); update the fixture only deliberately.
 - `pb/__init__.py`: `uv run pb <command>` = one entry point for the scripts (`pb --help` lists them: build, fetch,
-  propose, new, pedal-editor, board-editor, outlines, boards, test); it runs the script's `main()`, the scripts stay
+  propose, new, migrate-preferences, pedal-editor, board-editor, outlines, boards, test); it runs the script's `main()`, the scripts stay
   runnable as `uv run scripts/<name>.py`. pyproject `[project.scripts]` + `uv_build` (package `pb` only).
 
 ## Commands
@@ -133,6 +143,7 @@ uv run scripts/fetch_playground.py <project> [--share LINK] [--dry-run]   # the 
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
 uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
+uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal keys -> pedals.<id> (project.json rewritten in the repo's style)
 ```
 
 ## Conventions and decisions (keep them)
@@ -314,6 +325,24 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   stops naming the pedals); the build warns about every item outside (`jacks.outside_usable`: `layout: <pedal> is outside the
   usable board area by N mm (back)`, an error with `validation.strict_bounds`; under-board supplies never); the proposal
   table has a row "Outside the usable area" (proposals: 0).
+- Per-pedal preferences (owner 2026-11-13, `feat/pedal-preferences`, plan `docs/plans/pedal-preferences.md`, recommended defaults D1-D12): `pedals.<id>` (schema
+  above) is LOWERED (`preferences.lower`) into the OLD keys before anything reads the project (`build.validate`, `layout.settings`, `propose_layout.main`;
+  `proposal_inputs_sha1` hashes the lowered project minus each profile's `note` / `toppers`): `rules` (old entries first, then the profiles': pedals in
+  chain order, then the others alphabetically; an equal duplicate is dropped), `layout.pins` / `layout.rotations.<id>` / `layout.access.pedals.<id>` (`position.depth`
+  + `weight`; depth `any` = want "none" = `access_rule` returns None), `footswitches.toppers`; pedals not in the chain are "dormant" (kept, listed in the README,
+  no finding). The old keys stay readable (`merge_legacy`; the frozen gig fixture still uses them); a wish in both places is an error only when the values differ
+  (`pedals.<id>.<field> and <old key> disagree`). Supply instances stay in `layout.pins` / `layout.rotations`. `uv run pb migrate-preferences <project> [--dry-run]`
+  moves the old keys into the profiles (the live project.json files are migrated only on the owner's go; fresh proposals are stamped again when the
+  lowered project reads the same). `preferences.validate` messages: `pedals.<id>...`; order entries report as `rules: <pedal>.<name>: ...`. Search: a side wish
+  pulls the BODY centre toward that board edge (`layout.weights.position` 1 x weight / mm), a REQUIRED side or depth wish whose reference point (body centre x /
+  footswitch mean y, else centre) is not in the wanted half costs `preference_miss` 100 + `preference_miss_mm` 20 / mm past the middle line (a penalty, not a hard
+  constraint); the depth pull is the access rule. Power: `power.assign(wishes=)`: a voltage wish beats the hand wiring's, REQUIRED supply / port / own_output =
+  feasibility, PREFERRED = `PREFERENCE_COST_MM` 300 per pedal with an unmet wish (below `WARNING_COST_MM` 1000); the hand wiring stays in `power.supplies[].outputs[]`.
+  Build: `ctx["rule_status"]` {rule id: met|broken|overridden|skipped|disabled}, `ctx["preferences"]` rows (`preferences.check`: position.side / position.depth /
+  order / power / pin / rotations / toppers; met True / False / None), `ctx["pref_notes"]`, `ctx["pref_legacy"]`; an unmet REQUIRED position or power wish is a
+  warning `preferences: <pedal>: wants ... (required); ...` (error with `validation.strict_preferences`), preferred only in the README table "Preferences" (owner's layout
+  = the hand wiring, a proposal column from `meta.json` `metrics["preferences"]`, `?` for proposals made before the feature). Proposals: `metrics["pref_required_unmet"]`
+  gates (`acceptable`: not more than the owner's layout) and ranks (after `fs_close`).
 - Pictures (`svgdraw.render`): sized in mm (prints 1:1 from a browser); committed SVGs have outlines only, pedal
   images only in git-ignored `routing.local.svg` (data URIs from `.cache/images`, `common.fetch_image`).
 - Pedal outlines (`design.outline_rects`, `layout["shapes"]` {item id: [rects]}): the router (grid, smoothing, lanes),

@@ -82,16 +82,18 @@ model as many physical aspects as possible; every cable gets a precise minimum r
 picks a long-enough cable (no tracking of owned cables). Lengths are optimised so no huge cables are needed.
 
 ### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
-No plan file yet: write `docs/plans/pedal-preferences.md` first, owner decisions, then handovers.
+Plan `docs/plans/pedal-preferences.md` (owner decisions D1-D12: the recommended defaults); implemented on the branch `feat/pedal-preferences`
+(waiting for the code review and the merge; the live project.json files are NOT migrated yet).
 Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
-- [ ] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
+- [x] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
       order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
-      voltage), footswitch topper, access override.
-- [ ] Migrate today's scattered knobs (`layout.access.pedals`, `layout.pins`, `layout.rotations.<id>`, per-pedal rules,
-      power output choice), old keys still read (or a one-off migration script).
-- [ ] Build: validate the profile, README table "Preferences" (asked for, met or not in the owner's layout and in
-      each proposal); the layout search and `power.assign` read it.
-- [ ] Until the web UI: edit project.json by hand (documented schema).
+      voltage), footswitch topper, note (the access override is `position.depth`).
+- [x] Migrate today's scattered knobs (`layout.access.pedals`, `layout.pins`, `layout.rotations.<id>`, per-pedal rules,
+      toppers): old keys still read AND the one-off script `uv run pb migrate-preferences <project> [--dry-run]`
+      (the hand power wiring stays in `power.supplies[].outputs[]`). Owner: run it per project when ready.
+- [x] Build: validate the profile, README table "Preferences" (asked for, met or not in the owner's layout and in
+      each proposal); the layout search and `power.assign` read it. Rerun the proposals of each board to fill the proposal columns.
+- [x] Until the web UI: edit project.json by hand (documented schema, CLAUDE.md and the root README).
 
 ### 3.2 `feat/u-turn-plugs`: a right-angle plug that turns its cable back
 No plan file yet (`docs/plans/u-turn-plugs.md`).
