@@ -710,7 +710,12 @@ def test_overlap_ghosts_and_joint_sides_abutting_overlapping_and_apart():
     over = [a, piece("b.png", 80, 0, 100, 50)]                                         # B covers A's x 80..100
     assert be.overlap_ghosts(over, 0) == [(pytest.approx((0.8, 0.0, 1.0, 1.0)), "b.png")]
     assert be.overlap_ghosts(over, 1) == [(pytest.approx((0.0, 0.0, 0.2, 1.0)), "a.png")]
-    assert ("right", pytest.approx(0.0), pytest.approx(1.0), "b.png") in be.joint_sides(over, 0)
+    # only the sides whose neighbour ACROSS the side is the other piece are joints: A's flush back / front (y = 0, 50) are not
+    assert be.joint_sides(over, 0) == [("right", pytest.approx(0.0), pytest.approx(1.0), "b.png")]
+    assert be.joint_sides(over, 1) == [("left", pytest.approx(0.0), pytest.approx(1.0), "a.png")]
+    nested = [a, piece("c.png", 10, 0, 50, 50)]                                        # C inside A, flush with its back and front
+    assert be.joint_sides(nested, 0) == [] and be.overlap_ghosts(nested, 0)
+    assert [(s, o) for s, _f, _t, o in be.joint_sides(nested, 1)] == [("left", "a.png"), ("right", "a.png")]   # across C's sides lies A
     corner = [a, piece("b.png", 100, 50, 100, 50)]                                     # only the corners touch
     assert be.joint_sides(corner, 0) == []
     assert be.joint_sides([{**a, "item": None}], 0) == [] and be.overlap_ghosts([{**a, "item": None}], 0) == []
@@ -721,6 +726,7 @@ def test_joint_sides_follow_the_rotation_and_a_partial_overlap_along_the_side():
     # right side of A is the image's BACK (top) edge; B's y 0..100 are u = -50..50 -> fx 0.25..0.75
     pieces = [piece("a.png", 0, 0, 200, 100, 90), piece("b.png", 150, 0, 100, 100)]
     assert be.joint_sides(pieces, 0) == [("back", pytest.approx(0.25), pytest.approx(0.75), "b.png")]
+    assert be.joint_sides(pieces, 1) == [("left", pytest.approx(0.0), pytest.approx(1.0), "a.png")]   # all of B's left side lies against A
 
 
 def test_the_bass_pieces_abut_in_a_joint_and_overlap_nowhere(tmp_path):
@@ -808,5 +814,44 @@ def test_the_app_says_when_an_edge_segment_lies_on_a_joint(tmp_path):
         app.boxes[0] = be.make_edge("back", 0.1, 0.4)                 # the top side is a board edge
         app._refresh()
         assert "joint" not in app.status.cget("text")
+    finally:
+        app.destroy()
+
+
+# --- review fixes ------------------------------------------------------------------------------------------------------
+def test_a_malformed_pieces_entry_counts_as_absent_in_labels_and_notes_like_the_build(tmp_path):
+    # `boards.load_pieces` skips "A.png": 5, so the build uses the top level for the first piece: no "[pieces]", "shadowed" or "dropped"
+    (tmp_path / "board.json").write_text(json.dumps({"boxes": [box()], "pieces": {"A.png": 5}}))
+    assert "A.png" not in boards.load_pieces(tmp_path)
+    assert boards.load_piece_edits(tmp_path, ["A.png", "B.png"])["A.png"]["boxes"] == [box()]
+    raw = be.raw_pieces(tmp_path)
+    assert be.piece_sources(["A.png", "B.png"], raw, True) == {"A.png": "top-level", "B.png": "none"}
+    pieces = [{"image": "A.png", "w_mm": 1, "h_mm": 1}, {"image": "B.png", "w_mm": 1, "h_mm": 1}]
+    edits = boards.load_piece_edits(tmp_path, ["A.png", "B.png"])
+    rows = be.piece_rows(pieces, edits, be.piece_sources(["A.png", "B.png"], raw, True), {}, raw, True)
+    assert not any("shadowed" in r for r in rows) and rows[0].endswith("[top-level]")
+    notes = be.split_for_save(edits, ["A.png", "B.png"], raw, [box()], None)[3]
+    assert notes == ["moved the top-level edits into pieces.A.png"]
+    # one piece: a malformed entry for its own image is no "moved" entry either
+    assert be.split_for_save({"A.png": edits["A.png"]}, ["A.png"], raw, [box()], None)[3] == []
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_whole_board_view_ignores_the_delete_button_and_the_entry_list(tmp_path):
+    app, _ = two_item_app(tmp_path)
+    try:
+        app.update()
+        app.boxes.extend([box(), box("filled", 0.5, 0.5, 0.7, 0.7)])
+        app._toggle_overview()
+        app.sel = 1                                    # even with an entry selected
+        app._delete()                                  # what the Delete button calls
+        assert len(app.boxes) == 2
+        app.listbox.selection_set(0)
+        app._on_list_select(None)                      # a list click
+        assert app.sel == 1                            # (unchanged: it would be 0)
+        app._toggle_overview()
+        app.sel = 1
+        app._delete()
+        assert app.boxes == [box()]
     finally:
         app.destroy()

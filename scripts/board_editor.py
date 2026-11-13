@@ -428,7 +428,7 @@ def split_for_save(edits, images, file_pieces, top_boxes, top_bounds):
     if len(uniq) <= 1:
         image = uniq[0] if uniq else None
         e = edits.get(image) or {"boxes": [], "bounds": None}
-        if image in file_pieces:
+        if has_piece_entry(file_pieces, image):
             notes.append(f"moved pieces.{image} to the top level (a board with one piece keeps its edits there)")
         return e["boxes"], e["bounds"], kept or None, notes
     pieces = dict(kept)
@@ -438,7 +438,7 @@ def split_for_save(edits, images, file_pieces, top_boxes, top_bounds):
             pieces[image] = {"boxes": e["boxes"], "bounds": e["bounds"]}
     if top_boxes or bounds_set(top_bounds):
         first = uniq[0]
-        if first in file_pieces:
+        if has_piece_entry(file_pieces, first):
             notes.append(f"dropped the top-level edits: they were shadowed by pieces.{first}")
         else:
             notes.append(f"moved the top-level edits into pieces.{first}")
@@ -476,10 +476,16 @@ def unknown_piece_names(file_pieces, images):
     return [name for name in file_pieces if name not in images]
 
 
+def has_piece_entry(file_pieces, image):
+    """Whether `pieces` has a usable entry for the image, by the build's rule (`boards.load_pieces` skips an entry that is no object, so
+    `boards.piece_edits` treats it as absent)."""
+    return isinstance(file_pieces.get(image), dict)
+
+
 def piece_sources(images, file_pieces, top_level_set):
     """{image: where its edits come from by the build's rule}: 'pieces' (an entry for the image), 'top-level' (the first image, no entry,
     and the top level has edits), else 'none'."""
-    return {image: ("pieces" if image in file_pieces else "top-level" if n == 0 and top_level_set else "none")
+    return {image: ("pieces" if has_piece_entry(file_pieces, image) else "top-level" if n == 0 and top_level_set else "none")
             for n, image in enumerate(dict.fromkeys(images))}
 
 
@@ -500,7 +506,7 @@ def piece_rows(pieces, edits, sources, boards_data, file_pieces, top_level_set):
     rows = [f"  {n} {p['image']:<{width}}  {_summary(boards_data.get(p['image']), edits[p['image']])}   [{sources[p['image']]}]"
             for n, p in enumerate(pieces, 1)]
     rows += [f"  ! pieces.{name}: no piece of the layout (kept)" for name in unknown_piece_names(file_pieces, images)]
-    if top_level_set and images[0] in file_pieces:
+    if top_level_set and has_piece_entry(file_pieces, images[0]):
         rows.append(f"  ! top-level boxes / bounds are shadowed by pieces.{images[0]}")
     return rows
 
@@ -594,12 +600,15 @@ def overlap_ghosts(pieces, i):
 
 def joint_sides(pieces, i, tol_mm=JOINT_TOL_MM):
     """[(side, from, to, other image)]: the stretches of each side of piece i's unrotated image (left / right / back = top / front = bottom)
-    that lie within `tol_mm` of another piece's footprint (a joint, not a board edge), as fractions along that side (the height from the
-    top for left / right, the width from the left for back / front). Stretches shorter than `JOINT_MIN_MM` (corners touching) are ignored."""
+    where another piece's footprint contains the point `tol_mm` OUTSIDE the side (along its outward normal): the neighbour across the
+    side is another piece, so the side is no board edge (the build's `_piece_edge_links` rule; a flush side of overlapping or nested pieces
+    is no joint). Fractions along the side (the height from the top for left / right, the width from the left for back / front);
+    stretches shorter than `JOINT_MIN_MM` (corners touching) are ignored."""
     p = pieces[i]
     if p["item"] is None:
         return []
     item = p["item"]
+    cx, cy = design.centre(item)
     ends = {"left": ((0, 0), (0, 1)), "right": ((1, 0), (1, 1)), "back": ((0, 0), (1, 0)), "front": ((0, 1), (1, 1))}
     out = []
     for side, (a, b) in ends.items():
@@ -610,12 +619,14 @@ def joint_sides(pieces, i, tol_mm=JOINT_TOL_MM):
                 continue
             x0, y0, x1, y1 = design.footprint(q["item"])
             if horizontal:
-                if not y0 - tol_mm <= ya <= y1 + tol_mm:
+                outside = ya + (-tol_mm if ya < cy else tol_mm)
+                if not y0 <= outside <= y1:
                     continue
                 lo, hi = max(min(xa, xb), x0), min(max(xa, xb), x1)
                 ends_mm = ((lo, ya), (hi, ya))
             else:
-                if not x0 - tol_mm <= xa <= x1 + tol_mm:
+                outside = xa + (-tol_mm if xa < cx else tol_mm)
+                if not x0 <= outside <= x1:
                     continue
                 lo, hi = max(min(ya, yb), y0), min(max(ya, yb), y1)
                 ends_mm = ((xa, lo), (xa, hi))
@@ -1165,7 +1176,7 @@ def make_app(project_dir, pieces, derived_by_image=None, start=0, image_paths=No
             self._status(self._ocanvas(event) if self.overview else self._frac(event))
 
         def _on_list_select(self, event):
-            if self._busy or self.bounds_mode:
+            if self._busy or self.bounds_mode or self.overview:
                 return
             picked = self.listbox.curselection()
             if picked:
@@ -1210,6 +1221,8 @@ def make_app(project_dir, pieces, derived_by_image=None, start=0, image_paths=No
             self._refresh()
 
         def _delete(self):
+            if self.overview:   # the whole-board view is read-only (the button and the key both come here)
+                return
             if self.bounds_mode:          # puts the selected line back on the image edge
                 if self.bsel is not None:
                     self.bounds = reset_bound(self.bounds, self.bsel)

@@ -98,7 +98,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   into `pieces.<first image>` on the first save, dropped with a note when that image has an entry); a one-piece board keeps the top level
   (`editor.split_for_save`); `pieces` entries of images that are no piece of the layout are kept (named in the status bar and `--list`).
   Composed view (pure helpers in `board_editor.py`: `canvas_to_piece_frac`, `rects_to_piece_fracs`, `composed_effective` / `piece_effective` (E = the
-  holes the build uses, `design.composed_holes`, on this piece), `overlap_ghosts`, `joint_sides` (0.5 mm tolerance, >= 1 mm long), `edge_on_joint`,
+  holes the build uses, `design.composed_holes`, on this piece), `overlap_ghosts`, `joint_sides` (the other footprint contains the point 0.5 mm OUTSIDE the side, like the build's edge links; >= 1 mm long), `edge_on_joint`,
   `piece_at`): the piece view draws the other pieces' covered area and the joints (read-only); W = whole-board overview (read-only, click picks a piece).
 - `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
   document (schema 3: items with image, width / height / x / y in inches, rotation in degrees; `design.parse_doc`; legacy v1
