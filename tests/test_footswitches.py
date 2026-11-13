@@ -512,3 +512,108 @@ def test_suggestions_equal_the_brute_force_on_random_sets():
         got = fsw.suggest_toppers(pts, prs, PRIO, 100.0, 10.0, **kw)
         assert got["before"] == pytest.approx(before)
         assert [(s["key"], s["gain"]) for s in got["suggestions"]] == [(k, pytest.approx(g)) for k, g in want]
+
+
+# --- heights: step and reach (pure model, hand-computed) -----------------------------------------
+def _pt(key, cid, x, y, type="bypass"):
+    return {"key": key, "cid": cid, "x": x, "y": y, "type": type}
+
+
+def test_step_gain_cap_and_unknown_height():
+    """59.0 vs 63.5 mm, gain 0.5 -> 2.25; 40 vs 60 capped at 10 -> 5.0; an unknown height -> no step."""
+    assert fsw.step_mm(59.0, 63.5, 0.5, 10) == pytest.approx(2.25)
+    assert fsw.step_mm(60, 40, 0.5, 10) == pytest.approx(5.0)
+    assert fsw.step_mm(None, 40, 0.5, 10) == 0.0 and fsw.step_mm(40, None, 0.5, 10) == 0.0
+
+
+def test_crowding_with_a_step():
+    """d 48.52 + step 2.25 = 50.77 -> (100 - 50.77)^2 / 100 = 24.236 (the plan prints 24.23: truncated)."""
+    d = fsw.pair_distance(48.52, 0, 4.5, 2.25)
+    assert d == pytest.approx(50.77)
+    assert fsw.crowding(d, 1.0, 100.0) == pytest.approx(24.236, abs=0.001)
+
+
+def test_toppers_stay_out_of_the_step():
+    """A topper on either switch adds exactly the bonus to d_eff; the step is the plain heights' one."""
+    plain = fsw.pair_distance(50.0, 0, 4.5, fsw.step_mm(59.0, 63.5, 0.5, 10))
+    for n in (1, 2):
+        assert fsw.pair_distance(50.0, n, 4.5, fsw.step_mm(59.0, 63.5, 0.5, 10)) == pytest.approx(plain + 4.5 * n)
+    pts = [_pt("a.s", "a", 0, 0), _pt("b.s", "b", 0, 50)]
+    cat = {"a": {"height_mm": 59.0}, "b": {"height_mm": 63.5}}
+    h1 = fsw.switch_heights(pts, cat, {"b.s"}, 4.5)
+    h0 = fsw.switch_heights(pts, cat, set(), 4.5)
+    assert h1["b.s"] == (63.5, 68.0) and h0["b.s"] == (63.5, 63.5)
+    assert fsw.step_mm(h1["a.s"][0], h1["b.s"][0], 0.5, 10) == fsw.step_mm(h0["a.s"][0], h0["b.s"][0], 0.5, 10)
+
+
+CFG = {"foot_width_mm": 80.0, "foot_length_mm": 190.0, "foot_pitch_deg": 5.0}
+TAN5 = math.tan(math.radians(5))
+
+
+def _shadow_of(s, q, cat_s=46.2, cat_q=61.0, toppers=(), cfg=CFG, which=True):
+    pts = [s, q]
+    cat = {s["cid"]: {"height_mm": cat_s}, q["cid"]: {"height_mm": cat_q}}
+    h = fsw.switch_heights(pts, cat, set(toppers), 4.5)
+    return fsw.shadows(pts, h, cfg, which)[s["key"]]
+
+
+def test_shadow_geometry():
+    """61.0 vs 46.2 mm, q 124.9 mm ahead: 14.8 - tan(5) x 124.9 = 3.87; outside the strip or the length, behind, same pedal: 0."""
+    s = _pt("a.s", "a", 119.1, 67.6)
+    got, by = _shadow_of(s, _pt("b.s", "b", 116.8, 192.5))
+    assert got == pytest.approx(14.8 - TAN5 * 124.9) and round(got, 2) == 3.87 and by == "b.s"
+    assert _shadow_of(s, _pt("b.s", "b", 119.1 + 41, 192.5))[0] == 0.0           # 41 mm sideways (half width 40)
+    assert _shadow_of(s, _pt("b.s", "b", 119.1 + 40, 192.5))[0] > 0              # exactly at the edge counts
+    assert _shadow_of(s, _pt("b.s", "b", 119.1, 67.6 + 191))[0] == 0.0           # 191 mm ahead (length 190)
+    assert _shadow_of(s, _pt("b.s", "b", 119.1, 67.6 - 50))[0] == 0.0            # behind s
+    assert _shadow_of(s, _pt("b.s", "a", 119.1, 192.5))[0] == 0.0                # the same pedal
+    assert _shadow_of(s, _pt("b.s", "b", 116.8, 192.5), cat_q=40.0) == (0.0, None)   # a lower switch shades nothing
+
+
+def test_shadow_with_toppers():
+    """A topper on s: max(0, 3.87 - 4.5) = 0; a topper on q: 65.5 - 46.2 - tan(5) x 124.9 = 8.37; plain heights ignore both."""
+    s, q = _pt("a.s", "a", 119.1, 67.6), _pt("b.s", "b", 116.8, 192.5)
+    assert _shadow_of(s, q, toppers={"a.s"})[0] == 0.0
+    assert _shadow_of(s, q, toppers={"b.s"})[0] == pytest.approx(8.37, abs=0.005)
+    assert _shadow_of(s, q, toppers={"b.s"}, which=False)[0] == pytest.approx(14.8 - TAN5 * 124.9)
+
+
+def test_unknown_height_skips_step_and_shadow():
+    s, q = _pt("a.s", "a", 0, 0), _pt("b.s", "b", 0, 100)
+    pts = [s, q]
+    h = fsw.switch_heights(pts, {"a": {"height_mm": None}, "b": {"height_mm": 60.0}}, set(), 4.5)
+    assert h["a.s"] == (None, None)
+    assert fsw.shadows(pts, h, CFG)["a.s"] == (0.0, None)
+    h = fsw.switch_heights(pts, {"a": {"height_mm": 40.0}, "b": {"height_mm": None}}, set(), 4.5)
+    assert fsw.shadows(pts, h, CFG)["a.s"] == (0.0, None)
+
+
+def test_deck_rise_lifts_the_back():
+    """Rise 20 mm over a 300 mm board: a switch 150 mm from the front gets +10 mm, one at the front +0, at the back +20."""
+    pts = [_pt("a.s", "a", 0, 150), _pt("b.s", "b", 0, 300), _pt("c.s", "c", 0, 0)]
+    cat = {c: {"height_mm": 50.0} for c in "abc"}
+    h = fsw.switch_heights(pts, cat, {"c.s"}, 4.5, board_rect=(0, 0, 100, 300), deck_rise_mm=20.0)
+    assert h["a.s"] == (60.0, 60.0) and h["b.s"] == (50.0, 50.0) and h["c.s"] == (70.0, 74.5)
+    flat = fsw.switch_heights(pts, cat, set(), 4.5, board_rect=(0, 0, 100, 300))
+    assert flat["a.s"] == (50.0, 50.0)
+
+
+def test_reach_cost_weighs_by_priority():
+    pts = [_pt("a.s", "a", 0, 0, "bypass"), _pt("b.s", "b", 0, 0, "tap")]
+    sh = {"a.s": (4.0, "x"), "b.s": (5.0, "x")}
+    assert fsw.reach_cost(pts, sh, fsw.PRIORITY) == pytest.approx(4.0 * 1.0 + 5.0 * 0.8)
+
+
+def test_height_settings_defaults_and_bad_values():
+    s, problems = fsw.height_settings({})
+    assert problems == [] and s == fsw.HEIGHT_DEFAULTS
+    assert s["heights"] is True and s["height_gain"] == 0.5 and s["height_cap_mm"] == 10 and s["foot_pitch_deg"] == 5
+    s, problems = fsw.height_settings({"footswitches": {"height_gain": 1.5, "foot_pitch_deg": 60, "height_cap_mm": -1,
+                                                         "heights": "yes", "max_shadow_mm": -2, "reach_weight": True,
+                                                         "unknown_key": 3}})
+    assert len(problems) == 6
+    assert (s["height_gain"], s["foot_pitch_deg"], s["height_cap_mm"], s["heights"], s["max_shadow_mm"], s["reach_weight"]) \
+        == (0.5, 5.0, 10.0, True, None, 1.0)
+    s, problems = fsw.height_settings({"footswitches": {"height_gain": 0, "foot_pitch_deg": 0, "max_shadow_mm": 3,
+                                                         "heights": False, "deck_rise_mm": 20}})
+    assert problems == [] and s["height_gain"] == 0.0 and s["max_shadow_mm"] == 3.0 and s["heights"] is False and s["deck_rise_mm"] == 20.0

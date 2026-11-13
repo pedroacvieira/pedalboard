@@ -215,9 +215,118 @@ def topper_settings(project, switch_keys, no_data=()):
     return {"toppers": keep, "bonus_mm": float(bonus), "max_toppers": cap, "min_gain": float(gain)}, problems, notes
 
 
+def pair_distance(distance_mm, n_toppers, bonus_mm, step_mm=0.0):
+    """d_eff = d + bonus per topper on the pair (0, 1 or 2) + the pair's height step (`step_mm`, 0 without heights)."""
+    return distance_mm + n_toppers * bonus_mm + step_mm
+
+
 def effective_distance(distance_mm, n_toppers, bonus_mm):
-    """d_eff = d + bonus per topper on the pair (0, 1 or 2)."""
-    return distance_mm + n_toppers * bonus_mm
+    """d_eff = d + bonus per topper on the pair (0, 1 or 2); no height step (`pair_distance` has one)."""
+    return pair_distance(distance_mm, n_toppers, bonus_mm)
+
+
+# --- heights: step and reach (plan docs/plans/switch-height.md) ----------------------------------
+# All estimates (owner decisions 2026-11-13, the plan's recommended defaults).
+HEIGHT_DEFAULTS = {"heights": True,          # False = the flat model (no step, no shadow)
+                   "height_gain": 0.5,       # mm of effective distance per mm of height step (half: a step protects one way only)
+                   "height_cap_mm": 10.0,    # the step counts up to this
+                   "deck_rise_mm": 0.0,      # the deck's back edge above its front edge (0 = flat)
+                   "foot_width_mm": 80.0,    # width of the sole strip in front of a switch
+                   "foot_length_mm": 190.0,  # how far forward the sole reaches (ball to heel)
+                   "foot_pitch_deg": 5.0,    # the sole rises toward the front by tan(pitch) mm per mm
+                   "reach_weight": 1.0,      # topper suggestions: one mm of shadow (x priority) against crowding
+                   "max_shadow_mm": None}    # a larger shadow is a finding (None = no limit)
+
+
+def height_settings(project):
+    """(settings, problems) of the height model from project `footswitches` (keys of HEIGHT_DEFAULTS). A bad value is a
+    problem (an error for the caller) and falls back to its default; unknown keys are ignored."""
+    cfg = project.get("footswitches") or {}
+    out, problems = dict(HEIGHT_DEFAULTS), []
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    ranges = {"height_gain": (0, 1), "height_cap_mm": (0, None), "deck_rise_mm": (0, None), "foot_width_mm": (0, None),
+              "foot_length_mm": (0, None), "foot_pitch_deg": (0, 45), "reach_weight": (0, None)}
+    for k, v in cfg.items():
+        if k not in HEIGHT_DEFAULTS:
+            continue
+        if k == "heights":
+            if isinstance(v, bool):
+                out[k] = v
+            else:
+                problems.append(f"footswitches.heights must be true or false, got {v!r}")
+        elif k == "max_shadow_mm":
+            if v is None or (num(v) and v >= 0):
+                out[k] = None if v is None else float(v)
+            else:
+                problems.append(f"footswitches.max_shadow_mm must be a number >= 0 (mm) or null (no limit), got {v!r}")
+        else:
+            lo, hi = ranges[k]
+            if num(v) and v >= lo and (hi is None or v <= hi):
+                out[k] = float(v)
+            else:
+                span = f"in {lo}..{hi}" if hi is not None else f">= {lo}"
+                problems.append(f"footswitches.{k} must be a number {span}, got {v!r}")
+    return out, problems
+
+
+def step_mm(h_a, h_b, gain, cap_mm):
+    """Height step of a pair counted as distance: gain x min(|Ha - Hb|, cap); 0 when a height is unknown (None)."""
+    if h_a is None or h_b is None:
+        return 0.0
+    return gain * min(abs(h_a - h_b), cap_mm)
+
+
+def switch_heights(pts, cat_pedals, toppers, topper_mm, board_rect=None, deck_rise_mm=0.0):
+    """{switch key: (H, H_t)}: H = the pedal's `height_mm` (the switch top) + the deck's rise at the switch
+    (deck_rise_mm x (y_front - y) / board depth, y_front = board_rect[3]; 0 on a flat deck), H_t = H + topper_mm when the
+    key is in `toppers`. An unknown height gives (None, None)."""
+    out = {}
+    rise = 0.0
+    for p in pts:
+        h = (cat_pedals.get(p["cid"]) or {}).get("height_mm")
+        if h is None:
+            out[p["key"]] = (None, None)
+            continue
+        if deck_rise_mm and board_rect and board_rect[3] > board_rect[1]:
+            rise = deck_rise_mm * (board_rect[3] - p["y"]) / (board_rect[3] - board_rect[1])
+        else:
+            rise = 0.0
+        out[p["key"]] = (h + rise, h + rise + (topper_mm if p["key"] in toppers else 0.0))
+    return out
+
+
+def shadow_map(pts, h, cfg):
+    """{key: (shadow_mm, shadowed_by key or None)} for a plain {key: height or None} map. A switch q on ANOTHER pedal with
+    |x_q - x_s| <= foot_width/2 and 0 < y_q - y_s <= foot_length (y grows toward the front) shades s by
+    H(q) - H(s) - tan(pitch) x (y_q - y_s) when that is positive; the largest wins. Unknown heights are skipped."""
+    tan = math.tan(math.radians(cfg["foot_pitch_deg"]))
+    half, length = cfg["foot_width_mm"] / 2, cfg["foot_length_mm"]
+    out = {}
+    for s in pts:
+        best, by = 0.0, None
+        hs = h.get(s["key"])
+        if hs is not None:
+            for q in pts:
+                hq = h.get(q["key"])
+                dy = q["y"] - s["y"]
+                if hq is None or q["cid"] == s["cid"] or not 0 < dy <= length or abs(q["x"] - s["x"]) > half:
+                    continue
+                v = hq - hs - tan * dy
+                if v > best + 1e-12:
+                    best, by = v, q["key"]
+        out[s["key"]] = (best, by)
+    return out
+
+
+def shadows(pts, heights, cfg, toppers=True):
+    """`shadow_map` on the heights of `switch_heights`: with `toppers` True the topper heights H_t count (the owner's
+    toppers), False the plain H. {key: (shadow_mm, shadowed_by)}."""
+    return shadow_map(pts, {k: v[1 if toppers else 0] for k, v in heights.items()}, cfg)
+
+
+def reach_cost(pts, shadow, prio):
+    """Sum over switches of priority(type) x shadow (mm); `shadow` = a `shadow_map` result."""
+    return sum(prio.get(p["type"], 0.0) * shadow[p["key"]][0] for p in pts)
 
 
 def suggest_toppers(pts, prs, prio, comfort_mm, bonus_mm, existing=(), max_toppers="default", min_gain=None, types=TOPPER_TYPES):
