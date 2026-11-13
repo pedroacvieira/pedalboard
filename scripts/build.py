@@ -220,8 +220,15 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         preds = {o for rr in active if rr["pedal"] == pid and rr["type"] == "after" for o in rr["pedals"] if o in pos}
         extra = [o for o in chain[:me] if o not in preds]
         if extra:
+            broken[(r["id"], r["strength"])] = extra
             (errors if r["strength"] == "required" else warnings).append(
                 f"order ({r['strength']}): {r['id']}: {pid} could be earlier: {', '.join(extra)} come first but are not required to")
+
+    # per rule: how the chain stands (the preference table of `preferences.check` reads it; the findings above are unchanged)
+    kept_ids, lost_ids, broken_ids = {c["id"] for c in kept}, {lose for _, lose in overridden}, {rid for rid, _ in broken}
+    ctx["rule_status"] = {**{r["id"]: "skipped" for r in skipped}, **{r["id"]: "disabled" for r in disabled},
+                          **{r["id"]: "broken" if r["id"] in broken_ids else "overridden" if r["id"] in lost_ids and r["id"] not in kept_ids else "met"
+                             for r in active}}
 
     # ----- power ----------------------------------------------------------
     policy = project.get("power_policy", {})
@@ -306,6 +313,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     else:
         jacks.report_fixed_box(ctx)
     footswitches.check(ctx, cat_pedals, fs_all)
+    preferences.check(ctx, cat_pedals)
     return ctx
 
 

@@ -455,3 +455,135 @@ def migrate(project):
                 del out["footswitches"]
     return out
 
+
+# ---------------------------------------------------------------------------
+# position wishes: where on the board (the layout search and the build check share these)
+# ---------------------------------------------------------------------------
+HALF = {"left": "left", "right": "right", "front": "front", "back": "back", "avoid_front": "back"}   # the half each wish asks for
+
+
+def position_wishes(project, ids=None):
+    """{pedal id: {"side": left | right | None, "depth": front | back | avoid_front | None, "weight", "required"}} of the pedals
+    (`ids`: only these) whose profile asks for a side or a depth (`any` and null = no wish). `weight` = score weight per mm, `required`
+    = strength required. The depth also reaches the search through the lowered `layout.access` (as the old per-pedal access rule)."""
+    out = {}
+    for pid, prof in profiles(project).items():
+        pos = prof.get("position")
+        if not isinstance(pos, dict) or (ids is not None and pid not in ids):
+            continue
+        side = pos.get("side") if pos.get("side") in ("left", "right") else None
+        depth = pos.get("depth") if pos.get("depth") in ("front", "back", "avoid_front") else None
+        if side or depth:
+            w = pos.get("weight", DEFAULT_WEIGHT)
+            out[pid] = {"side": side, "depth": depth, "weight": float(w) if _num(w) else DEFAULT_WEIGHT,
+                        "required": pos.get("strength", DEFAULT_STRENGTH) == "required"}
+    return out
+
+
+def past_middle(want, v, lo, hi):
+    """How far (mm) the coordinate `v` lies past the middle of [lo, hi] on the wrong side for `want`: > 0 = not in the wanted half.
+    left / back / avoid_front want the low half (x grows to the right, y to the FRONT of the board), right / front the high half."""
+    mid = (lo + hi) / 2
+    if want in ("left", "back", "avoid_front"):
+        return v - mid
+    if want in ("right", "front"):
+        return mid - v
+    return 0.0
+
+
+def met_half(want, v, lo, hi):
+    """(met, mm past the middle: negative = inside the wanted half) of one position wish; the middle itself is met."""
+    past = past_middle(want, v, lo, hi)
+    return past <= 1e-9, past
+
+
+def met_position(wish, ref, board):
+    """{"side": (met, past mm) | None, "depth": ... | None} of a `position_wishes` entry for a pedal whose reference point is `ref` = (x, y)
+    (side: the centre of its BODY; depth: the mean of its footswitches, else its centre) on a board (x0, y0, x1, y1)."""
+    return {"side": met_half(wish["side"], ref[0], board[0], board[2]) if wish.get("side") else None,
+            "depth": met_half(wish["depth"], ref[1], board[1], board[3]) if wish.get("depth") else None}
+
+
+def rule_text(r):
+    """One line for an ordering wish (an `order` entry / a rule)."""
+    kind = r.get("type")
+    if kind in ("after", "before"):
+        return f"{kind} {', '.join(r.get('pedals') or [])}"
+    if kind in ("after_group", "before_group"):
+        return f"{kind.split('_')[0]} every {r.get('group')} pedal"
+    if kind == "position":
+        return f"{r.get('value')} in the chain"
+    if kind == "no_buffered_before":
+        return "ahead of every buffered pedal"
+    if kind == "as_early_as_possible":
+        return "as early as possible"
+    return str(kind)
+
+
+def _reference(ctx, pid, fs_y):
+    """(x, y) of the pedal's reference point and the layout board rect: x = the centre of its BODY, y = the mean of its footswitches, else
+    its centre; None without a layout."""
+    import design
+    lay = ctx.get("layout")
+    item = ((lay or {}).get("placed") or {}).get(pid)
+    if item is None:
+        return None, None
+    body = (lay.get("bodies") or {}).get(item["id"]) or design.footprint(item)
+    foot = design.footprint(item)
+    ys = fs_y.get(pid)
+    return ((body[0] + body[2]) / 2, sum(ys) / len(ys) if ys else (foot[1] + foot[3]) / 2), lay["board_rect"]
+
+
+def check(ctx, cat_pedals):
+    """The preference table of one built project: fills ctx["preferences"] = [{"pedal", "kind", "wish", "strength", "met" (True / False /
+    None = nothing to judge: applied settings), "detail"}], kinds position.side, position.depth, order, pin, rotations, toppers; appends the
+    findings of unmet REQUIRED position wishes to ctx warnings (errors with `validation.strict_preferences`). Order wishes are judged by
+    `ctx["rule_status"]` (met | broken | overridden | skipped | disabled), the findings of those are the rule loop's. Run after
+    `footswitches.check` (the footswitch points)."""
+    project = ctx["project"]
+    chain = ctx["chain"]
+    sink = ctx["errors"] if (project.get("validation") or {}).get("strict_preferences") else ctx["warnings"]
+    rows = ctx["preferences"] = []
+    status = ctx.get("rule_status") or {}
+    wishes = position_wishes(project, chain)
+    fs_y = {}
+    for p in ctx.get("footswitch_points") or []:
+        fs_y.setdefault(p["cid"], []).append(p["y"])
+    prof = profiles(project)
+    for pid in [p for p in chain if p in prof]:
+        mine = prof[pid]
+        pos = mine.get("position") if isinstance(mine.get("position"), dict) else {}
+        strength = pos.get("strength", DEFAULT_STRENGTH)
+        w = wishes.get(pid)
+        if w:
+            ref, board = _reference(ctx, pid, fs_y)
+            res = met_position(w, ref, board) if ref else {"side": None, "depth": None}
+            for kind, want, reference in (("side", w["side"], "body centre"), ("depth", w["depth"], "footswitches' mean" if fs_y.get(pid) else "centre")):
+                if not want:
+                    continue
+                met, past = res[kind] if res[kind] else (None, 0.0)
+                text = f"{HALF[want]} half" if want != "avoid_front" else "not the front half"
+                detail = "" if met is None else (f"{past:.0f} mm past the middle" if not met else f"{-past:.0f} mm inside")
+                rows.append({"pedal": pid, "kind": f"position.{kind}", "wish": text, "strength": strength, "met": met, "detail": detail})
+                if met is False and strength == "required":
+                    sink.append(f"preferences: {pid}: wants the {HALF[want]} half (required); its {reference} is {past:.0f} mm past the middle")
+        elif pos.get("depth") == "any":
+            rows.append({"pedal": pid, "kind": "position.depth", "wish": "no depth wish", "strength": strength, "met": None, "detail": "applied"})
+        order = mine.get("order") if isinstance(mine.get("order"), dict) else {}
+        for name, body in order.items():
+            st = status.get(f"{pid}.{name}")
+            if st is None or not isinstance(body, dict):
+                continue
+            met = {"met": True, "broken": False, "overridden": False}.get(st)
+            detail = {"overridden": "overridden by a higher priority", "disabled": "disabled (rule_overrides)"}.get(st, "")
+            rows.append({"pedal": pid, "kind": "order", "name": name, "wish": rule_text(body), "strength": body.get("strength"), "met": met,
+                         "detail": detail, "status": st})
+        if mine.get("pin") is True:
+            rows.append({"pedal": pid, "kind": "pin", "wish": "does not move in the search", "strength": None, "met": None, "detail": "applied"})
+        if mine.get("rotations") is not None:
+            rot = mine["rotations"]
+            rows.append({"pedal": pid, "kind": "rotations", "wish": f"rotations {rot if isinstance(rot, str) else ', '.join(map(str, rot))}",
+                         "strength": None, "met": None, "detail": "applied"})
+        if isinstance(mine.get("toppers"), list) and mine["toppers"]:
+            rows.append({"pedal": pid, "kind": "toppers", "wish": f"topper on {', '.join(mine['toppers'])}", "strength": None, "met": None,
+                         "detail": "applied"})

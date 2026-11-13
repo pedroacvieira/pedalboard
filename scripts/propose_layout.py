@@ -178,9 +178,11 @@ def print_score(model, owner_ctx):
     print(f"Surrogate score of the owner's layout: {total:.1f} (lower is better; weights: project layout.weights)")
     print(f"  {'term':14} {'raw':>10} {'weighted':>10}")
     units = {"clearance": "mm", "routing_area": "exits", "signal": "mm", "power": "mm", "footswitch": "mm", "io": "mm",
-             "flow": "mm", "access": "mm x w", "rotation": "pedals", "move": "mm", "touch": "mm"}
+             "flow": "mm", "access": "mm x w", "position": "mm x w", "rotation": "pedals", "move": "mm", "touch": "mm"}
     for k, (raw, wt) in det["terms"].items():
         print(f"  {k:14} {raw:>10.1f} {wt:>10.1f}  {units.get(k, '')}")
+    for u in det["preferences"]:
+        print(f"Required wish not met: {u['pedal']} {u['kind']}: {u['mm']:.1f} mm past the middle line")
     _, real = model.score(model.owner, margin=0, detail=True)
     print(f"Blocked plugs (no margin, as the build): {len(real['blocked'])}")
     for b in real["blocked"]:
