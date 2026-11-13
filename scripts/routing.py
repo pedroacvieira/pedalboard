@@ -1544,6 +1544,124 @@ def blocked_parts(opt, own_id, obstacles, shapes=None):
     return hits
 
 
+# --- a cable never crosses its own plug (feat/u-turn-plugs) --------------------------------------
+def keepout_rects(o):
+    """The rects a plug option's own cable keeps out of (top layer): a right-angle side option's `head` and `barrel`, a straight plug's
+    `head`. A plug pointing down has none (its cable goes down inside the head on purpose, under the board), nor has a fixed box or an
+    option without a plug model (no head / barrel parts). The `cable` run is no keep-out: the cable itself lies there."""
+    if o is None or o.get("down"):
+        return []
+    return [r for part, r in o["rects"] if part in ("head", "barrel")]
+
+
+def _hull(points):
+    """Convex hull (counter-clockwise in a y-up frame, any orientation works for the callers) of 2D points, collinear ones dropped."""
+    pts = sorted(set(points))
+    if len(pts) <= 2:
+        return pts
+    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 1e-12:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 1e-12:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def _enters_hull(a, b, hull, eps=1e-7):
+    """Whether segment ab runs through the interior of the convex polygon `hull` (counter-clockwise: positive cross = inside), by more than `eps`
+    of its parameter: a segment along the boundary or touching a vertex does not."""
+    t0, t1 = 0.0, 1.0
+    n = len(hull)
+    for k in range(n):
+        p, q = hull[k], hull[(k + 1) % n]
+        ex, ey = q[0] - p[0], q[1] - p[1]
+        da = ex * (a[1] - p[1]) - ey * (a[0] - p[0])   # signed distance x edge length, positive inside
+        db = ex * (b[1] - p[1]) - ey * (b[0] - p[0])
+        scale = math.hypot(ex, ey) or 1.0
+        da, db = da / scale, db / scale
+        if abs(da) < 1e-9 and abs(db) < 1e-9:
+            return False   # along an edge line: never inside
+        if da <= 1e-9 and db <= 1e-9:
+            return False
+        if da > 1e-9 and db > 1e-9:
+            continue
+        t = da / (da - db)
+        if da > 1e-9:
+            t1 = min(t1, t)
+        else:
+            t0 = max(t0, t)
+        if t1 - t0 <= eps:
+            return False
+    return t1 - t0 > eps
+
+
+def around_own_plug(p, q, rects, radius, facing, jack_pt):
+    """The extra cable (mm, >= 0) a cable from p to q needs to get round its own plug: when the segment p -> q enters the convex hull of the
+    plug's keep-out `rects` (`keepout_rects`) grown by `radius`, the shortest path p -> hull vertices -> q over the vertices in front of the
+    jack's face (`facing`: the pedal and the vertices behind its face are never used), less |p q|; else 0. The surrogate's estimate of the
+    turn (the build routes it). The hull is the plug's footprint seen from above; a bounding-box test comes first (it runs in the search)."""
+    if not rects:
+        return 0.0
+    straight = math.hypot(q[0] - p[0], q[1] - p[1])
+    x0, y0 = min(r[0] for r in rects) - radius, min(r[1] for r in rects) - radius
+    x1, y1 = max(r[2] for r in rects) + radius, max(r[3] for r in rects) + radius
+    if (max(p[0], q[0]) < x0 or min(p[0], q[0]) > x1 or max(p[1], q[1]) < y0 or min(p[1], q[1]) > y1):
+        return 0.0
+    corners = [(x, y) for r in rects for x in (r[0] - radius, r[2] + radius) for y in (r[1] - radius, r[3] + radius)]
+    hull = _hull(corners)
+    if len(hull) < 3:
+        return 0.0
+    area = sum(hull[k][0] * hull[(k + 1) % len(hull)][1] - hull[(k + 1) % len(hull)][0] * hull[k][1] for k in range(len(hull)))
+    if area < 0:
+        hull = hull[::-1]   # counter-clockwise in the formula's sense
+    if not _enters_hull(p, q, hull):
+        return 0.0
+    ux, uy = design.FACING[facing]
+    front = [v for v in hull if (v[0] - jack_pt[0]) * ux + (v[1] - jack_pt[1]) * uy >= -1e-9]
+    nodes = [p, q, *front]
+    dist, done = {0: 0.0}, set()
+    while True:   # Dijkstra over a handful of nodes (0 = p, 1 = q)
+        cur = min((i for i in dist if i not in done), key=lambda i: dist[i], default=None)
+        if cur is None:
+            return 0.0   # no way round the front (the cable would have to go through the pedal): nothing to add
+        if cur == 1:
+            return max(0.0, dist[1] - straight)
+        done.add(cur)
+        for j, v in enumerate(nodes):
+            if j in done or _enters_hull(nodes[cur], v, hull):
+                continue
+            d = dist[cur] + math.hypot(v[0] - nodes[cur][0], v[1] - nodes[cur][1])
+            if d < dist.get(j, math.inf):
+                dist[j] = d
+
+
+def turns_back(o, facing, jack_pt, points, window):
+    """Whether the cable of plug option `o` turns back round the front of the plug: `points` = the cable's polyline from the option's exit
+    (the first top stretch is enough), `window` = how far in front of the jack's face (mm) a crossing still counts (the head depth + two
+    cable diameters + one grid cell). True when the cable crosses the jack's axis half-line in front of the face, at most `window` from
+    it, before it leaves that window. A plug pointing down, a straight plug and an option without a side have no turn."""
+    if o is None or o.get("down") or o.get("side") not in design.SIDES:
+        return False
+    ux, uy = design.FACING[facing]
+    lateral = lambda pt: (pt[0] - jack_pt[0]) * -uy + (pt[1] - jack_pt[1]) * ux
+    along = lambda pt: (pt[0] - jack_pt[0]) * ux + (pt[1] - jack_pt[1]) * uy
+    for a, b in zip(points, points[1:]):
+        la, lb = lateral(a), lateral(b)
+        if along(a) > window and along(b) > window:
+            return False
+        if (la < 0) != (lb < 0) and la != lb:
+            t = la / (la - lb)
+            x = along(a) + t * (along(b) - along(a))
+            if 0.0 < x <= window:
+                return True
+    return False
+
+
 def same_item_boxes(ka, parts_a, kb, parts_b):
     """Whether two footprints ("<id>.<jack id>" keys) are both fixed boxes (every part a "box") of the same item: such a pair is not a
     collision to report or to rank by, no plug choice can move them apart."""
