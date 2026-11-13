@@ -731,3 +731,29 @@ def test_max_shadow_is_a_warning_and_an_error_when_strict(tmp_path):
     assert not any("is shadowed" in m for m in ctx["warnings"] + ctx["errors"])
     ctx = run(tmp_path, FRONT_B, ONE_EACH, pedals=HP, heights=True, project={"footswitches": {"height_gain": 2}})
     assert any("footswitches.height_gain must be a number in 0..1" in e for e in ctx["errors"])
+
+
+def test_gig_fixture_numbers_of_the_plan():
+    """The frozen gig with the catalog heights (plan docs/plans/switch-height.md, worked examples): crowding 184.3 flat -> 157.4 with the
+    step, reach 6.3 mm (reticon 3.87 by belle_epoch, retrovibe 2.44 by fulldrive_2.switch_2), and the greedy topper list."""
+    import build
+    from common import load_catalog
+    from conftest import GIG_FIXTURE
+    pedals, supplies = load_catalog()
+    fs = fsw.read_file()["footswitches"]
+    ctx = build.validate(GIG_FIXTURE, pedals, supplies, footswitch_data=fs, route=False)
+    st = ctx["footswitch_settings"]
+    assert st["crowding_plain"] == pytest.approx(157.44, abs=0.01) and st["reach_plain"] == pytest.approx(6.30, abs=0.01)
+    shaded = {p["key"]: (round(p["shadow_mm"], 2), p["shadow_by"]) for p in ctx["footswitch_points"] if p["shadow_mm"] > 0}
+    assert shaded == {"reticon.bypass": (3.87, "belle_epoch.bypass"), "retrovibe.bypass": (2.44, "fulldrive_2.switch_2")}
+    got = [(s["key"], round(s["gain"], 2)) for s in ctx["footswitch_suggestions"]["suggestions"]]
+    assert got == [("monk.bypass", 4.53), ("danelectro_3699.bypass", 4.23), ("analog_chorus.bypass", 4.05),
+                   ("ratsbane.bypass", 5.29), ("protein.switch_2", 4.15)]
+    flat = build.validate(GIG_FIXTURE, pedals, supplies, footswitch_data=fs, route=False,
+                          project={**load_json_project(GIG_FIXTURE), "footswitches": {"heights": False}})
+    assert flat["footswitch_settings"]["crowding_plain"] == pytest.approx(184.28, abs=0.01)
+    assert flat["footswitch_settings"]["reach_plain"] == 0.0
+
+
+def load_json_project(pdir):
+    return json.loads((pdir / "project.json").read_text())
