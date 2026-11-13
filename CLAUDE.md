@@ -312,6 +312,22 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
   (`footswitches.suggest_toppers`, greedy: largest crowding reduction, ties more crowded pairs > type priority > nearer
   the front; stop at `max_toppers` (default 5 per board, owner; null = no cap) or below `topper_min_gain` 0.02 of the crowding). The layout search, the proposal
   metrics / finalist gate and `proposal_inputs_sha1` ignore toppers (post-layout finishing step).
+- Footswitch heights (owner, 2026-11-13, `feat/switch-height`, plan `docs/plans/switch-height.md`; all values estimates; the recommended
+  defaults of every plan decision): `height_mm` of the catalog = the switch top H (+ `footswitches.deck_rise_mm` x (y_front - y) / board depth,
+  default 0 = flat deck; an unknown height skips every height term of that switch, one aggregated warning per project).
+  **Step**: a pair on different pedals gains `footswitches.step_mm` = `height_gain` 0.5 x min(|Ha - Hb|, `height_cap_mm` 10) in its effective
+  distance (`pair_distance` = d + toppers x bonus + step; toppers do NOT enter the step, so suggestions do not favour tall pedals);
+  `crowding_plain` / `too_close_plain` = without toppers but WITH the step. **Shadow / reach** (`footswitches.shadow_map`, `shadows`,
+  `reach_cost`): a switch is shaded by the tallest switch q of ANOTHER pedal with |dx| <= `foot_width_mm` / 2 (80) and 0 < dy <= `foot_length_mm`
+  (190, y grows to the front) by H_t(q) - H_t(s) - tan(`foot_pitch_deg` 5) x dy (H_t = H + `topper_bonus_mm` for a topper: a topper on the
+  shaded switch lowers it, one in front deepens it); only switch caps are obstacles. Reach = sum of type priority x shadow (mm). Build: points carry
+  `height_mm`, `height_t_mm`, `shadow_mm`, `shadow_by`, `shadow_plain_mm`, `depth_mm`, pairs `step_mm`, settings `reach` / `reach_plain` /
+  `heights_missing`; README "Reach" table + "Step (mm)" column; optional `footswitches.max_shadow_mm` = a finding (warning, strict_footswitches:
+  error; no default). `suggest_toppers` minimises crowding + `reach_weight` (1.0) x reach (adds `shadow_removed_mm`, `crowding_gain`; a shadowed
+  switch is a candidate too). `footswitches.heights: false` = the flat model exactly (regression guard in the tests; `height_settings` validates
+  the keys). Layout search: the step is always in the surrogate's pair distance (agrees with the build, test on the gig fixture); new term
+  `reach` (`layout.weights.reach` 1.0, plain heights, repair issues like a crowded pair); the proposals table has "Footswitch shadow (sum, mm)"
+  (`metrics["fs_reach"]`, not a gate). Old `proposals/meta.json` have no `fs_reach` ("?") and were scored on the flat model: rerun `pb propose`.
 - Layout proposals (`layout.py`, `propose_layout.py`; plan `docs/plans/pedal-position.md` + owner decisions): all
   chain pedals may move (`layout.pins` optional), rotations 0/90/270 (never 180), their BODY never outside the usable board area
   (board.json `bounds` shrunk by `board_margin_mm`; the board without bounds; pedals and on-board supplies; `Model.body`,
@@ -319,7 +335,7 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
   pushes a pedal outside the least distance inside, a pinned one too, which then stays pinned there), no
   overlap beyond TOL (touching allowed). Surrogate score (weights `layout.weights`): clearance dominates (real
   penetration 50/mm, 2 mm margin 10/mm, 100 per blocked plug), signal 1/mm (exits octile + 0.6 x detour around
-  crossed pedals), power 0.1/mm, footswitch crowding by type priority, first input to the right edge, last output
+  crossed pedals), power 0.1/mm, footswitch crowding by type priority (pair distance + height step), footswitch shadow `reach` 1/mm x priority, first input to the right edge, last output
   to the nearest left/right/back edge, small right-to-left flow, accessibility (tuner back; boost/eq/master pedals
   front 0.3; drives and tap switches front 0.1; a boost switch front 0.05; modulation avoids the front unless tap),
   rotation preference (0, then angles in use), move cost (0.2/mm + 25 per moved pedal). The surrogate checks the

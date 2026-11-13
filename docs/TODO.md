@@ -138,10 +138,10 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
         editor, the spacing model (distance between shapes, not centres) and the drawing.
       - Test cases: boss_dd8 (Boss compact: template + rectangular switch), boss_dd200 (200-series, placed by the owner),
         ehx_pico_pog / ehx_pico_pitch_fork (EHX Pico pair), jhs_angry_charlie / jhs_the_violet (JHS).
-- [ ] Toppers and pedal height (owner, 2026-10-27): a low pedal at the back of the board is harder to reach, a tall pedal
-      is naturally easier to reach and may not need a topper at all. Needs a height per pedal (enclosure height, and
-      the switch height above the board) and a reach / position model (back vs front row); then the spacing model
-      (`topper_bonus_mm`) and the suggestions weigh a switch by its height and position.
+- [~] Toppers and pedal height (owner, 2026-10-27): implemented on `feat/switch-height` (2026-11-13, plan docs/plans/switch-height.md):
+      height step in the spacing, shadow / reach model, reach-aware topper suggestions, `reach` term in the layout search. All foot
+      geometry (`foot_width_mm` 80, `foot_length_mm` 190, `foot_pitch_deg` 5) and the flat deck (`deck_rise_mm` 0) are estimates:
+      the owner may measure his foot and each board's deck slope (Fender Professional M, RockBoard Duo 2.1). Rerun `pb propose`.
 - [ ] Guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): need guitar and amp
       positions (or board-edge exit points) in the project.
 - [ ] Layout search: a penalty for an infeasible DC plug exit in the surrogate (today the build's check rejects such a

@@ -24,6 +24,12 @@ on the pair (both switches: 2x); crowding and `min_distance_mm` use d_eff. The l
 plain distances). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
 crowding (at most `max_toppers` in all, default MAX_TOPPERS, stopping when the next gain is below `topper_min_gain` x the crowding),
 on bypass switches only (TOPPER_TYPES; a tap switch gets one by hand, never a boost one: owner, 2026-11-04).
+
+Heights (owner 2026-11-13, plan docs/plans/switch-height.md; estimates, `footswitches.heights: false` = off): H = the pedal's `height_mm`
+(+ the deck rise). A pair gains a STEP in its effective distance, `step_mm` = height_gain x min(|Ha - Hb|, height_cap_mm) (toppers do not enter
+it); a switch is SHADOWED (`shadow_map`) by a taller switch of another pedal in the foot strip in front of it (foot_width / foot_length /
+foot_pitch; toppers raise H_t); reach = sum of priority x shadow (`reach_cost`). `check` reports both, `suggest_toppers` weighs reach
+(`reach_weight`), the layout surrogate uses the step and a `reach` term. HEIGHT_DEFAULTS / `height_settings` hold the keys.
 """
 import json
 import math
@@ -462,8 +468,10 @@ def check(ctx, cat_pedals, fs_data):
     `effective_mm` = distance_mm + topper bonus per topper; each with `distance_mm` (plain), `toppers` (0..2),
     `crowding` (effective), `crowding_plain`, `too_close` (effective < min_distance_mm), `too_close_plain`),
     footswitch_settings (min_distance_mm, comfort_mm, crowding = the sum with toppers, crowding_plain = without,
-    toppers, topper_bonus_mm, max_toppers, topper_min_gain, layout), footswitch_suggestions (`suggest_toppers`
-    result, None without a layout). Missing data and pairs closer than an optional minimum (on the effective
+    toppers, topper_bonus_mm, max_toppers, topper_min_gain, the height keys (`height_settings`), reach / reach_plain /
+    heights_missing, layout), footswitch_suggestions (`suggest_toppers`
+    result, None without a layout). With heights on: points add height_mm / height_t_mm / shadow_mm / shadow_plain_mm / shadow_by /
+    depth_mm, pairs add `step_mm` (`effective_mm` and the crowding include it; `crowding_plain` has the step, no toppers). Missing data and pairs closer than an optional minimum (on the effective
     distance) are warnings unless validation.require_footswitches / strict_footswitches are set; topper problems:
     see `topper_settings`.
     Run after jacks.check (it uses ctx['layout']).
