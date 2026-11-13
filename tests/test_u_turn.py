@@ -97,3 +97,53 @@ def test_turns_back_is_true_for_a_cable_that_crosses_the_axis_in_front_of_the_he
     assert not routing.turns_back(o, "right", (0.0, 0.0), [o["exit"], (3.2, 40.0)], window)            # goes the way the plug points
     assert not routing.turns_back(o, "right", (0.0, 0.0), [o["exit"], (60.0, 22.5), (60.0, -30.0)], window)   # crosses the axis far away
     assert not routing.turns_back(option(EB, design.DOWN), "right", (0.0, 0.0), pts, window)
+
+
+# --- the search with a keep-out (`forbid`) -------------------------------------------------------------------------
+def free_grid(nx=20, ny=10, cell=6.0):
+    return routing.Grid(0, 0, nx * cell, ny * cell, cell)
+
+
+BLOCK = frozenset({(5, 4), (5, 5), (5, 6), (6, 4), (6, 5), (6, 6)})   # a keep-out the straight path (0, 5) -> (11, 5) would cross
+
+
+def test_a_path_goes_round_a_forbidden_block_and_the_free_one_does_not():
+    g = free_grid()
+    straight = routing.astar(g, (0, 5), (11, 5), lambda c: 1.0)
+    round_ = routing.astar(g, (0, 5), (11, 5), lambda c: 1.0, forbid=BLOCK)
+    assert set(straight) & BLOCK and not set(round_) & BLOCK
+    assert routing.path_length(g, round_) > routing.path_length(g, straight)
+    assert routing.astar(g, (0, 5), (11, 5), lambda c: 1.0, forbid=frozenset()) == straight   # no keep-out: today's path, cell for cell
+
+
+def test_the_start_and_the_goal_stay_enterable_inside_a_keep_out():
+    g = free_grid()
+    path = routing.astar(g, (5, 5), (11, 5), lambda c: 1.0, forbid=BLOCK)
+    assert path[0] == (5, 5) and not set(path[1:]) & BLOCK
+    to = routing.astar(g, (0, 5), (6, 5), lambda c: 1.0, forbid=BLOCK)
+    assert to[-1] == (6, 5) and not set(to[:-1]) & BLOCK
+
+
+def test_a_search_with_a_keep_out_is_remembered_apart_from_the_free_one():
+    g = free_grid()
+    memo = {}
+    free = routing.plain_search(memo, g, (0, 5), (11, 5), False, None)
+    kept = routing.plain_search(memo, g, (0, 5), (11, 5), False, None, BLOCK)
+    assert free != kept and len(memo) == 2
+    assert ((0, 5), (11, 5), False) in memo and routing.search_key((0, 5), (11, 5), False, BLOCK) in memo
+    assert routing.plain_search(memo, g, (0, 5), (11, 5), False, None, BLOCK) == kept and len(memo) == 2   # a hit, no new entry
+
+
+def test_route_all_nets_take_their_own_keep_out():
+    g = free_grid()
+    nets = [("a", (0, 5), (11, 5), False, BLOCK), ("b", (0, 5), (11, 5))]
+    paths, _, _, _ = routing.route_all(g, nets, max_stack=2, iterations=5)
+    assert not set(paths["a"]) & BLOCK and set(paths["b"]) & BLOCK
+
+
+def test_a_keep_out_holds_on_the_under_layer_search_too():
+    g = free_grid()
+    ug = routing.Grid(0, 0, 120.0, 60.0, 6.0)
+    layers = routing.Under(ug, {(2, 5), (8, 5)}, 15.0, 15.0, 0.9, 2)
+    path = routing.astar(g, (0, 5), (11, 5), None, under=layers, forbid=BLOCK)
+    assert path is not None and not {c for c in path if len(c) == 2} & BLOCK

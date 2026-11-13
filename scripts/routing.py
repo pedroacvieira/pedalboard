@@ -697,15 +697,18 @@ def _step_tables(cell, top_mult, under_mult):
                  for mult in (top_mult, under_mult))
 
 
-def _search_cells(grid, walls_squeeze, extra):
+def _search_cells(grid, walls_squeeze, extra, forbid=frozenset()):
     """(cells, add): the passable cell set of one search is `Grid.open_cells` (the cached set itself, never copied or changed)
     plus `add`, the `extra` cells (plug ends: always enterable) that lie inside the grid but are not in it (usually empty);
-    a search tests `c in cells or c in add`."""
+    a search tests `c in cells or c in add`. `forbid`: top cells the search may not enter (a cable's keep-out round its own plugs, `keepout_rects`):
+    the set is then a copy without them (the plug ends in `extra` stay enterable through `add`)."""
     cells = grid.open_cells(walls_squeeze)
+    if forbid:
+        cells = cells - forbid
     return cells, frozenset(c for c in extra if grid.inside(c) and c not in cells)
 
 
-def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
+def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None, forbid=frozenset()):
     """`astar` over (cell, layer) states (`Under`): within a layer as there; under steps cost `under.cost` x their length
     (and the cell cost of the under state), top steps `under.top_cost` x, the other layer is entered only at a hole cell
     for `under.hole_cost` (or over a board edge link, `under.edges`, for its cost). The start and the goal are
@@ -713,10 +716,11 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
     under states (i, j, 1) (always enterable).
     A state is (i, j) on top and (i, j, 1) under the board. `costs`: an optional dict that receives {state: cell cost} of every
     state the search asked the cell cost of. `cell_cost` None: the plain cost 1.0 everywhere (a squeezed cell SQUEEZE_COST), without
-    asking; `costs` then receives the states the search reached (the ones it would have asked about, and the start)."""
+    asking; `costs` then receives the states the search reached (the ones it would have asked about, and the start).
+    `forbid`: top cells that may not be entered (`_search_cells`); a cable coming up through a hole does not land in a forbidden cell."""
     ug = under.grid
     uc, tc, hc, cell = under.cost, under.top_cost, under.hole_cost, grid.cell
-    top_open, top_add = _search_cells(grid, squeeze, [c for c in (start, goal) if len(c) == 2])
+    top_open, top_add = _search_cells(grid, squeeze, [c for c in (start, goal) if len(c) == 2], forbid)
     under_open = ug.open_states()   # (i, j, 1)
     under_add = frozenset(c for c in (start, goal) if len(c) == 3 and c not in under_open)   # the plug ends are always enterable
     blocked, holes, edges = grid.blocked, under.holes, under.edges
@@ -795,7 +799,7 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
             if ng < best_get(n, inf):
                 best[n], came[n] = ng, c
                 heappush(openq, (ng + (h(n) if h else hypot(n[0] - gx, n[1] - gy) * hs), ng, n))
-        if (i, j) in holes:
+        if (i, j) in holes and not (low and (i, j) in forbid and (i, j) != goal):
             n = (i, j) if low else (i, j, 1)
             ng = g + hc
             if ng < best_get(n, inf):
@@ -816,15 +820,16 @@ def astar_layers(grid, start, goal, cell_cost, squeeze, under, costs=None):
     return None
 
 
-def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None):
+def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None, forbid=frozenset()):
     """Cheapest 8-connected path from start to goal; diagonals may not cut obstacle corners.
     start/goal are always enterable (they are the plug ends, possibly squeezed against a pedal).
     squeeze=True: cells narrower than the cable (grown margin, not the pedal body) are passable at SQUEEZE_COST.
     under: an `Under` layer; the path is then a list of states ((i, j) on top, (i, j, 1) under the board).
-    costs: an optional dict that receives {state: cell cost} of every state whose cell cost the search asked for."""
+    costs: an optional dict that receives {state: cell cost} of every state whose cell cost the search asked for.
+    forbid: top cells the path may not enter (the start and the goal always stay enterable): a cable keeps out of its own plugs."""
     if under is not None:
-        return astar_layers(grid, start, goal, cell_cost, squeeze, under, costs)
-    ok, add = _search_cells(grid, squeeze, (start, goal))
+        return astar_layers(grid, start, goal, cell_cost, squeeze, under, costs, forbid)
+    ok, add = _search_cells(grid, squeeze, (start, goal), forbid)
     blocked, cell = grid.blocked, grid.cell
     steps = _step_tables(cell, 1.0, 1.0)[0]
     gx, gy, hypot, inf = goal[0], goal[1], math.hypot, math.inf
@@ -861,35 +866,49 @@ def astar(grid, start, goal, cell_cost, squeeze=False, under=None, costs=None):
     return None
 
 
-def plain_search(memo, grid, start, goal, squeeze, under):
-    """`astar` with the plain cell cost 1.0, remembered in `memo` for `route_all` (see there); a search made before is not repeated."""
-    hit = memo.get((start, goal, squeeze))
+def search_key(start, goal, squeeze, forbid=frozenset()):
+    """The key of a plain search in the memo: (start, goal, squeeze), with the keep-out added when there is one (a search with another
+    `forbid` is another search)."""
+    return (start, goal, squeeze, frozenset(forbid)) if forbid else (start, goal, squeeze)
+
+
+def plain_search(memo, grid, start, goal, squeeze, under, forbid=frozenset()):
+    """`astar` with the plain cell cost 1.0, remembered in `memo` for `route_all` (see there); a search made before is not repeated.
+    `forbid`: the cells the path may not enter (a cable's keep-out round its own plugs); part of the memo key."""
+    key = search_key(start, goal, squeeze, forbid)
+    hit = memo.get(key)
     if hit is not None:
         return list(hit[0]) if hit[0] is not None else None
     states = {}
-    path = astar(grid, start, goal, None if under is not None else (lambda _: 1.0), squeeze=squeeze, under=under, costs=states)
-    memo[(start, goal, squeeze)] = (path, states)
+    path = astar(grid, start, goal, None if under is not None else (lambda _: 1.0), squeeze=squeeze, under=under, costs=states, forbid=forbid)
+    memo[key] = (path, states)
     return path
 
 
-def _search(memo, grid, start, goal, cell_cost, squeeze, under, dead=None, history=None):
+def _search(memo, grid, start, goal, cell_cost, squeeze, under, dead=None, history=None, forbid=frozenset()):
     """`astar`, or the remembered plain search (`plain_search`) when `cell_cost` is 1.0 on every state that search asked for.
     `dead` (a set, with `history`: the negotiation's history costs, which only grow): a remembered search that missed on a state
     with a history cost can never hit again (that cost is above 1.0 from then on), so its key goes into `dead` and later
-    rounds skip the check."""
-    key = (start, goal, squeeze)
+    rounds skip the check. `forbid`: see `plain_search`."""
+    key = search_key(start, goal, squeeze, forbid)
     hit = memo.get(key) if memo and not (dead and key in dead) else None
     if hit is not None:
         if all(c == start or cell_cost(c) == 1.0 for c in hit[1]):
             return list(hit[0]) if hit[0] is not None else None
         if dead is not None and any(c != start and history.get(c) for c in hit[1]):
             dead.add(key)
-    return astar(grid, start, goal, cell_cost, squeeze=squeeze, under=under)
+    return astar(grid, start, goal, cell_cost, squeeze=squeeze, under=under, forbid=forbid)
+
+
+def net_flags(sq):
+    """(squeeze, forbid) of a net's optional fields: nets are `(name, start, goal[, squeeze[, forbid]])`."""
+    return bool(sq and sq[0]), (sq[1] if len(sq) > 1 and sq[1] else frozenset())
 
 
 def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2, under=None, quick=False, memo=None,
               shared=None):
-    """nets: [(name, start_cell, goal_cell[, squeeze])]. Returns ({name: path or None}, {cell: [names]}, overflow cells,
+    """nets: [(name, start_cell, goal_cell[, squeeze[, forbid]])] (`forbid`: top cells the cable may not enter, its keep-out round its own
+    plugs; default none: the results are then those of a net without it). Returns ({name: path or None}, {cell: [names]}, overflow cells,
     plug_over). With an `Under` layer the paths, usage and overflow are over states ((i, j) on top, (i, j, 1) under the
     board) and the stacking limit is `under.max_stack` under the board; plug crossings count on top only.
 
@@ -960,7 +979,8 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                     return 1.0   # (1.0 + 0.0) * (1.0 + present * 0 * 10)
                 return (1.0 + hist) * (1.0 + present * over * 10)
 
-            paths[name] = _search(memo, grid, s, t, cost, bool(sq and sq[0]), under, dead, history)
+            squeeze, forbid = net_flags(sq)
+            paths[name] = _search(memo, grid, s, t, cost, squeeze, under, dead, history, forbid)
             for c in paths[name] or []:
                 usage[c] = usage.get(c, 0) + 1
             for k in crossed(name, paths[name]):
@@ -992,7 +1012,8 @@ def route_all(grid, nets, max_stack, iterations=40, plugs=None, max_over_plug=2,
                     name not in plugs[k][0] and len(cross[k]) >= max_over_plug for k in plug_at.get(c, ())))
                 return CLOSED_COST if full else 1.0
 
-            new = _search(memo, grid, s, t, plain, bool(sq and sq[0]), under)
+            squeeze, forbid = net_flags(sq)
+            new = _search(memo, grid, s, t, plain, squeeze, under, forbid=forbid)
             if new is not None and not any(plain(c) == CLOSED_COST for c in new[1:-1]):
                 paths[name] = new
             for c in paths[name] or []:
@@ -1056,7 +1077,7 @@ def _back_on_top(grid, nets, paths, under, limit, plugs, plug_at, max_over_plug)
             continue
         trial = {k: v for k, v in paths.items() if k != name}
         usage, cross = state(trial)
-        top = astar(grid, s, t, lambda c: 1.0, squeeze=bool(sq and sq[0]))   # on top, ignoring the others
+        top = astar(grid, s, t, lambda c: 1.0, squeeze=net_flags(sq)[0], forbid=net_flags(sq)[1])   # on top, ignoring the others
         if top is None:
             continue
         full = {c for c in top if usage.get(c, 0) + 1 > limit(c)}
@@ -1068,7 +1089,7 @@ def _back_on_top(grid, nets, paths, under, limit, plugs, plug_at, max_over_plug)
             _, so, to, *sqo = by_name[o]
             rest = {k: v for k, v in trial.items() if k != o}
             u2, c2 = state(rest)
-            p = astar(grid, so, to, closed_cost(o, so, to, u2, c2), squeeze=bool(sqo and sqo[0]), under=under)
+            p = astar(grid, so, to, closed_cost(o, so, to, u2, c2), squeeze=net_flags(sqo)[0], under=under, forbid=net_flags(sqo)[1])
             if p is None or any(closed_cost(o, so, to, u2, c2)(c) == CLOSED_COST for c in p[1:-1]):
                 ok = False
                 break
