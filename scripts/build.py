@@ -573,14 +573,42 @@ def routing_section(ctx):
            "|---|---|---|---|---|---|---|---|:-:|--:|---|"]
     for c in cables:
         length = fmt_mm(c["min_mm"]) if c["min_mm"] is not None else (f"~{fmt_mm(c['estimate_mm'])}" if c.get("estimate_mm") is not None else "?")
-        exits = f"{c.get('exit_a') or '-'} / {c.get('exit_b') or '-'}" if c.get("type") else "-"
+        exits = exits_cell(c) if c.get("type") else "-"
         md.append(f"| {c['id']} | {c['kind']} | {c['from']} | {c['to']} | {type_cell(c)} | {exits} | {c['tip_a']} / {c['tip_b']} | {(c.get('polarity') or '?') if c['kind'] == 'power' else '-'} | "
                   f"{under_cell(c)} | {length} | {c['status']} |")
+    md += under_own_text(ctx)
     sig = [c for c in cables if c["kind"] == "signal" and c["min_mm"] is not None]
     if sig:
         md += ["", f"Signal cable, minimum: {sum(c['min_mm'] for c in sig):.0f} mm over {len(sig)} cables."]
     md += dc_cable_table(ctx)
     return md
+
+
+UNDER_OWN = "passes under its own plug"
+
+
+def exits_cell(c):
+    """The Exits column: `exit_a / exit_b`, each followed by ` (passes under its own plug)` where the cable passes under the plug of that end
+    (`routing.passes_under_own_plug`: the plug sits high enough on the pedal for one thin cable to pass under it; information only)."""
+    a, b = (c.get("exit_a") or "-"), (c.get("exit_b") or "-")
+    return f"{a}{f' ({UNDER_OWN})' if c.get('under_own_a') else ''} / {b}{f' ({UNDER_OWN})' if c.get('under_own_b') else ''}"
+
+
+def under_own_line(ctx):
+    """The build log line about the cables that pass under their own plug ('' when none; information, not a warning)."""
+    ids = routing.under_own_cables(ctx.get("cable_list") or [])
+    return f"routing: {len(ids)} cables pass under their own plug ({', '.join(ids)})" if ids else ""
+
+
+def under_own_text(ctx):
+    """README sentence after the cable table: which cables pass under their own plug (empty when none)."""
+    ids = routing.under_own_cables(ctx.get("cable_list") or [])
+    if not ids:
+        return []
+    return ["", f"Passes under its own plug: {', '.join(ids)}. These cables leave the plug on the side it points to and have to go the other way, so "
+                f"they turn back across it; the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is "
+                f"measured along its path on the deck, with no extra length (information only; any other cable still crosses the plug over "
+                f"the top, up to `cables.max_over_plug`)."]
 
 
 def type_cell(c):
@@ -1180,6 +1208,8 @@ def main():
         saving = ((c.get("routing") or {}).get("power") or {}).get("side_savings")
         if saving and any(x["kind"] == "power" for x in c.get("cable_list") or []):
             print(f"  power: {saving['plugs']} DC plugs took the shorter side (saved {saving['saved_mm']:.0f} mm)")
+        if under_own_line(c):
+            print("  " + under_own_line(c))
         for m in c["warnings"]:
             print("  WARN ", m)
         for m in c["errors"]:
