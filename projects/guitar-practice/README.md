@@ -192,7 +192,7 @@ Min length = the shortest cable that reaches: measured from a point on each jack
 | P4 | power | psu1.OUT4 | carbon_copy.power | dc_ra_owner_baseline | - / right | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 112 mm under, 1 mm on top | 152 | routed |
 | P5 | power | psu1.OUT5 | ditto_looper.power | dc_ra_owner_baseline | - / left | DC 2.1 mm / DC 2.1 mm | center_negative | 1 hole; 242 mm under, 1 mm on top | 283 | routed |
 
-Passes under its own plug: S1, S2, S3, S4, S5, S6. These cables leave the plug on the side it points to and have to go the other way, so they turn back across it; the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is measured along its path on the deck, with no extra length (information only; any other cable still crosses the plug over the top, up to `cables.max_over_plug`).
+Passes under its own plug: S1, S2, S3, S4, S5, S6. Their routed path crosses the head or body of a plug at one of their own ends (a cable that turns back across the plug it leaves, or one that passes the far plug in a narrow gap); the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is measured along its path on the deck, with no extra length (information only; any other cable still crosses the plug over the top, up to `cables.max_over_plug`).
 
 Signal cable, minimum: 480 mm over 6 cables.
 

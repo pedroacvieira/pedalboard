@@ -605,8 +605,8 @@ def under_own_text(ctx):
     ids = routing.under_own_cables(ctx.get("cable_list") or [])
     if not ids:
         return []
-    return ["", f"Passes under its own plug: {', '.join(ids)}. These cables leave the plug on the side it points to and have to go the other way, so "
-                f"they turn back across it; the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is "
+    return ["", f"Passes under its own plug: {', '.join(ids)}. Their routed path crosses the head or body of a plug at one of their own ends (a cable that turns back across the "
+                f"plug it leaves, or one that passes the far plug in a narrow gap); the plug sits high enough on the pedal for one thin cable to pass under it, so the cable is "
                 f"measured along its path on the deck, with no extra length (information only; any other cable still crosses the plug over "
                 f"the top, up to `cables.max_over_plug`)."]
 
