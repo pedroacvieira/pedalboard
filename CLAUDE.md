@@ -89,9 +89,17 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   must stay inside (their jacks may overhang; `design.board_bounds` -> `layout["usable"]`, the board footprint without bounds; read by the build, the router, the
   layout search and the drawings; the bounds never limit the cables (routing area = board + margin), under-board supplies are never checked).
   Written ONLY by `scripts/board_editor.py`. guitar-gig has one (13 full slots + the handle cutout, 2026-10-26).
-  Optional `pieces` {"<board image file name>": {"boxes": [...], "bounds": {...}}} = the same two keys for the OTHER pieces of a
-  composed board (the top-level `boxes` / `bounds` stay the FIRST piece's; `boards.load_pieces`; an image that is no piece of the
-  layout = a build warning). Hand-written: the board editor edits the first piece only (and keeps `pieces` when it saves).
+  Optional `pieces` {"<board image file name>": {"boxes": [...], "bounds": {...}}} = the same two keys per piece of a composed board (keyed
+  by image, independent of the layout order; `boards.load_pieces`; an image that is no piece of the layout = a build warning). The rule for
+  "which edits belong to which piece" is ONE function, `boards.piece_edits` / `load_piece_edits` (a `pieces` entry wins, also for the first
+  piece; else the top-level keys belong to the FIRST piece; else none), used by the build (`jacks.layout_from_items`, `data_crossing_errors`)
+  and the editor. The board editor edits EVERY piece (piece view: selector / Tab / `--piece IMAGE|N`; per-piece unsaved state, Ctrl+S saves
+  all): a composed board is written under `pieces` only (sorted by image, top-level `boxes` [], no `bounds`; hand-written top-level edits move
+  into `pieces.<first image>` on the first save, dropped with a note when that image has an entry); a one-piece board keeps the top level
+  (`editor.split_for_save`); `pieces` entries of images that are no piece of the layout are kept (named in the status bar and `--list`).
+  Composed view (pure helpers in `board_editor.py`: `canvas_to_piece_frac`, `rects_to_piece_fracs`, `composed_effective` / `piece_effective` (E = the
+  holes the build uses, `design.composed_holes`, on this piece), `overlap_ghosts`, `joint_sides` (the other footprint contains the point 0.5 mm OUTSIDE the side, like the build's edge links; >= 1 mm long), `edge_on_joint`,
+  `piece_at`): the piece view draws the other pieces' covered area and the joints (read-only); W = whole-board overview (read-only, click picks a piece).
 - `projects/<name>/playground_design.json`: the owner's Pedal Playground layout (only guitar-gig so far), a v2 site
   document (schema 3: items with image, width / height / x / y in inches, rotation in degrees; `design.parse_doc`; legacy v1
   saves `{"canvas": html}` still parse). Written ONLY by `scripts/fetch_playground.py` from the project's public share link
@@ -108,7 +116,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   layouts: v2 documents `parse_doc` / legacy `parse_canvas`, jack geometry in mm, `move` / `write_design` to edit a layout),
   `jacks.py` (jack data, layout placement `layout_from_items`, fixed-box clearance, jack-to-jack length estimates),
   `footswitches.py` (footswitch data, spacing check), `outlines.py` (outline decomposition + CLI), `boards.py` (board
-  holes from the board images + CLI, `load_edits`, `load_bounds`, `load_pieces`), `board_editor.py` (GUI: hole / filled boxes per project), `routing.py` (cable model, plug
+  holes from the board images + CLI, `load_edits`, `load_bounds`, `load_pieces`), `board_editor.py` (GUI: hole / filled / edge boxes and bounds per project, every board piece), `routing.py` (cable model, plug
   heads, side choice, grid router, smoothing, lanes, plug-head clearance), `svgdraw.py` (shared SVG drawing: board,
   pedals, jacks, plug heads, cables, legend; mm-sized), `power.py` (power policy checks shared with the build,
   `assign`: supply outputs + daisy chains for a layout), `layout.py` (pure: candidate model, hard constraints,
@@ -137,7 +145,7 @@ uv run scripts/pedal_editor.py --list-missing [project...] [--only jacks|footswi
 uv run scripts/pedal_editor.py --list         # jack and footswitch counts per id (? unknown, 0 verified none)
 uv run scripts/outlines.py [project...] [--image NAME] [--refresh]   # pedal outlines from the images
 uv run scripts/boards.py [project...] [--image NAME] [--refresh]     # board holes from the board images
-uv run scripts/board_editor.py <project> | --list   # holes and edge crossings (drag; T hole/filled/edge; E effective)
+uv run scripts/board_editor.py <project> [--piece P] | --list   # holes and edge crossings (drag; T hole/filled/edge; E effective; Tab = next piece)
 uv run scripts/fetch_playground.py <project> [--share LINK] [--dry-run]   # the shared layout -> playground_design.json
                                                # (--share: saved in project.json when it has none; new_project.py --share too)
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
