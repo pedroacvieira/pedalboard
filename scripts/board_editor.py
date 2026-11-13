@@ -2,7 +2,8 @@
 """Correct the pedalboard holes of a project and mark where cables may go round its edge, on the board's Pedal Playground image.
 
     uv run scripts/board_editor.py <project>                open the editor on the project's board
-    uv run scripts/board_editor.py <project> --image FILE   use a local PNG instead of the cached / downloaded one
+    uv run scripts/board_editor.py <project> --piece P      composed board: open piece P first (image name or 1-based number)
+    uv run scripts/board_editor.py <project> --image FILE   use a local PNG instead of the cached / downloaded one (for that piece)
     uv run scripts/board_editor.py --list                   every project: board image, derived hole rects, edit boxes, bounds
 
 The holes derived from the image (catalog/boards.json, `uv run scripts/boards.py <project>`) are drawn as blue
@@ -22,9 +23,15 @@ along its own axis: back / front follow the mouse's y, left / right its x) or nu
 edge; Esc deselects. The four lines move independently (at least 10 mm apart from their opposite). In the other modes the
 lines are drawn (dashed teal, the area outside shaded) but not selectable.
 
-Composed boards (several pedalboard items in the layout, summed and evaluated as one board): this editor edits the FIRST piece only (the
-top-level `boxes` / `bounds`); the edits of the other pieces live in the `pieces` key of board.json ({"<board image file name>":
-{"boxes": [...], "bounds": {...}}}), written by hand, and are kept when you save.
+Composed boards (several pedalboard items in the layout, summed and evaluated as one board): the editor shows ONE piece at a time, in its
+own unrotated image, with the same tools. The selector at the top of the panel (or Tab / Shift+Tab, or `--piece IMAGE|N` on the command
+line: the image file name with or without .png, or the 1-based layout number) picks the piece; every piece keeps its unsaved edits while
+you switch, the zoom (px per mm) stays so the pieces are at one scale, Ctrl+S saves ALL pieces in one write and closing asks once. A
+composed board's edits are written under `pieces` of board.json, keyed by the board image file name (independent of the layout order); the
+top-level `boxes` is then [] and has no `bounds`. A board with one piece keeps them at the top level. The first save of a composed board
+moves hand-written top-level edits into `pieces.<first image>` (dropped, with a note, when that image already has an entry); entries of
+images that are no piece of the layout are kept as they are (named in the status bar and by --list); two pieces with the same image share
+one entry. `--list` shows a header and one row per piece for a composed board.
 
 In the editor: pick the type of the next entry with the buttons in the panel or the keys 1 (hole), 2 (filled), 3 (edge),
 shown in the status bar (B: bounds mode, see above); drag on empty space draws a box; in edge mode (a drag starting on a box still draws) you drag a LINE (rubber band)
@@ -449,31 +456,85 @@ def save_edits(project_dir, boxes, bounds=None, pieces=KEEP):
     return path
 
 
+def raw_pieces(project_dir):
+    """The `pieces` of projects/<name>/board.json as the file has them ({} without the file, the key, or when it is no object)."""
+    try:
+        raw = json.loads((Path(project_dir) / EDITS_FILE).read_text()).get("pieces")
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def unknown_piece_names(file_pieces, images):
+    """The keys of `pieces` that are no piece of the layout (`images`): the editor keeps their entries unchanged."""
+    return [name for name in file_pieces if name not in images]
+
+
+def piece_sources(images, file_pieces, top_level_set):
+    """{image: where its edits come from by the build's rule}: 'pieces' (an entry for the image), 'top-level' (the first image, no entry,
+    and the top level has edits), else 'none'."""
+    return {image: ("pieces" if image in file_pieces else "top-level" if n == 0 and top_level_set else "none")
+            for n, image in enumerate(dict.fromkeys(images))}
+
+
+def _summary(entry, edits):
+    holes = "?" if entry is None else str(len(entry["holes"]))
+    n_edge = sum(1 for b in edits["boxes"] if b["type"] == "edge")
+    set_ = bounds_set(edits["bounds"])
+    return (f"hole rects {holes:>2}   edit boxes {len(edits['boxes']) - n_edge}   edge segments {n_edge}"
+            f"   {'bounds set: ' + ', '.join(set_) if set_ else 'no bounds'}")
+
+
+def piece_rows(pieces, edits, sources, boards_data, file_pieces, top_level_set):
+    """The lines of --list under a composed board's header: one per piece (`1 image  hole rects ..  [pieces]`), then `!` lines for the
+    entries of `pieces` that are no piece of the layout and for a top level that a `pieces` entry shadows. `edits`: `boards.piece_edits`,
+    `sources`: `piece_sources`, `file_pieces`: `raw_pieces`, `top_level_set`: the file has top-level boxes or bounds."""
+    images = [p["image"] for p in pieces]
+    width = max(len(i) for i in images)
+    rows = [f"  {n} {p['image']:<{width}}  {_summary(boards_data.get(p['image']), edits[p['image']])}   [{sources[p['image']]}]"
+            for n, p in enumerate(pieces, 1)]
+    rows += [f"  ! pieces.{name}: no piece of the layout (kept)" for name in unknown_piece_names(file_pieces, images)]
+    if top_level_set and images[0] in file_pieces:
+        rows.append(f"  ! top-level boxes / bounds are shadowed by pieces.{images[0]}")
+    return rows
+
+
 def project_rows(names, db, boards_data):
     """Lines for --list: project, board image, derived hole count (? without a boards.json entry), edit boxes (hole / filled),
-    edge segments, bounds (the sides that differ from the image edge)."""
+    edge segments, bounds (the sides that differ from the image edge); the edits of the build's rule (`boards.piece_edits`). A composed
+    board (several pieces) gets a header row and one row per piece (`piece_rows`)."""
     rows = []
     for pdir in project_dirs(names or None):
         project = load_json(pdir / "project.json")
         try:
-            image = board_image_for(pdir, project, db)[0]
+            pieces = board_pieces_for(pdir, project, db)
         except ValueError:
             rows.append(f"{pdir.name:<16} ?  (board not in Pedal Playground's database)")
             continue
-        entry = boards_data.get(image)
-        holes = "?" if entry is None else str(len(entry["holes"]))
-        edits = boards.load_edits(pdir)
-        n_edge = sum(1 for b in edits if b["type"] == "edge")
-        set_ = bounds_set(boards.load_bounds(pdir))
-        rows.append(f"{pdir.name:<16} {image:<28} hole rects {holes:>2}   edit boxes {len(edits) - n_edge}   edge segments {n_edge}"
-                    f"   {'bounds set: ' + ', '.join(set_) if set_ else 'no bounds'}")
+        images = [p["image"] for p in pieces]
+        edits = boards.load_piece_edits(pdir, images)
+        if len(pieces) == 1:
+            rows.append(f"{pdir.name:<16} {images[0]:<28} {_summary(boards_data.get(images[0]), edits[images[0]])}")
+            continue
+        file_pieces = raw_pieces(pdir)
+        top_set = bool(boards.load_edits(pdir)) or bool(bounds_set(boards.load_bounds(pdir)))
+        rows.append(f"{pdir.name:<16} composed board, {len(pieces)} pieces (edits in board.json pieces)")
+        rows += piece_rows(pieces, edits, piece_sources(images, file_pieces, top_set), boards_data, file_pieces, top_set)
     return rows
 
 
 # --- the window ----------------------------------------------------------------------------------
-def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
-    """Build the Tkinter window (not yet running its main loop). `derived`: derived hole rectangles (fractions) or
-    None when boards.json has no entry for the image."""
+def make_app(project_dir, pieces, derived_by_image=None, start=0, image_paths=None, *legacy):
+    """Build the Tkinter window (not yet running its main loop). `pieces`: `board_pieces_for`; `derived_by_image`: {image: derived
+    hole rectangles (fractions)} (an image without an entry has none: boards.json does not know it); `start`: the piece shown first;
+    `image_paths`: {image: local PNG} (else fetched on demand, the others when you switch to them). The edits of every piece are read with the
+    build's rule (`boards.load_piece_edits`) and kept in memory per image while you switch.
+    Old form (one board): `make_app(project_dir, image_path, image_name, w_mm, h_mm, derived)`."""
+    if not isinstance(pieces, list):   # the one-board form
+        image_path, image_name, w_mm, h_mm, derived = (pieces, derived_by_image, start, image_paths, *legacy)
+        pieces, derived_by_image, start, image_paths = ([{"image": image_name, "w_mm": w_mm, "h_mm": h_mm, "item": None}],
+                                                        {image_name: derived}, 0, {image_name: image_path})
+    derived_by_image, image_paths = derived_by_image or {}, image_paths or {}
     import tkinter as tk
     from tkinter import messagebox, ttk
 
@@ -486,24 +547,99 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
     class App(tk.Tk):
         def __init__(self):
             super().__init__()
-            self.img = Image.open(image_path).convert("RGBA")
-            self.boxes = [dict(b) for b in boards.load_edits(pdir)]
-            self.saved = [dict(b) for b in self.boxes]
-            self.bounds = boards.load_bounds(pdir)
-            self.saved_bounds = dict(self.bounds)
+            self.pieces, self.cur = pieces, start
+            self.state = {}           # per image: boxes, bounds and what was last saved (kept while you switch pieces)
+            for image, e in boards.load_piece_edits(pdir, [p["image"] for p in pieces]).items():
+                self.state[image] = {"boxes": [dict(b) for b in e["boxes"]], "bounds": dict(e["bounds"]),
+                                     "saved": [dict(b) for b in e["boxes"]], "saved_bounds": dict(e["bounds"])}
+            self._images = {}         # image name -> loaded PIL image (lazily)
+            self.img = self._load_image(self.pieces[self.cur]["image"])
             self.bsel = None          # the selected bounds line (a side), bounds mode only
             self.sel, self.default_type, self.show_effective = None, "hole", False   # default_type "bounds" = bounds mode
             self.drag = None          # ("draw" | "move" | "bound", fx, fy) while the button is down
-            self.zoom = min(860 / w_mm, 520 / h_mm)  # px per mm
+            self.zoom = min(860 / self.w_mm, 520 / self.h_mm)  # px per mm
             self.photo, self._busy = None, False
-            self.title(f"{pdir.name}: {image_name} - {w_mm:.1f} x {h_mm:.1f} mm")
+            self.note = ""            # a message the next status line starts with
             self._build_widgets()
             self.protocol("WM_DELETE_WINDOW", self._close)
+            unknown = unknown_piece_names(raw_pieces(pdir), [p["image"] for p in pieces])
+            if unknown:
+                self.note = "board.json pieces." + ", pieces.".join(unknown) + " is no piece of the layout (kept)  |  "
             self._refresh()
+
+        # -- the current piece --
+        @property
+        def piece(self):
+            return self.pieces[self.cur]
+
+        @property
+        def w_mm(self):
+            return self.piece["w_mm"]
+
+        @property
+        def h_mm(self):
+            return self.piece["h_mm"]
+
+        @property
+        def derived(self):
+            return derived_by_image.get(self.piece["image"])
+
+        @property
+        def composed(self):
+            return len(self.pieces) > 1
+
+        @property
+        def boxes(self):
+            return self.state[self.piece["image"]]["boxes"]
+
+        @boxes.setter
+        def boxes(self, value):
+            self.state[self.piece["image"]]["boxes"] = value
+
+        @property
+        def bounds(self):
+            return self.state[self.piece["image"]]["bounds"]
+
+        @bounds.setter
+        def bounds(self, value):
+            self.state[self.piece["image"]]["bounds"] = value
 
         @property
         def dirty(self):
-            return self.boxes != self.saved or self.bounds != self.saved_bounds
+            """Any piece has unsaved edits."""
+            return any(st["boxes"] != st["saved"] or st["bounds"] != st["saved_bounds"] for st in self.state.values())
+
+        def _load_image(self, image):
+            if image not in self._images:
+                path = image_paths.get(image) or common.fetch_image(image, kind="pedalboards")
+                self._images[image] = Image.open(path).convert("RGBA")
+            return self._images[image]
+
+        def _title(self):
+            p = self.piece
+            where = f"piece {self.cur + 1}/{len(self.pieces)} {p['image']}" if self.composed else p["image"]
+            self.title(f"{pdir.name}: {where} - {p['w_mm']:.1f} x {p['h_mm']:.1f} mm")
+
+        def _set_piece(self, i):
+            """Show piece `i` (its own image and edits; every piece keeps its unsaved edits). The zoom (px per mm) stays, so the pieces
+            are at the same scale. A piece whose image cannot be loaded is not switched to."""
+            if not 0 <= i < len(self.pieces) or i == self.cur:
+                return
+            try:
+                img = self._load_image(self.pieces[i]["image"])
+            except Exception as e:  # noqa: BLE001  (no network, unreadable PNG)
+                messagebox.showerror("Cannot load the board image", f"{self.pieces[i]['image']}: {e}")
+                self.combo.current(self.cur)
+                return
+            self.cur, self.img = i, img
+            self.sel = self.bsel = self.drag = None
+            if self.composed:
+                self.combo.current(i)
+            self._refresh()
+
+        def _next_piece(self, delta):
+            if self.composed:
+                self._set_piece((self.cur + delta) % len(self.pieces))
 
         @property
         def bounds_mode(self):
@@ -525,6 +661,13 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
 
             panel = ttk.Frame(self, padding=8)
             panel.pack(side="right", fill="y")
+            if self.composed:
+                ttk.Label(panel, text="Board piece (Tab / Shift+Tab)").pack(anchor="w")
+                self.combo = ttk.Combobox(panel, state="readonly", width=44,
+                                          values=[piece_label(self.pieces, i) for i in range(len(self.pieces))])
+                self.combo.current(self.cur)
+                self.combo.pack(fill="x", pady=(0, 8))
+                self.combo.bind("<<ComboboxSelected>>", lambda e: (self._set_piece(self.combo.current()), self.canvas.focus_set()))
             ttk.Label(panel, text="New entry type").pack(anchor="w")
             self.type_var = tk.StringVar(value=self.default_type)
             kinds = ttk.Frame(panel)
@@ -553,10 +696,9 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 row.pack(anchor="w")
                 tk.Label(row, width=2, background=colour).pack(side="left", padx=(0, 6))
                 ttk.Label(row, text=text).pack(side="left")
-            if derived is None:
-                tk.Label(panel, justify="left", anchor="w", wraplength=250, background="#fff3cd", foreground="#664d03",
-                         relief="solid", borderwidth=1, padx=6, pady=4,
-                         text="No derived holes for this image yet: run uv run scripts/boards.py <project>.").pack(fill="x", pady=8)
+            self.no_derived = tk.Label(panel, justify="left", anchor="w", wraplength=250, background="#fff3cd", foreground="#664d03",
+                                       relief="solid", borderwidth=1, padx=6, pady=4,
+                                       text="No derived holes for this image yet: run uv run scripts/boards.py <project>.")
             ttk.Label(panel, wraplength=250, foreground="#555", justify="left", text=(
                 "Drag on empty space: new box (edge type: drag a line, it snaps to the nearest board side). Click: select. "
                 "Drag a selected entry: move (an edge segment along its side). 1 / 2 / 3 or the buttons above: type of the next entry "
@@ -575,6 +717,10 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             c.bind("<Button-4>", lambda e: self._zoom(1.1))
             c.bind("<Button-5>", lambda e: self._zoom(1 / 1.1))
             self.bind("<Control-s>", lambda e: self._save())
+            if self.composed:   # "break": Tk's focus traversal must not take the keys
+                self.bind("<Tab>", lambda e: self._guard(lambda: self._next_piece(1)) or "break")
+                self.bind("<Shift-Tab>", lambda e: self._guard(lambda: self._next_piece(-1)) or "break")
+                self.bind("<ISO_Left_Tab>", lambda e: self._guard(lambda: self._next_piece(-1)) or "break")
             self.bind("<Delete>", lambda e: self._guard(self._delete))
             self.bind("<plus>", lambda e: self._guard(lambda: self._zoom(1.15)))
             self.bind("<equal>", lambda e: self._guard(lambda: self._zoom(1.15)))
@@ -595,18 +741,18 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 self.bind(f"<Shift-{key}>", lambda e, d=d: self._guard(lambda: self._nudge(d, 2.0)))
 
         def _guard(self, fn):
-            if not isinstance(self.focus_get(), (tk.Entry, ttk.Entry, tk.Listbox)):
+            if not isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Combobox, tk.Listbox)):
                 fn()
 
         # -- drawing --
         def _px(self, fx, fy):
-            return frac_to_px(fx, fy, self.zoom, w_mm, h_mm, MARGIN)
+            return frac_to_px(fx, fy, self.zoom, self.w_mm, self.h_mm, MARGIN)
 
         def _frac(self, event, clamp=True):
-            return px_to_frac(self.canvas.canvasx(event.x), self.canvas.canvasy(event.y), self.zoom, w_mm, h_mm, MARGIN, clamp)
+            return px_to_frac(self.canvas.canvasx(event.x), self.canvas.canvasy(event.y), self.zoom, self.w_mm, self.h_mm, MARGIN, clamp)
 
         def _redraw(self):
-            wp, hp = round(w_mm * self.zoom), round(h_mm * self.zoom)
+            wp, hp = round(self.w_mm * self.zoom), round(self.h_mm * self.zoom)
             base = Image.new("RGBA", (wp, hp), "#ffffff")
             d = ImageDraw.Draw(base)
             for gy in range(0, hp, 12):          # checkerboard: the transparent slots show through
@@ -626,17 +772,17 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             c.create_image(MARGIN, MARGIN, image=self.photo, anchor="nw")
             c.create_rectangle(MARGIN, MARGIN, MARGIN + wp, MARGIN + hp, outline="#888")
             c.configure(scrollregion=(0, 0, wp + 2 * MARGIN, hp + 2 * MARGIN))
-            for mm in range(0, int(max(w_mm, h_mm)) + 1, 10):   # ruler ticks every 10 mm
+            for mm in range(0, int(max(self.w_mm, self.h_mm)) + 1, 10):   # ruler ticks every 10 mm
                 long = mm % 50 == 0
-                if mm <= w_mm:
+                if mm <= self.w_mm:
                     c.create_line(MARGIN + mm * self.zoom, MARGIN - (8 if long else 4), MARGIN + mm * self.zoom, MARGIN, fill="#555")
                     if long:
                         c.create_text(MARGIN + mm * self.zoom, MARGIN - 16, text=str(mm), font=("TkDefaultFont", 7), fill="#555")
-                if mm <= h_mm:
+                if mm <= self.h_mm:
                     c.create_line(MARGIN - (8 if long else 4), MARGIN + mm * self.zoom, MARGIN, MARGIN + mm * self.zoom, fill="#555")
                     if long:
                         c.create_text(MARGIN - 16, MARGIN + mm * self.zoom, text=str(mm), font=("TkDefaultFont", 7), fill="#555", angle=90)
-            for r in derived or []:
+            for r in self.derived or []:
                 (xa, ya), (xb, yb) = self._px(r[0], r[1]), self._px(r[2], r[3])
                 c.create_rectangle(xa, ya, xb, yb, outline="#1f77b4", width=2)
             for i, b in enumerate(self.boxes):
@@ -654,7 +800,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 c.create_text(xa + 3, ya + 2, text=str(i + 1), anchor="nw", fill=colour, font=("TkDefaultFont", 8, "bold"))
                 if i == self.sel:
                     c.create_rectangle(xa - 2, ya - 2, xb + 2, yb + 2, outline="#000", dash=(4, 3))
-            for side, ((xa, ya), (xb, yb)) in bound_lines(self.bounds, w_mm, h_mm).items():
+            for side, ((xa, ya), (xb, yb)) in bound_lines(self.bounds, self.w_mm, self.h_mm).items():
                 (xa, ya), (xb, yb) = (MARGIN + xa * self.zoom, MARGIN + ya * self.zoom), (MARGIN + xb * self.zoom, MARGIN + yb * self.zoom)
                 c.create_line(xa, ya, xb, yb, fill=BOUNDS_COLOUR, dash=(8, 4), width=4 if side == self.bsel else 2)
                 label = dict(zip(BOUND_SIDES, (dict(x=xa + 4, y=ya - 3, anchor="sw"), dict(x=xa + 4, y=ya + 3, anchor="nw"),
@@ -662,20 +808,25 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 c.create_text(label["x"], label["y"], text=side, anchor=label["anchor"], fill=BOUNDS_COLOUR,
                               font=("TkDefaultFont", 8, "bold"))
             if self.show_effective:
-                for x0, y0, x1, y1 in effective_holes(derived or [], self.boxes, w_mm, h_mm):
+                for x0, y0, x1, y1 in effective_holes(self.derived or [], self.boxes, self.w_mm, self.h_mm):
                     c.create_rectangle(MARGIN + x0 * self.zoom, MARGIN + y0 * self.zoom, MARGIN + x1 * self.zoom,
                                        MARGIN + y1 * self.zoom, outline="#ff7f0e", width=2, dash=(6, 3))
 
         def _refresh(self):
+            self._title()
+            if self.derived is None and not self.no_derived.winfo_manager():
+                self.no_derived.pack(fill="x", pady=8)
+            elif self.derived is not None and self.no_derived.winfo_manager():
+                self.no_derived.pack_forget()
             self._redraw()
             self._fill_list()
-            self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, w_mm, h_mm)))
+            self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, self.w_mm, self.h_mm)))
             self._status()
 
         def _fill_list(self):
             self._busy = True
             self.listbox.delete(0, "end")
-            for row in list_rows(self.boxes, w_mm, h_mm):
+            for row in list_rows(self.boxes, self.w_mm, self.h_mm):
                 self.listbox.insert("end", row)
             if self.sel is not None:
                 self.listbox.selection_set(self.sel)
@@ -683,14 +834,15 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._busy = False
 
         def _status(self, cursor=None):
-            where = "" if cursor is None else f"x {cursor[0] * w_mm:.1f} mm  y {cursor[1] * h_mm:.1f} mm   "
+            where = "" if cursor is None else f"x {cursor[0] * self.w_mm:.1f} mm  y {cursor[1] * self.h_mm:.1f} mm   "
             effective = "  |  effective holes shown" if self.show_effective else ""
             if self.bounds_mode:
                 mode = "bounds mode (B)" + ("" if self.bsel is None else
-                                            f": {bound_rows(self.bounds, w_mm, h_mm)[BOUND_SIDES.index(self.bsel)]} selected")
+                                            f": {bound_rows(self.bounds, self.w_mm, self.h_mm)[BOUND_SIDES.index(self.bsel)]} selected")
             else:
                 mode = f"new: {self.default_type} (T)"
-            self.status.config(text=f"{where}{mode}{effective}"
+            piece = f"piece {self.cur + 1}/{len(self.pieces)}  |  " if self.composed else ""
+            self.status.config(text=f"{self.note}{piece}{where}{mode}{effective}"
                                     f"  |  {len(self.boxes)} box(es){'  |  UNSAVED' if self.dirty else ''}")
 
         # -- mouse --
@@ -698,11 +850,11 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self.canvas.focus_set()
             fx, fy = self._frac(event)
             if self.bounds_mode:          # only the four lines are selectable; dragging on empty space draws nothing
-                self.bsel = hit_bound(self.bounds, fx, fy, w_mm, h_mm)
+                self.bsel = hit_bound(self.bounds, fx, fy, self.w_mm, self.h_mm)
                 self.drag = None if self.bsel is None else ("bound", fx, fy)
                 self._refresh()
                 return
-            i = hit_box(self.boxes, fx, fy, w_mm, h_mm, types=("edge",) if self.default_type == "edge" else None)
+            i = hit_box(self.boxes, fx, fy, self.w_mm, self.h_mm, types=("edge",) if self.default_type == "edge" else None)
             if i is not None and i == self.sel:
                 self.drag = ("move", fx, fy)
             elif i is not None:
@@ -721,9 +873,9 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             self._status(self._frac(event))
             mode, x0, y0 = self.drag
             if mode == "bound":          # the line follows the mouse along its own axis only
-                self.bounds = move_bound(self.bounds, self.bsel, fy if self.bsel in ("back", "front") else fx, w_mm, h_mm)
+                self.bounds = move_bound(self.bounds, self.bsel, fy if self.bsel in ("back", "front") else fx, self.w_mm, self.h_mm)
                 self._redraw()
-                self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, w_mm, h_mm)))
+                self.bounds_label.config(text="Bounds\n" + "\n".join(bound_rows(self.bounds, self.w_mm, self.h_mm)))
                 return
             if mode == "move":
                 self.boxes[self.sel] = move_box(self.boxes[self.sel], fx - x0, fy - y0)
@@ -743,7 +895,7 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
                 self._refresh()
                 return
             fx, fy = self._frac(event, clamp=self.default_type != "edge")
-            box = normalize_box(drag[1], drag[2], fx, fy, self.default_type, w_mm, h_mm)
+            box = normalize_box(drag[1], drag[2], fx, fy, self.default_type, self.w_mm, self.h_mm)
             if box is not None:
                 self.boxes.append(box)
                 self.sel = len(self.boxes) - 1
@@ -810,12 +962,12 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
         def _nudge(self, d, step_mm):
             if self.bounds_mode:          # only along the line's own axis: Up / Down for back / front, Left / Right for left / right
                 if self.bsel is not None and (d[1] != 0) == (self.bsel in ("back", "front")):
-                    self.bounds = nudge_bound(self.bounds, self.bsel, d[0] * step_mm + d[1] * step_mm, w_mm, h_mm)
+                    self.bounds = nudge_bound(self.bounds, self.bsel, d[0] * step_mm + d[1] * step_mm, self.w_mm, self.h_mm)
                     self._refresh()
                 return
             if self.sel is None:
                 return
-            self.boxes[self.sel] = nudge_box(self.boxes[self.sel], d[0] * step_mm, d[1] * step_mm, w_mm, h_mm)
+            self.boxes[self.sel] = nudge_box(self.boxes[self.sel], d[0] * step_mm, d[1] * step_mm, self.w_mm, self.h_mm)
             self._refresh()
 
         def _reorder(self, delta):
@@ -828,15 +980,22 @@ def make_app(project_dir, image_path, image_name, w_mm, h_mm, derived):
             if not self.dirty and (pdir / EDITS_FILE).exists():
                 self.status.config(text=f"No changes: {EDITS_FILE} is up to date.")
                 return True
-            try:
-                path = save_edits(pdir, self.boxes, self.bounds)
+            images = [p["image"] for p in self.pieces]
+            edits = {image: {"boxes": st["boxes"], "bounds": st["bounds"]} for image, st in self.state.items()}
+            boxes, bounds, pieces_out, notes = split_for_save(edits, images, raw_pieces(pdir), boards.load_edits(pdir), boards.load_bounds(pdir))
+            try:   # every piece in one write
+                path = save_edits(pdir, boxes, bounds, pieces_out)
             except OSError as e:
                 messagebox.showerror("Save failed", str(e))
                 return False
-            self.saved = [dict(b) for b in self.boxes]
-            self.saved_bounds = dict(self.bounds)
+            for st in self.state.values():
+                st["saved"] = [dict(b) for b in st["boxes"]]
+                st["saved_bounds"] = dict(st["bounds"])
+            self.note = ""
             self._status()
-            self.status.config(text=f"Saved {path} ({len(self.boxes)} box(es)). Run uv run scripts/build.py to apply.")
+            total = sum(len(st["boxes"]) for st in self.state.values())
+            self.status.config(text=f"Saved {path} ({total} box(es){' in ' + str(len(self.state)) + ' pieces' if self.composed else ''}). "
+                                    + "".join(n + ". " for n in notes) + "Run uv run scripts/build.py to apply.")
             return True
 
         def _close(self):
@@ -857,8 +1016,10 @@ def run_app(*args, **kw):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("project", nargs="?", help="project folder name")
-    ap.add_argument("--list", action="store_true", help="every project with its board image, derived holes and edit boxes")
-    ap.add_argument("--image", help="use this local PNG as the board image")
+    ap.add_argument("--list", action="store_true", help="every project with its board image(s), derived holes and edit boxes")
+    ap.add_argument("--piece", help="composed board: the piece to open first, an image file name (with or without .png) or its 1-based "
+                                    "number in the layout (default 1)")
+    ap.add_argument("--image", help="use this local PNG as the board image (of the piece opened first)")
     args = ap.parse_args(argv)
 
     db = database("pedalboards.json")
@@ -870,17 +1031,20 @@ def main(argv=None):
         ap.error("give a project name, or use --list")
     pdir = project_dirs([args.project])[0]
     try:
-        name, w_mm, h_mm = board_image_for(pdir, load_json(pdir / "project.json"), db)
+        pieces = board_pieces_for(pdir, load_json(pdir / "project.json"), db)
+        start = resolve_piece(pieces, args.piece) if args.piece else 0
     except ValueError as e:
         sys.exit(f"{args.project}: {e}")
-    derived = known[name]["holes"] if name in known else None
-    if derived is None:
-        print(f"No derived holes for {name}: run  uv run scripts/boards.py {args.project}  to derive them "
-              "(the editor opens without that overlay).", file=sys.stderr)
-    image = Path(args.image) if args.image else common.fetch_image(name, kind="pedalboards")
+    derived = {p["image"]: known[p["image"]]["holes"] for p in pieces if p["image"] in known}
+    for p in pieces:
+        if p["image"] not in derived:
+            print(f"No derived holes for {p['image']}: run  uv run scripts/boards.py {args.project}  to derive them "
+                  "(the editor opens without that overlay).", file=sys.stderr)
+    first = pieces[start]["image"]
+    paths = {first: Path(args.image) if args.image else common.fetch_image(first, kind="pedalboards")}   # the others: when you switch to them
     if not os.environ.get("DISPLAY") and sys.platform.startswith("linux"):
         sys.exit("No display found (DISPLAY is not set): the board editor needs a desktop session.")
-    run_app(pdir, image, name, w_mm, h_mm, derived)
+    run_app(pdir, pieces, derived, start, paths)
 
 
 if __name__ == "__main__":

@@ -524,3 +524,113 @@ def test_data_crossing_errors_take_a_pieces_entry_for_the_board_image(tmp_path, 
     assert seen["edge"] is True
     jacks.data_crossing_errors(ctx, data, [], None)
     assert seen["edge"] is False
+
+
+# --- composed boards: --list, --piece, the window with several pieces ---------------------------------------------------
+def composed_project(tmp_path, monkeypatch):
+    p = tmp_path / "demo"
+    p.mkdir()
+    (p / "project.json").write_text(json.dumps({"board": {"brand": "X", "model": "Y"}}))
+    two_piece_design(p)
+    monkeypatch.setattr(be, "project_dirs", lambda names: [p])
+    return p
+
+
+def test_project_rows_for_a_composed_board_list_every_piece(tmp_path, monkeypatch):
+    p = composed_project(tmp_path, monkeypatch)
+    data = {IMG1: {"holes": [[0, 0, 1, 1]] * 2}, IMG2: {"holes": [[0, 0, 1, 1]] * 3}}
+    header, r1, r2 = be.project_rows(None, {}, data)
+    assert header.startswith("demo") and "composed board, 2 pieces (edits in board.json pieces)" in header
+    assert r1.startswith(f"  1 {IMG1}") and "hole rects  2" in r1 and r1.endswith("[none]")
+    assert r2.startswith(f"  2 {IMG2}") and "hole rects  3" in r2 and "no bounds" in r2
+    # edits under pieces, a stale entry, and a top level that an entry shadows
+    (p / "board.json").write_text(json.dumps({"boxes": [box("filled")], "pieces": {
+        IMG1: {"boxes": [be.make_edge("back", 0.1, 0.5)], "bounds": {"right": 0.9}}, IMG2: {"boxes": [box()]}, "old.png": {"boxes": []}}}))
+    rows = be.project_rows(None, {}, data)
+    assert "edge segments 1" in rows[1] and "bounds set: right" in rows[1] and rows[1].endswith("[pieces]")
+    assert "edit boxes 1" in rows[2] and rows[2].endswith("[pieces]")
+    assert rows[3] == "  ! pieces.old.png: no piece of the layout (kept)"
+    assert rows[4] == f"  ! top-level boxes / bounds are shadowed by pieces.{IMG1}"
+    # a top level without a pieces entry for the first image is that piece's
+    (p / "board.json").write_text(json.dumps({"boxes": [box()]}))
+    assert be.project_rows(None, {}, data)[1].endswith("[top-level]")
+
+
+def test_project_rows_for_one_piece_stay_one_row(tmp_path, monkeypatch):
+    p = composed_project(tmp_path, monkeypatch)
+    (p / "playground_design.json").unlink()
+    db = {"X Y": {"Image": "x.png", "Width": 1, "Height": 1}}
+    be.save_edits(p, [box()])
+    (row,) = be.project_rows(None, db, {"x.png": {"holes": []}})
+    assert row.startswith("demo") and "x.png" in row and "edit boxes 1" in row
+
+
+def test_main_piece_that_is_unknown_exits_with_the_list(tmp_path, monkeypatch):
+    composed_project(tmp_path, monkeypatch)
+    monkeypatch.setattr(be, "database", lambda name: {})
+    monkeypatch.setattr(be.boards, "load", lambda: {})
+    with pytest.raises(SystemExit) as e:
+        be.main(["demo", "--piece", "nope"])
+    assert f"1 {IMG1}; 2 {IMG2}" in str(e.value)
+
+
+def two_png_app(tmp_path):
+    from PIL import Image
+    paths = {}
+    for name, size in (("a.png", (200, 100)), ("b.png", (100, 50))):
+        paths[name] = tmp_path / name
+        Image.new("RGBA", size, (10, 10, 10, 255)).save(paths[name])
+    pieces = [{"image": "a.png", "w_mm": 200.0, "h_mm": 100.0, "item": None}, {"image": "b.png", "w_mm": 100.0, "h_mm": 50.0, "item": None}]
+    try:
+        return be.make_app(tmp_path, pieces, {"a.png": [[0.1, 0.1, 0.2, 0.2]]}, 0, paths)
+    except Exception as e:  # noqa: BLE001
+        pytest.skip(f"no usable display: {e}")
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_app_switches_pieces_keeps_every_pieces_edits_and_saves_them_all(tmp_path):
+    app = two_png_app(tmp_path)
+    try:
+        app.update()
+        assert (app.cur, app.w_mm, app.h_mm) == (0, 200.0, 100.0) and not app.dirty and "piece 1/2" in app.title()
+        zoom = app.zoom
+        app.boxes.append(box())
+        app.bounds = {**EDGE, "left": 0.1}
+        app._set_piece(1)
+        assert (app.cur, app.w_mm, app.h_mm) == (1, 100.0, 50.0) and app.zoom == zoom and app.sel is None
+        assert app.boxes == [] and app.bounds == EDGE and app.derived is None and app.dirty   # piece 1's edit is unsaved
+        assert "piece 2/2" in app.title() and "UNSAVED" in app.status.cget("text") and "piece 2/2" in app.status.cget("text")
+        app.boxes.append(box("filled"))
+        app._next_piece(1)                                           # wraps round to piece 1
+        assert app.cur == 0 and app.boxes == [box()] and app.bounds["left"] == 0.1
+        app._save()
+        assert not app.dirty
+        saved = json.loads((tmp_path / "board.json").read_text())
+        assert saved["boxes"] == [] and "bounds" not in saved and set(saved["pieces"]) == {"a.png", "b.png"}
+        assert saved["pieces"]["b.png"]["boxes"][0]["type"] == "filled"
+        assert boards.load_piece_edits(tmp_path, ["b.png", "a.png"])["a.png"]["bounds"]["left"] == 0.1
+    finally:
+        app.destroy()
+    app = two_png_app(tmp_path)                                      # reopening shows what was saved, in both pieces
+    try:
+        app.update()
+        assert app.boxes == [box()] and not app.dirty
+        app._set_piece(1)
+        assert app.boxes == [box("filled")]
+    finally:
+        app.destroy()
+
+
+@pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a display")
+def test_the_app_names_a_pieces_entry_of_no_piece_and_keeps_it(tmp_path):
+    (tmp_path / "board.json").write_text(json.dumps({"boxes": [], "pieces": {"old.png": {"boxes": [box("filled")]}}}))
+    app = two_png_app(tmp_path)
+    try:
+        app.update()
+        assert "pieces.old.png is no piece of the layout (kept)" in app.status.cget("text")
+        app.boxes.append(box())
+        app._save()
+        saved = json.loads((tmp_path / "board.json").read_text())
+        assert set(saved["pieces"]) == {"a.png", "old.png"} and saved["pieces"]["old.png"]["boxes"] == [box("filled")]
+    finally:
+        app.destroy()
