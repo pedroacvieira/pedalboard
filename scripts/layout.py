@@ -68,6 +68,7 @@ import design
 import footswitches
 import outlines as outlines_mod
 import power
+import preferences
 import routing
 from common import px_to_mm
 
@@ -110,7 +111,7 @@ DEFAULTS = {"pins": [], "rotations": {"default": [0, 90, 270]}, "board_margin_mm
 
 def settings(project):
     """Layout settings: DEFAULTS + project `layout` (weights, pair factors and access merged key by key)."""
-    given = project.get("layout") or {}
+    given = preferences.lower(project).get("layout") or {}   # the per-pedal profiles (`pedals.<id>`) fill pins / rotations / access
     s = {**DEFAULTS, **{k: v for k, v in given.items() if k not in ("weights", "access", "search")}}
     s["weights"] = {**WEIGHTS, **(given.get("weights") or {})}
     acc = given.get("access") or {}

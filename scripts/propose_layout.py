@@ -36,6 +36,7 @@ import jacks
 import layout
 import outlines
 import power
+import preferences
 import routing
 import svgdraw
 from common import load_cable_types, load_catalog, load_json, project_dirs, proposal_inputs_sha1
@@ -226,13 +227,14 @@ def main(argv=None):
     board_bounds, board_pieces = boards.load_bounds(pdir), boards.load_pieces(pdir)
     cat = (cat_pedals, cat_supplies, jacks_data, fs_data, outl)
     project = jacks.with_floor(load_json(pdir / "project.json"))   # the jacks the floor devices drive are used extra jacks
-    if args.pin:
-        project.setdefault("layout", {})["pins"] = sorted(set(project.get("layout", {}).get("pins", [])) | set(args.pin))
+    project = preferences.lower(project, footswitches.usable(fs_data))   # the per-pedal profiles (`pedals.<id>`) fill the old keys
     design_doc = load_json(pdir / "playground_design.json")
     items = design.parse_data(design_doc)
     cable_types = load_cable_types()
     owner_ctx = build.validate(pdir, cat_pedals, cat_supplies, jacks_data, footswitch_data=fs_data, project=project,
                                outline_data=outl, board_data=board_data, body_data=bodies)
+    if args.pin:   # (after the build check: a `--pin` is a command-line wish, not a disagreement with the profile)
+        project.setdefault("layout", {})["pins"] = sorted(set(project.get("layout", {}).get("pins", [])) | set(args.pin))
     try:
         model = layout.Model(project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, outlines=outl,
                              board_data=board_data, board_edits=board_edits, board_bounds=board_bounds, bodies=bodies, board_pieces=board_pieces)

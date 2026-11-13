@@ -16,6 +16,7 @@ import footswitches
 import jacks
 import outlines
 import power
+import preferences
 import routing
 import svgdraw
 from power import volt_range
@@ -55,6 +56,9 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
     entries (read if None; the board's holes, not used by the router yet)."""
     project = load_json(pdir / "project.json") if project is None else project
     project = jacks.with_floor(project)   # the jacks the floor devices drive count as used extra jacks
+    fs_all = footswitches.usable(footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
+    raw_project = project
+    project = preferences.lower(raw_project, fs_all)   # the per-pedal profiles (`pedals.<id>`) fill the old keys every reader uses
     errors, warnings = [], []
     ctx = {"dir": pdir, "key": pdir.name, "project": project, "errors": errors, "warnings": warnings}
     no_unknown = project.get("validation", {}).get("no_unknown", True)
@@ -92,6 +96,12 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
             need(f"{pid}.{'.'.join(path)}", dig(p, path))
         if project.get("instrument") and p.get("instruments") and project["instrument"] not in p["instruments"]:
             warnings.append(f"instrument: {pid} is tagged {p['instruments']} but the project is for {project['instrument']}")
+
+    # ----- per-pedal preference profiles (pedals.<id>) ----------------------
+    perrors, pwarnings, pnotes = preferences.validate(raw_project, cat_pedals, cat_supplies, fs_all, chain)
+    errors += perrors
+    warnings += pwarnings
+    ctx["pref_notes"] = pnotes
 
     # ----- ordering rules -------------------------------------------------
     rules = [{**r, "pedal": pid, "origin": "catalog"} for pid in chain for r in pedals[pid].get("dependencies", [])]
@@ -295,7 +305,7 @@ def validate(pdir, cat_pedals, cat_supplies, jacks_data=None, items=None, footsw
         routing.route_project(ctx, cat_pedals, cable_types=cable_types)
     else:
         jacks.report_fixed_box(ctx)
-    footswitches.check(ctx, cat_pedals, footswitches.read_file()["footswitches"] if footswitch_data is None else footswitch_data)
+    footswitches.check(ctx, cat_pedals, fs_all)
     return ctx
 
 
