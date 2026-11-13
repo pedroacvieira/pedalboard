@@ -454,3 +454,4 @@ def migrate(project):
             if not fs:
                 del out["footswitches"]
     return out
+

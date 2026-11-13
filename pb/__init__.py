@@ -18,6 +18,7 @@ COMMANDS = {
     "fetch": "fetch_playground",
     "propose": "propose_layout",
     "new": "new_project",
+    "migrate-preferences": "migrate_preferences",
     "pedal-editor": "pedal_editor",
     "board-editor": "board_editor",
     "outlines": "outlines",
