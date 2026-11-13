@@ -101,7 +101,7 @@ Plan `docs/plans/u-turn-plugs.md`; owner decision 2026-11-13: the cable MAY cros
       turned cable crosses its own plug, which adds no length. Now reported (information only): `under_own_a` / `under_own_b`, the
       README Exits column ("right (passes under its own plug)"), a build log line. Signal and DC plugs; the layout surrogate has no
       keep-out and so agrees. Needs the owner's review of the practice board: all 6 signal cables pass under a plug of their own.
-- [ ] Owner: re-run the layout proposals (`propose_layout.py`) after the merge; nothing in the scores changed, only the report.
+- Done 2026-11-13 (merged; proposals rerun on all three boards after the merge and the preferences migration).
 
 ### 3.3 `feat/web-ui`: one local web app with tabs
 Replaces the Tkinter editors and the README-only views with a local browser app.
