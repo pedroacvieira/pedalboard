@@ -75,28 +75,28 @@ flowchart TB
 
 - **AnalogMan Sun Face BC183** no buffered pedal anywhere before it (priority 100): AnalogMan: the Fuzz Face must see the guitar directly; no buffered pedal ahead of it `[catalog]`
 - **AnalogMan Beano Boost** no buffered pedal anywhere before it (priority 100): AnalogMan: no buffered pedal ahead of the Beano `[catalog]`
+- **Danelectro 3699 Fuzz** must come after AnalogMan Sun Face BC183 *(preferred)*: Fuzz Face first; the Danelectro follows it `[project]`
+- **Danelectro 3699 Fuzz** must come before AnalogMan Beano Boost: True bypass, so it can sit ahead of the Beano `[project]`
 - **AnalogMan Beano Boost** must come after AnalogMan Sun Face BC183: Direct post-fuzz boost `[project]`
-- **MXR Phase 95** must come before Wampler Ratsbane: Van Halen phaser-into-hard-clipping sound `[project]`
-- **JAM Pedals Retrovibe** must come before Browne Protein V3, Wampler Ratsbane: Uni-Vibe feeding the dirt `[project]`
-- **Browne Protein V3** must come after Wampler Ratsbane: Stacks on / smooths the Ratsbane's hard clipping `[project]`
-- **PastFX Reticon Flanger** must come after all `gain` pedals: Modulation after the gain pedals `[project]`
-- **MXR Analog Chorus** must come after all `gain` pedals: Modulation after the gain pedals `[project]`
-- **JAM Pedals Harmonious Monk Mk2** must come after all `modulation` pedals: Tremolo after the modulation pedals `[project]`
-- **Catalinbread Belle Epoch Deluxe** must come after all `gain` pedals: Original plan: time-based effects after the dirt `[project]`
-- **Catalinbread Belle Epoch Deluxe** must come before BOSS DD-200 Digital Delay: Belle Epoch ahead of the DD-200 `[project]`
-- **Wampler Tumnus Deluxe** must come after all `gain` pedals: End of the drive section: final volume and EQ of the dirt, ahead of the modulation (owner, 2026-11-06; was dead last) `[project]`
-- **BOSS DD-200 Digital Delay** must be last in the chain (priority 110): Its looper records the whole chain, so it comes after everything (owner, 2026-11-04) `[project]`
-- **BOSS DD-200 Digital Delay** must come after all `gain` pedals: Time-based effects after the dirt `[project]`
 - **TC Electronic PolyTune 3 Mini** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first, with no buffer ahead of the Sun Face and Beano `[project]`
 - **TC Electronic PolyTune 3 Mini** must be first in the chain (priority 50): Tuner should come first (overruled by the fuzz rules) `[project]`
 - **Wampler Mini Ego Compressor** must come after AnalogMan Sun Face BC183, AnalogMan Beano Boost, Danelectro 3699 Fuzz (priority 100): Fuzz rules win: the fuzz group comes first `[project]`
 - **Wampler Mini Ego Compressor** must be first in the chain (priority 10): Compressor should come first (overruled by the fuzz rules and the tuner rule) `[project]`
-- **MXR Phase 95** must come before JAM Pedals Red Muck Mk2: Phaser into the Muff fuzz for Pink Floyd sounds `[project]`
+- **Fulltone Full-Drive 2 Mosfet** must come before MXR Phase 95, JAM Pedals Retrovibe: Full-Drive stays ahead of the phaser and vibe `[project]`
+- **JAM Pedals Retrovibe** must come before Browne Protein V3, Wampler Ratsbane: Uni-Vibe feeding the dirt `[project]`
 - **JAM Pedals Retrovibe** must come before MXR Phase 95: Vibe ahead of the phaser (owner, 2026-11-06) `[project]`
 - **JAM Pedals Retrovibe** must come before JAM Pedals Red Muck Mk2: Vibe into the Muff fuzz for Pink Floyd sounds `[project]`
-- **Fulltone Full-Drive 2 Mosfet** must come before MXR Phase 95, JAM Pedals Retrovibe: Full-Drive stays ahead of the phaser and vibe `[project]`
-- **Danelectro 3699 Fuzz** must come after AnalogMan Sun Face BC183 *(preferred)*: Fuzz Face first; the Danelectro follows it `[project]`
-- **Danelectro 3699 Fuzz** must come before AnalogMan Beano Boost: True bypass, so it can sit ahead of the Beano `[project]`
+- **MXR Phase 95** must come before Wampler Ratsbane: Van Halen phaser-into-hard-clipping sound `[project]`
+- **MXR Phase 95** must come before JAM Pedals Red Muck Mk2: Phaser into the Muff fuzz for Pink Floyd sounds `[project]`
+- **Browne Protein V3** must come after Wampler Ratsbane: Stacks on / smooths the Ratsbane's hard clipping `[project]`
+- **Wampler Tumnus Deluxe** must come after all `gain` pedals: End of the drive section: final volume and EQ of the dirt, ahead of the modulation (owner, 2026-11-06; was dead last) `[project]`
+- **MXR Analog Chorus** must come after all `gain` pedals: Modulation after the gain pedals `[project]`
+- **PastFX Reticon Flanger** must come after all `gain` pedals: Modulation after the gain pedals `[project]`
+- **JAM Pedals Harmonious Monk Mk2** must come after all `modulation` pedals: Tremolo after the modulation pedals `[project]`
+- **Catalinbread Belle Epoch Deluxe** must come after all `gain` pedals: Original plan: time-based effects after the dirt `[project]`
+- **Catalinbread Belle Epoch Deluxe** must come before BOSS DD-200 Digital Delay: Belle Epoch ahead of the DD-200 `[project]`
+- **BOSS DD-200 Digital Delay** must be last in the chain (priority 110): Its looper records the whole chain, so it comes after everything (owner, 2026-11-04) `[project]`
+- **BOSS DD-200 Digital Delay** must come after all `gain` pedals: Time-based effects after the dirt `[project]`
 
 ### Section order
 
@@ -148,8 +148,6 @@ Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mea
 | BOSS DD-200 Digital Delay | order: after every gain pedal | required | met | met | met | met |
 
 Dormant (pedals not in the signal chain): `double_dragon`.
-
-Old keys in use (`rules`): they still work; `uv run pb migrate-preferences guitar-gig` moves them into `pedals.<pedal id>`.
 
 ### Notes per pedal
 
@@ -421,7 +419,7 @@ Stopped at the cap `footswitches.max_toppers` (5).
 
 ## Layout proposals
 
-Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 25.4 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 25.7 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
 
 | | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
 |---|--:|--:|--:|--:|
@@ -434,6 +432,7 @@ Made by `uv run scripts/propose_layout.py guitar-gig --max-change fix --seed 1` 
 | Signal cables, routed minimum (mm) | 2712 | 2737 | 2697 | 2729 |
 | Power cables, routed minimum (mm) | 3211 | 3169 | 3177 | 3199 |
 | First input / last output to the board edges (mm) | 11 | 11 | 11 | 11 |
+| Required preference wishes not met | 0 | 0 | 0 | 0 |
 | Build errors / warnings | 0 / 1 | 0 / 0 | 0 / 0 | 0 / 0 |
 | Score (lower is better) | 4154 | 3881 | 3898 | 3911 |
 

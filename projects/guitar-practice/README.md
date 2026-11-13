@@ -79,8 +79,6 @@ Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mea
 | MXR Carbon Copy | order: after e_lady | required | met | met | met | met |
 | TC Electronic Ditto Looper | order: last in the chain | required | met | met | met | met |
 
-Old keys in use (`rules`): they still work; `uv run pb migrate-preferences guitar-practice` moves them into `pedals.<pedal id>`.
-
 ### Notes per pedal
 
 - **TC Electronic PolyTune 2 Mini**: Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.
@@ -265,7 +263,7 @@ Stopped at the cap `footswitches.max_toppers` (5).
 
 ## Layout proposals
 
-Made by `uv run scripts/propose_layout.py guitar-practice --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 9.1 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+Made by `uv run scripts/propose_layout.py guitar-practice --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 9.7 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
 
 | | Owner's layout | Proposal 1 | Proposal 2 | Proposal 3 |
 |---|--:|--:|--:|--:|
@@ -278,6 +276,7 @@ Made by `uv run scripts/propose_layout.py guitar-practice --max-change fix --see
 | Signal cables, routed minimum (mm) | 480 | 342 | 354 | 351 |
 | Power cables, routed minimum (mm) | 1185 | 1238 | 1219 | 1238 |
 | First input / last output to the board edges (mm) | 0 | 0 | 0 | 0 |
+| Required preference wishes not met | 0 | 0 | 0 | 0 |
 | Build errors / warnings | 0 / 2 | 0 / 0 | 0 / 0 | 0 / 0 |
 | Score (lower is better) | 1375 | 765 | 767 | 771 |
 

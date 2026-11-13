@@ -6,7 +6,7 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "673f03c7f005e16d6322558fd6c77d1703f6eca7",
+ "inputs_sha1": "88e21b7fd4aaec28cdc25de13dcb025d11a2103d",
  "chain": [
   "polytune_2_mini",
   "octahive",
@@ -16,7 +16,7 @@
   "carbon_copy",
   "ditto_looper"
  ],
- "runtime_s": 9.1,
+ "runtime_s": 9.7,
  "finalists": 6,
  "owner": {
   "errors": 0,
@@ -51,10 +51,22 @@
    "io": 0.0,
    "flow": 0.0,
    "access": 63.7,
+   "position": 0.0,
    "rotation": 0.0,
    "move": 0.0,
    "touch": -0.0
   },
+  "preferences": {
+   "polytune_2_mini.order.first": true,
+   "octahive.order.first": true,
+   "ibanez_ts_mini.order.after_octahive": true,
+   "duke_of_tone.order.after_ibanez_ts_mini": true,
+   "duke_of_tone.order.after_octahive": true,
+   "e_lady.order.after_duke_of_tone": true,
+   "carbon_copy.order.after_e_lady": true,
+   "ditto_looper.order.last": true
+  },
+  "pref_required_unmet": 0,
   "score": 1374.6
  },
  "owner_power": {
@@ -143,10 +155,22 @@
      "io": 0.0,
      "flow": 0.0,
      "access": 63.9,
+     "position": 0.0,
      "rotation": 0.0,
      "move": 108.1,
      "touch": -0.0
     },
+    "preferences": {
+     "polytune_2_mini.order.first": true,
+     "octahive.order.first": true,
+     "ibanez_ts_mini.order.after_octahive": true,
+     "duke_of_tone.order.after_ibanez_ts_mini": true,
+     "duke_of_tone.order.after_octahive": true,
+     "e_lady.order.after_duke_of_tone": true,
+     "carbon_copy.order.after_e_lady": true,
+     "ditto_looper.order.last": true
+    },
+    "pref_required_unmet": 0,
     "score": 764.7
    },
    "moved": [
@@ -270,10 +294,22 @@
      "io": 0.0,
      "flow": 0.0,
      "access": 62.8,
+     "position": 0.0,
      "rotation": 0.0,
      "move": 110.4,
      "touch": -0.0
     },
+    "preferences": {
+     "polytune_2_mini.order.first": true,
+     "octahive.order.first": true,
+     "ibanez_ts_mini.order.after_octahive": true,
+     "duke_of_tone.order.after_ibanez_ts_mini": true,
+     "duke_of_tone.order.after_octahive": true,
+     "e_lady.order.after_duke_of_tone": true,
+     "carbon_copy.order.after_e_lady": true,
+     "ditto_looper.order.last": true
+    },
+    "pref_required_unmet": 0,
     "score": 766.7
    },
    "moved": [
@@ -397,10 +433,22 @@
      "io": 0.0,
      "flow": 0.0,
      "access": 50.1,
+     "position": 0.0,
      "rotation": 0.0,
      "move": 140.7,
      "touch": -1.8
     },
+    "preferences": {
+     "polytune_2_mini.order.first": true,
+     "octahive.order.first": true,
+     "ibanez_ts_mini.order.after_octahive": true,
+     "duke_of_tone.order.after_ibanez_ts_mini": true,
+     "duke_of_tone.order.after_octahive": true,
+     "e_lady.order.after_duke_of_tone": true,
+     "carbon_copy.order.after_e_lady": true,
+     "ditto_looper.order.last": true
+    },
+    "pref_required_unmet": 0,
     "score": 770.8
    },
    "moved": [

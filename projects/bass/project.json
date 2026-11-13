@@ -14,13 +14,34 @@
   "cables": { "type": "ernie_ball_flat_patch_ra", "power_type": "dc_ra_2_1_low_profile", "overrides": {} },
   "signal_chain": ["darkglass_hyper_luminal", "mxr_bass_synth", "mxr_bass_envelope_filter", "ehx_bass_big_muff_2", "tech21_vt_bass_di"],
   "rule_overrides": {},
-  "rules": [
-    { "id": "darkglass_hyper_luminal.first", "pedal": "darkglass_hyper_luminal", "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first (no tuner on the bass board, owner 2026-11-09)" },
-    { "id": "mxr_bass_synth.before_group_gain", "pedal": "mxr_bass_synth", "type": "before_group", "group": "gain", "strength": "required", "reason": "Synth before the drive pedals" },
-    { "id": "tech21_vt_bass_di.last", "pedal": "tech21_vt_bass_di", "type": "position", "value": "last", "strength": "required", "reason": "Preamp / DI last" },
-    { "id": "mxr_bass_envelope_filter.before_group_gain", "pedal": "mxr_bass_envelope_filter", "type": "before_group", "group": "gain", "strength": "required", "reason": "Envelope filter before the drive pedals (owner's layout, 2026-11-09)" },
-    { "id": "ehx_bass_big_muff_2.before_group_overdrive", "pedal": "ehx_bass_big_muff_2", "type": "before_group", "group": "overdrive", "strength": "required", "reason": "Fuzz comes before any drive pedal" }
-  ],
+  "rules": [],
+  "pedals": {
+    "darkglass_hyper_luminal": {
+      "order": {
+        "first": { "type": "position", "value": "first", "strength": "required", "priority": 10, "reason": "Compressor first (no tuner on the bass board, owner 2026-11-09)" }
+      }
+    },
+    "mxr_bass_synth": {
+      "order": {
+        "before_group_gain": { "type": "before_group", "group": "gain", "strength": "required", "reason": "Synth before the drive pedals" }
+      }
+    },
+    "mxr_bass_envelope_filter": {
+      "order": {
+        "before_group_gain": { "type": "before_group", "group": "gain", "strength": "required", "reason": "Envelope filter before the drive pedals (owner's layout, 2026-11-09)" }
+      }
+    },
+    "ehx_bass_big_muff_2": {
+      "order": {
+        "before_group_overdrive": { "type": "before_group", "group": "overdrive", "strength": "required", "reason": "Fuzz comes before any drive pedal" }
+      }
+    },
+    "tech21_vt_bass_di": {
+      "order": {
+        "last": { "type": "position", "value": "last", "strength": "required", "reason": "Preamp / DI last" }
+      }
+    }
+  },
   "power": {
     "supplies": [
       {

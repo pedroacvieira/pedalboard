@@ -41,23 +41,21 @@ flowchart TB
 
 - **Darkglass Hyper Luminal** must be first in the chain (priority 10): Compressor first (no tuner on the bass board, owner 2026-11-09) `[project]`
 - **MXR Bass Synth** must come before all `gain` pedals: Synth before the drive pedals `[project]`
-- **Tech 21 SansAmp VT Bass DI** must be last in the chain: Preamp / DI last `[project]`
 - **MXR Bass Envelope Filter** must come before all `gain` pedals: Envelope filter before the drive pedals (owner's layout, 2026-11-09) `[project]`
 - **Electro-Harmonix Bass Big Muff Pi 2** must come before all `overdrive` pedals: Fuzz comes before any drive pedal `[project]`
+- **Tech 21 SansAmp VT Bass DI** must be last in the chain: Preamp / DI last `[project]`
 
 ### Preferences
 
 Wishes per pedal (`pedals.<pedal id>` in project.json, and the old keys that mean the same). Met = the pedal's reference point lies in the wanted half of the board (position: body centre for the side, footswitch mean for the depth), the chain keeps the order (ordering), the wiring puts it where asked (power: the hand wiring for the owner's layout, the wiring computed for a proposal). A required position or power wish that is not met is a build warning; the layout search and the power assignment read all of them.
 
-| Pedal | Wish | Strength | Owner's layout |
-|---|---|---|---|
-| Darkglass Hyper Luminal | order: first in the chain | required | met |
-| MXR Bass Synth | order: before every gain pedal | required | met |
-| MXR Bass Envelope Filter | order: before every gain pedal | required | met |
-| Electro-Harmonix Bass Big Muff Pi 2 | order: before every overdrive pedal | required | met |
-| Tech 21 SansAmp VT Bass DI | order: last in the chain | required | met |
-
-Old keys in use (`rules`): they still work; `uv run pb migrate-preferences bass` moves them into `pedals.<pedal id>`.
+| Pedal | Wish | Strength | Owner's layout | Proposal 1 |
+|---|---|---|---|---|
+| Darkglass Hyper Luminal | order: first in the chain | required | met | met |
+| MXR Bass Synth | order: before every gain pedal | required | met | met |
+| MXR Bass Envelope Filter | order: before every gain pedal | required | met | met |
+| Electro-Harmonix Bass Big Muff Pi 2 | order: before every overdrive pedal | required | met | met |
+| Tech 21 SansAmp VT Bass DI | order: last in the chain | required | met | met |
 
 ### Notes per pedal
 
@@ -213,5 +211,42 @@ Chosen after the layout (never during the search), on bypass switches only (a ta
 
 ## Layout proposals
 
-None yet: `uv run scripts/propose_layout.py bass` searches for better pedal positions (it never changes playground_design.json).
+Made by `uv run scripts/propose_layout.py bass --max-change fix --seed 1` (max_change `fix`, max move 40 mm, seed 1, 2000 iterations x 6 restarts, 3.6 s). Each proposal is the owner's layout with only the moved pedals changed (pedals stay inside the usable board area, `board.json` `bounds`, and a pedal of the owner's layout outside it is moved in first). Pedal Playground cannot load a file, so move those pedals by hand on the site (table per proposal: dx + = right, dy + = towards the front; the picture shows the old positions dashed), then fetch the layout (`uv run pb fetch <project>`) and build. Approximation: plug sizes are partly estimates and the search scores a simplified model; every proposal was checked with this build (clearance, routed cables, footswitch spacing).
+
+| | Owner's layout | Proposal 1 |
+|---|--:|--:|
+| Outside the usable area | 0 | 0 |
+| Blocked plugs | 0 (0.0 mm) | 0 (0.0 mm) |
+| Plug collisions | 0 | 0 |
+| Unroutable / squeezed / over the stacking or plug limit | 0 / 0 / 0 | 0 / 0 / 0 |
+| Footswitch crowding (lower is better) | 4 | 4 |
+| Closest footswitch pair (mm) | 83.5 | 83.5 |
+| Signal cables, routed minimum (mm) | 405 | 394 |
+| Power cables, routed minimum (mm) | 1132 | 1117 |
+| First input / last output to the board edges (mm) | 14 | 24 |
+| Required preference wishes not met | 0 | 0 |
+| Build errors / warnings | 0 / 0 | 0 / 0 |
+| Score (lower is better) | 616 | 616 |
+
+All columns use a power wiring computed for that layout (power.assign, as for the proposals), so the owner's power and error/warning figures can differ from the build above, which uses the hand wiring in project.json.
+
+### Proposal 1
+
+Layout document: [proposals/1.json](proposals/1.json).
+
+![Proposal 1](proposals/1.svg)
+
+| Pedal | dx (mm) | dy (mm) | Moved (mm) | Rotation |
+|---|--:|--:|--:|---|
+| Tech 21 SansAmp VT Bass DI | +9.9 | +17.3 | 20.0 | 0 deg |
+
+Power wiring for this layout (computed under the power policy; the build keeps using project.json):
+
+| Supply | Output | Voltage | Daisy chain |
+|---|---|--:|---|
+| Harley Benton PowerPlant ISO-5 Pro | OUT1 | 9V | Electro-Harmonix Bass Big Muff Pi 2 |
+| Harley Benton PowerPlant ISO-5 Pro | OUT2 | 9V | Tech 21 SansAmp VT Bass DI |
+| Harley Benton PowerPlant ISO-5 Pro | OUT3 | 9V | MXR Bass Envelope Filter |
+| Harley Benton PowerPlant ISO-5 Pro | OUT4 | 9V | Darkglass Hyper Luminal |
+| Harley Benton PowerPlant ISO-5 Pro | OUT5 | 9V | MXR Bass Synth |
 
