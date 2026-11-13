@@ -107,7 +107,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   surrogate score, annealing search), `propose_layout.py` (CLI: search, finalists checked with the build, proposals),
   `pedal_editor.py` (GUI: jacks and footswitches; pure helpers at module level), `fetch_playground.py` (the shared layout from
   Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold).
-- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~700 tests, ~150 s, hand-computed geometry cases
+- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~780 tests, ~250 s, hand-computed geometry cases
   (`PEDALBOARD_SLOW=1` adds the full guitar-gig search). Tests that depend on the gig's layout, wiring or proposals use the
   FROZEN copy `tests/fixtures/guitar-gig/` (`conftest.gig_copy` / `GIG_FIXTURE`), never the live project (the owner fetches
   new layouts all the time); update the fixture only deliberately.
@@ -187,6 +187,16 @@ uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown 
   plug-check (extra and first-in / last-out jacks, unknown types, projects without `cables.type`). Warnings name
   the plug part an obstacle reaches deepest. The routing width is the widest signal cable type in use; each
   plug's straight run is one diameter of its own type.
+- Cable under its own plug (`feat/u-turn-plugs`, plan `docs/plans/u-turn-plugs.md`, owner 2026-11-13): a right-angle plug that does not point to
+  the side its cable goes to has the cable turn back ACROSS it: the plug sits high enough on the pedal for one thin cable to pass under it. No
+  keep-out (a cable's own plugs stay free for it in `route_all` / `smooth`; the side ranking is unchanged), no climb, no extra length (`min_mm`
+  stays along the routed path on the deck); only ONE cable can pass under a plug, its own (other cables cross a plug over the top,
+  `max_over_plug`; a right-angle DC plug under a neighbouring signal plug is `pass_pairs`, unchanged). The crossing is reported, information
+  only: `routing.passes_under_own_plug(o, polylines)` (a segment of a top polyline more than `UNDER_OWN_MIN_MM` inside the option's
+  `plug_body_rects` = head + barrel) sets `under_own_a` / `under_own_b` on every routed signal and DC cable (a pedal-start daisy leg: `under_own_a`
+  = the previous pedal's plug); README Exits column `right (passes under its own plug)` (`build.exits_cell`), the sentence under the cable table
+  (`build.under_own_text`), the build log line `routing: N cables pass under their own plug (S3, P4)` (`build.under_own_line`). The layout surrogate
+  has no keep-out, so it agrees with the build.
 - Plug orientation (`feat/plug-orientation`, plan `docs/plans/plug-orientation.md`, owner 2026-10-28):
   **collisions**: every used plug's footprint (chosen option: head, barrel, run; jacks without a plug model keep their
   fixed box from `ctx["fixed_zones"]`: first input, last output, extra jacks) must not overlap another jack's
