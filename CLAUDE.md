@@ -1,14 +1,16 @@
 # Pedalboard planner: briefing for Claude / agents
 
 Read this first. It gives the basics so a new conversation or agent only needs a goal and an approach.
-Task-specific handovers live in `docs/handovers/` (one file per delegated task; read the one you are given).
+Handovers for delegated tasks live in `docs/handovers/` while the task runs (read the one you are given); `docs/plans/` keeps the
+design record of every merged feature (the code and this file are current where a plan differs).
 Open work and questions for the owner: `docs/TODO.md` (hand-written backlog; keep it current). Planned features,
 with owner decisions and the suggested order, are in its "Next features" section (one `feat/<name>` branch each).
 
 ## What this repo is
 A data-driven planner for the owner's three pedalboards (projects): `guitar-gig` (Fender Professional Medium,
-2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, 1 Ojai R30 still to buy), `bass` (D'Addario XPND 1 + extension, a composed
-board; Harley Benton PowerPlant ISO-5 Pro; no tuner, owner 2026-11-09). Python 3.12, stdlib + Pillow (+ tkinter for the jack app) today. New
+2x Strymon Ojai R30), `guitar-practice` (Rockboard Duo 2.1, the
+bass rig's Harley Benton ISO-5 Pro until a second one is bought), `bass` (D'Addario XPND 1 + extension, a composed
+board; Harley Benton PowerPlant ISO-5 Pro; no tuner, owner 2026-11-09). Python 3.12, stdlib + Pillow (+ tkinter for the two editors) today. New
 dependencies are fine when there is a reason for each: Python ones via uv only, anything else (npm, system
 packages) only after asking the owner.
 Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`, project `.venv`): never `pip install` into the
@@ -23,16 +25,14 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
 ## Layout
 - `catalog/pedals.json`: every pedal (specs that belong to the pedal: tags, digital, clocked_noise, bypass,
   `bypass_info` {confidence maker|retailer|forum|owner, source, url, notes} sources `buffered_bypass` / `buffer_switchable` (a
-  switchable pedal's `buffered_bypass` = the factory default unless the owner set it; gig pedals researched 2026-11-06,
-  handover `docs/handovers/gig-buffers.md`),
+  switchable pedal's `buffered_bypass` = the factory default unless the owner set it; gig pedals researched 2026-11-06),
   `power_consumption` {current_ma (worst case), min_voltage_v, max_voltage_v, needs_isolated_output}, prices,
   `playground_title` = key into Pedal Playground's database, intrinsic ordering rules in `dependencies`).
   `height_mm` (optional, null = not found; not required by `no_unknown`) = how tall the pedal stands; the footswitch is
   assumed to be its tallest point, so the switch top = `height_mm` (owner, 2026-11-05; for footswitch reach / toppers
   later). `height_info` {measure overall|unspecified|enclosure_plus_switch, confidence maker|retailer|forum, source, url,
   notes}; an enclosure-only figure gets + 15.2 mm (`switch_allowance_mm`: Carbon Copy 47.0 overall - Sun Face 31.8
-  enclosure, owner rule 2026-11-05; `enclosure_mm` keeps the published figure). Researched 2026-11-05, handover
-  `docs/handovers/pedal-heights.md`.
+  enclosure, owner rule 2026-11-05; `enclosure_mm` keeps the published figure). Researched 2026-11-05.
 - `catalog/power_supplies.json`: supply models (ports, voltage options, mA limits, quantity owned).
 - `catalog/cables.json`: cable types with a `role` (patch | instrument | power | expression | reference), `diameter_mm` = width ON
   THE BOARD (routing width; a flat ribbon's narrow side), `jacket`, plug style right_angle|straight, head
@@ -125,7 +125,7 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   Pedal Playground: the site's Supabase REST with the public key from its scripts, read-only), `new_project.py` (scaffold),
   `preferences.py` (pure: the per-pedal profiles: `profiles`, `lower`, `validate`, `migrate`, position / power wishes, `check`),
   `migrate_preferences.py` (one-off: old per-pedal keys -> `pedals.<id>`; `common.dump_project` writes project.json in the repo's style).
-- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~840 tests, ~300 s, hand-computed geometry cases
+- `tests/`: pytest (`uv run pb test` = `uv run pytest tests -q`), ~900 tests, ~300 s, hand-computed geometry cases
   (`PEDALBOARD_SLOW=1` adds the full guitar-gig search). Tests that depend on the gig's layout, wiring or proposals use the
   FROZEN copy `tests/fixtures/guitar-gig/` (`conftest.gig_copy` / `GIG_FIXTURE`), never the live project (the owner fetches
   new layouts all the time); update the fixture only deliberately.
@@ -134,7 +134,8 @@ needed, but the tool does not track or match the owner's own cables (no DC cable
   runnable as `uv run scripts/<name>.py`. pyproject `[project.scripts]` + `uv_build` (package `pb` only).
 
 ## Commands
-`uv run pb <command> ...` runs the same scripts (`uv run pb --help`); the long forms:
+`uv run pb <command> ...` runs the same scripts (`uv run pb --help`); the root README's "Commands" table (generated by
+`build.root_readme`: keep it in step with the scripts' options) lists every option. The long forms:
 ```
 uv sync                                        # once: create .venv (Pillow, pytest) and the `pb` command
 uv run scripts/build.py [project...] [--images]   # validate + regenerate (fast, no network after the DB cache;
@@ -151,6 +152,7 @@ uv run scripts/fetch_playground.py <project> [--share LINK] [--dry-run]   # the 
 uv run scripts/propose_layout.py <project> [--max-change fix|rearrange|free] [--seed S] [--top N] [--pin ID ...]
                                                # layout proposals in projects/<name>/proposals/ (then build)
 uv run scripts/propose_layout.py <project> --score   # surrogate term breakdown of the owner's layout
+uv run scripts/new_project.py <name> --instrument guitar|bass [--share LINK]   # scaffold projects/<name>/project.json
 uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal keys -> pedals.<id> (project.json rewritten in the repo's style)
 ```
 
@@ -180,8 +182,8 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
   a hole AND free on top (a pedal over part of a hole blocks that part) AND free under. No under-board fit check.
 - Two-layer routing (`routing.py`, `Under`): the under layer = the board footprint (under-board supplies are its only
   obstacles), same cells as the top grid. Cables cross the deck ONLY through holes and the owner's edge
-  segments (round the board edge where the border lies inside a segment, `edge_transit_mm` per crossing: board data,
-  else `power_routing.edge_transit_mm`, else 2 x hole transit; a front segment only with `cables.route_in_front`).
+  segments (round the board edge where the border lies inside a segment, `edge_transit_mm` per crossing: `power_routing.edge_transit_mm`,
+  else the board data, else 2 x hole transit; a front segment only with `cables.route_in_front`).
   No edge segments = holes only; an under-board supply with neither usable holes nor segments is an error (owner,
   2026-10-26). Signal cables start/end on top and may go under through holes or segments: per pass
   `hole_transit_mm` (length, board data 15, unverified) + `hole_penalty` 15 (search only), under mm cost 0.9; own
@@ -366,14 +368,14 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
   + `weight`; depth `any` = want "none" = `access_rule` returns None), `footswitches.toppers`; pedals not in the chain are "dormant" (kept, listed in the README,
   no finding). The old keys stay readable (`merge_legacy`; the frozen gig fixture still uses them); a wish in both places is an error only when the values differ
   (`pedals.<id>.<field> and <old key> disagree`). Supply instances stay in `layout.pins` / `layout.rotations`. `uv run pb migrate-preferences <project> [--dry-run]`
-  moves the old keys into the profiles (the live project.json files are migrated only on the owner's go; fresh proposals are stamped again when the
+  moves the old keys into the profiles (all three live project.json files are migrated; the frozen gig fixture keeps the old keys; fresh proposals are stamped again when the
   lowered project reads the same). `preferences.validate` messages: `pedals.<id>...`; order entries report as `rules: <pedal>.<name>: ...`. Search: a side wish
   pulls the BODY centre toward that board edge (`layout.weights.position` 1 x weight / mm), a REQUIRED side or depth wish whose reference point (body centre x /
   footswitch mean y, else centre) is not in the wanted half costs `preference_miss` 100 + `preference_miss_mm` 20 / mm past the middle line (a penalty, not a hard
   constraint); the depth pull is the access rule. Power: `power.assign(wishes=)`: a voltage wish beats the hand wiring's, REQUIRED supply / port / own_output =
   feasibility, PREFERRED = `PREFERENCE_COST_MM` 300 per pedal with an unmet wish (below `WARNING_COST_MM` 1000); the hand wiring stays in `power.supplies[].outputs[]`.
   Build: `ctx["rule_status"]` {rule id: met|broken|overridden|skipped|disabled}, `ctx["preferences"]` rows (`preferences.check`: position.side / position.depth /
-  order / power / pin / rotations / toppers; met True / False / None), `ctx["pref_notes"]`, `ctx["pref_legacy"]`; an unmet REQUIRED position or power wish is a
+  order / power / pin / rotations / toppers; met True / False / None), `ctx["pref_notes"]`, `ctx["pref_legacy"]`, `ctx["pref_dormant"]` (profiles of pedals not in the chain); an unmet REQUIRED position or power wish is a
   warning `preferences: <pedal>: wants ... (required); ...` (error with `validation.strict_preferences`), preferred only in the README table "Preferences" (owner's layout
   = the hand wiring, a proposal column from `meta.json` `metrics["preferences"]`, `?` for proposals made before the feature). Proposals: `metrics["pref_required_unmet"]`
   gates (`acceptable`: not more than the owner's layout) and ranks (after `fs_close`).
@@ -393,7 +395,7 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
   for such a plug only (`layout.in_area`). Every other plug keeps the plain test (its exit must lie in the board + margin). `bodies` is threaded like `outlines` (`build.validate(body_data=)`, `jacks.check`, `layout_from_items`,
   `layout.Model(bodies=)`); a caller that passes its own `outlines` and no `bodies` gets no bodies (the boxes); `proposal_inputs_sha1`
   includes the bodies.
-- Composed boards (owner, 2026-11, `feat/board-pieces`, handover `docs/handovers/board-pieces.md`): a layout may hold several `pedalboard` items (the
+- Composed boards (owner, 2026-11, `feat/board-pieces`, plan `docs/plans/board-pieces.md`): a layout may hold several `pedalboard` items (the
   bass board: a D'Addario XPND 1 + its extension, which slide on each other). The pieces are SUMMED and evaluated as ONE board: the deck
   is the union of the footprints (pieces may overlap; a pedal may straddle a joint), under the deck cables pass freely between pieces.
   `jacks.layout_from_items` returns `pieces`, `board_rects` (footprints), `board_rect` (their bounding box: the extent everywhere the single
@@ -417,7 +419,8 @@ uv run scripts/migrate_preferences.py [project...] [--dry-run]   # old per-pedal
 - When delegating to an agent, write a handover (goal, context, constraints, files, acceptance, what not to
   touch) to `docs/handovers/<task>.md` and point the agent at that handover only. Keep its scope and inputs
   minimal: one well-bounded task, only the decisions, conventions and file/function names that task needs
-  (copy the relevant lines in), no "read the whole plan / other handovers / all of CLAUDE.md" pointers.
+  (copy the relevant lines in), no "read the whole plan / other handovers / all of CLAUDE.md" pointers. Delete the
+  handover once its work is merged (git history keeps it).
 - Delegated agents (`general-purpose`: implementation AND code review) run on `model: sonnet`; Opus only for
   planning or when the owner asks.
 - Keep this file current when structure, conventions or decisions change.

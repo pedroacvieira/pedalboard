@@ -3,7 +3,7 @@
 `render(ctx, names)` is the whole picture (routing.svg): the board, the dashed routing area, pedals, jacks, plug heads,
 cables (one colour each, a dark casing, an S# label), footswitches and a legend table below. The document is sized in
 mm (width="..mm" height="..mm", viewBox in mm) so a browser prints it at true scale. Smaller functions draw one thing
-each, so later pictures (power, a web UI) can reuse them. No pedal images unless `images` is given.
+each, so `render_power` (power.svg) and later pictures (a web UI) reuse them. No pedal images unless `images` is given.
 """
 import base64
 import io

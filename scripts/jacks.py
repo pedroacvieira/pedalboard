@@ -361,11 +361,11 @@ def layout_from_items(items, chain, insts, cat_pedals, cat_supplies, jset, warni
     board_data = boards_mod.load() if board_data is None else board_data
     board_pieces = board_pieces or {}
     warnings.extend(boards_mod.unknown_pieces(board_pieces, [b.get("image") or "" for b in boards]))
-    holes, edge_segments, usable_rects, entries, piece_holes = [], [], [], [], []
+    edge_segments, usable_rects, entries, piece_holes = [], [], [], []
     # the edits of each piece by the one rule the board editor shares (`boards.piece_edits`): a `pieces` entry for the image wins (also
     # for the first piece: it does not depend on the layout order); else the top-level boxes / bounds belong to the FIRST piece
     mine_of = boards_mod.piece_edits(board_edits, board_bounds, board_pieces, [b.get("image") or "" for b in boards])
-    for n, piece in enumerate(boards):
+    for piece in boards:
         entry = board_data.get(piece.get("image") or "") or {}
         edits, bounds = (mine_of[piece.get("image") or ""][k] for k in ("boxes", "bounds"))
         piece_holes.append(design.board_holes(piece, entry.get("holes"), edits))
@@ -480,13 +480,14 @@ def check(ctx, cat_pedals, cat_supplies, jacks_data, cable_types=None, defer=Fal
     """Jack findings for one project, appended to ctx['errors'] / ctx['warnings'].
 
     Fills ctx: jack_fixes [(catalog id, command)], jack_notes, jack_setup {id: status}, violations,
-    cables {"signal": [...], "power": [...]} (None without a design file), jack_settings.
+    cables {"signal": [...], "power": [...]} (None without a design file), jack_settings, outside_usable, layout,
+    layout_source, fixed_box, fixed_zones, plug_collisions, plug_under.
     Missing jack data and blocked clearance are warnings unless the project sets
     validation.require_jacks / validation.strict_clearance.
     Every used jack gets the fixed clearance box here. With `defer` the results wait in ctx['fixed_box'] and
     routing.route_project reports them (report_fixed_box) for the jacks it did not check with a plug model, so
     each jack is checked exactly once by whichever model actually ran. `cable_types`: catalog/cables.json (loaded
-    if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_canvas) to
+    if None) for the plug depth used to measure cable lengths. `items`: a parsed layout (design.parse_design) to
     check instead of the project's playground_design.json (a candidate layout, scored without writing a file).
     `outlines`: catalog/outlines.json (read if None), for the layout's "shapes", `bodies` (read if `outlines` is None too, else none) for its "bodies"; `board_data`: usable
     catalog/boards.json (read if None), for the layout's "holes" (with the project's board.json edits).

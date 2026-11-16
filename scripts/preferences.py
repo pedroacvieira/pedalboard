@@ -23,7 +23,6 @@ ROTATIONS = (0, 90, 270)
 DEFAULT_WEIGHT = 0.3
 DEFAULT_STRENGTH = "preferred"
 NAME_RE = re.compile(r"^[a-z0-9_]+$")
-RULE_TYPES = ("after", "before", "after_group", "before_group", "position", "no_buffered_before", "as_early_as_possible")
 POSITION_KEYS = ("side", "depth", "weight", "strength")
 POWER_KEYS = ("own_output", "supply", "port", "voltage_v", "strength")
 
@@ -570,8 +569,8 @@ def _reference(ctx, pid, fs_y):
 
 def check(ctx, cat_pedals):
     """The preference table of one built project: fills ctx["preferences"] = [{"pedal", "kind", "wish", "strength", "met" (True / False /
-    None = nothing to judge: applied settings), "detail"}], kinds position.side, position.depth, order, pin, rotations, toppers; appends the
-    findings of unmet REQUIRED position wishes to ctx warnings (errors with `validation.strict_preferences`). Order wishes are judged by
+    None = nothing to judge: applied settings), "detail"}], kinds position.side, position.depth, order, power, pin, rotations, toppers (and ctx["pref_dormant"]: profiles of pedals
+    not in the chain); appends the findings of unmet REQUIRED position and power wishes to ctx warnings (errors with `validation.strict_preferences`). Order wishes are judged by
     `ctx["rule_status"]` (met | broken | overridden | skipped | disabled), the findings of those are the rule loop's. Run after
     `footswitches.check` (the footswitch points)."""
     project = ctx["project"]

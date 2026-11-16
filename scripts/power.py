@@ -225,7 +225,6 @@ def estimate_setup(project, lay, cable_types):
     radius}. `lay`: jacks.layout_from_items's result (its holes, edge segments, under-board supply items and outline shapes). Under-board supplies do not
     move in the layout search, so this is done once per model. None without a power cable type, without holes or with
     `cables.under_board: false`."""
-    import routing
     cfg = routing.settings(project, cable_types)
     ptype = cable_types.get(cfg.get("power_type") or "")
     if not ptype or not cfg["under_board"] or not (lay.get("holes") or lay.get("edge_segments")):
@@ -380,9 +379,6 @@ class Crossings:
     def __len__(self):
         return len(self.holes) + len(self.edges)
 
-    def without(self, rects):
-        return Crossings(self.holes.without(rects), self.edges, self.cfg)
-
     def nearest(self, point, blocked=(), reach=100.0):
         if not self.edge_set:   # holes only (the common case): the plain nearest hole point
             return self.holes.nearest(point, blocked, reach)
@@ -509,7 +505,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
     wish beats `run_v` (a PREFERRED one is tried first and given up, costing its `PREFERENCE_COST_MM`, when no wiring exists with it); a REQUIRED supply / port / own_output wish is a feasibility rule
     (a start wiring that breaks it is dropped; no wiring left raises ValueError); a PREFERRED one costs `PREFERENCE_COST_MM` when unmet.
     Returns {"supplies": [project.json power.supplies entries], "length_mm", "warnings": [build warnings of the
-    wiring], "errors": [], "preferences": [(pedal, wish text, met)]} or raises ValueError if no wiring satisfies the policy."""
+    wiring], "preferences": [(pedal, wish text, met)]} or raises ValueError if no wiring satisfies the policy."""
     sensitive, strength, group_18v = policy_settings(project)
     chain = [p for p in chain if p in pedals]
     run_v = dict(run_v or {})
@@ -659,7 +655,7 @@ def assign(chain, pedals, insts, project, points, port_points, run_v=None, start
         entry["outputs"] = by_inst[inst["id"]]
         supplies.append(entry)
     missed = {p for n, members in enumerate(state) for p, _ in unmet(n, members)}
-    return {"supplies": supplies, "length_mm": length, "warnings": warns, "errors": [],
+    return {"supplies": supplies, "length_mm": length, "warnings": warns,
             "preferences": [(p, wish_text(w), p not in missed) for p, w in wishes.items()]}
 
 

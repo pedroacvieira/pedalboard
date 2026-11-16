@@ -1,5 +1,7 @@
 # Plan: DC plug side by route length (`feat/power-plug-side`)
 
+Status: implemented, merged into main (2026-11-03, `feat/power-plug-side`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
+
 ## Owner decision (2026-10-29)
 A DC plug's exit side only matters for the cable length. When the sides are equally good on everything that matters for the
 fit (feasible, down, blocked parts + plug collisions), take the side with the SHORTER power cable, as the signal plugs

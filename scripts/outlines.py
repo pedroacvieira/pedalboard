@@ -125,7 +125,7 @@ def outline_from_alpha(alpha, w_mm, h_mm, cell_mm=1.0, gap_mm=2.0, tol_mm=1.0, m
     the least area are merged. An empty image gives [[0, 0, 1, 1]]."""
     img = _as_image(alpha)
     nx, ny = max(1, round(w_mm / cell_mm)), max(1, round(h_mm / cell_mm))
-    cw, ch = w_mm / nx, h_mm / ny
+    cw = w_mm / nx
     grid = _cells(img, nx, ny)
     if not any(any(row) for row in grid):
         return [[0, 0, 1, 1]]

@@ -12,10 +12,10 @@ and iteration budget) yields distinct finalists. Each finalist gets its own powe
 outputs and daisy chains for the shortest DC cable under the power policy) and is checked with the real pipeline
 (build.validate with the injected layout: plug clearance, routed cables, footswitch spacing). A finalist becomes a
 proposal only if nothing of it lies outside the usable board area (board.json `bounds`; the search never puts a pedal there,
-a pedal of the owner's layout that is outside moves in first; only a pinned pedal stays) and it is not worse than the owner's layout on blocked plugs, plug collisions, routing problems (unroutable, squeezed,
-over the stacking or plug limit) and footswitch pairs below the minimum, and better overall (lexicographic: blocked plugs,
-blocked mm, plug collisions, routing problems, footswitch pairs, final score = surrogate with the routed signal length and router
-penalties).
+a pedal of the owner's layout that is outside moves in first; only a pinned pedal stays) and it is not worse than the owner's layout on errors, blocked plugs, plug collisions, routing problems (unroutable, squeezed,
+over the stacking or plug limit), footswitch pairs below the minimum and unmet REQUIRED preference wishes, and better overall
+(lexicographic: errors, items outside the usable area, blocked plugs, blocked mm, plug collisions, routing problems, footswitch
+pairs below the minimum, unmet required wishes, final score = surrogate with the routed signal length and router penalties).
 
 Output in projects/<name>/proposals/: <n>.json (the owner's layout document with only the moved
 pedals' position/rotation changed; Pedal Playground cannot load it, the owner moves those pedals by hand), <n>.svg (proposal with the owner's positions dashed and arrows), and

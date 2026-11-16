@@ -1,6 +1,6 @@
 # Plan: `feat/u-turn-plugs` (a right-angle plug that turns its cable back)
 
-Status: plan only (2026-11-13). Nothing implemented. Owner decisions at the end; the plan follows the recommended defaults.
+Status: implemented, merged into main (2026-11-13, `feat/u-turn-plugs`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## Owner decision 2026-11-13 (overrides Decision 1 and the keep-out design B below)
 A cable doing a U-turn MAY cross its own plug: in real life the plug sits high enough on the pedal that one thin cable (the owner's
@@ -191,7 +191,6 @@ New file `tests/test_u_turn.py` unless noted.
 12. README: the Exits cell reads `right (turned back)` for scene 4 (tests/test_check.py style).
 
 ## 6. Implementation steps (each a self-contained handover for a Sonnet agent, one branch `feat/u-turn-plugs`)
-Write each as `docs/handovers/u-turn-<n>.md`, with the relevant lines of sections 3 and 5 copied in.
 1. **Geometry helpers (no behaviour change)**: `routing.keepout_rects`, `routing.around_own_plug`, `routing.turns_back` +
    tests 1, 2. Files: scripts/routing.py, tests/test_u_turn.py.
 2. **Search with forbid**: `astar` / `astar_layers` / `_search` / `plain_search` / memo key / `route_all` nets with forbid

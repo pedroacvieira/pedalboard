@@ -16,7 +16,6 @@ from common import JACKS_FILE, load_catalog  # noqa: E402
 
 def test_command_names_the_editor():
     assert jacks.COMMAND == footswitches.COMMAND == pe.COMMAND == "uv run scripts/pedal_editor.py"
-    assert not (ROOT / "scripts" / "jack_setter.py").exists()
 
 
 def test_jacks_file_doc_is_current_and_the_file_is_unchanged_by_a_rewrite():

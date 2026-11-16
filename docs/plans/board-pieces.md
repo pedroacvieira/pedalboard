@@ -1,5 +1,7 @@
 # Plan: `feat/board-pieces`: a board made of several pieces
 
+Status: implemented, merged into main (2026-11-09, `feat/board-pieces`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
+
 Owner (2026-11-09): the bass layout uses a D'Addario XPND 1 and its extension, two `pedalboard` items side by side
 (XPND 1 355.6 x 153.2 mm, extension 273.1 x 139.7 mm; in the owner's layout they overlap ~22 mm in x and their backs
 differ by ~3 mm). Today `jacks.layout_from_items` takes the FIRST pedalboard item as the board and ignores the rest, so

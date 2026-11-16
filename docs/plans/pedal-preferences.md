@@ -1,8 +1,6 @@
 # Plan: `feat/pedal-preferences`: one preference profile per pedal in a project
 
-Status: plan (2026-11-13), waiting for the owner's decisions (last section; implementation can start with the recommended
-defaults). Code read: `scripts/layout.py`, `scripts/build.py`, `scripts/power.py`, `scripts/footswitches.py`,
-`scripts/propose_layout.py`, the three `project.json` files, `tests/fixtures/guitar-gig/project.json`.
+Status: implemented, merged into main (2026-11-13, `feat/pedal-preferences`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 1. Goal
 

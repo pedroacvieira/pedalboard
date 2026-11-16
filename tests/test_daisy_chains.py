@@ -1,6 +1,6 @@
 """Forked and serial power daisy chains (`outputs[].style`, `power_routing.daisy_style`): validation, the hops and the
 physical cables (P#, legs P#.n), the DC cable summary, the power assignment and the layout surrogate. Hand-computed synthetic cases plus
-the real guitar-gig (all outputs serial by default: its routes and lengths are the ones from before the feature)."""
+the frozen guitar-gig (tests/fixtures) (all outputs serial by default: its routes and lengths are the ones from before the feature)."""
 import copy
 import json
 import re
@@ -133,7 +133,7 @@ def test_serial_summary_on_the_gig_is_the_sum_of_the_legs():
     assert c6["to"] == ["red_muck.power", "beano.power", "danelectro_3699.power", "sun_face.power"]
     assert all(legs[p]["cable"] == "P6" and legs[p]["style"] == "serial" for p in c6["legs"])
     # the legs themselves are the routes and lengths of the owner's wiring (measured DC plug, dc_ra_owner_baseline)
-    assert [round(legs[p]["min_mm"]) for p in ("P6.1", "P6.2", "P6.3", "P6.4")] == [83, 393, 204, 240]   # (DC exit offset 8.4 and the pass-under rule: was 125 / 430 / 199 / 267.) P6.3 / P6.4 (danelectro_3699.power right: the shorter side, `routing.refine_dc_sides`); P9 left -> right: the plug at sun_face.power avoids danelectro_3699.out (plug-orientation phase 1); P6 / P7 right / left: red_muck.power takes the right side once the signal plugs saw the DC plugs (review fix, rounds)
+    assert [round(legs[p]["min_mm"]) for p in ("P6.1", "P6.2", "P6.3", "P6.4")] == [83, 393, 204, 240]   # P6.3 / P6.4: danelectro_3699.power exits right (the shorter side, `routing.refine_dc_sides`)
     assert round(c6["min_mm"]) == 920
 
 

@@ -1,8 +1,6 @@
 # Plan: `feat/supply-placement`: supplies on or under the board, board holes, cables through the holes
 
-Status: implemented (2026-10-26, phases 1-6 + code review); owner decisions in two rounds. Branch
-`feat/supply-placement` from `main` (routing-view and pedal-outlines are merged and pushed). It also absorbs the
-TODO item "Later: patch cables under the board" and part of feature 2 (power cables stay under the board).
+Status: implemented, merged into main (2026-10-27, `feat/supply-placement`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## Goal
 1. The board's **holes** as data: derived from the Pedal Playground board image, editable per project in a new
@@ -47,7 +45,7 @@ TODO item "Later: patch cables under the board" and part of feature 2 (power cab
     from under to over the board ONLY through the holes and through **edge boxes** the owner draws in the board editor
     (type `edge` in board.json, may lie outside the board image): a cable may come round the board edge only where the
     border is inside an edge box. No edge boxes = holes only. Neither holes nor edge boxes = an under-board supply is an
-    error (no power cable could come up). Handover `docs/handovers/supply-placement-edges.md`.
+    error (no power cable could come up).
     Edge crossings are LINES, not boxes (owner): board.json `{"type": "edge", "side": left|right|back|front, "from", "to"}`
     (fractions along that side); the editor projects a hand-drawn line onto the nearest board side.
     Signal cables may use edge boxes too (round the edge under the board and back up), not only power cables.
@@ -122,7 +120,7 @@ owner's tool to correct them.
 - `min_mm` = plug measures + the polyline on top + the polyline under + `hole_transit_mm` per pass. For power cables
   this replaces the right-angle estimate (also in `power.assign`? see "Open").
 
-## Phases (a handover each, `docs/handovers/supply-placement-<n>.md`, Sonnet agents)
+## Phases
 1. **Board holes**: `scripts/boards.py` (decomposition of the transparent, border-disconnected regions into rects:
    reuse the ideas of `outlines.outline_from_alpha`, but conservative INSIDE the hole; CLI like outlines.py:
    `uv run scripts/boards.py [project...] [--image NAME] [--refresh]`; `common.fetch_image` learns the pedalboards

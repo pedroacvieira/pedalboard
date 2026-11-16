@@ -2,7 +2,6 @@
 routing area (never cut by the bounds: routing.build_grid, area_box, front_limit, route_project), the layout search (feasible_one, free_distance,
 repair_start), the proposal table row and the drawing. Hand-computed on small synthetic boards; all lengths in mm."""
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -116,10 +115,6 @@ def test_a_box_within_the_rounding_is_not_reported(tmp_path):
 # --- the routing area --------------------------------------------------------------------------------
 CFG = {**routing.DEFAULTS, "grid_mm": 2.0, "edge_margin_mm": 4.0, "diameter_mm": 2.0}
 BRD = (0.0, 0.0, 60.0, 30.0)      # the grid: x -4..64, y -4..30 (cells 2 mm, centres at odd numbers)
-
-
-def centre_cell(g, x, y):
-    return g.cell_of(x, y)
 
 
 def test_the_bounds_never_cut_the_routing_area():

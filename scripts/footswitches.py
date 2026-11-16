@@ -21,7 +21,7 @@ Toppers (a larger, higher cap on a switch: easier to hit, the neighbour less lik
 after the layout, per project: `footswitches.toppers` lists "<pedal id>.<switch id>" keys. Spacing model: effective
 distance d_eff = d + `topper_bonus_mm` (default TOPPER_BONUS_MM: the height a topper adds, a rough proxy) per topper
 on the pair (both switches: 2x); crowding and `min_distance_mm` use d_eff. The layout search ignores toppers (layout.py uses `crowding` on the
-plain distances). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
+plain distances plus the height step). `suggest_toppers` picks, greedily and after the layout, the few toppers that remove the most
 crowding (at most `max_toppers` in all, default MAX_TOPPERS, stopping when the next gain is below `topper_min_gain` x the crowding),
 on bypass switches only (TOPPER_TYPES; a tap switch gets one by hand, never a boost one: owner, 2026-11-04).
 
@@ -224,11 +224,6 @@ def topper_settings(project, switch_keys, no_data=()):
 def pair_distance(distance_mm, n_toppers, bonus_mm, step_mm=0.0):
     """d_eff = d + bonus per topper on the pair (0, 1 or 2) + the pair's height step (`step_mm`, 0 without heights)."""
     return distance_mm + n_toppers * bonus_mm + step_mm
-
-
-def effective_distance(distance_mm, n_toppers, bonus_mm):
-    """d_eff = d + bonus per topper on the pair (0, 1 or 2); no height step (`pair_distance` has one)."""
-    return pair_distance(distance_mm, n_toppers, bonus_mm)
 
 
 # --- heights: step and reach (plan docs/plans/switch-height.md) ----------------------------------

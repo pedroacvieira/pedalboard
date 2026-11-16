@@ -1,8 +1,8 @@
-"""Layout model and surrogate score (scripts/layout.py) and the power assignment (scripts/power.py).
+"""Layout model and surrogate score (scripts/layout.py: plug sides and down plugs, footswitch spacing and reach) and the power
+assignment (scripts/power.py).
 Hand-computed cases on small synthetic boards; all lengths in mm (45 px/in -> 1 px = 25.4/45 mm)."""
 import copy
 import functools
-import json
 import math
 import sys
 from pathlib import Path
@@ -112,13 +112,13 @@ def _gig_build():
 
 
 def gig_build():
-    """(pedals, supplies, ctx): the build of the real guitar-gig, made once; every caller gets its own deep copy, so a test may
+    """(pedals, supplies, ctx): the build of the frozen guitar-gig (tests/fixtures), made once; every caller gets its own deep copy, so a test may
     change what it gets without touching the others."""
     return copy.deepcopy(_gig_build())
 
 
 def gig_model(pedals, supplies):
-    """The surrogate's model of the owner's gig layout, with the project's board.json (its holes decide which plugs point down)."""
+    """The surrogate's model of the frozen gig layout (tests/fixtures), with the project's board.json (its holes decide which plugs point down)."""
     return layout.Model(load_json(GIG / "project.json"), design.parse_design(GIG / "playground_design.json"), pedals,
                         supplies, jacks.read_file()["jacks"], footswitches.read_file()["footswitches"], load_cable_types(),
                         board_edits=boards_mod.load_edits(GIG))

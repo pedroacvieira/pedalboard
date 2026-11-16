@@ -3,7 +3,6 @@ Data (boards.load_edits), their canvas mapping (design.board_edges), the error f
 (jacks.crossing_errors), the power estimate's crossing points (power.edge_sample / Crossings) and the board editor's helpers.
 Hand-computed on small synthetic boards; all lengths in mm."""
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -17,10 +16,9 @@ import boards  # noqa: E402
 import design  # noqa: E402
 import jacks  # noqa: E402
 import power  # noqa: E402
-import routing  # noqa: E402
 import svgdraw  # noqa: E402
 from test_boards import board  # noqa: E402
-from test_check import A, PDATA, PEDALS, SUPPLIES, S, insts, project  # noqa: E402
+from test_check import PDATA, PEDALS, SUPPLIES, insts, project  # noqa: E402
 from test_layout import BOARD, HOLE_BOARD, hole_model, ped  # noqa: E402
 
 W, H = 200.0, 100.0   # an image of 200 x 100 mm for the editor helpers

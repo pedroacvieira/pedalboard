@@ -1,5 +1,7 @@
 # Plan: pedal bodies for the usable board area (`feat/pedal-body`)
 
+Status: implemented, merged into main (2026-11-02, `feat/pedal-body`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
+
 ## Owner decisions (2026-11-02)
 - The usable board area (board.json `bounds`) must hold the pedal's BODY (its enclosure bottom), not its jacks. Side jacks
   overhanging the usable area, or even the board, are fine and part of the optimisation (more deck space). The DD-8 and the

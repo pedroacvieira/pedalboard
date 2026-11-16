@@ -7,6 +7,7 @@
     uv run scripts/pedal_editor.py --list-missing [project ...] [--only jacks|footswitches]
                                                                   what is still missing, with the commands
     uv run scripts/pedal_editor.py <catalog id> --image FILE     mark on a local PNG instead of downloading
+    uv run scripts/pedal_editor.py <catalog id> --refresh        download the image again
 
 The image is downloaded on demand into .cache/images/ (git-ignored) and never copied into the repo.
 Jacks: mark each one at the OUTER EDGE of the physical socket (where the plug starts), not its centre: the
@@ -556,7 +557,7 @@ def make_app(cid, kind, item, entry, image_path, start_mode="jacks"):
                 c.create_text(px + 10, py - 12, text=j["label"], anchor="w", font=("TkDefaultFont", 9, "bold" if selected else "normal"))
 
         def _paint_footswitch(self, base, f, active):
-            """Semi-transparent cap (SWITCH_CAP_MM) and fainter ring (+SWITCH_RING_MM), at true size, into the image."""
+            """Semi-transparent cap (SWITCH_CAP_MM) and fainter ring (SWITCH_RING_MM across), at true size, into the image."""
             colour = ImageColor.getrgb(FOOTSWITCH_COLOURS.get(f.get("type"), "#757575") if active else "#9e9e9e")
             cx, cy = f["x"] * w_mm * self.zoom, f["y"] * h_mm * self.zoom
             layer = Image.new("RGBA", base.size, (0, 0, 0, 0))

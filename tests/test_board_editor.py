@@ -34,31 +34,36 @@ CANVAS = ('<div class="item pedalboard" id="b1" data-scale="45" data-width="10" 
           'style="left: 90px; top: 45px;"><div class="artwork" style="background-image: url(img/my-board.png)"></div></div>')
 
 
-def test_board_image_for_a_project_with_a_layout_item(tmp_path):
+def first_piece(project_dir, project, db):
+    """(image, w_mm, h_mm) of the project's first board piece."""
+    p = be.board_pieces_for(project_dir, project, db)[0]
+    return p["image"], p["w_mm"], p["h_mm"]
+
+def test_board_pieces_for_a_project_with_a_layout_item(tmp_path):
     (tmp_path / "playground_design.json").write_text(json.dumps({"canvas": CANVAS}))
     # the database says something else: the layout item wins
     db = {"A B": {"Image": "other.png", "Width": 1, "Height": 1}}
-    name, w, h = be.board_image_for(tmp_path, {"board": {"brand": "A", "model": "B"}}, db)
+    name, w, h = first_piece(tmp_path, {"board": {"brand": "A", "model": "B"}}, db)
     assert name == "my-board.png"
     assert (w, h) == pytest.approx((10 * IN_MM, 4 * IN_MM))
 
 
-def test_board_image_for_resolved_through_the_database(tmp_path):
+def test_board_pieces_for_resolved_through_the_database(tmp_path):
     db = {"Rock Duo": {"Image": "rock-duo.png", "Width": 18.0, "Height": 5.0}}
-    name, w, h = be.board_image_for(tmp_path, {"board": {"brand": "Rock", "model": "Duo"}}, db)
+    name, w, h = first_piece(tmp_path, {"board": {"brand": "Rock", "model": "Duo"}}, db)
     assert name == "rock-duo.png"
     assert (w, h) == pytest.approx((457.2, 127.0))
 
 
-def test_board_image_for_a_layout_without_a_board_image_falls_back(tmp_path):
+def test_board_pieces_for_a_layout_without_a_board_image_falls_back(tmp_path):
     (tmp_path / "playground_design.json").write_text(json.dumps({"canvas": '<div class="item" id="p" data-scale="45"></div>'}))
     db = {"Rock Duo": {"Image": "rock-duo.png", "Width": 2.0, "Height": 1.0}}
-    assert be.board_image_for(tmp_path, {"board": {"brand": "Rock", "model": "Duo"}}, db)[0] == "rock-duo.png"
+    assert first_piece(tmp_path, {"board": {"brand": "Rock", "model": "Duo"}}, db)[0] == "rock-duo.png"
 
 
-def test_board_image_for_unknown_board_raises(tmp_path):
+def test_board_pieces_for_unknown_board_raises(tmp_path):
     with pytest.raises(ValueError, match="not in Pedal Playground"):
-        be.board_image_for(tmp_path, {"board": {"brand": "No", "model": "Such"}}, {})
+        first_piece(tmp_path, {"board": {"brand": "No", "model": "Such"}}, {})
 
 
 # --- coordinates ---------------------------------------------------------------------------------
@@ -312,7 +317,7 @@ def test_existing_board_files_are_dumped_byte_identical(project):
     path = ROOT / "projects" / project / "board.json"
     if not path.exists():
         pytest.skip("no board.json")
-    # the `_doc` sentence about bounds is new, so the first save rewrites that one line; everything else stays as it was
+    # the committed `_doc` may differ from `DOC`, so the first save may rewrite that one line; everything else stays as it was
     def without_doc(text):
         return [line for line in text.splitlines() if not line.startswith('  "_doc": ')]
     dumped = be.dumps_edits(boards.load_edits(path.parent), boards.load_bounds(path.parent))
@@ -411,9 +416,9 @@ def test_board_pieces_for_lists_every_pedalboard_item_in_layout_order(tmp_path):
     pieces = be.board_pieces_for(tmp_path, {}, {})
     assert [p["image"] for p in pieces] == [IMG1, IMG2]
     assert pieces[0]["w_mm"] == pytest.approx(100) and pieces[0]["h_mm"] == pytest.approx(50) and pieces[0]["item"]["id"] == "b0"
-    assert be.board_image_for(tmp_path, {}, {}) == (IMG1, pytest.approx(100), pytest.approx(50))
+    assert first_piece(tmp_path, {}, {}) == (IMG1, pytest.approx(100), pytest.approx(50))
     two_piece_design(tmp_path, (IMG2, IMG1))   # the order is the layout's
-    assert be.board_image_for(tmp_path, {}, {})[0] == IMG2
+    assert first_piece(tmp_path, {}, {})[0] == IMG2
 
 
 def test_board_pieces_for_without_a_layout_is_one_piece_from_the_database(tmp_path):

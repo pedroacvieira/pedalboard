@@ -1,7 +1,6 @@
 # Plan: `feat/pedal-position`: footswitch data, a pedal editor, and layout proposals
 
-Status: plan (2026-10-22), written by a planning agent from `docs/handovers/pedal-position.md`; open questions for
-the owner at the end. Branch `feat/pedal-position` from `main` (after the cable-routing merge).
+Status: implemented, merged into main (2026-10-23, `feat/pedal-position`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 0. What the plan builds on
 - **Layout model.** `design.parse_design` gives items with `left_mm`, `top_mm`, `w_mm`, `h_mm`, `rot`; left/top

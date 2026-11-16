@@ -214,11 +214,10 @@ def validate_power_routing(project):
             f"uv run scripts/board_editor.py <project>" if k in REMOVED_POWER_KEYS else
             f"power_routing: unknown setting '{k}' (top_cost, max_stack, edge_transit_mm, daisy_style)"
             for k in given if k not in POWER_ROUTING]
-    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
     for k, good, need in (("top_cost", lambda v: v > 0, "> 0"),
                           ("edge_transit_mm", lambda v: v >= 0, ">= 0"), ("max_stack", lambda v: v >= 1, ">= 1")):
         v = given.get(k)
-        if v is not None and not (num(v) and good(v)):
+        if v is not None and not (_is_number(v) and good(v)):
             errs.append(f"power_routing.{k} must be a number {need}")
     if given.get("daisy_style") is not None and given["daisy_style"] not in DAISY_STYLES:
         errs.append(f"power_routing.daisy_style must be one of {', '.join(DAISY_STYLES)}, not {given['daisy_style']!r}")
@@ -342,7 +341,7 @@ class Grid:
         """Whether a path can exist from cell a to cell b (both always enterable, like plug ends)."""
         if a == b:
             return True
-        comp, walls = self.components(squeeze), self.walls(squeeze)
+        comp = self.components(squeeze)
 
         def reach(c):
             near = [c] + [(c[0] + dx, c[1] + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
@@ -454,7 +453,7 @@ class Under:
 
     def __init__(self, grid, holes, transit_mm, penalty, cost, max_stack, top_cost=1.0, edges=()):
         self.grid, self.holes = grid, set(holes)
-        self.transit_mm, self.penalty, self.cost, self.max_stack = transit_mm, penalty, cost, max_stack
+        self.transit_mm, self.cost, self.max_stack = transit_mm, cost, max_stack
         self.top_cost = top_cost                # factor per mm on top of the board (power cables: `power_routing.top_cost`)
         self.hole_cost = transit_mm + penalty   # what one pass costs the search
         # board edges (edge segments, see `edge_links`): `edges` = [(under cell, top cell, cost)]: an under cell at the board edge joined to
@@ -473,10 +472,6 @@ class Under:
         if self._landing is None:
             self._landing = list(self.holes | {t for _, t, *_ in self.edges})
         return self._landing
-
-    def pass_cost(self):
-        """The cheapest layer change the search can pay (a hole pass or an edge link); inf without any."""
-        return min([self.hole_cost] * bool(self.holes) + [e for _, _, e, *_ in self.edges], default=math.inf)
 
     def pass_floor(self, slack):
         """A lower bound of the cost of one layer change for the search heuristic: the hole pass, or an edge link's cost minus
@@ -588,8 +583,8 @@ def under_grid(top, board_rect, obstacle_rects, cfg, pieces=None):
 
 def build_under(top, board_rect, obstacle_rects, hole_rects, cfg, transit_mm, edge_segments=(), edge_transit_mm=0.0, pieces=None):
     """The under-board layer (`under_grid`) with the hole cells and the edge links (`edge_links` over `edge_segments`, each costing
-    `edge_transit_mm` + the deck penalty to the search, like a hole pass); None for the layer without either (nothing can
-    change layer)."""
+    `edge_transit_mm` + the deck penalty to the search, like a hole pass). Returns (the under grid, the `Under` layer or None when
+    there is neither a hole cell nor an edge link: nothing can change layer)."""
     g = under_grid(top, board_rect, obstacle_rects, cfg, pieces)
     holes = hole_cells(top, g, hole_rects)
     links = edge_links(top, g, board_rect, edge_segments, edge_transit_mm, float(cfg["hole_penalty"]), pieces)
@@ -1485,7 +1480,7 @@ def down_available(holes, under_rects, point, diameter_mm):
 
 
 def end_options(item, jack, ctype, exit_fixed, cfg, outward, down=None):
-    """Every way a plug can sit in one jack: [{side, rects, lead, exit, lead_mm}] (one per exit side for a
+    """Every way a plug can sit in one jack: (facing, [{side, rects, lead, exit, lead_mm, measure, measure_mm}]) (one per exit side for a
     right-angle plug, unless the project fixes it; one for a straight plug or with no cable type). `down`: None, or a
     callable `(bend point, cable diameter) -> bool` (`down_available`): a right-angle plug may then also point DOWN
     into a hole (side "down", `design.plug_geometry`; its measure includes `cfg["jack_height_mm"]` and the deck,
@@ -1826,7 +1821,7 @@ def power_plug_keys(ctx, cable_types, cfg):
 def fixed_footprints(ctx, modelled):
     """The fixed boxes (`ctx["fixed_zones"]`, set by jacks.check) of the used jacks that get no plug model: ({key: [("box", rect)]},
     {key: kind}). `modelled` = the keys that do. kind says what the jack is ("first input, fixed box", "last output, fixed
-    box", "extra jack, fixed box", "power box" or "audio box")."""
+    box", "extra jack, fixed box", "extra jack, <type> straight plug", "power box" or "audio box")."""
     zones = ctx.get("fixed_zones") or {}
     layout = ctx.get("layout") or {}
     jd, chain = layout.get("jacks") or {}, ctx.get("chain") or []
@@ -1897,8 +1892,9 @@ def under_text(u):
 
 
 def route_project(ctx, cat_pedals, cable_types=None):
-    """Build ctx['cable_list'] (signal + power cables with attributes), route the signal cables and check the
-    clearance of their plugs (appended to ctx['violations']).
+    """Build ctx['cable_list'] (signal + power cables with attributes), route the signal and the power cables,
+    check the clearance of every plug (ctx['violations']) and the plug collisions and passes (ctx['plug_collisions'] /
+    ctx['plug_under']).
 
     `min_mm` is the minimum cable length to buy: measured from a point on each jack's axis half the clearance
     depth in front of the jack (half the plug head depth, or half the fixed box), along the plug's cable exit
@@ -1931,7 +1927,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
     # signal cables, one per hop of the chain
     chain = ctx["chain"]
     jd = (layout or {}).get("jacks") or {}
-    from jacks import default_jack  # late import: jacks imports design only
+    from jacks import default_jack  # late import: jacks imports routing lazily too
     for n, (a, b) in enumerate(zip(chain, chain[1:]), 1):
         ja, jb = default_jack(jd.get(a) or [], "output"), default_jack(jd.get(b) or [], "input")
         tid = cable_type_id(project, f"S{n}")
@@ -1940,7 +1936,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
              "tip_a": tip_of(ja, cfg["default_tip"]), "tip_b": tip_of(jb, cfg["default_tip"]), "under_board": False,
              "under_mm": 0.0, "holes_used": 0, "min_mm": None, "path": None, "status": "not routed", "_ends": (a, ja, b, jb)}
         cables.append(c)
-    # power cables: model and estimate only (they run under the board)
+    # power cables: one entry per leg of the daisy chains (routed later by `route_power_choosing`)
     from jacks import placement
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
     # jacks.check gives every hop its cable (P#) and leg id (P# or P#.n); a hop without them (hand-made ctx) is its own one-leg cable
@@ -2008,6 +2004,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
 
     def shapes_of(it):
         return design.item_shapes(shapes, it)
+    run_given = "exit_run_mm" in (project.get("cables") or {})
     grid, layers, under_rects = None, None, []   # without a pedalboard item nothing is routed, but every plug is still checked
     if layout.get("board"):
         board = design.layout_board_rect(layout)   # the board's extent: the bounding box of its pieces (one piece: its footprint)
@@ -2015,7 +2012,7 @@ def route_project(ctx, cat_pedals, cable_types=None):
         feet = [r for it in placed.values() for r in shapes_of(it)]
         usable = layout.get("usable")
         front_y = front_limit(board, [f[3] for f in feet], cfg)   # nothing in front of the lowest pedals (unless cables.route_in_front)
-        zones = plug_zones(ctx, cables, cable_types, cfg, "exit_run_mm" in (project.get("cables") or {}), outward,
+        zones = plug_zones(ctx, cables, cable_types, cfg, run_given, outward,
                            usable or board, board)
         ctx["routing"]["plug_zones"] = zones   # the power grid takes the same ones (`route_power`)
         grid = build_grid(board, [r for o in obstacles for r in shapes_of(o)], front_y, cfg, zones, pieces)
@@ -2040,7 +2037,6 @@ def route_project(ctx, cat_pedals, cable_types=None):
                 elif not edge_links(grid, ugrid, board, [seg], edge_t, pieces=pieces):
                     sink.append(f"routing: board.json: edge segment {n} ({seg[2]}) has no usable crossing "
                                 f"(its border cells are blocked or outside the cable area)")
-    run_given = "exit_run_mm" in (project.get("cables") or {})
     # a right-angle plug may point down into a board hole (`end_options`): signal cables need the under layer (`layers`), the power
     # cables have their own
     down_any = None
@@ -2783,9 +2779,9 @@ def exit_feasible(o, own_id, obstacles, shapes=None, inside=None, inside_under=N
 
 
 def power_plug_pool(it, jk, key, cands, cable_types, fixed, cfg, layout, obstacles, down, inside=None, inside_under=None, avoid=()):
-    """(facing, options) of one DC plug: every exit of every candidate type (`end_options`, each option gets `type`, `tidx` =
+    """(facing, options, honoured) of one DC plug: every exit of every candidate type (`end_options`, each option gets `type`, `tidx` =
     its type's position in `cands`, `hits`, `ok` = `exit_feasible` and `failed`: an option whose (type, side) is in `avoid` is `failed` (and not ok):
-    `route_project` marks the options that left a power cable without a path). With a fixed exit (an override `exit_a` / `exit_b`, left / right / down) only the
+    `retry_unroutable` marks the options that left a power cable without a path). With a fixed exit (an override `exit_a` / `exit_b`, left / right / down) only the
     options that honour it are returned; when none does (a straight plug has no side, down needs a hole) all of them are
     and `honoured` is False."""
     fixed = fixed if fixed in design.EXITS else None
@@ -2841,7 +2837,7 @@ def dc_estimator(ctx, cable_types, cfg, obstacles, pcables, pools, ports, setup=
     inst_by_id = {s["inst"]["id"]: s["inst"] for s in ctx.get("supplies") or []}
     jd = layout.get("jacks") or {}
     anchors = {key: (opts[0]["measure"], False) for key, opts in pools.items() if opts}   # key -> (point, under the board)
-    for iid, it, jk, _, _, key in ports:
+    for _, it, jk, _, _, key in ports:
         anchors[key] = (design.stub(design.jack_point(it, jk["x"], jk["y"]), design.jack_facing(it, jk["facing"]), depth / 2), False)
     legs = {}
     for c in pcables:
@@ -3028,8 +3024,7 @@ def power_plug_choices(ctx, cables, cable_types, cfg, obstacles, taken=None, dow
 def power_plug_clearance(ctx, cables, cable_types, cfg, obstacles, clear_sink, choices=None):
     """Clearance of every placed pedal's power jack with its DC plug (`cables.power_types`, the type `power_plug_choices` chose): head + barrel
     + the cable's first straight run (one power-cable diameter) on the exit side with the fewest blocked parts
-    (`power_plug_choices`, pass its result as `choices` to avoid choosing twice). The power cable then drops under
-    the board, so nothing is routed. Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
+    (`power_plug_choices`, pass its result as `choices` to avoid choosing twice). Without a power type, jacks.check uses the `jacks.power_clearance` box instead."""
     if choices is None:
         choices = power_plug_choices(ctx, cables, cable_types, cfg, obstacles)
     checked = set()
