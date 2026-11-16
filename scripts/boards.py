@@ -14,14 +14,16 @@ fetches the board images of the projects (every pedalboard item of their layout,
 `--image`, and writes catalog/boards.json; existing entries are kept unless --refresh (which recomputes only the
 holes: `hole_transit_mm` and `notes` stay).
 
-A project may correct the derived holes in projects/<name>/board.json (written later by a board editor):
+A project may correct the derived holes in projects/<name>/board.json (written by scripts/board_editor.py):
 {"boxes": [{"type": "hole" | "filled", "x0": .., "y0": .., "x1": .., "y1": ..},
 {"type": "edge", "side": "left" | "right" | "back" | "front", "from": .., "to": ..}]}.
 hole / filled boxes are fractions of the board image and correct the holes. An "edge" entry is a line segment along one
 side of the (unrotated) image, `from` < `to` fractions 0..1 along that side (left / right: of the image height from the top;
 back = the image's top edge / front = its bottom edge: of the image width from the left): where cables may go round the
 board edge (under the board and back up). `load_edits` reads the file; `design.board_holes` applies the hole / filled
-boxes, `design.board_edges` maps the edge segments.
+boxes, `design.board_edges` maps the edge segments. The same file holds the usable area (`bounds`, `load_bounds`) and, for a
+composed board, the edits per piece (`pieces` {board image: {"boxes", "bounds"}}, `load_pieces`); `piece_edits` decides which edits
+belong to which piece (a `pieces` entry wins, else the top-level keys belong to the first piece).
 """
 import argparse
 import json
@@ -317,8 +319,8 @@ def load_edits(project_dir, warnings=None):
     """The valid edit boxes {"type": "hole" | "filled", "x0", "y0", "x1", "y1"} (fractions of the board image) and edge segments
     {"type": "edge", "side", "from", "to"} of
     projects/<name>/board.json, in file order; [] if the file is missing (or there is no project folder). Invalid boxes (or an unreadable file) are
-    ignored and described in `warnings` (a list, if given) instead of crashing the build. These are the boxes of the FIRST board piece
-    (`load_pieces` has the others)."""
+    ignored and described in `warnings` (a list, if given) instead of crashing the build. These are the top-level boxes (the first
+    piece's unless it has a `pieces` entry: `piece_edits`)."""
     path, data, err = _read_edits(project_dir)
 
     def warn(msg):
@@ -362,8 +364,8 @@ def load_bounds(project_dir, warnings=None):
     the unrotated board image (back / front from its TOP edge, left / right from its LEFT edge; where pedals may sit). A
     missing side, no `bounds` key, no file or no project folder = the image edge (back 0, front 1, left 0, right 1). Invalid
     values (not numbers, outside 0..1, unknown side, back >= front, left >= right) are described in `warnings` (a list, if
-    given) and the defaults are returned (all four sides: a half-valid set is not trusted). The bounds of the FIRST board piece
-    (`load_pieces` has the others)."""
+    given) and the defaults are returned (all four sides: a half-valid set is not trusted). These are the top-level bounds (the first
+    piece's unless it has a `pieces` entry: `piece_edits`)."""
     path, data, err = _read_edits(project_dir)
 
     def warn(msg):
@@ -380,8 +382,8 @@ def load_bounds(project_dir, warnings=None):
 def load_pieces(project_dir, warnings=None):
     """The owner's edits of the pieces of a composed board, projects/<name>/board.json `pieces`: {board image file name: {"boxes":
     [...], "bounds": {...}}}, each as `load_edits` / `load_bounds` return them (same validation, invalid parts described in
-    `warnings`; a piece without `boxes` / `bounds` gets [] / the image edges). The top-level `boxes` / `bounds` stay the FIRST piece's;
-    `jacks.layout_from_items` uses this for the other pieces. {} without the key, the file or the folder."""
+    `warnings`; a piece without `boxes` / `bounds` gets [] / the image edges). `piece_edits` combines them with the top-level
+    `boxes` / `bounds` for every piece (`jacks.layout_from_items`, the board editor). {} without the key, the file or the folder."""
     path, data, err = _read_edits(project_dir)
     raw = None if err is not None or data is None else data.get("pieces")
     if raw is None:

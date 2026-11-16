@@ -1,7 +1,6 @@
 # Plan: usable board area (`feat/board-bounds`)
 
-Status: plan with the owner's decisions (2026-10-29, section "Decisions"); handovers next. Start the code after
-`feat/cable-ids` is merged (both touch `build.py`, `svgdraw.py`, `routing.py`).
+Status: implemented, merged into main (2026-10-29, `feat/board-bounds`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## Problem (owner, 2026-10-29)
 The Fender Professional Medium has rounded edges at the back and at the front where pedals cannot sit. The layout

@@ -6,7 +6,7 @@
  "seed": 1,
  "iterations": 2000,
  "restarts": 6,
- "inputs_sha1": "53b4bbd9edbe53842d1c8fe63588eab8b84fa7e8",
+ "inputs_sha1": "44a6f1eb01ece5703d10d876bdc1559c5067de0f",
  "chain": [
   "sun_face",
   "danelectro_3699",

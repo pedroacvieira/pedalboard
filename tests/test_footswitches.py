@@ -1,4 +1,5 @@
-"""Footswitch data (scripts/footswitches.py) and the spacing check, on hand-made layouts. All lengths in mm.
+"""Footswitch data (scripts/footswitches.py), the spacing check, toppers, the height model (step, reach) and their README
+sections, on hand-made layouts. All lengths in mm.
 
 Pedals are 2 x 4 in = 50.8 x 101.6 mm at 45 px/in. A switch at (0.5, 0.8) of pedal A (left 0, top 0) sits at
 (25.4, 81.28); the same switch of pedal B at left 135 px = 76.2 mm sits at (101.6, 81.28): 76.2 mm apart.
@@ -190,7 +191,6 @@ def test_gig_build_with_switch_data_has_no_findings_without_a_minimum():
     """One centre switch per gig pedal (invented positions, test only): no minimum, so no findings; the README
     lists the crowding and the closest pairs, the SVG draws the switches."""
     import build
-    import routing
     from common import load_catalog
     pedals, supplies = load_catalog()
     from conftest import GIG_FIXTURE as gig
@@ -261,7 +261,7 @@ TOP = {"footswitches": {"toppers": ["a.bypass"]}}
 def test_effective_distance_and_crowding_with_zero_one_two_toppers(tmp_path, old_topper_defaults):
     """76.2 mm bypass pair, comfort 100, bonus 10: d_eff 76.2 / 86.2 / 96.2 -> crowding 23.8^2/100 = 5.6644,
     13.8^2/100 = 1.9044, 3.8^2/100 = 0.1444."""
-    assert fsw.effective_distance(76.2, 0, 10) == 76.2 and fsw.effective_distance(76.2, 2, 10) == pytest.approx(96.2)
+    assert fsw.pair_distance(76.2, 0, 10) == 76.2 and fsw.pair_distance(76.2, 2, 10) == pytest.approx(96.2)
     for toppers, d_eff, crowd in ((None, 76.2, 5.6644), (["a.bypass"], 86.2, 1.9044),
                                   (["a.bypass", "b.bypass"], 96.2, 0.1444)):
         proj = {"footswitches": {"toppers": toppers}} if toppers else {}
@@ -464,7 +464,7 @@ def test_root_readme_too_close_item_shows_effective_and_plain(tmp_path, old_topp
     ctx = run(tmp_path, [A(), B()], ONE_EACH, project=proj)
     assert any("a.bypass and b.bypass are 86.2 mm apart (effective with toppers, 76.2 mm plain) (min 90 mm)" in w
                for w in ctx["warnings"])
-    md = "\n".join(build.open_issues([ctx], {}))
+    md = "\n".join(build.open_issues([ctx]))
     assert ("Footswitches too close: `a.bypass` and `b.bypass` are 86.2 mm apart "
             "(effective with toppers, 76.2 mm plain) (min 90.0 mm)") in md
 
@@ -476,7 +476,7 @@ def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, 
     info = {p["key"]: p for p in pts}
 
     def total(t):
-        return sum(fsw.crowding(fsw.effective_distance(r["distance_mm"], (r["a"] in t) + (r["b"] in t), bonus),
+        return sum(fsw.crowding(fsw.pair_distance(r["distance_mm"], (r["a"] in t) + (r["b"] in t), bonus),
                                 fsw.pair_priority(prio, r["a_type"], r["b_type"]), comfort) for r in prs)
     before = current = total(have)
     out = []
@@ -484,7 +484,7 @@ def _brute_force(pts, prs, prio, comfort, bonus, existing=(), max_toppers=None, 
     while before > 0 and (cap is None or len(out) < cap):
         crowded = {}
         for r in prs:
-            if fsw.effective_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus) < comfort:
+            if fsw.pair_distance(r["distance_mm"], (r["a"] in have) + (r["b"] in have), bonus) < comfort:
                 for k in (r["a"], r["b"]):
                     crowded[k] = crowded.get(k, 0) + 1
         best = None

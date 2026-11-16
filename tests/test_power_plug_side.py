@@ -5,13 +5,12 @@ the cases. Lengths in mm."""
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import routing  # noqa: E402
-from test_power_routing import HOLE_A, HOLE_FAR, TY, pw_ctx  # noqa: E402
+from test_power_routing import HOLE_FAR, pw_ctx  # noqa: E402
 from test_power_types import RIGHT_WALL, routed  # noqa: E402
 
 HOLE_LEFT = (4.5, 38.5, 16.5, 48.5)   # left of A's left edge (x 20)

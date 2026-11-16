@@ -2,7 +2,6 @@
 Synthetic boards with tiny iteration budgets; one opt-in full run on guitar-gig (PEDALBOARD_SLOW=1)."""
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -13,13 +12,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import boards  # noqa: E402
 import build  # noqa: E402
-import common  # noqa: E402
 import design  # noqa: E402
 import layout  # noqa: E402
 import propose_layout as pl  # noqa: E402
 from common import load_catalog, proposal_inputs_sha1  # noqa: E402
 from conftest import gig_copy  # noqa: E402
-from test_layout import JACKS, PEDALS, SUP_JACKS, SUPPLIES, TYPES, at, canvas, model, ped, sup, sw, BOARD  # noqa: E402
+from test_layout import JACKS, PEDALS, SUP_JACKS, SUPPLIES, TYPES, canvas, model, ped, sup, sw, BOARD  # noqa: E402
 
 QUIET = {"layout": {"weights": {"io": 0, "flow": 0, "access": 0}}}   # isolate the terms a test looks at
 

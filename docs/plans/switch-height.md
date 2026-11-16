@@ -1,7 +1,6 @@
 # Plan: footswitch height and reach (`feat/switch-height`)
 
-Status: plan only (2026-11-13). Nothing here is implemented. Implementation starts with the recommended defaults in
-"Decisions for the owner".
+Status: implemented, merged into main (2026-11-13, `feat/switch-height`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 1. Goal
 

@@ -1,17 +1,6 @@
 # Plan: `feat/plug-orientation`: plugs pointing down into a hole, straight DC plugs, plug-to-plug collisions
 
-Status: done, awaiting merge (2026-10-28), branch `feat/plug-orientation` (created from `main` at the commit that adds this file).
-This file is the entry point for a new conversation: read it, then `CLAUDE.md`, then follow "How to run this".
-
-## How to run this (for the agent that picks this up)
-1. Read `CLAUDE.md` (conventions, working agreements) and this plan. Do not read old handovers.
-2. Ask the owner the questions in "Decisions to confirm" (one AskUserQuestion round, recommendations first); write the
-   answers into this file under "Owner decisions, round 2".
-3. Per phase: write a handover `docs/handovers/plug-orientation-<n>.md` (minimal and self-contained, as CLAUDE.md
-   says), delegate it to a `general-purpose` agent on `model: sonnet`, verify (tests, build, the gig before/after),
-   commit on `feat/plug-orientation`. Phases 1-2 are the core; 3-4 follow.
-4. At the end: code review of the branch (`/code-review main...feat/plug-orientation`), fix the findings, update
-   CLAUDE.md and `docs/TODO.md`, regenerate the gig proposals, then ask the owner before merging into `main`.
+Status: implemented, merged into main (2026-10-28, `feat/plug-orientation`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## Goal (owner, 2026-10-28)
 Cables (power and signal) whose jack sits above a board hole may go **straight down into the hole**, whether they then

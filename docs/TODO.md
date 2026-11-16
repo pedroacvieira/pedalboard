@@ -25,6 +25,9 @@ ideas · 5 data · 6 done.
 - [ ] **Ernie Ball flat patch plug**: depth from the jack face (catalog 6.4 mm, maker) and the length from the jack axis
       to where the ribbon leaves (catalog 19 mm, estimate) -> `catalog/cables.json` `ernie_ball_flat_patch_ra` and its
       `verified` list.
+- [ ] **Foot and deck** for the footswitch reach model: `footswitches.foot_width_mm` 80, `foot_length_mm` 190,
+      `foot_pitch_deg` 5 and the flat deck (`deck_rise_mm` 0) are estimates; each board's deck slope (Fender Professional M,
+      Duo 2.1, XPND).
 - [ ] Confirm the power-jack fallback box `jacks.power_clearance` (5.5 x 5.5 mm, estimate; only used without a
       `cables.power_type`).
 
@@ -36,6 +39,8 @@ ideas · 5 data · 6 done.
       front; proposal SVG).
 
 ### Checks by eye
+- [ ] Practice board: all 6 signal cables pass under a plug of their own (`feat/u-turn-plugs`, README Exits column): does that
+      work with the real plugs?
 - [ ] Duo 2.1 holes (practice now has a layout): `uv run pb board-editor guitar-practice`; also its usable area
       (`bounds`, key B), if the rounded edges need one.
 
@@ -71,39 +76,17 @@ ideas · 5 data · 6 done.
 ### Bass (layout 2026-11-09: D'Addario XPND 1 + extension, one composed board)
 - State: no tuner (owner, 2026-11-09); chain Hyper Luminal -> Bass Synth -> Bass Envelope Filter -> Bass Big Muff 2 -> VT Bass DI
   (the Envelope Filter and the Synth not owned; the Chorus Deluxe off the board for now, owner 2026-11-13).
-- [ ] Board: the board editor edits only the first piece (`board.json` `pieces` by hand for the other); check the XPND
-      holes by eye.
+- [ ] Check the XPND holes and usable area by eye: `uv run pb board-editor bass` (every piece; Tab = next piece, W = overview).
+- [ ] `projects/bass/project.json` `board` still names the Rockboard Duo 2.1 (owned). The READMEs now show the layout's
+      pieces, but the field feeds the shopping list (`owned`, `price_eur`): set the XPND 1 + extension and whether they are owned.
 
 ## 3. Next features (one branch each: plan in `docs/plans/<branch>.md` + owner decisions, then handovers)
-Order (owner, 2026-10-29; U-turn plugs added 2026-11-05): pedal preferences -> U-turn plugs -> web UI (last: it wraps
-the stable features).
+Next: the web UI (owner, 2026-10-29: last, it wraps the stable features; pedal preferences and U-turn plugs are merged).
 Project focus (owner, 2026-10-29): be able to assemble the board and guarantee that pedals, plugs and cables FIT;
 model as many physical aspects as possible; every cable gets a precise minimum required length, from which the owner
 picks a long-enough cable (no tracking of owned cables). Lengths are optimised so no huge cables are needed.
 
-### 3.1 `feat/pedal-preferences`: one preference profile per pedal in a project
-Plan `docs/plans/pedal-preferences.md` (owner decisions D1-D12: the recommended defaults); implemented on the branch `feat/pedal-preferences`
-(waiting for the code review and the merge; the live project.json files are NOT migrated yet).
-Every per-pedal wish in one place, editable with values, drop-downs and toggles (the tab comes with the web UI).
-- [x] Data: `project.json` `pedals.<id>`: position (left/right/front/back/any + strength), pin, allowed rotations,
-      order wishes (before/after X with priority -> today's rules), power wishes (own output, preferred supply/port,
-      voltage), footswitch topper, note (the access override is `position.depth`).
-- [x] Migrate today's scattered knobs (`layout.access.pedals`, `layout.pins`, `layout.rotations.<id>`, per-pedal rules,
-      toppers): old keys still read AND the one-off script `uv run pb migrate-preferences <project> [--dry-run]`
-      (the hand power wiring stays in `power.supplies[].outputs[]`). Owner: run it per project when ready.
-- [x] Build: validate the profile, README table "Preferences" (asked for, met or not in the owner's layout and in
-      each proposal); the layout search and `power.assign` read it. Rerun the proposals of each board to fill the proposal columns.
-- [x] Until the web UI: edit project.json by hand (documented schema, CLAUDE.md and the root README).
-
-### 3.2 `feat/u-turn-plugs`: a right-angle plug that turns its cable back
-Plan `docs/plans/u-turn-plugs.md`; owner decision 2026-11-13: the cable MAY cross its own plug (one thin cable passes under it).
-- [x] A right-angle plug that cannot point to the side its cable goes to: the router already picks sides by fit, then length; the
-      turned cable crosses its own plug, which adds no length. Now reported (information only): `under_own_a` / `under_own_b`, the
-      README Exits column ("right (passes under its own plug)"), a build log line. Signal and DC plugs; the layout surrogate has no
-      keep-out and so agrees. Needs the owner's review of the practice board: all 6 signal cables pass under a plug of their own.
-- Done 2026-11-13 (merged; proposals rerun on all three boards after the merge and the preferences migration).
-
-### 3.3 `feat/web-ui`: one local web app with tabs
+### 3.1 `feat/web-ui`: one local web app with tabs
 Replaces the Tkinter editors and the README-only views with a local browser app.
 - Owner (2026-10-23): new dependencies are fine with a reason each; Python ones via uv, anything else (npm, system
   packages) only after asking.
@@ -138,10 +121,6 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
         editor, the spacing model (distance between shapes, not centres) and the drawing.
       - Test cases: boss_dd8 (Boss compact: template + rectangular switch), boss_dd200 (200-series, placed by the owner),
         ehx_pico_pog / ehx_pico_pitch_fork (EHX Pico pair), jhs_angry_charlie / jhs_the_violet (JHS).
-- [~] Toppers and pedal height (owner, 2026-10-27): implemented on `feat/switch-height` (2026-11-13, plan docs/plans/switch-height.md):
-      height step in the spacing, shadow / reach model, reach-aware topper suggestions, `reach` term in the layout search. All foot
-      geometry (`foot_width_mm` 80, `foot_length_mm` 190, `foot_pitch_deg` 5) and the flat deck (`deck_rise_mm` 0) are estimates:
-      the owner may measure his foot and each board's deck slope (Fender Professional M, RockBoard Duo 2.1). Rerun `pb propose`.
 - [ ] Guitar -> board and board -> amp cables (`fender_pro_instrument_ra`, role instrument): need guitar and amp
       positions (or board-edge exit points) in the project.
 - [ ] Layout search: a penalty for an infeasible DC plug exit in the surrogate (today the build's check rejects such a
@@ -167,7 +146,7 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
 - [ ] Items in the generated READMEs' "Data to verify" (power specs, Reticon, Protein, version assumptions).
 - [ ] Bass shopping list: MXR Bass Synth (`owned: false`); mark it owned if it is.
 
-## 6. Done (merged into main; details in the plans and handovers)
+## 6. Done (merged into main; details in `docs/plans/`)
 - `feat/jack-tracking`, `feat/cable-routing` (2026-10-22): jack data, clearance, cable model and grid router.
 - `feat/pedal-position` (2026-10-23, `docs/plans/pedal-position.md`): layout injection, footswitches and spacing,
   `pedal_editor.py`, layout search and proposals, power assignment; uv project.
@@ -208,3 +187,15 @@ Replaces the Tkinter editors and the README-only views with a local browser app.
   and ISO-5 Pro (Pedal Playground stand-in image: ISO-1AC Pro, outputs marked by the owner).
 - Owner decisions kept: footswitch spacing is comfort, no minimum (`comfort_mm` 100, weight 2); power routes on top up to
   150 mm are fine (`top_cost` 3); `routing.svg` labels and the pedal editor's footswitch mode are ok for now.
+- `feat/playground-v2` (2026-11-02): Pedal Playground 2.0 layouts fetched from the share link (`pb fetch`); the `pb` entry point.
+- `feat/extra-plug-types` (2026-11-06): straight plugs in used extra jacks (`cables.extra_type` / `extra_types`, role expression).
+- `feat/board-pieces` (2026-11-09, `docs/plans/board-pieces.md`): composed boards (the bass XPND 1 + extension) evaluated as one.
+- `feat/floor-devices` (2026-11-13): EV-30 and Cry Baby as floor devices (`floor` in project.json, catalog `floor_device`).
+- `feat/pedal-preferences` (2026-11-13, `docs/plans/pedal-preferences.md`): one preference profile per pedal (`pedals.<id>`),
+  README "Preferences" table; the live projects are migrated.
+- `feat/u-turn-plugs` (2026-11-13, `docs/plans/u-turn-plugs.md`): a cable may pass under its own plug (reported, no extra length).
+- `feat/board-editor-pieces` (2026-11-13, `docs/plans/board-editor-pieces.md`): the board editor edits every piece of a composed board.
+- `feat/switch-height` (2026-11-13, `docs/plans/switch-height.md`): height step in the footswitch spacing, shadow / reach, reach-aware
+  topper suggestions, `reach` term in the layout search; proposals rerun on all three boards.
+- `chore/cleanup` (2026-11-16): outdated comments and dead code removed, finished handovers deleted, plans marked as merged, root
+  README with every command and option.

@@ -581,7 +581,7 @@
       "height_mm": 59.0,
       "height_info": {"measure": "unspecified", "confidence": "retailer", "source": "Music Store (search snippet; page answered 403)", "url": "https://www.musicstore.com/en_US/USD/Danelectro-3699-Fuzz/art-GIT0052991-000", "notes": "59 W x 111 L x 59 H mm. Guitar World review 58 mm; a Japanese retailer gives 58 mm as '43 + 15' (enclosure + switches). No maker figure."},
       "dependencies": [],
-      "comments": "Fuzz/octaver, candidate to replace the JHS Double Dragon in the front fuzz group. 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board, between the Sun Face and the Beano. True bypass per retailer spec lists (no Danelectro spec sheet found).",
+      "comments": "Fuzz/octaver, in the gig chain in place of the JHS Double Dragon (front fuzz group). 9 mA is from a single retailer listing (another says 3 mA; no Danelectro spec sheet found), so planning on 9 mA. Spec lists 9V DC, supply not included; a 9V battery is reported to work. Assumed 9V only. Planned for the gig board, between the Sun Face and the Beano. True bypass per retailer spec lists (no Danelectro spec sheet found).",
       "price_eur": 199,
       "price_info": {
         "store": "musicstore.de",
@@ -637,7 +637,7 @@
       "height_mm": 38.1,
       "height_info": {"measure": "unspecified", "confidence": "retailer", "source": "Perfect Circuit / zZounds / Thomann", "url": "https://www.perfectcircuit.com/jhs-flight-delay.html", "notes": "1.5 in (Thomann 38 mm). Conflict: Equipboard, Sweetwater, C&M 1.75 in (44.5 mm). No maker page; 38.1 looks low for a pedal with a footswitch."},
       "dependencies": [],
-      "comments": "Delay with analog-style (BBD voiced) and DSP-style digital modes, so treated as DIGITAL (circuit not confirmed). Planned for the gig board (after the Belle Epoch, to buy) (not in your Pedal Playground save, so marked not owned). 85 mA at 9V DC center-negative per retailers; JHS warns against going above 9V. Bypass is switchable between true bypass and buffered (per owner); buffered in this plan. Also has a Trails bypass mode.",
+      "comments": "Delay with analog-style (BBD voiced) and DSP-style digital modes, so treated as DIGITAL (circuit not confirmed). Not in any project (candidate; the DD-200 took its slot on the gig board), not owned. 85 mA at 9V DC center-negative per retailers; JHS warns against going above 9V. Bypass is switchable between true bypass and buffered (per owner); buffered in this plan. Also has a Trails bypass mode.",
       "price_eur": 244,
       "price_info": {
         "store": "thomann.de",
@@ -665,7 +665,7 @@
       "height_mm": 45.0,
       "height_info": {"measure": "unspecified", "confidence": "maker", "source": "TC Electronic manual (search snippet), repeated by B&H", "url": "https://www.bhphotovideo.com/c/product/1079672-REG/tc_electronic_966121001_mini_version_of_polytune.html", "notes": "51 x 93 x 45 mm (W x D x H); effects-pedals.info 4.6 cm."},
       "dependencies": [],
-      "comments": "Currently planned for the bass board (may move to the practice board). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.",
+      "comments": "In the guitar-practice chain (the bass board has no tuner, owner 2026-11-09). The Mini, not the full-size PolyTune 2 (owner confirmed). About 40 mA typical per TC's specs, 9V DC center-negative, adapter not included; no battery operation on the Mini. True bypass (no buffer); output mutes while tuning. Digital is inferred from the polyphonic display (no source states it explicitly). Power re-checked 2026-10-21: 40 mA typical (retailer); one Q&A says use a 100 mA supply; no maker figure found.",
       "price_eur": null,
       "price_info": {
         "store": null,
@@ -805,7 +805,7 @@
       "height_mm": 40.6,
       "height_info": {"measure": "unspecified", "confidence": "retailer", "source": "Get Loud Music / Perfect Circuit", "url": "https://www.getloudmusic.ca/jhs-hard-drive-pedal.html", "notes": "4.8 L x 2.6 W x 1.6 H in; Musik-Produktiv 66 x 41 x 121 mm (W x H x D); Reverb quotes JHS the same. JHS page blocked."},
       "dependencies": [],
-      "comments": "Planned for the practice board. Distortion (cascaded gain stages, hard limiting, class AB output stage, Baxandall EQ). 78 mA at 9V DC center-negative per retailers; no battery operation. Buffered bypass (soft-touch silent footswitch; listings say true bypass 'no'). Analog. Power re-checked 2026-10-21: 9V ONLY; the manual says it doubles 9V to 18V inside (charge pump) and higher input voids the warranty.",
+      "comments": "Candidate, not in any project (not bought). Distortion (cascaded gain stages, hard limiting, class AB output stage, Baxandall EQ). 78 mA at 9V DC center-negative per retailers; no battery operation. Buffered bypass (soft-touch silent footswitch; listings say true bypass 'no'). Analog. Power re-checked 2026-10-21: 9V ONLY; the manual says it doubles 9V to 18V inside (charge pump) and higher input voids the warranty.",
       "price_eur": 207,
       "price_info": {
         "store": "thomann.de",
@@ -833,7 +833,7 @@
       "height_mm": 38.1,
       "height_info": {"measure": "unspecified", "confidence": "retailer", "source": "Musik-Produktiv / Chuck Levin's / Perfect Circuit", "url": "https://www.musik-produktiv.com/gb/jhs-pedals-pulp-n-peel-v4.html", "notes": "56 x 38 x 109 mm (W x H x D); 2.6 x 4.8 x 1.5 in elsewhere. Equipboard 1.6 in (40.6 mm); Guitar Center / Thomann 60 mm (likely packaging or overall). JHS page blocked; may exclude knobs."},
       "dependencies": [],
-      "comments": "Planned for the practice board. Compressor/preamp. 'Under 100 mA' is the published rating (planning on 100 mA; no measured figure found), 9V DC center-negative, no battery operation. A side switch turns the internal buffer on (buffered bypass) or off (true bypass): buffer switched ON in this plan (per owner). Analog. Power re-checked 2026-10-21: JHS's current page says 32 mA at 9V (the older 'under 100 mA' copy is outdated); 9V only, no 18V.",
+      "comments": "Candidate, not in any project (not bought). Compressor/preamp. 'Under 100 mA' is the published rating (planning on 100 mA; no measured figure found), 9V DC center-negative, no battery operation. A side switch turns the internal buffer on (buffered bypass) or off (true bypass): buffer switched ON in this plan (per owner). Analog. Power re-checked 2026-10-21: JHS's current page says 32 mA at 9V (the older 'under 100 mA' copy is outdated); 9V only, no 18V.",
       "price_eur": 238,
       "price_info": {
         "store": "thomann.de",

@@ -1,7 +1,6 @@
 # Plan: `feat/board-editor-pieces`: the board editor edits every piece of a composed board
 
-Status: plan (2026-11-13). Handover: `docs/handovers/plan-board-editor-pieces.md`. Implementation starts with the defaults of
-"Decisions for the owner" below.
+Status: implemented, merged into main (2026-11-13, `feat/board-editor-pieces`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 1. Where we are
 

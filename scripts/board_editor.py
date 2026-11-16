@@ -60,10 +60,8 @@ import common
 import design
 from common import IN_MM, database, load_json, project_dirs
 
-COMMAND = "uv run scripts/board_editor.py"
 EDITS_FILE = boards.EDITS_FILE
 TYPES = ("hole", "filled", "edge")
-SIDES = boards.EDGE_SIDES
 MIN_BOX_MM = 1.0           # a box smaller than this on a side (an edge segment: along its side) is a stray click, not a box
 HIT_MM = 2.0               # a click this close to an edge segment selects it
 DECIMALS = 4
@@ -102,12 +100,6 @@ def board_pieces_for(project_dir, project, db):
     if not entry or not entry.get("Image"):
         raise ValueError(f"board {b.get('brand')} {b.get('model')} is not in Pedal Playground's database")
     return [{"image": entry["Image"], "w_mm": entry["Width"] * IN_MM, "h_mm": entry["Height"] * IN_MM, "item": None}]
-
-
-def board_image_for(project_dir, project, db):
-    """(image file name, w_mm, h_mm) of the project's FIRST board piece (`board_pieces_for`)."""
-    p = board_pieces_for(project_dir, project, db)[0]
-    return p["image"], p["w_mm"], p["h_mm"]
 
 
 def resolve_piece(pieces, arg):
@@ -450,7 +442,7 @@ def save_edits(project_dir, boxes, bounds=None, pieces=KEEP):
     stay as they are; a dict {image: {"boxes", "bounds"}} = write that; None / {} = no `pieces` key."""
     path = Path(project_dir) / EDITS_FILE
     tmp = path.with_name(path.name + ".tmp")
-    if pieces is KEEP:   # the edits of further board pieces are not ours to change here: keep them
+    if pieces is KEEP:   # the caller writes only the top level: the file's `pieces` stay
         try:
             pieces = json.loads(path.read_text()).get("pieces")
         except (OSError, ValueError, AttributeError):

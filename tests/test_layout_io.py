@@ -1,4 +1,4 @@
-"""Layout injection and canvas editing (Phase 0 of feat/pedal-position): build.validate with injected items,
+"""Layout injection and canvas editing: build.validate with injected items,
 design.move and design.write_canvas. Hand-computed, all lengths in mm (45 px/in -> 1 px = 25.4/45 = 0.5644 mm)."""
 import copy
 import functools
@@ -105,7 +105,7 @@ def test_layout_from_items_maps_pedals_board_and_obstacles():
 
 
 def test_real_projects_keep_every_supply_under_the_board():
-    """Placement phase 3: no real project sets a placement, so the default (jacks.supplies_layer, "under") applies: no
+    """Supply placement: no real project sets a placement, so the default (jacks.supplies_layer, "under") applies: no
     supply is an obstacle, every power cable is under the board, and an explicit "under" changes nothing."""
     pedals, supplies = load_catalog()
     for name in ("guitar-gig", "guitar-practice", "bass"):

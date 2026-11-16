@@ -1,4 +1,5 @@
-"""Pedal positions: candidate model, hard constraints, surrogate score and search (all mm). Pure: no files, no GUI.
+"""Pedal positions: candidate model, hard constraints, surrogate score and search (all mm). Pure: no GUI, no writes (reads
+only the catalog outline files when `Model` is given no outlines).
 
 A candidate is a centre (cx, cy) and a rotation (0/90/270, never 180 unless the owner's layout has it) per chain
 pedal placed in the owner's layout and per supply instance placed ON the board (`placement: "on_board"`: an obstacle
@@ -120,7 +121,7 @@ DEFAULTS = {"pins": [], "rotations": {"default": [0, 90, 270]}, "board_margin_mm
 
 
 def settings(project):
-    """Layout settings: DEFAULTS + project `layout` (weights, pair factors and access merged key by key)."""
+    """Layout settings: DEFAULTS + project `layout` (weights, access and search merged key by key)."""
     given = preferences.lower(project).get("layout") or {}   # the per-pedal profiles (`pedals.<id>`) fill pins / rotations / access
     s = {**DEFAULTS, **{k: v for k, v in given.items() if k not in ("weights", "access", "search")}}
     s["weights"] = {**WEIGHTS, **(given.get("weights") or {})}
@@ -228,11 +229,11 @@ ROUNDS = 2   # plug side rounds of the surrogate (`Model.score`): the build's fi
 class Model:
     """Everything the score needs about one project and the owner's layout.
 
-    Built from a parsed layout (`items`), the project dict and catalog data; `wiring`: [(port point or None,
-    [pedal ids])] daisy chains for the power term (None: the project's own wiring)."""
+    Built from a parsed layout (`items`), the project dict and catalog data; `wiring`: the daisy chains for the power term
+    (see `set_wiring`; None: the project's own wiring)."""
 
     def __init__(self, project, items, cat_pedals, cat_supplies, jacks_data, fs_data, cable_types, wiring=None,
-                 fs_limit=None, outlines=None, board_data=None, board_edits=None, board_bounds=None, bodies=None, board_pieces=None):
+                 outlines=None, board_data=None, board_edits=None, board_bounds=None, bodies=None, board_pieces=None):
         import jacks
         self.project, self.items, self.cat_pedals = project, items, cat_pedals
         self.cfg = settings(project)
@@ -305,12 +306,10 @@ class Model:
         self._rect_bits, self._near_memo = {}, {}   # score(): {footprint: bits of the hole points it covers}, {(point, covered bits): nearest crossing}
         self.inst_under = {iid: pl != "on_board" for iid, pl in lay["inst_placement"].items()}
         over = self.rcfg["overrides"]
-        self.p_exit = {pid: (over.get(cid) or {}).get("exit_b")
-                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", []), project).items()}
-        self.p_type = {pid: (over.get(cid) or {}).get("type_b")
-                       for pid, cid in power.cable_ids((project.get("power") or {}).get("supplies", []), project).items()}
-        # an on-board supply's power cables start at its used ports: the cable's `exit_a` override (the first pedal's cable)
         pids = power.cable_ids((project.get("power") or {}).get("supplies", []), project)
+        self.p_exit = {pid: (over.get(cid) or {}).get("exit_b") for pid, cid in pids.items()}
+        self.p_type = {pid: (over.get(cid) or {}).get("type_b") for pid, cid in pids.items()}
+        # an on-board supply's power cables start at its used ports: the cable's `exit_a` override (the first pedal's cable)
         self.s_exit, self.s_type = {}, {}
         for iid in on_board:
             for r in sup_of[iid]["rows"]:
@@ -342,7 +341,7 @@ class Model:
         # footswitches
         self.fs_known = any(self.fs_data.get(p) for p in self.ids)
         limit, self.fs_comfort, _, _ = footswitches.spacing_settings(project)
-        self.fs_limit = limit if fs_limit is None else fs_limit
+        self.fs_limit = limit
         self.fs_priority = footswitches.priorities(project)
         # heights (`footswitches.heights`, plan docs/plans/switch-height.md): the pedal's switch top, the step in a pair's distance and the
         # shadow (reach term) use the same functions as the build; toppers are not searched. None = unknown (skipped)
@@ -508,7 +507,6 @@ class Model:
         style: "serial" (default: the cable runs port -> first pedal -> next ...) or "forked" (one cable per pedal from the
         port); the fourth item of each `self.wiring` entry."""
         if wiring is None:
-            import power
             insts = [{"id": s["inst"]["id"], "supply": s["sup"]["id"]} for s in self.insts]
             _, ports = power.measure_points({}, self.inst_item, insts, self.jacks_data, self.p_depth)
             wiring = [(ports.get((s["inst"]["id"], o["port"])), list(o.get("pedals", [])), self.inst_under.get(s["inst"]["id"], True),
@@ -589,11 +587,6 @@ class Model:
     def feasible(self, state, tol=design.TOL_MM):
         """Every hard constraint holds (overlaps up to `tol`, default design.TOL_MM as the build)."""
         return all(self.feasible_one(state, n, tol=tol) for n in range(len(state)))
-
-    def problems(self, state):
-        """Hard-constraint problems of a candidate, as strings (empty: feasible)."""
-        return [f"{self.ids[n]} is off the board, overlaps another item, or breaks a pin/rotation/max-move limit"
-                for n in range(len(state)) if not self.feasible_one(state, n, tol=design.TOL_MM)]
 
     # --- score ----------------------------------------------------------------------------------
     def _down_ok(self, x, y, d):

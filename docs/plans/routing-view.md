@@ -1,6 +1,6 @@
 # Plan: `feat/routing-view`: a signal routing picture to wire the board from
 
-Status: plan (2026-10-23) with the owner's decisions. Branch `feat/routing-view` from `main`.
+Status: implemented, merged into main (2026-10-23, `feat/routing-view`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 0. Starting point
 - `routing.route_all` returns 8-connected grid-cell paths (2 mm cells) per signal cable; the stacking limit

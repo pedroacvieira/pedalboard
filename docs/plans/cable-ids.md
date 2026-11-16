@@ -1,6 +1,6 @@
 # Plan: cable ids S# / P# / P#.n (`feat/cable-ids`)
 
-Status: decided by the owner (2026-10-29), implementation delegated (`docs/handovers/cable-ids.md`).
+Status: implemented, merged into main (2026-10-29, `feat/cable-ids`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## Today
 - `S#`: a signal (patch) cable, numbered along the chain (S1 = first pedal out -> second pedal in).

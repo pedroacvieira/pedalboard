@@ -1,6 +1,6 @@
 # Plan: `feat/pedal-outlines`: route around the pedal's real shape, not its bounding box
 
-Status: plan (2026-10-23). Branch `feat/pedal-outlines` from `main` (after the routing-view merge).
+Status: implemented, merged into main (2026-10-26, `feat/pedal-outlines`). Kept as the design record; where it differs, the code and CLAUDE.md are current.
 
 ## 0. Starting point
 - Every pedal is a rectangle today: `design.footprint(item)` = the Pedal Playground box (rotated). The router (grid,
@@ -31,11 +31,11 @@ Status: plan (2026-10-23). Branch `feat/pedal-outlines` from `main` (after the r
 - Canvas rects: `design.outline_rects(item, outlines)` maps each fraction rect with `jack_point` (rotation-aware,
   axis-aligned for 0/90/180/270) and falls back to `[design.footprint(item)]`.
 
-## Phase 1: data + drawing (handover routing-view style, `docs/handovers/pedal-outlines-1.md`)
+## Phase 1: data + drawing
 `scripts/outlines.py` (generator CLI), `catalog/outlines.json`, `design.outline_rects`, `layout["shapes"]`
 {item id: [rects]} in `jacks.layout_from_items`, svgdraw draws the outline (box faint dashed), tests.
 
-## Phase 2: consumers (`docs/handovers/pedal-outlines-2.md`)
+## Phase 2: consumers
 Router grid / `front_y` / `smooth` / `lanes` with the shape rects; `routing.blocked_parts` and `jacks.check` against
 the shapes (deepest hit per obstacle as today); layout surrogate clearance with per-pedal shapes (relative to the
 centre per rotation, like `_geom`), overlap/feasibility unchanged (box); `common.proposal_inputs_sha1` includes the

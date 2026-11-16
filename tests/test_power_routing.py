@@ -15,8 +15,6 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import design  # noqa: E402
-import layout  # noqa: E402
 import power  # noqa: E402
 import routing  # noqa: E402
 import svgdraw  # noqa: E402

@@ -40,7 +40,7 @@ TOPPER_KEYS = ("toppers", "topper_bonus_mm", "max_toppers", "topper_min_gain",
 def proposal_inputs_sha1(pdir):
     """SHA-1 of everything a project's layout proposals depend on: playground_design.json, project.json,
     catalog/cables.json, the catalog entries (pedal, supply, jacks, footswitches) of the project's pedals and
-    supplies, the outline entries (catalog/outlines.json) of the images in the design file, the board image's
+    supplies, the outline and body entries (catalog/outlines.json) of the images in the design file, the board image's
     catalog/boards.json entry and the project's board.json (holes). Stored by propose_layout.py in proposals/meta.json;
     build.py marks the proposals stale on a change. The project's footswitch topper, reach_weight and max_shadow_mm settings (TOPPER_KEYS) are left out."""
     import hashlib
@@ -86,7 +86,7 @@ def proposal_inputs_sha1(pdir):
 
 
 def load_cable_types(path=CABLES_FILE):
-    """Signal cable types by id (catalog/cables.json); {} if the file does not exist."""
+    """Cable types by id, every role (catalog/cables.json); {} if the file does not exist."""
     p = Path(path)
     return load_json(p).get("cables", {}) if p.exists() else {}
 

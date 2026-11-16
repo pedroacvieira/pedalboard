@@ -1,4 +1,4 @@
-"""Review fixes of feat/pedal-preferences: lowering round trip, a preferred voltage wish, migration refusals."""
+"""Per-pedal preferences: lowering round trip, a preferred voltage wish, migration refusals."""
 import json
 import sys
 from pathlib import Path
